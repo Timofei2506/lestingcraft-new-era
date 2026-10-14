@@ -54,6 +54,8 @@ jobs:
       - name: Install Unity Editor
         uses: buildalon/unity-setup@v2
         with:
+          # Newer Linux Hub packages changed paths; pin compatible layout.
+          hub-version: 3.12.0
           build-targets: StandaloneLinux64
 
       - name: Activate Unity license (Personal)
