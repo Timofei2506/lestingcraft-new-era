@@ -36,7 +36,7 @@ namespace LestingCraft.Runtime
         public bool IsConnecting=>busy;
         public string LastError=>lastError;
         public string ServerLabel=>endpoint.Replace("https://","").Replace("http://","");
-        public string WorldSeed {get=>seedText;set=>seedText=value;}
+        public string WorldSeed=>seedText;
         public string PlayerName {get=>playerName;set=>playerName=value;}
         public string RoomCode {get=>code;set=>code=value.Trim();}
         public string WorldLabel=>world?dimensions[(int)world.Dimension]+"  /  SEED "+world.Seed:"";
@@ -46,7 +46,7 @@ namespace LestingCraft.Runtime
         public ushort SelectedBlock=>Session?Items.Get(Session.Inventory.Active.item).Block:(ushort)1;
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
         public void PlayOffline()
-        {if(busy||world)return;if(int.TryParse(seedText,out var seed))StartWorld(seed,0,false);else Fail("Seed должен быть целым числом");}
+        {if(busy||world)return;int seed=Guid.NewGuid().GetHashCode();seedText=seed.ToString();StartWorld(seed,0,false);}
         public void ContinueOffline()
         {
             if(busy||world)return;resumeSave=LocalSave.Load();if(resumeSave==null){Fail("Сохранение повреждено");return;}
@@ -120,7 +120,7 @@ namespace LestingCraft.Runtime
         IEnumerator CreateRoomRoutine()
         {
             if(!ValidateEndpoint())yield break;
-            if(!int.TryParse(seedText,out var seed)){Fail("Seed должен быть целым числом");yield break;}
+            int seed=Guid.NewGuid().GetHashCode();seedText=seed.ToString();
             busy=true;lastError="";status="Создаю комнату…";
             using(var request=new UnityWebRequest(endpoint.TrimEnd('/')+"/api/rooms","POST"))
             {

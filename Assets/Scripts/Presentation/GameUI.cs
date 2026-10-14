@@ -119,7 +119,8 @@ namespace LestingCraft.Presentation
                 Label(button.transform,GameRules.ModeNames[i],22,85,305,55,24,chosen?Ink:White,true);
                 Label(button.transform,GameRules.ModeDescriptions[i],22,164,305,79,17,chosen?Ink:Muted);
             }
-            Input("SEED МИРА",game.WorldSeed,"Например: 2506",64,628,440,v=>game.WorldSeed=v);
+            Label(content.transform,"СТАРТ: ЛЕСТИНГИЯ",64,628,470,37,19,Accent,true);
+            Label(content.transform,"Мир генерируется автоматически.\nВыбирается только режим экспедиции.",64,678,465,80,18,Muted);
             Label(content.transform,"Локальная экспедиция",542,626,640,34,20,White);
             Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nНовый мир заменяет предыдущее локальное сохранение.",542,675,650,72,16,Muted);
             Button("Начать  →",1227,668,309,64,game.PlayOffline,true);
@@ -134,7 +135,7 @@ namespace LestingCraft.Presentation
             Button("Режим: "+GameRules.ModeNames[game.SelectedMode],542,355,430,58,()=>{game.SelectedMode=(game.SelectedMode+1)%4;ShowRooms();});
             var left=Box(content.transform,64,454,710,305,Panel);var right=Box(content.transform,795,454,741,305,Panel);
             Label(left.transform,"НОВАЯ КОМНАТА",28,28,655,41,25,White,true);
-            Label(left.transform,GameRules.ModeNames[game.SelectedMode]+" · Лестингия · seed: "+game.WorldSeed+"\nИзменения блоков синхронизируются в реальном времени.",28,96,650,76,17,Muted);
+            Label(left.transform,GameRules.ModeNames[game.SelectedMode]+" · Лестингия\nОбщий мир и сохранение персонажей.",28,96,650,76,17,Muted);
             actions.Add(Button("Создать и пригласить",28,204,652,64,game.CreateRoom,true,left.transform));
             Label(right.transform,"ПРИСОЕДИНИТЬСЯ",28,28,680,41,25,White,true);
             // Reusable input anchored in the card rather than relying on browser forms.

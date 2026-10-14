@@ -17,13 +17,13 @@ Shader "LestingCraft/AtmosphericSky"
             #pragma fragment Frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             TEXTURE3D(_CloudNoise);SAMPLER(sampler_CloudNoise);
-            float4 _Zenith,_Horizon,_SunColor,_SunDirection;float _CloudCoverage,_CloudBase,_CloudSteps;
+            float4 _Zenith,_Horizon,_SunColor,_SunDirection;float _CloudCoverage,_CloudBase,_CloudSteps,_GlobalWindStrength;
             struct A{float4 vertex:POSITION;};struct V{float4 vertex:SV_POSITION;float3 ray:TEXCOORD0;};
             V Vert(A i){V o;o.vertex=TransformObjectToHClip(i.vertex.xyz);o.ray=i.vertex.xyz;return o;}
             float density(float3 p)
             {
                 float profile=saturate((p.y-_CloudBase)/9)*saturate((_CloudBase+48-p.y)/15);
-                float3 uv=p*.0035+_Time.y*float3(.00017,0,.00007);
+                float3 uv=p*.0035+_Time.y*float3(.00017,0,.00007)*(.5+_GlobalWindStrength);
                 float base=SAMPLE_TEXTURE3D_LOD(_CloudNoise,sampler_CloudNoise,uv,0).r;
                 float detail=SAMPLE_TEXTURE3D_LOD(_CloudNoise,sampler_CloudNoise,uv*3.3,0).r;
                 return saturate((base*.78+detail*.22-(.74-_CloudCoverage*.35))*5)*profile;

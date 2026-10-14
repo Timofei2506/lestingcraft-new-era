@@ -88,6 +88,6 @@ export class GameRoom {
     }catch(e){socket.serializeAttachment(peer);if(peer.count>30)socket.close(1008,'Rate limit');else try{socket.send(JSON.stringify({type:'error',message:e.message}));}catch{}}
   }
   broadcast(message,exclude=null) {const raw=JSON.stringify(message);for(const socket of this.ctx.getWebSockets())if(socket!==exclude)try{socket.send(raw);}catch{}}
-  webSocketClose(socket) {const p=socket.deserializeAttachment();this.broadcast({type:'leave',id:p.id},socket);}
+  webSocketClose(socket) {const p=socket.deserializeAttachment();try{socket.close(1000,'Disconnected');}catch{}this.broadcast({type:'leave',id:p.id},socket);}
   webSocketError(socket) {try{socket.close(1011,'Socket error');}catch{}}
 }

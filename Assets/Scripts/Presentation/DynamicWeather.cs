@@ -39,6 +39,10 @@ namespace LestingCraft.Presentation
         {
             if(!Session||!cameraView)return;
             Sample=WeatherSample.At(Session.Data.seed,(int)Session.World.Dimension,Session.Data.clock);
+            float windX=Mathf.Sin((float)(Session.Data.clock/90)+Session.Data.seed%1000)*Sample.Wind;
+            var rainWind=rain.velocityOverLifetime;rainWind.x=windX*3;rainWind.z=Sample.Wind;
+            var snowWind=snow.velocityOverLifetime;snowWind.x=windX*1.5f;snowWind.z=Sample.Wind*.3f;
+            Shader.SetGlobalFloat("_GlobalWindStrength",Sample.Wind);
             rain.transform.position=snow.transform.position=cameraView.transform.position+Vector3.up*12;
             var re=rain.emission;re.rateOverTime=Session.Sheltered?0:(Sample.Kind==WeatherKind.Rain||Sample.Kind==WeatherKind.Storm)?Sample.Precipitation*1400:0;
             var se=snow.emission;se.rateOverTime=Session.Sheltered?0:Sample.Kind==WeatherKind.Snow?Sample.Precipitation*80:0;
