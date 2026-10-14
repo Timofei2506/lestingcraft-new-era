@@ -1,5 +1,6 @@
 # Облачная сборка: Windows + WebGL в Releases, WebGL на GitHub Pages.
-# Запуск: тег v* или вручную (workflow_dispatch). Требует секрета UNITY_LICENSE.
+# Лицензия — онлайн-вход по Unity ID (Personal), без .ulf-файлов.
+# Запуск: тег v* или вручную (workflow_dispatch). Требует UNITY_USERNAME / UNITY_PASSWORD.
 name: Build
 
 on:
@@ -12,20 +13,44 @@ permissions:
   pages: write
   id-token: write
 
+# Personal-лицензия имеет мало мест — не даём сборкам конкурировать за seat
 concurrency:
-  group: build-${{ github.ref }}
+  group: unity-license
   cancel-in-progress: false
 
 jobs:
+  check-secrets:
+    name: Check Unity secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has: ${{ steps.check.outputs.has }}
+    steps:
+      - id: check
+        env:
+          UNITY_USERNAME: ${{ secrets.UNITY_USERNAME }}
+        run: |
+          if [ -n "$UNITY_USERNAME" ]; then
+            echo "has=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Секреты UNITY_USERNAME/UNITY_PASSWORD не заданы — сборка пропущена. Инструкция: Docs/Сборка-в-облаке.md"
+          fi
+
   build:
     name: Build ${{ matrix.targetPlatform }}
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        targetPlatform:
-          - StandaloneWindows64
-          - WebGL
+        include:
+          - targetPlatform: StandaloneWindows64
+            buildMethod: BuildScript.BuildWindows64
+            artifactPath: Builds/StandaloneWindows64
+          - targetPlatform: WebGL
+            buildMethod: BuildScript.BuildWebGL
+            artifactPath: Builds/WebGL
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,21 +64,30 @@ jobs:
             Library-build-${{ matrix.targetPlatform }}-
             Library-
 
-      - name: Build (game-ci)
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      - name: Install Unity Editor
+        uses: buildalon/unity-setup@v2
         with:
-          targetPlatform: ${{ matrix.targetPlatform }}
-          unityVersion: 6000.0.32f1
-          buildName: LestingCraft
-          buildsPath: build
+          build-targets: ${{ matrix.targetPlatform }}
+
+      - name: Activate Unity license (Personal)
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Build
+        uses: buildalon/unity-action@v3
+        with:
+          log-name: build-${{ matrix.targetPlatform }}
+          build-target: ${{ matrix.targetPlatform }}
+          args: -quit -batchmode -nographics -executeMethod ${{ matrix.buildMethod }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.targetPlatform }}
-          path: build/${{ matrix.targetPlatform }}
+          path: ${{ matrix.artifactPath }}
           if-no-files-found: error
 
   release:

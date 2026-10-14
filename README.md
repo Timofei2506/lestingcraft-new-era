@@ -32,17 +32,21 @@
 Твой ПК **не нужен для сборки**: Unity живёт в облаке (GitHub Actions), готовые сборки падают в **Releases**,
 а WebGL-версия выкладывается на **GitHub Pages** как сайт.
 
-1. Поднять облачную лицензию Unity (нужен бесплатный Unity ID, всё через браузер) — см. **[Docs/Сборка-в-облаке.md](Docs/Сборка-в-облаке.md)**.
+1. Добавить в репозиторий два секрета (в браузере, 2 минуты): `UNITY_USERNAME` и `UNITY_PASSWORD` — email/пароль от бесплатного Unity ID. Подробно: **[Docs/Сборка-в-облаке.md](Docs/Сборка-в-облаке.md)**.
 2. Запустить workflow **Build** (или запушить тег `v0.1.0`).
-3. Забрать `LestingCraft-Windows.zip` из Releases **или** открыть ссылку Pages (WebGL).
+3. Забрать `build-StandaloneWindows64.zip` из Releases **или** открыть ссылку Pages (WebGL).
+
+> Как это работает без Unity: редактор ставится прямо на раннер GitHub, лицензия берётся
+> онлайн-входом по Unity ID (Personal), сборка и тесты крутятся в Actions. На твоём ПК — ничего.
 
 ## Структура репозитория
 
 ```
 Assets/Scripts/       # Core, World (чанки/блоки), Entities, Player, Dimensions, UI
+Assets/Editor/        # BuildScript — точки сборки для облака
 Assets/Tests/         # EditMode-тесты ядра мира
 Docs/                 # План, архитектура, инструкция облачной сборки
-.github/workflows/    # activation (лицензия), ci (тесты), build (Windows + WebGL + Pages)
+.github/workflows/    # ci (тесты), build (Windows + WebGL + Pages)
 ```
 
 ## Дорожная карта

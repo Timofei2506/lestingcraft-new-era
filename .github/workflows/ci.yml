@@ -1,4 +1,5 @@
-# Тесты ядра (EditMode) на каждый push/PR. Требует секрета UNITY_LICENSE — см. Docs/Сборка-в-облаке.md
+# Тесты ядра (EditMode). Лицензия — онлайн-вход по Unity ID (Personal), без .ulf-файлов.
+# Требует секретов UNITY_USERNAME / UNITY_PASSWORD — см. Docs/Сборка-в-облаке.md
 name: CI
 
 on:
@@ -7,9 +8,33 @@ on:
   pull_request:
     branches: [main, develop]
 
+# Personal-лицензия имеет мало мест — не даём сборкам конкурировать за seat
+concurrency:
+  group: unity-license
+  cancel-in-progress: false
+
 jobs:
+  check-secrets:
+    name: Check Unity secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has: ${{ steps.check.outputs.has }}
+    steps:
+      - id: check
+        env:
+          UNITY_USERNAME: ${{ secrets.UNITY_USERNAME }}
+        run: |
+          if [ -n "$UNITY_USERNAME" ]; then
+            echo "has=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Секреты UNITY_USERNAME/UNITY_PASSWORD не заданы — тесты пропущены. Инструкция: Docs/Сборка-в-облаке.md"
+          fi
+
   tests:
     name: EditMode tests
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,15 +49,24 @@ jobs:
             Library-tests-
             Library-
 
-      - name: Run tests (game-ci)
-        uses: game-ci/unity-test-runner@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      - name: Install Unity Editor
+        uses: buildalon/unity-setup@v2
         with:
-          unityVersion: 6000.0.32f1
-          testMode: EditMode
-          artifactsPath: TestResults
-          checkName: EditMode test results
+          build-targets: StandaloneWindows64
+
+      - name: Activate Unity license (Personal)
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Run EditMode tests
+        uses: buildalon/unity-action@v3
+        with:
+          log-name: editmode-tests
+          build-target: StandaloneWindows64
+          args: -batchmode -nographics -runTests -testPlatform EditMode -testResults ${{ github.workspace }}/TestResults/editmode.xml
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -40,3 +74,4 @@ jobs:
         with:
           name: TestResults
           path: TestResults
+          if-no-files-found: warn
