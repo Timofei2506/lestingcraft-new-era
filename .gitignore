@@ -50,3 +50,7 @@ crashlytics-build.properties
 *.ulf
 *.alf
 secrets.env
+
+# Local browser-test output
+Website/test-results/
+Website/playwright-report/

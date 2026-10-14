@@ -1,0 +1,23 @@
+name: Website tests
+on:
+  push:
+    paths: ["Website/**", ".github/workflows/website.yml"]
+  pull_request:
+    paths: ["Website/**", ".github/workflows/website.yml"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Website/package-lock.json
+      - run: npm ci && npm test
+        working-directory: Website
+      - run: npx playwright install --with-deps chromium
+        working-directory: Website
+      - run: npm run test:browser
+        working-directory: Website

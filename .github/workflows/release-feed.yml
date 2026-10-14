@@ -1,0 +1,35 @@
+name: Release download index
+on:
+  release:
+    types: [published, edited, unpublished, deleted]
+  workflow_dispatch:
+  schedule:
+    - cron: '*/30 * * * *'
+permissions:
+  contents: write
+concurrency:
+  group: release-download-index
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node Website/sync-releases.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Save verified download index
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Website/public/releases.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update verified release download index'
+            git push origin main
+          fi

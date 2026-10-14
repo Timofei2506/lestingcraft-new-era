@@ -5,8 +5,20 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - 'Website/**'
+      - 'Docs/**'
+      - 'README.md'
+      - '.github/workflows/website.yml'
+      - '.github/workflows/release-feed.yml' 
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - 'Website/**'
+      - 'Docs/**'
+      - 'README.md'
+      - '.github/workflows/website.yml'
+      - '.github/workflows/release-feed.yml' 
   workflow_dispatch:
 
 # Personal-лицензия имеет мало мест — не даём сборкам конкурировать за seat

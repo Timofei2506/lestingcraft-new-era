@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'./test',testMatch:'browser.spec.js',timeout:30000,workers:2,reporter:'list',use:{baseURL:process.env.SITE_URL||'http://127.0.0.1:3901',headless:true,reducedMotion:'reduce'},webServer:process.env.SITE_URL?undefined:{command:'PORT=3901 node server.mjs',url:'http://127.0.0.1:3901',reuseExistingServer:!process.env.CI}});
