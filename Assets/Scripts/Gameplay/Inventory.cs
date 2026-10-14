@@ -1,0 +1,105 @@
+using System;
+using System.Collections.Generic;
+namespace LestingCraft.Gameplay
+{
+    [Serializable] public sealed class ItemStack
+    {
+        public int item,count,durability;
+        public ItemStack Clone()=>new ItemStack{item=item,count=count,durability=durability};
+    }
+    public readonly struct ItemDefinition
+    {
+        public readonly int Id,MaxStack,Durability;public readonly string Name;public readonly ushort Block;public readonly float Food,Insulation;
+        public ItemDefinition(int id,string name,int max=64,int durability=0,ushort block=0,float food=0,float insulation=0)
+        {Id=id;Name=name;MaxStack=max;Durability=durability;Block=block;Food=food;Insulation=insulation;}
+    }
+    public static class Items
+    {
+        public const int WoodPick=100,StonePick=101,Axe=102,Sword=103,Coat=104,Berries=110,Bread=111,Planks=120,Stick=121,Fiber=122;
+        static readonly Dictionary<int,ItemDefinition> all=new Dictionary<int,ItemDefinition>();
+        static Items()
+        {
+            string[] names={"","Камень","Земля","Дёрн","Древесина","Листва","Песок","Вода","Лава","Коренная порода","Базальт","Кристалл","Эфирный камень","Руда","Снег","Костёр"};
+            for(ushort i=1;i<=15;i++)all[i]=new ItemDefinition(i,names[i],block:i);
+            all[WoodPick]=new ItemDefinition(WoodPick,"Деревянная кирка",1,60);
+            all[StonePick]=new ItemDefinition(StonePick,"Каменная кирка",1,140);
+            all[Axe]=new ItemDefinition(Axe,"Каменный топор",1,120);
+            all[Sword]=new ItemDefinition(Sword,"Каменный меч",1,160);
+            all[Coat]=new ItemDefinition(Coat,"Тёплая накидка",1,0,insulation:10);
+            all[Berries]=new ItemDefinition(Berries,"Лесные ягоды",32,food:16);
+            all[Bread]=new ItemDefinition(Bread,"Походный хлеб",32,food:30);
+            all[Planks]=new ItemDefinition(Planks,"Доски");all[Stick]=new ItemDefinition(Stick,"Палки");all[Fiber]=new ItemDefinition(Fiber,"Волокно");
+        }
+        public static bool Exists(int id)=>all.ContainsKey(id);
+        public static ItemDefinition Get(int id)=>all.TryGetValue(id,out var item)?item:default;
+        public static bool IsPick(int id)=>id==WoodPick||id==StonePick;
+        public static int ToolDrop(int block)=>block==3?2:block==5?Fiber:block;
+    }
+    [Serializable] public sealed class Inventory
+    {
+        public const int SlotCount=45,HotbarCount=9;
+        public ItemStack[] slots=new ItemStack[SlotCount];public int selected;public int revision;
+        public Inventory(){for(int i=0;i<slots.Length;i++)slots[i]=new ItemStack();}
+        public ItemStack Active=>slots[Math.Max(0,Math.Min(HotbarCount-1,selected))];
+        public int Count(int item){int n=0;foreach(var s in slots)if(s.item==item)n+=s.count;return n;}
+        public bool CanAdd(int item,int count)
+        {
+            if(!Items.Exists(item)||count<=0)return false;int room=0,max=Items.Get(item).MaxStack;
+            foreach(var s in slots)if(s.count==0)room+=max;else if(s.item==item)room+=max-s.count;
+            return room>=count;
+        }
+        public bool Add(int item,int count)
+        {
+            if(!CanAdd(item,count))return false;int max=Items.Get(item).MaxStack;
+            foreach(var s in slots)if(s.item==item&&s.count>0){int take=Math.Min(max-s.count,count);s.count+=take;count-=take;if(count==0){revision++;return true;}}
+            foreach(var s in slots)if(s.count==0){int take=Math.Min(max,count);s.item=item;s.count=take;s.durability=Items.Get(item).Durability;count-=take;if(count==0)break;}
+            revision++;return true;
+        }
+        public bool Remove(int item,int count)
+        {
+            if(count<=0||Count(item)<count)return false;
+            foreach(var s in slots)if(s.item==item){int take=Math.Min(count,s.count);s.count-=take;count-=take;if(s.count==0){s.item=0;s.durability=0;}if(count==0)break;}
+            revision++;return true;
+        }
+        public void Transfer(int from,int to)
+        {
+            if(from<0||to<0||from>=SlotCount||to>=SlotCount||from==to)return;
+            var a=slots[from];var b=slots[to];
+            if(a.count>0&&a.item==b.item&&Items.Get(a.item).MaxStack>1)
+            {int amount=Math.Min(a.count,Items.Get(a.item).MaxStack-b.count);a.count-=amount;b.count+=amount;if(a.count==0){a.item=0;a.durability=0;}}
+            else {slots[from]=b;slots[to]=a;}revision++;
+        }
+        public Inventory Clone(){var n=new Inventory();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();n.selected=selected;n.revision=revision;return n;}
+        public void WearTool()
+        {if(Active.count>0&&Items.Get(Active.item).Durability>0){Active.durability--;if(Active.durability<=0){Active.count=0;Active.item=0;}revision++;}}
+        public void Normalize()
+        {
+            if(slots==null||slots.Length!=SlotCount)slots=new ItemStack[SlotCount];
+            for(int i=0;i<SlotCount;i++)
+            {if(slots[i]==null)slots[i]=new ItemStack();var s=slots[i];if(!Items.Exists(s.item)||s.count<=0){s.item=0;s.count=0;s.durability=0;}else{s.count=Math.Min(s.count,Items.Get(s.item).MaxStack);s.durability=Math.Max(0,Math.Min(Items.Get(s.item).Durability,s.durability));}}
+            selected=Math.Max(0,Math.Min(8,selected));
+        }
+    }
+    public readonly struct Ingredient {public readonly int item,count;public Ingredient(int id,int n){item=id;count=n;}}
+    public sealed class Recipe
+    {
+        public readonly string Name;public readonly int output,count;public readonly Ingredient[] inputs;
+        public Recipe(string name,int output,int count,params Ingredient[] inputs){Name=name;this.output=output;this.count=count;this.inputs=inputs;}
+        public bool Craft(Inventory inventory)
+        {
+            var copy=inventory.Clone();foreach(var cost in inputs)if(!copy.Remove(cost.item,cost.count))return false;
+            if(!copy.Add(output,count))return false;inventory.slots=copy.slots;inventory.revision++;return true;
+        }
+    }
+    public static class Recipes
+    {
+        public static readonly Recipe[] All={
+            new Recipe("Доски ×4",120,4,new Ingredient(4,1)),new Recipe("Палки ×4",121,4,new Ingredient(120,2)),
+            new Recipe("Деревянная кирка",100,1,new Ingredient(120,3),new Ingredient(121,2)),
+            new Recipe("Каменная кирка",101,1,new Ingredient(1,3),new Ingredient(121,2)),
+            new Recipe("Каменный топор",102,1,new Ingredient(1,3),new Ingredient(121,2)),
+            new Recipe("Каменный меч",103,1,new Ingredient(1,2),new Ingredient(121,1)),
+            new Recipe("Костёр",15,1,new Ingredient(1,6),new Ingredient(4,4)),
+            new Recipe("Тёплая накидка",104,1,new Ingredient(122,12),new Ingredient(120,2))};
+    }
+}

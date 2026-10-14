@@ -11,6 +11,7 @@ namespace LestingCraft.Presentation
         public float RenderScale=1;
         public int ShadowResolution=2048;
         public bool PostEffects=true;
+        public int VolumetricQuality=1;
         public float Sensitivity=.10f;
         public float FieldOfView=75;
         public static VisualSettings Current {get;private set;}
@@ -20,7 +21,7 @@ namespace LestingCraft.Presentation
             if(Current==null)Current=new VisualSettings();Current.Clamp();
         }
         public void Clamp()
-        {ViewDistance=Mathf.Clamp(ViewDistance,2,5);RenderScale=Mathf.Clamp(RenderScale,.85f,1.15f);Sensitivity=Mathf.Clamp(Sensitivity,.04f,.25f);FieldOfView=Mathf.Clamp(FieldOfView,60,100);ShadowResolution=ShadowResolution<2048?1024:2048;}
+        {VolumetricQuality=Mathf.Clamp(VolumetricQuality,0,1);ViewDistance=Mathf.Clamp(ViewDistance,2,5);RenderScale=Mathf.Clamp(RenderScale,.85f,1.15f);Sensitivity=Mathf.Clamp(Sensitivity,.04f,.25f);FieldOfView=Mathf.Clamp(FieldOfView,60,100);ShadowResolution=ShadowResolution<2048?1024:2048;}
         public void Save(){Clamp();PlayerPrefs.SetString("VisualSettings",JsonUtility.ToJson(this));PlayerPrefs.Save();Apply();}
         public void Apply()
         {
@@ -32,7 +33,7 @@ namespace LestingCraft.Presentation
                 var extra=Camera.main.GetComponent<UniversalAdditionalCameraData>();if(extra)extra.renderPostProcessing=PostEffects;
             }
         }
-        public void HighDefault(){ViewDistance=3;RenderScale=1;ShadowResolution=2048;PostEffects=true;Sensitivity=.1f;FieldOfView=75;Save();}
+        public void HighDefault(){ViewDistance=3;RenderScale=1;ShadowResolution=2048;PostEffects=true;VolumetricQuality=1;Sensitivity=.1f;FieldOfView=75;Save();}
     }
     public sealed class AtmosphereLifetime : MonoBehaviour
     {

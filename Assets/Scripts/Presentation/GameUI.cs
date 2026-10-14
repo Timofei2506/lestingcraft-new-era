@@ -6,19 +6,20 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 using LestingCraft.Runtime;
 using LestingCraft.World;
+using LestingCraft.Gameplay;
 
 namespace LestingCraft.Presentation
 {
     /// <summary>Native scalable uGUI, no IMGUI or embedded webpage. All fonts/art are local.</summary>
     public sealed class GameUI : MonoBehaviour
     {
-        enum Page{Home,World,Rooms,Settings,Pause,HUD}
+        enum Page{Home,World,Rooms,Settings,Pause,Inventory,Death,HUD}
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.65f,.86f,.48f);
-        static readonly string[] RealmNames={"Лестингия","Пепельные земли","Небесный предел","Склеп эха","Разлом хаоса"};
-        static readonly string[] RealmDetails={"Леса, озёра и скалистые высоты.\nПервый дом в новой эпохе.","Базальтовые плато и реки лавы.\nМир с тяжёлым характером.","Плавающие острова над облаками.\nВысота становится маршрутом.","Холодный камень и лиловые кристаллы.\nСвет среди тишины.","Обломки миров и чужие материалы.\nНестабильный горизонт."};
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
         Page page,settingsBack;Text status,realmHUD,netHUD,perfHUD,itemHUD,loadingHUD;Image[] slots;RectTransform[] slotRects;
+        Text vitalsHUD,objectiveHUD,noticeHUD;RawImage[] slotIcons;Text[] slotCounts,slotFallback;int lastInventoryRevision=-1,lastSlot=-1,inventoryFrom=-1;
+        public bool InventoryOpen=>page==Page.Inventory;
         float timer,averageFrame=.016f;ushort lastSelection;bool ready;
         public void Initialize(PrototypeGame owner)
         {
@@ -97,6 +98,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,"Пять измерений. Один общий мир.\nИсследуй, строй и приглашай друзей.",67,487,790,92,24,White);
             Button("Начать путешествие  →",64,631,370,64,ShowWorld,true);
             Button("Играть с друзьями",452,631,290,64,ShowRooms);
+            if(game.HasSave)Button("Продолжить сохранение",760,631,307,64,game.ContinueOffline);
             Button("Настройки",64,715,180,52,()=>ShowSettings(Page.Home));
             Button("Выйти",261,715,150,52,()=>Application.Quit());
             var card=Box(content.transform,1100,577,435,200,new Color(.045f,.085f,.095f,.84f));
@@ -107,24 +109,21 @@ namespace LestingCraft.Presentation
         }
         public void ShowWorld()
         {
-            Clear(Page.World);Header("Новый мир");
-            Label(content.transform,"ВЫБЕРИ ГОРИЗОНТ",64,171,1370,67,36,White,true);
-            Label(content.transform,"Каждое измерение — отдельная процедурная среда.",66,247,1000,42,19,Muted);
-            for(int i=0;i<5;i++)
+            Clear(Page.World);Header("Режим новой экспедиции");
+            Label(content.transform,"КАК НАЧНЁТСЯ ТВОЯ ЭРА?",64,171,1400,67,36,White,true);
+            Label(content.transform,"Все начинают в Лестингии. Другие измерения открываются по ходу кампании.",66,247,1440,42,19,Muted);
+            for(int i=0;i<4;i++)
             {
-                int realm=i;float x=64+i*296;bool selected=game.SelectedRealm==i;
-                var button=Button("",x,331,280,254,()=>{game.SelectedRealm=realm;ShowWorld();},selected);
-                var parent=button.transform;
-                Label(parent,"0"+(i+1),22,20,240,39,25,selected?Ink:Accent,true);
-                Label(parent,RealmNames[i],22,87,240,83,23,selected?Ink:White,true);
-                Label(parent,RealmDetails[i],22,177,239,61,15,selected?new Color(.15f,.24f,.17f):Muted);
-                if(selected)Label(parent,"ВЫБРАНО",109,27,145,30,12,Ink,false,TextAnchor.MiddleRight);
+                int mode=i;bool chosen=game.SelectedMode==i;var button=Button("",64+i*368,331,352,254,()=>{game.SelectedMode=mode;ShowWorld();},chosen);
+                Label(button.transform,"0"+(i+1),22,20,305,39,25,chosen?Ink:Accent,true);
+                Label(button.transform,GameRules.ModeNames[i],22,85,305,55,24,chosen?Ink:White,true);
+                Label(button.transform,GameRules.ModeDescriptions[i],22,164,305,79,17,chosen?Ink:Muted);
             }
             Input("SEED МИРА",game.WorldSeed,"Например: 2506",64,628,440,v=>game.WorldSeed=v);
-            Label(content.transform,"Локальный мир",542,626,550,34,20,White);
-            Label(content.transform,"Не требует сервера или подключения.\nСохранение построек между запусками пока не реализовано.",542,675,610,72,16,Muted);
-            Button("Создать мир  →",1227,668,309,64,game.PlayOffline,true);
-            status=Label(content.transform,"Порталы, крафт и сюжет ещё в разработке.",542,784,900,66,14,Muted);
+            Label(content.transform,"Локальная экспедиция",542,626,640,34,20,White);
+            Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nНовый мир заменяет предыдущее локальное сохранение.",542,675,650,72,16,Muted);
+            Button("Начать  →",1227,668,309,64,game.PlayOffline,true);
+            status=Label(content.transform,"Полная кампания и боссы ещё разрабатываются.",542,784,940,66,14,Muted);
         }
         public void ShowRooms()
         {
@@ -132,9 +131,10 @@ namespace LestingCraft.Presentation
             Label(content.transform,"ОДИН МИР. ВМЕСТЕ.",64,171,1400,67,36,White,true);
             Label(content.transform,"Создай комнату и передай её код друзьям — или присоединись к их миру.",66,247,1380,42,19,Muted);
             Input("ТВОЁ ИМЯ",game.PlayerName,"Исследователь",64,321,440,v=>game.PlayerName=v);
+            Button("Режим: "+GameRules.ModeNames[game.SelectedMode],542,355,430,58,()=>{game.SelectedMode=(game.SelectedMode+1)%4;ShowRooms();});
             var left=Box(content.transform,64,454,710,305,Panel);var right=Box(content.transform,795,454,741,305,Panel);
             Label(left.transform,"НОВАЯ КОМНАТА",28,28,655,41,25,White,true);
-            Label(left.transform,RealmNames[game.SelectedRealm]+" · seed: "+game.WorldSeed+"\nИзменения блоков синхронизируются в реальном времени.",28,96,650,76,17,Muted);
+            Label(left.transform,GameRules.ModeNames[game.SelectedMode]+" · Лестингия · seed: "+game.WorldSeed+"\nИзменения блоков синхронизируются в реальном времени.",28,96,650,76,17,Muted);
             actions.Add(Button("Создать и пригласить",28,204,652,64,game.CreateRoom,true,left.transform));
             Label(right.transform,"ПРИСОЕДИНИТЬСЯ",28,28,680,41,25,White,true);
             // Reusable input anchored in the card rather than relying on browser forms.
@@ -154,6 +154,55 @@ namespace LestingCraft.Presentation
             Label(content.transform,"ESC — продолжить",505,552,760,37,16,Muted);
             if(game.Online)Button("Скопировать код комнаты",505,619,380,58,()=>GUIUtility.systemCopyBuffer=game.RoomCode);
         }
+        public void ShowInventory()
+        {
+            Clear(Page.Inventory);Header("Инвентарь · крафт",false);inventoryFrom=-1;
+            Label(content.transform,"СНАРЯЖЕНИЕ И ПРИПАСЫ",64,165,1400,59,32,White,true);
+            Label(content.transform,"Выберите ячейку, затем ячейку назначения. Первые 9 — быстрые слоты. ПКМ в мире: еда / накидка / установка.",66,250,1465,53,16,Muted);
+            if(!game.Session)return;var inventory=game.Session.Inventory;
+            for(int i=0;i<45;i++)
+            {
+                int index=i;var stack=inventory.slots[i];var button=Button("",64+(i%9)*96,328+(i/9)*89,91,79,()=>
+                {
+                    if(inventoryFrom<0){inventoryFrom=index;buttonHighlight(index);}
+                    else {game.Session.Transfer(inventoryFrom,index);ShowInventory();}
+                });
+                Icon(button.transform,stack.item,22,3,48);Label(button.transform,stack.count>0?stack.count.ToString():"—",7,58,77,17,12,Muted,false,TextAnchor.MiddleRight);
+                if(i<9)Label(button.transform,(i+1).ToString(),7,5,20,20,11,Accent);
+            }
+            Label(content.transform,"СОЗДАТЬ",974,328,553,35,18,Accent,true);
+            for(int i=0;i<Recipes.All.Length;i++)
+            {
+                int index=i;var recipe=Recipes.All[i];string costs="";foreach(var ingredient in recipe.inputs)costs+=(costs.Length==0?"":" · ")+Items.Get(ingredient.item).Name+" ×"+ingredient.count;
+                var button=Button(recipe.Name+"  |  "+costs,974,383+i*48,553,42,()=>{game.Session.Craft(index);ShowInventory();});
+                button.GetComponentInChildren<Text>().fontSize=14;
+            }
+            status=Label(content.transform,game.Session.Notice,340,803,1150,62,16,Accent);
+            Button("←  В мир",64,802,230,55,game.ToggleInventory,true);
+        }
+        void buttonHighlight(int index)
+        {
+            status.text="Перенос: "+Items.Get(game.Session.Inventory.slots[index].item).Name+" — выберите целевую ячейку";
+        }
+        void Icon(Transform parent,int item,float x,float y,float size)
+        {
+            var texture=ItemIcon(item);
+            if(texture){var raw=Rect("Item icon",parent,x,y,size,size).gameObject.AddComponent<RawImage>();raw.texture=texture;raw.raycastTarget=false;}
+            else if(item>0)Label(parent,Items.Get(item).Name,x-9,y+8,size+18,size-8,10,White,false,TextAnchor.MiddleCenter);
+        }
+        Texture2D ItemIcon(int item)
+        {
+            if(item>0&&item<=15)return Resources.Load<Texture2D>("Icons/"+SurfaceLayers.Icon((ushort)item));
+            return Resources.Load<Texture2D>("Icons/Item"+item);
+        }
+        public void ShowDeathScreen()
+        {
+            Clear(Page.Death);Header("Экспедиция",false);bool ended=game.Session&&game.Session.Data.campaign.runEnded;
+            Label(content.transform,ended?"ЗАБЕГ ЗАВЕРШЁН":"ТЫ ПОГИБ",64,259,1450,87,45,White,true);
+            Label(content.transform,ended?"Хардкор: смерть одного участника завершает забег всех.\nЭтот мир нельзя продолжить повторным входом.":"Вещи остались у личного надгробия.\nВернитесь к нему, чтобы забрать снаряжение.",67,391,1380,115,24,Muted);
+            if(!ended)Button("Возродиться  →",64,588,395,64,()=>game.Session.Respawn(),true);
+            Button("Главное меню",64,685,395,58,game.ReturnToMenu);
+        }
         void ShowSettings(Page back)
         {
             settingsBack=back;Clear(Page.Settings);Header("Графика и управление",false);
@@ -165,10 +214,10 @@ namespace LestingCraft.Presentation
             Slider("Масштаб рендера",92,469,655,settings.RenderScale,.85f,1.15f,false,v=>{settings.RenderScale=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
             Button("Тени: "+(settings.ShadowResolution==2048?"высокие · 2048":"умеренные · 1024"),92,589,309,58,()=>{settings.ShadowResolution=settings.ShadowResolution==2048?1024:2048;settings.Save();ShowSettings(settingsBack);});
             Button("Постэффекты: "+(settings.PostEffects?"вкл.":"выкл."),419,589,328,58,()=>{settings.PostEffects=!settings.PostEffects;settings.Save();ShowSettings(settingsBack);});
-            Label(content.transform,"ACES, bloom, мягкая виньетка. Геометрия и текстуры не упрощаются.",92,667,653,50,14,Muted);
+            Button("Объёмы: "+(settings.VolumetricQuality==1?"высокие":"сокращённые"),92,667,655,38,()=>{settings.VolumetricQuality=1-settings.VolumetricQuality;settings.Save();ShowSettings(settingsBack);});
             Slider("Поле зрения",828,354,680,settings.FieldOfView,60,100,true,v=>{settings.FieldOfView=v;settings.Save();},v=>(int)v+"°");
             Slider("Чувствительность мыши",828,469,680,settings.Sensitivity,.04f,.25f,false,v=>{settings.Sensitivity=v;settings.Save();},v=>v.ToString("0.00"));
-            Label(content.transform,"WASD — движение     SPACE — прыжок\nЛКМ — убрать блок     ПКМ — поставить\n1–9 — материал         ESC — меню",828,596,679,106,18,White);
+            Label(content.transform,"WASD — движение     SPACE — прыжок\nЛКМ — убрать блок     ПКМ — поставить\n1–9 — быстрые слоты     E — инвентарь         ESC — меню",828,596,679,106,18,White);
             Button("←  Готово",64,798,210,54,()=>{settings.Save();if(settingsBack==Page.Pause)ShowPause();else ShowHome();},true);
             Button("Вернуть высокий пресет",296,798,327,54,()=>{settings.HighDefault();ShowSettings(settingsBack);});
             Label(content.transform,"FPS зависит от железа. WebGL обычно медленнее Windows-сборки.",663,792,873,69,15,Muted,false,TextAnchor.MiddleRight);
@@ -194,17 +243,21 @@ namespace LestingCraft.Presentation
             loadingHUD=Label(content.transform,"",36,113,780,37,14,Accent);
             // Minimal reticle, not an IMGUI text '+'.
             foreach(var r in new[]{new Vector4(799,439,2,7),new Vector4(799,454,2,7),new Vector4(789,449,7,2),new Vector4(804,449,7,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.82f),false);
-            slots=new Image[9];slotRects=new RectTransform[9];
+            slots=new Image[9];slotRects=new RectTransform[9];slotIcons=new RawImage[9];slotCounts=new Text[9];slotFallback=new Text[9];lastInventoryRevision=-1;lastSlot=-1;
             var backdrop=Box(content.transform,364,786,872,99,new Color(.025f,.05f,.055f,.88f));
-            var ids=new ushort[]{1,2,3,4,5,6,11,12,14};
             for(int i=0;i<9;i++)
             {
                 var image=Box(backdrop.transform,10+i*95,10,91,79,new Color(.10f,.155f,.165f,.92f));slots[i]=image;slotRects[i]=image.rectTransform;
-                var raw=Rect("Material icon",image.transform,24,5,48,48).gameObject.AddComponent<RawImage>();raw.texture=Resources.Load<Texture2D>("Icons/"+SurfaceLayers.Icon(ids[i]));raw.raycastTarget=false;
+                var raw=Rect("Material icon",image.transform,24,5,48,48).gameObject.AddComponent<RawImage>();raw.raycastTarget=false;slotIcons[i]=raw;
+                slotCounts[i]=Label(image.transform,"",51,57,32,18,11,White,false,TextAnchor.MiddleRight);
+                slotFallback[i]=Label(image.transform,"",8,13,75,35,10,White,false,TextAnchor.MiddleCenter);
                 Label(image.transform,(i+1).ToString(),0,55,91,18,11,Muted,false,TextAnchor.MiddleCenter);
             }
             itemHUD=Label(content.transform,"",400,743,800,33,18,White,false,TextAnchor.MiddleCenter);
-            Label(content.transform,"ЛКМ  убрать   ·   ПКМ  поставить   ·   1–9  материал",413,712,774,24,12,Muted,false,TextAnchor.MiddleCenter);
+            Label(content.transform,"ЛКМ  добывать   ·   ПКМ  использовать   ·   E  инвентарь",413,712,774,24,12,Muted,false,TextAnchor.MiddleCenter);
+            vitalsHUD=Label(content.transform,"",36,751,325,121,15,White);
+            objectiveHUD=Label(content.transform,"",36,175,1000,63,15,Accent);
+            noticeHUD=Label(content.transform,"",400,656,800,41,14,Accent,false,TextAnchor.MiddleCenter);
             Label(content.transform,"ESC  меню",1357,841,210,29,12,Muted,false,TextAnchor.MiddleRight);
         }
         void Update()
@@ -223,16 +276,29 @@ namespace LestingCraft.Presentation
             averageFrame=Mathf.Lerp(averageFrame,Mathf.Min(Time.unscaledDeltaTime,.5f),.04f);timer+=Time.unscaledDeltaTime;
             if(timer>.25f)
             {
-                timer=0;realmHUD.text=game.WorldLabel;
+                timer=0;realmHUD.text=game.WorldLabel+"  /  "+game.ModeName;
+                if(game.Session)
+                {
+                    var session=game.Session;var v=session.Vitals;
+                    vitalsHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"Здоровье  {v.health:0}   ·   Голод  {v.hunger:0}\nТемпература  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%   ·   Силы  {v.stamina:0}";
+                    objectiveHUD.text=session.Creative?"":GameRules.NextObjective(session.Data.campaign.chapter,session.Data.campaign.milestones);
+                    noticeHUD.text=session.Notice;
+                }
                 netHUD.text=game.Online?(game.LastError.Length>0?game.LastError:"●  КООПЕРАТИВ   ·   "+game.PlayerCount+" / 8"):"ЛОКАЛЬНЫЙ МИР";
                 perfHUD.text=Mathf.RoundToInt(1/Mathf.Max(.001f,averageFrame))+" FPS   ·   "+game.ChunkCount+" чанков";
                 loadingHUD.text=!game.WorldReady?"Формирование ландшафта… "+game.ChunkCount+" чанков":"";
             }
-            if(lastSelection!=game.SelectedBlock)
+            if(game.Session&&(lastInventoryRevision!=game.Session.Inventory.revision||lastSlot!=game.Session.Inventory.selected))
             {
-                lastSelection=game.SelectedBlock;var ids=new ushort[]{1,2,3,4,5,6,11,12,14};
-                for(int i=0;i<9;i++){bool selected=ids[i]==lastSelection;slots[i].color=selected?new Color(.36f,.49f,.30f,.97f):new Color(.10f,.155f,.165f,.92f);}
-                itemHUD.text=SurfaceLayers.DisplayName(lastSelection);
+                var inventory=game.Session.Inventory;lastInventoryRevision=inventory.revision;lastSlot=inventory.selected;
+                for(int i=0;i<9;i++)
+                {
+                    var stack=inventory.slots[i];slots[i].color=i==inventory.selected?new Color(.36f,.49f,.30f,.97f):new Color(.10f,.155f,.165f,.92f);
+                    var texture=ItemIcon(stack.item);slotIcons[i].texture=texture;slotIcons[i].enabled=texture;
+                    slotFallback[i].text=texture||stack.item==0?"":Items.Get(stack.item).Name;
+                    slotCounts[i].text=stack.count>0?(game.Session.Creative?"∞":stack.count.ToString()):"";
+                }
+                itemHUD.text=inventory.Active.count>0?Items.Get(inventory.Active.item).Name:"Свободная рука";
             }
         }
         void OnDestroy(){if(rounded)Destroy(rounded);}

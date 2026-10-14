@@ -11,6 +11,7 @@ namespace LestingCraft.Presentation
                 case 4:return face==2||face==3?5:4;case 5:return 6;case 6:return 7;
                 case 7:return 8;case 8:return 9;case 9:return 10;case 10:return 11;
                 case 11:return 12;case 12:return 13;case 13:return 14;case 14:return 15;
+                case 15:return face==2?9:0;
                 default:return 0;
             }
         }
@@ -19,6 +20,6 @@ namespace LestingCraft.Presentation
             string[] names={"Воздух","Камень","Земля","Дёрн","Древесина","Листва","Песок","Вода","Лава","Коренная порода","Базальт","Кристалл","Эфирный камень","Руда","Снег"};
             return id<names.Length?names[id]:"Неизвестный блок";
         }
-        public static string Icon(ushort id)=>Names[ForFace(id,2)];
+        public static string Icon(ushort id)=>id==15?"Item15":Names[ForFace(id,2)];
     }
 }

@@ -1,1 +1,22 @@
-{"name":"lestingcraft-coop-server","version":"0.1.0","private":true,"type":"module","scripts":{"start":"node src/node.js","dev:cloudflare":"wrangler dev --ip 0.0.0.0","deploy":"wrangler deploy","test":"node --test test/*.test.js","test:integration":"node test/integration.js"},"dependencies":{"ws":"8.18.3"},"devDependencies":{"wrangler":"4.44.0"},"engines":{"node":">=20"}}
+{
+  "name": "lestingcraft-coop-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/node.js",
+    "dev:cloudflare": "wrangler dev --ip 0.0.0.0",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.js",
+    "test:integration": "node test/integration.js && node test/survival-integration.js"
+  },
+  "dependencies": {
+    "ws": "8.18.3"
+  },
+  "devDependencies": {
+    "wrangler": "4.44.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

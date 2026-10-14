@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using LestingCraft.Gameplay;
 #if !UNITY_WEBGL || UNITY_EDITOR
 using System.Net.WebSockets;
 using System.Threading;
@@ -15,8 +16,8 @@ namespace LestingCraft.Networking
     [Serializable] public class NetPlayer {public string id,name;public float x,y,z,yaw;}
     [Serializable] public class NetPacket
     {
-        public string type,id,name,message,code;public int seed,dimension,version,block,maxPlayers;public long rev;
-        public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
+        public string type,id,name,message,code;public int seed,dimension,version,block,maxPlayers,mode,rulesVersion;public bool runEnded;public CampaignProgress campaign;public PlayerSave save;public long rev;
+        public double clock;public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
     }
     public sealed class RoomClient : MonoBehaviour
     {
@@ -34,10 +35,10 @@ namespace LestingCraft.Networking
         CancellationTokenSource cancellation;
         readonly SemaphoreSlim sendLock=new SemaphoreSlim(1,1);
 #endif
-        public void Connect(string endpoint,string code,string playerName)
+        public void Connect(string endpoint,string code,string playerName,string playerKey="")
         {
             gameObject.name="LestingCraftNetwork";
-            string url=endpoint.TrimEnd('/').Replace("https://","wss://").Replace("http://","ws://")+"/api/rooms/"+Uri.EscapeDataString(code.Trim().ToLowerInvariant())+"/ws?name="+Uri.EscapeDataString(playerName);
+            string url=endpoint.TrimEnd('/').Replace("https://","wss://").Replace("http://","ws://")+"/api/rooms/"+Uri.EscapeDataString(code.Trim().ToLowerInvariant())+"/ws?name="+Uri.EscapeDataString(playerName)+"&key="+Uri.EscapeDataString(playerKey);
 #if UNITY_WEBGL && !UNITY_EDITOR
             LC_Connect(url,gameObject.name);
 #else

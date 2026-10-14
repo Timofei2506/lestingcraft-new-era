@@ -25,6 +25,23 @@ public static class PresentationAssets
         var avatar=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Avatar.mat");
         if(!avatar){avatar=new Material(Shader.Find("Universal Render Pipeline/Lit"));avatar.SetColor("_BaseColor",new Color(.3f,.65f,.6f));avatar.SetFloat("_Smoothness",.4f);AssetDatabase.CreateAsset(avatar,Folder+"/Avatar.mat");}
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/AtmosphericSky")),Folder+"/Sky.mat");
+        if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Atmosphere.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/VolumetricAtmosphere")),Folder+"/Atmosphere.mat");
+        var cloud=AssetDatabase.LoadAssetAtPath<Texture3D>(Folder+"/CloudNoise.asset");
+        if(!cloud)
+        {
+            const int n=64;cloud=new Texture3D(n,n,n,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear};
+            var pixels=new Color[n*n*n];
+            for(int z=0;z<n;z++)for(int y=0;y<n;y++)for(int x=0;x<n;x++)
+            {
+                // Periodic smooth 3D value field from trigonometric domain warping, no seams at wrapping.
+                float a=x*2*Mathf.PI/n,b=y*2*Mathf.PI/n,c=z*2*Mathf.PI/n;
+                float v=.5f+.19f*Mathf.Sin(a+Mathf.Sin(b))+.14f*Mathf.Cos(b+Mathf.Sin(c))+.12f*Mathf.Sin(c+Mathf.Cos(a))+.06f*Mathf.Sin(a*3+b*2-c);
+                pixels[x+n*(y+n*z)]=new Color(Mathf.Clamp01(v),0,0,1);
+            }
+            cloud.SetPixels(pixels);cloud.Apply(false,true);AssetDatabase.CreateAsset(cloud,Folder+"/CloudNoise.asset");
+        }
+        var sky=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat");sky.SetTexture("_CloudNoise",cloud);EditorUtility.SetDirty(sky);
+        ParticleMaterial("Precipitation",false);ParticleMaterial("Fire",true);
         var pipeline=AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(Folder+"/HighDefinition.asset");
         if(!pipeline)
         {
@@ -32,7 +49,7 @@ public static class PresentationAssets
             pipeline=UniversalRenderPipelineAsset.Create(renderer);
             pipeline.supportsHDR=true;pipeline.msaaSampleCount=4;pipeline.renderScale=1f;
             pipeline.supportsCameraDepthTexture=true;pipeline.supportsCameraOpaqueTexture=true;
-            pipeline.mainLightShadowmapResolution=2048;pipeline.shadowDistance=80;pipeline.shadowCascadeCount=2;
+            pipeline.maxAdditionalLightsCount=8;pipeline.mainLightShadowmapResolution=2048;pipeline.shadowDistance=80;pipeline.shadowCascadeCount=2;
             var serialized=new SerializedObject(pipeline);
             serialized.FindProperty("m_MainLightShadowsSupported").boolValue=true;
             serialized.FindProperty("m_SoftShadowsSupported").boolValue=true;
@@ -52,6 +69,15 @@ public static class PresentationAssets
             foreach(var component in profile.components)AssetDatabase.AddObjectToAsset(component,profile);
         }
         EditorUtility.SetDirty(material);EditorUtility.SetDirty(water);EditorUtility.SetDirty(profile);AssetDatabase.SaveAssets();
+    }
+    static void ParticleMaterial(string name,bool additive)
+    {
+        var path=Folder+"/"+name+".mat";if(AssetDatabase.LoadAssetAtPath<Material>(path))return;
+        var texture=new Texture2D(32,32,TextureFormat.RGBA32,false,true);
+        for(int y=0;y<32;y++)for(int x=0;x<32;x++){float r=Vector2.Distance(new Vector2(x,y),new Vector2(15.5f,15.5f))/16;texture.SetPixel(x,y,new Color(1,1,1,Mathf.Clamp01(1-r*r)*Mathf.Clamp01(1-r)));}
+        texture.Apply();AssetDatabase.CreateAsset(texture,Folder+"/"+name+"Glow.asset");
+        var material=new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));material.SetTexture("_BaseMap",texture);material.SetFloat("_Surface",1);material.SetFloat("_SrcBlend",5);material.SetFloat("_DstBlend",additive?1:10);material.SetFloat("_ZWrite",0);material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");material.renderQueue=3000;
+        AssetDatabase.CreateAsset(material,path);
     }
     static Texture2DArray Array(string assetName,string kind,bool linear)
     {

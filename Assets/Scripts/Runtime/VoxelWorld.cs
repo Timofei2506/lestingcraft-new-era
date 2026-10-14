@@ -43,9 +43,10 @@ namespace LestingCraft.Runtime
             if(chunks.TryGetValue(key,out var view))return view.Data.GetBlock(x-key.x*16,y,z-key.y*16);
             return TerrainGenerator.Sample(x,y,z,Seed,Dimension);
         }
+        public bool CanAcceptEdit(Vector3Int cell)=>edits.ContainsKey(cell)||edits.Count<(Online?4096:8192);
         public void Edit(int x,int y,int z,ushort block)
         {
-            if(!Contains(x,y,z)||y==0||block==BlockRegistry.BedrockId||block>14)return;
+            if(!Contains(x,y,z)||y==0||block==BlockRegistry.BedrockId||block>15)return;
             var pos=new Vector3Int(x,y,z);edits[pos]=block;
             var key=new Vector2Int(ChunkCoordinate(x),ChunkCoordinate(z));
             if(chunks.TryGetValue(key,out var v))v.Data.SetBlock(x-key.x*16,y,z-key.y*16,block);
@@ -100,6 +101,15 @@ namespace LestingCraft.Runtime
                 yield return null;
             }
         }
+        public LestingCraft.Gameplay.SavedBlock[] ExportEdits()
+        {
+            var result=new List<LestingCraft.Gameplay.SavedBlock>();
+            foreach(var edit in edits)result.Add(new LestingCraft.Gameplay.SavedBlock{realm=(int)Dimension,x=edit.Key.x,y=edit.Key.y,z=edit.Key.z,block=edit.Value});return result.ToArray();
+        }
+        public bool NearCampfire(Vector3 point,float radius=6)
+        {foreach(var edit in edits)if(edit.Value==15&&Vector3.Distance(point,(Vector3)edit.Key+Vector3.one*.5f)<radius)return true;return false;}
+        public List<Vector3> NearbyFires(Vector3 point)
+        {var found=new List<Vector3>();foreach(var edit in edits)if(edit.Value==15&&Vector3.Distance(point,(Vector3)edit.Key)<24)found.Add((Vector3)edit.Key+new Vector3(.5f,1,.5f));return found;}
         void Rebuild(Vector2Int key,View v)
         {
             var data=ChunkMesher.Build(v.Data,key.x*16,key.y*16,GetBlock);
