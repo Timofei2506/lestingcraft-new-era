@@ -1,0 +1,17 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {RoomState,createConfig,newPeer,validCode,MAX_EDITS,safeName} from '../src/protocol.js';
+const config=()=>createConfig({version:1,seed:2506,dimension:0});
+const position=(r,p,t=10000)=>r.handle(p,JSON.stringify({type:'position',x:1,y:42,z:1,yaw:0}),t,()=>{});
+const edit=(r,p,override={},t=10100,save=()=>{})=>r.handle(p,JSON.stringify({type:'edit',x:1,y:41,z:1,block:4,...override}),t,save);
+test('validates seed,version,dimensions',()=>{assert.equal(config().seed,2506);for(const invalid of [{version:0},{dimension:5},{seed:1.5},{seed:NaN},{seed:2147483648}])assert.throws(()=>createConfig({...config(),...invalid}));});
+test('codes and names are safe',()=>{assert.ok(validCode('a'.repeat(32)));assert.ok(!validCode('../world'));assert.equal(safeName('<b>hi\n'),'bhi');});
+test('welcome includes edits and hides unpositioned peers',()=>{const r=new RoomState(config(),[{x:1,y:41,z:1,block:4,rev:1}]),p=newPeer('a','Alice');assert.equal(r.welcome(p,[p,newPeer('b','Bob')]).players.length,0);assert.equal(r.welcome(p,[]).edits.length,1);});
+test('persists before ordered acknowledgements',()=>{const r=new RoomState(config()),p=newPeer('a','Alice');position(r,p);let saved;const first=edit(r,p,{},10100,e=>saved=e);assert.equal(saved.rev,1);assert.equal(first.rev,1);const second=edit(r,p,{block:0},10300);assert.equal(second.rev,2);assert.equal(r.edits.size,1);});
+test('failed persistence does not mutate memory',()=>{const r=new RoomState(config()),p=newPeer('a','Alice');position(r,p);assert.throws(()=>edit(r,p,{},10100,()=>{throw new Error('Disk full');}));assert.equal(r.config.rev,0);assert.equal(r.edits.size,0);});
+test('protects bedrock,bounds,reach and block IDs',()=>{for(const invalid of [{y:0},{x:64},{z:-65},{x:.5},{block:9},{block:999},{x:40},{y:256}]){const r=new RoomState(config()),p=newPeer('a','A');position(r,p);assert.throws(()=>edit(r,p,invalid));}});
+test('requires position before editing',()=>{assert.throws(()=>edit(new RoomState(config()),newPeer('a','A')));});
+test('rejects malformed,binary,oversized messages',()=>{for(const raw of ['[]','null','bad','x'.repeat(2049),new Uint8Array(2)])assert.throws(()=>new RoomState(config()).handle(newPeer('a','A'),raw,10000,()=>{}));});
+test('rejects nonfinite positions and fast updates',()=>{const r=new RoomState(config()),p=newPeer('a','A');position(r,p);assert.throws(()=>position(r,p,10001));assert.throws(()=>r.handle(p,'{"type":"position","x":1e400,"y":40,"z":1,"yaw":0}',11000,()=>{}));});
+test('limits unique cells but allows updating existing edits',()=>{const r=new RoomState(config()),p=newPeer('a','A');position(r,p);for(let i=0;i<MAX_EDITS;i++)r.edits.set(`dummy${i}`,{});assert.throws(()=>edit(r,p));r.edits.delete('dummy0');edit(r,p);edit(r,p,{block:2},10400);assert.equal(r.edits.size,MAX_EDITS);});
+test('rate bound includes rejected packets',()=>{const r=new RoomState(config()),p=newPeer('a','A');for(let i=0;i<15;i++)assert.throws(()=>r.handle(p,'{}',10000,()=>{}));assert.throws(()=>r.handle(p,'{}',10000,()=>{}),/Rate limit/);});

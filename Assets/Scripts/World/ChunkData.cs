@@ -19,6 +19,12 @@ namespace LestingCraft.World
             _blocks = new ushort[SizeX * SizeY * SizeZ];
         }
 
+        public ChunkData(ushort[] blocks)
+        {
+            if (blocks == null || blocks.Length != BlockCount) throw new ArgumentException("Invalid chunk size");
+            _blocks = blocks;
+        }
+
         public static int BlockCount => SizeX * SizeY * SizeZ;
 
         public static bool InBounds(int x, int y, int z)

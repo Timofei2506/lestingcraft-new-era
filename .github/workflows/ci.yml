@@ -38,6 +38,7 @@ jobs:
     needs: check-secrets
     if: needs.check-secrets.outputs.has == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,4 +79,12 @@ jobs:
         with:
           name: TestResults
           path: TestResults
+          if-no-files-found: warn
+
+      - name: Upload Unity logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: UnityLogs
+          path: Builds/Logs
           if-no-files-found: warn

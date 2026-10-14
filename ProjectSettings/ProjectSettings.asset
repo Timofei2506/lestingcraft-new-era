@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 26
+  productGUID: c5360277f6f04fbdbce8df25a9817439
+  companyName: LestingCraft
+  productName: LestingCraft New Era
+  defaultScreenWidth: 1280
+  defaultScreenHeight: 720
+  runInBackground: 1
+  resizableWindow: 1
+  activeInputHandler: 1
+  webGLMemorySize: 512
+  webGLCompressionFormat: 2
+  webGLDecompressionFallback: 0
+  webGLInitialMemorySize: 256
+  webGLMaximumMemorySize: 1024
+  webGLMemoryGrowthMode: 2
+  webGLMemoryGeometricGrowthStep: 0.2
+  webGLMemoryGeometricGrowthCap: 96
+  webGLMemoryLinearGrowthStep: 16

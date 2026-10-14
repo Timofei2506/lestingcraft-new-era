@@ -3,6 +3,8 @@
     "rootNamespace": "LestingCraft.Tests",
     "references": [
         "LestingCraft.Core",
+        "Unity.Collections",
+        "Unity.Mathematics",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

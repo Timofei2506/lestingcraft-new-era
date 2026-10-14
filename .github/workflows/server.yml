@@ -1,0 +1,27 @@
+name: Server tests
+on:
+  push:
+    paths: ["Server/**", ".github/workflows/server.yml"]
+  pull_request:
+    paths: ["Server/**", ".github/workflows/server.yml"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Server/package-lock.json
+      - run: npm ci && npm test
+        working-directory: Server
+      - name: Standalone integration
+        working-directory: Server
+        run: |
+          npm start > /tmp/lesting-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          node -e 'const go=async()=>{for(let i=0;i<30;i++){try{if((await fetch("http://127.0.0.1:8787/health")).ok)return}catch{};await new Promise(r=>setTimeout(r,250))}process.exit(1)};go()'
+          npm run test:integration

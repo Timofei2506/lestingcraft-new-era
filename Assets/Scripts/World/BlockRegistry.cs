@@ -38,6 +38,11 @@ namespace LestingCraft.World
         public const ushort WaterId = 7;
         public const ushort LavaId = 8;
         public const ushort BedrockId = 9;
+        public const ushort BasaltId = 10;
+        public const ushort CrystalId = 11;
+        public const ushort AetherId = 12;
+        public const ushort OreId = 13;
+        public const ushort SnowId = 14;
 
         private static readonly Dictionary<ushort, BlockDefinition> Blocks = new Dictionary<ushort, BlockDefinition>();
 
@@ -52,6 +57,11 @@ namespace LestingCraft.World
             Register(new BlockDefinition(SandId, "Sand", 0.5f, isSolid: true));
             Register(new BlockDefinition(WaterId, "Water", 0f, isSolid: false));
             Register(new BlockDefinition(LavaId, "Lava", 0f, isSolid: false, lightLevel: 15));
+            Register(new BlockDefinition(BasaltId, "Basalt", 2f, true));
+            Register(new BlockDefinition(CrystalId, "Crystal", 2f, true, 6));
+            Register(new BlockDefinition(AetherId, "Aether", 1f, true));
+            Register(new BlockDefinition(OreId, "Ore", 3f, true));
+            Register(new BlockDefinition(SnowId, "Snow", .3f, true));
             Register(new BlockDefinition(BedrockId, "Bedrock", float.PositiveInfinity, isSolid: true));
         }
 
