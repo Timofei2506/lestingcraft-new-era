@@ -24,8 +24,9 @@ jobs:
       - id: check
         env:
           UNITY_USERNAME: ${{ secrets.UNITY_USERNAME }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          if [ -n "$UNITY_USERNAME" ]; then
+          if [ -n "$UNITY_USERNAME" ] && [ -n "$UNITY_PASSWORD" ]; then
             echo "has=true" >> "$GITHUB_OUTPUT"
           else
             echo "has=false" >> "$GITHUB_OUTPUT"
@@ -53,7 +54,7 @@ jobs:
       - name: Install Unity Editor
         uses: buildalon/unity-setup@v2
         with:
-          build-targets: StandaloneWindows64
+          build-targets: StandaloneLinux64
 
       - name: Activate Unity license (Personal)
         uses: buildalon/activate-unity-license@v2
@@ -66,7 +67,7 @@ jobs:
         uses: buildalon/unity-action@v3
         with:
           log-name: editmode-tests
-          build-target: StandaloneWindows64
+          build-target: StandaloneLinux64
           args: -batchmode -nographics -runTests -testPlatform EditMode -testResults ${{ github.workspace }}/TestResults/editmode.xml
 
       - name: Upload test results

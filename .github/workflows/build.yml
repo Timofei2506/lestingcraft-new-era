@@ -28,8 +28,9 @@ jobs:
       - id: check
         env:
           UNITY_USERNAME: ${{ secrets.UNITY_USERNAME }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          if [ -n "$UNITY_USERNAME" ]; then
+          if [ -n "$UNITY_USERNAME" ] && [ -n "$UNITY_PASSWORD" ]; then
             echo "has=true" >> "$GITHUB_OUTPUT"
           else
             echo "has=false" >> "$GITHUB_OUTPUT"
@@ -40,15 +41,18 @@ jobs:
     name: Build ${{ matrix.targetPlatform }}
     needs: check-secrets
     if: needs.check-secrets.outputs.has == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
-          - targetPlatform: StandaloneWindows64
+          - os: windows-latest
+            targetPlatform: StandaloneWindows64
             buildMethod: BuildScript.BuildWindows64
             artifactPath: Builds/StandaloneWindows64
-          - targetPlatform: WebGL
+          - os: ubuntu-latest
+            targetPlatform: WebGL
             buildMethod: BuildScript.BuildWebGL
             artifactPath: Builds/WebGL
     steps:
