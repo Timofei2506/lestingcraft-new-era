@@ -22,8 +22,10 @@ namespace LestingCraft.Presentation
         float timer,averageFrame=.016f;ushort lastSelection;bool ready;
         public void Initialize(PrototypeGame owner)
         {
+            Debug.Log("[Presentation] Loading local UI fonts and sprites");
             game=owner;body=Resources.Load<Font>("UI/Manrope");display=Resources.Load<Font>("UI/Unbounded");
             var texture=Resources.Load<Texture2D>("UI/RoundRect");rounded=Sprite.Create(texture,new Rect(0,0,texture.width,texture.height),new Vector2(.5f,.5f),100,0,SpriteMeshType.FullRect,new Vector4(16,16,16,16));
+            Debug.Log("[Presentation] Creating canvas");
             canvas=gameObject.AddComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=100;
             var scale=gameObject.AddComponent<CanvasScaler>();scale.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scale.referenceResolution=new Vector2(1600,900);scale.screenMatchMode=CanvasScaler.ScreenMatchMode.Expand;
             gameObject.AddComponent<GraphicRaycaster>();
@@ -33,6 +35,7 @@ namespace LestingCraft.Presentation
             var shade=Rect("Art Shade",background.transform,0,0,0,0);Stretch(shade);var shading=shade.gameObject.AddComponent<RawImage>();shading.texture=Resources.Load<Texture2D>("UI/MenuShade");shading.raycastTarget=false;
             frame=Rect("1600x900 Interface",transform,0,0,1600,900);frame.anchorMin=frame.anchorMax=new Vector2(.5f,.5f);frame.pivot=new Vector2(.5f,.5f);frame.anchoredPosition=Vector2.zero;
             content=Rect("Content",frame,0,0,1600,900).gameObject;ready=true;ShowHome();
+            Debug.Log("[Presentation] Home screen created");
         }
         static RectTransform Rect(string name,Transform parent,float x,float y,float w,float h)
         {
@@ -223,7 +226,7 @@ namespace LestingCraft.Presentation
                 timer=0;realmHUD.text=game.WorldLabel;
                 netHUD.text=game.Online?(game.LastError.Length>0?game.LastError:"●  КООПЕРАТИВ   ·   "+game.PlayerCount+" / 8"):"ЛОКАЛЬНЫЙ МИР";
                 perfHUD.text=Mathf.RoundToInt(1/Mathf.Max(.001f,averageFrame))+" FPS   ·   "+game.ChunkCount+" чанков";
-                loadingHUD.text=game.ChunkCount<9?"Формирование ландшафта… "+game.ChunkCount+" / 9":"";
+                loadingHUD.text=!game.WorldReady?"Формирование ландшафта… "+game.ChunkCount+" чанков":"";
             }
             if(lastSelection!=game.SelectedBlock)
             {

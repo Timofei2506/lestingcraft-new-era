@@ -40,6 +40,9 @@ public static class BuildScript
         PlayerSettings.productName = "LestingCraft New Era";
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
         PlayerSettings.WebGL.decompressionFallback = false;
+        PlayerSettings.colorSpace = ColorSpace.Linear;
+        PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.FullWithStacktrace;
+        PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.Embedded;
 
         var options = new BuildPlayerOptions
         {
@@ -56,6 +59,6 @@ public static class BuildScript
                   $"size={summary.totalSize}, time={summary.totalTime}, " +
                   $"errors={summary.totalErrors}, warnings={summary.totalWarnings}");
 
-        EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
+        EditorApplication.Exit(summary.result == BuildResult.Succeeded && summary.totalErrors == 0 ? 0 : 1);
     }
 }

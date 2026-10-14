@@ -38,6 +38,7 @@ namespace LestingCraft.Runtime
         public string WorldLabel=>world?dimensions[(int)world.Dimension]+"  /  SEED "+world.Seed:"";
         public int PlayerCount=>avatars.Count+1;
         public int ChunkCount=>world?world.LoadedChunks:0;
+        public bool WorldReady=>world&&world.Ready;
         public ushort SelectedBlock=>player?player.Selected:(ushort)1;
         public void PlayOffline()
         {if(busy||world)return;if(int.TryParse(seedText,out var seed))StartWorld(seed,dimension,false);else Fail("Seed должен быть целым числом");}
@@ -48,16 +49,19 @@ namespace LestingCraft.Runtime
         void Fail(string message){status=message;lastError=message;busy=false;}
         void Awake()
         {
+            Debug.Log("[Presentation] Bootstrap started");
             var config=Resources.Load<TextAsset>("NetworkConfig");if(config)endpoint=JsonUtility.FromJson<NetworkConfig>(config.text).endpoint;
             Application.targetFrameRate=60;
             VisualSettings.Load();
             var pipeline=Resources.Load<UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset>("Generated/HighDefinition");
             UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline=pipeline;QualitySettings.renderPipeline=pipeline;
+            Debug.Log("[Presentation] Pipeline configured");
             var camera=new GameObject("Menu Camera").AddComponent<Camera>();camera.backgroundColor=new Color(.055f,.09f,.15f);camera.clearFlags=CameraClearFlags.SolidColor;
             camera.tag="MainCamera";camera.gameObject.AddComponent<AudioListener>();
             SetCursor(false);
             ui=new GameObject("Game Interface").AddComponent<GameUI>();ui.Initialize(this);
             VisualSettings.Current.Apply();
+            Debug.Log("[Presentation] Interface ready");
         }
         void SetCursor(bool locked){Cursor.lockState=locked?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!locked;if(player)player.Active=locked;}
         public void TogglePause(){if(!world)return;paused=!paused;SetCursor(!paused);}

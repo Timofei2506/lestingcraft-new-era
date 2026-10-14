@@ -21,7 +21,7 @@ Shader "LestingCraft/VoxelPBR"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
-            #pragma multi_compile_fragment _ _SHADOWS_SOFT
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -50,7 +50,7 @@ Shader "LestingCraft/VoxelPBR"
                 half3 n=normalize(i.normalWS),t=normalize(i.tangentWS.xyz),b=cross(n,t)*i.tangentWS.w;
                 InputData lighting=(InputData)0;
                 lighting.positionWS=i.positionWS;lighting.normalWS=normalize(mul(normalTS,half3x3(t,b,n)));
-                lighting.viewDirectionWS=GetWorldSpaceNormalizeViewDir(i.positionWS);lighting.shadowCoord=i.shadowCoord;
+                lighting.viewDirectionWS=GetWorldSpaceNormalizeViewDir(i.positionWS);lighting.shadowCoord=TransformWorldToShadowCoord(i.positionWS);
                 lighting.fogCoord=i.fog;lighting.vertexLighting=VertexLighting(i.positionWS,lighting.normalWS);
                 lighting.bakedGI=SampleSH(lighting.normalWS);lighting.normalizedScreenSpaceUV=GetNormalizedScreenSpaceUV(i.positionCS);lighting.shadowMask=half4(1,1,1,1);
                 SurfaceData surface=(SurfaceData)0;
@@ -73,6 +73,7 @@ Shader "LestingCraft/VoxelPBR"
             #pragma fragment ShadowFrag
             #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
             float3 _LightDirection;float3 _LightPosition;
             struct A {float4 vertex:POSITION;float3 normal:NORMAL;};
@@ -85,11 +86,7 @@ Shader "LestingCraft/VoxelPBR"
                     float3 direction=_LightDirection;
                 #endif
                 float4 clip=TransformWorldToHClip(ApplyShadowBias(pos,normal,direction));
-                #if UNITY_REVERSED_Z
-                    clip.z=min(clip.z,UNITY_NEAR_CLIP_VALUE);
-                #else
-                    clip.z=max(clip.z,UNITY_NEAR_CLIP_VALUE);
-                #endif
+                clip=ApplyShadowClamping(clip);
                 return clip;
             }
             half4 ShadowFrag():SV_Target{return 0;}
