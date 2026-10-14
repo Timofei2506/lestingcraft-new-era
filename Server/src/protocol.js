@@ -60,9 +60,9 @@ export class RoomState {
     if(p.type==='state') {
       if(this.config.rulesVersion!==RULES_VERSION||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
-      const save=validatePlayerSave(p.save),dead=save.survival.health<=0;
+      const save=validatePlayerSave(p.save),dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
       const forced=p.force===true;
-      if(peer.lastState>0&&now-peer.lastState<19000&&!dead&&!(forced&&(peer.lastForcedSave===0||now-peer.lastForcedSave>=60000)))throw new Error('Save update too frequent');
+      if(peer.lastState>0&&now-peer.lastState<19000&&!firstDeath&&!(forced&&(peer.lastForcedSave===0||now-peer.lastForcedSave>=60000)))throw new Error('Save update too frequent');
       if(!this.savedPlayers.has(peer.playerKey)&&this.savedPlayers.size>=64)throw new Error('Saved player limit reached');
       const ended=this.config.mode===1&&dead,next={...this.config,runEnded:ended||this.config.runEnded,campaign:{...this.config.campaign,milestones:(this.config.campaign?.milestones||0)|save.milestones,runEnded:ended||this.config.runEnded}};
       // Stats/inventory are trusted for friends; this is validation and persistence, not anti-cheat.

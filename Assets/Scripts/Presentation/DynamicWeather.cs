@@ -27,7 +27,7 @@ namespace LestingCraft.Presentation
             var main=ps.main;main.loop=true;main.simulationSpace=ParticleSystemSimulationSpace.World;main.startSpeed=isSnow?1.7f:26;main.startLifetime=isSnow?7:.8f;
             main.startSize=isSnow?.08f:.025f;main.startColor=isSnow?new Color(.92f,.96f,1,.75f):new Color(.68f,.8f,.9f,.4f);main.maxParticles=isSnow?700:1800;
             main.startRotation=new ParticleSystem.MinMaxCurve(0,Mathf.PI*2);
-            var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Box;shape.scale=new Vector3(24,.3f,24);shape.rotation=new Vector3(90,0,0);
+            var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Box;shape.scale=new Vector3(24,.3f,24);
             var velocity=ps.velocityOverLifetime;velocity.enabled=true;velocity.space=ParticleSystemSimulationSpace.World;velocity.x=isSnow?.7f:2;velocity.y=isSnow?-1.7f:-26;velocity.z=.2f;
             main.startSpeed=0;var emission=ps.emission;emission.rateOverTime=0;
             var collision=ps.collision;collision.enabled=true;collision.type=ParticleSystemCollisionType.World;collision.mode=ParticleSystemCollisionMode.Collision3D;collision.lifetimeLoss=1;collision.collidesWith=~0;collision.quality=ParticleSystemCollisionQuality.Low;
