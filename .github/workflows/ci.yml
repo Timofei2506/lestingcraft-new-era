@@ -1,0 +1,42 @@
+# Тесты ядра (EditMode) на каждый push/PR. Требует секрета UNITY_LICENSE — см. Docs/Сборка-в-облаке.md
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  tests:
+    name: EditMode tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-tests-${{ hashFiles('Packages/manifest.json') }}
+          restore-keys: |
+            Library-tests-
+            Library-
+
+      - name: Run tests (game-ci)
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          unityVersion: 6000.0.32f1
+          testMode: EditMode
+          artifactsPath: TestResults
+          checkName: EditMode test results
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TestResults
+          path: TestResults
