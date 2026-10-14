@@ -21,7 +21,7 @@ namespace LestingCraft.Runtime
         int dimension;
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
-        long revision; float lastPosition;Vector3 previousPosition;bool sentPosition;
+        long revision; float lastPosition,previousYaw;Vector3 previousPosition;bool sentPosition;
         Material avatarMaterial;
         GUIStyle title,label,button;
         void Awake()
@@ -69,7 +69,7 @@ namespace LestingCraft.Runtime
         }
         bool ValidateEndpoint()
         {
-            if(!Uri.TryCreate(endpoint,out var uri)||(uri.Scheme!="https"&&uri.Scheme!="http")){status="Укажи https:// адрес сервера";return false;}
+            if(!Uri.TryCreate(endpoint,UriKind.Absolute,out var uri)||(uri.Scheme!="https"&&uri.Scheme!="http")){status="Укажи https:// адрес сервера";return false;}
 #if UNITY_WEBGL && !UNITY_EDITOR
             if(uri.Scheme!="https"){status="Для браузерного билда нужен HTTPS-сервер";return false;}
 #endif
@@ -124,8 +124,8 @@ namespace LestingCraft.Runtime
             if(online&&client&&client.Connected&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
             {
                 var pos=player.Camera.transform.position;
-                if(!sentPosition||(pos-previousPosition).sqrMagnitude>.0009f)
-                {client.Send(new NetPacket{type="position",x=pos.x,y=pos.y,z=pos.z,yaw=player.transform.eulerAngles.y});previousPosition=pos;sentPosition=true;}
+                if(!sentPosition||(pos-previousPosition).sqrMagnitude>.0009f||Mathf.Abs(Mathf.DeltaAngle(previousYaw,player.transform.eulerAngles.y))>1f)
+                {client.Send(new NetPacket{type="position",x=pos.x,y=pos.y,z=pos.z,yaw=player.transform.eulerAngles.y});previousPosition=pos;previousYaw=player.transform.eulerAngles.y;sentPosition=true;}
                 lastPosition=Time.unscaledTime;
             }
         }

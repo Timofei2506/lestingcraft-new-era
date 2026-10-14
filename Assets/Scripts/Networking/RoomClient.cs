@@ -53,15 +53,15 @@ namespace LestingCraft.Networking
                 var buffer=new byte[8192];
                 while(ws.State==WebSocketState.Open&&!token.IsCancellationRequested)
                 {
-                    var text=new StringBuilder();WebSocketReceiveResult result;
+                    var text=new System.IO.MemoryStream();WebSocketReceiveResult result;
                     do
                     {
                         result=await ws.ReceiveAsync(new ArraySegment<byte>(buffer),token);
                         if(result.MessageType==WebSocketMessageType.Close){statuses.Enqueue("@closed");return;}
-                        text.Append(Encoding.UTF8.GetString(buffer,0,result.Count));
+                        text.Write(buffer,0,result.Count);
                         if(text.Length>2_000_000)throw new Exception("Snapshot too large");
                     }while(!result.EndOfMessage);
-                    incoming.Enqueue(text.ToString());
+                    incoming.Enqueue(Encoding.UTF8.GetString(text.ToArray()));text.Dispose();
                 }
                 statuses.Enqueue("@closed");
             }

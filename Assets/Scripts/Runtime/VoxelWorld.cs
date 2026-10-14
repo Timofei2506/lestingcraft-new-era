@@ -14,6 +14,8 @@ namespace LestingCraft.Runtime
         readonly Dictionary<Vector3Int,ushort> edits = new Dictionary<Vector3Int,ushort>();
         readonly HashSet<Vector2Int> dirty = new HashSet<Vector2Int>();
         Material material;
+        NativeArray<ushort> pendingBuffer;
+        JobHandle pendingJob;
         public int Seed { get; private set; }
         public Dimension Dimension { get; private set; }
         public bool Online { get; private set; }
@@ -26,7 +28,7 @@ namespace LestingCraft.Runtime
             Seed=seed;Dimension=dimension;Online=online;
             material=new Material(Resources.Load<Shader>("Voxel"));
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
-            RenderSettings.fogStart=30;RenderSettings.fogEnd=75;
+            RenderSettings.fogStartDistance=30;RenderSettings.fogEndDistance=75;
             StartCoroutine(Stream());
         }
         public static int ChunkCoordinate(int value) => Mathf.FloorToInt(value/16f);
@@ -66,6 +68,7 @@ namespace LestingCraft.Runtime
                     var buffer=new NativeArray<ushort>(ChunkData.BlockCount,Allocator.Persistent);
                     var job=new GenerateChunkJob {OriginX=key.x*16,OriginZ=key.y*16,Seed=Seed,Dimension=Dimension,Blocks=buffer};
                     var handle=job.Schedule(256,16);
+                    pendingBuffer=buffer;pendingJob=handle;
                     // Complete and dispose even when the world is destroyed mid-generation.
                     try
                     {
@@ -79,7 +82,7 @@ namespace LestingCraft.Runtime
                             view.Data.SetBlock(edit.Key.x-key.x*16,edit.Key.y,edit.Key.z-key.y*16,edit.Value);
                         Rebuild(key,view);
                     }
-                    finally {handle.Complete();buffer.Dispose();}
+                    finally {handle.Complete();if(pendingBuffer.IsCreated){pendingBuffer.Dispose();pendingBuffer=default;}}
                     yield return null;
                 }
                 Ready=true;
@@ -104,6 +107,6 @@ namespace LestingCraft.Runtime
             if(v.Visual)Destroy(v.Visual);if(v.Collision)Destroy(v.Collision);v.Visual=mesh;v.Collision=collider;
         }
         void DisposeView(View v){if(v.Visual)Destroy(v.Visual);if(v.Collision)Destroy(v.Collision);if(v.Object)Destroy(v.Object);}
-        void OnDestroy(){StopAllCoroutines();foreach(var v in chunks.Values)DisposeView(v);if(material)Destroy(material);}
+        void OnDestroy(){StopAllCoroutines();pendingJob.Complete();if(pendingBuffer.IsCreated){pendingBuffer.Dispose();pendingBuffer=default;}foreach(var v in chunks.Values)DisposeView(v);if(material)Destroy(material);}
     }
 }

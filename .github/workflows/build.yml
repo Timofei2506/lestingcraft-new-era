@@ -7,6 +7,12 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Build platform
+        type: choice
+        options: [all, WebGL, StandaloneWindows64]
+        default: all
 
 permissions:
   contents: write
@@ -42,19 +48,12 @@ jobs:
     needs: check-secrets
     if: needs.check-secrets.outputs.has == 'true'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
-        include:
-          - os: windows-latest
-            targetPlatform: StandaloneWindows64
-            buildMethod: BuildScript.BuildWindows64
-            artifactPath: Builds/StandaloneWindows64
-          - os: ubuntu-latest
-            targetPlatform: WebGL
-            buildMethod: BuildScript.BuildWebGL
-            artifactPath: Builds/WebGL
+        include: ${{ fromJSON(inputs.platform == 'WebGL' && '[{"os":"ubuntu-latest","targetPlatform":"WebGL","buildMethod":"BuildScript.BuildWebGL","artifactPath":"Builds/WebGL"}]' || inputs.platform == 'StandaloneWindows64' && '[{"os":"windows-latest","targetPlatform":"StandaloneWindows64","buildMethod":"BuildScript.BuildWindows64","artifactPath":"Builds/StandaloneWindows64"}]' || '[{"os":"ubuntu-latest","targetPlatform":"WebGL","buildMethod":"BuildScript.BuildWebGL","artifactPath":"Builds/WebGL"},{"os":"windows-latest","targetPlatform":"StandaloneWindows64","buildMethod":"BuildScript.BuildWindows64","artifactPath":"Builds/StandaloneWindows64"}]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,6 +72,7 @@ jobs:
         with:
           # Newer Linux Hub packages changed paths; pin compatible layout.
           hub-version: 3.12.0
+          cache-installation: true
           build-targets: ${{ matrix.targetPlatform }}
 
       - name: Activate Unity license (Personal)
@@ -96,6 +96,14 @@ jobs:
           path: ${{ matrix.artifactPath }}
           if-no-files-found: error
 
+      - name: Upload Unity build logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BuildLogs-${{ matrix.targetPlatform }}
+          path: Builds/Logs
+          if-no-files-found: warn
+
   release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/')
@@ -118,6 +126,7 @@ jobs:
         with:
           files: artifacts/*.zip
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
   deploy-pages:
     name: Deploy WebGL to GitHub Pages
