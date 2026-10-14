@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using LestingCraft.Presentation;
 
 namespace LestingCraft.World
 {
@@ -9,6 +10,10 @@ namespace LestingCraft.World
     {
         public readonly List<Vector3> Vertices = new List<Vector3>();
         public readonly List<Vector3> Normals = new List<Vector3>();
+        public readonly List<Vector3> UVs = new List<Vector3>();
+        public readonly List<Vector4> Tangents = new List<Vector4>();
+        public readonly List<int> OpaqueTriangles = new List<int>();
+        public readonly List<int> WaterTriangles = new List<int>();
         public readonly List<Color32> Colors = new List<Color32>();
         public readonly List<int> Triangles = new List<int>();
         public readonly List<int> ColliderTriangles = new List<int>();
@@ -17,8 +22,12 @@ namespace LestingCraft.World
         {
             var mesh = new Mesh { indexFormat = IndexFormat.UInt32 };
             mesh.SetVertices(Vertices);
-            mesh.SetTriangles(collision ? ColliderTriangles : Triangles, 0);
-            if (!collision) { mesh.SetNormals(Normals); mesh.SetColors(Colors); }
+            if(collision)mesh.SetTriangles(ColliderTriangles,0);
+            else
+            {
+                mesh.subMeshCount=2;mesh.SetTriangles(OpaqueTriangles,0);mesh.SetTriangles(WaterTriangles,1);
+                mesh.SetNormals(Normals);mesh.SetColors(Colors);mesh.SetUVs(0,UVs);mesh.SetTangents(Tangents);
+            }
             mesh.RecalculateBounds(); return mesh;
         }
     }
@@ -60,14 +69,31 @@ namespace LestingCraft.World
                     var dir=Directions[face]; int nx=x+dir.x,ny=y+dir.y,nz=z+dir.z;
                     ushort other=ChunkData.InBounds(nx,ny,nz)?chunk.GetBlock(nx,ny,nz):neighbor(ox+nx,ny,oz+nz);
                     if(BlockRegistry.IsSolid(other)||(!solid&&other==id))continue;
-                    int start=data.Vertices.Count; var color=Palette(id);
-                    if(id==BlockRegistry.GrassId && face!=2)color=Palette(BlockRegistry.DirtId);
-                    for(int c=0;c<4;c++) { data.Vertices.Add(new Vector3(x,y,z)+Corners[face][c]);data.Normals.Add(dir);data.Colors.Add(color); }
-                    AddFace(data.Triangles,start); if(solid)AddFace(data.ColliderTriangles,start);
+                    int start=data.Vertices.Count;
+                    Vector3 u=Corners[face][3]-Corners[face][0],v=Corners[face][1]-Corners[face][0];
+                    int layer=SurfaceLayers.ForFace(id,face);
+                    for(int c=0;c<4;c++)
+                    {
+                        float ux=c>=2?1:0,vy=(c==1||c==2)?1:0;
+                        Vector3Int su=Vector3Int.RoundToInt(u*(ux==0?-1:1)),sv=Vector3Int.RoundToInt(v*(vy==0?-1:1));
+                        int sideA=Solid(chunk,ox,oz,nx+su.x,ny+su.y,nz+su.z,neighbor);
+                        int sideB=Solid(chunk,ox,oz,nx+sv.x,ny+sv.y,nz+sv.z,neighbor);
+                        int corner=Solid(chunk,ox,oz,nx+su.x+sv.x,ny+su.y+sv.y,nz+su.z+sv.z,neighbor);
+                        int ao=sideA==1&&sideB==1?3:sideA+sideB+corner;
+                        byte shade=(byte)(255-ao*30);
+                        data.Vertices.Add(new Vector3(x,y,z)+Corners[face][c]);data.Normals.Add(dir);
+                        data.Colors.Add(new Color32(shade,shade,shade,255));data.UVs.Add(new Vector3(ux,vy,layer));
+                        data.Tangents.Add(new Vector4(u.x,u.y,u.z,-1));
+                    }
+                    AddFace(data.Triangles,start);
+                    AddFace(id==BlockRegistry.WaterId?data.WaterTriangles:data.OpaqueTriangles,start);
+                    if(solid)AddFace(data.ColliderTriangles,start);
                 }
             }
             return data;
         }
+        static int Solid(ChunkData chunk,int ox,int oz,int x,int y,int z,Func<int,int,int,ushort> neighbor)
+        {return BlockRegistry.IsSolid(ChunkData.InBounds(x,y,z)?chunk.GetBlock(x,y,z):neighbor(ox+x,y,oz+z))?1:0;}
         static void AddFace(List<int> t,int s) {t.Add(s);t.Add(s+1);t.Add(s+2);t.Add(s);t.Add(s+2);t.Add(s+3);}
     }
 }

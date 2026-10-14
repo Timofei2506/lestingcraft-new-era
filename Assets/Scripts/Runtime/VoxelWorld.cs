@@ -13,7 +13,7 @@ namespace LestingCraft.Runtime
         readonly Dictionary<Vector2Int,View> chunks = new Dictionary<Vector2Int,View>();
         readonly Dictionary<Vector3Int,ushort> edits = new Dictionary<Vector3Int,ushort>();
         readonly HashSet<Vector2Int> dirty = new HashSet<Vector2Int>();
-        Material material;
+        Material material,waterMaterial;
         NativeArray<ushort> pendingBuffer;
         JobHandle pendingJob;
         public int Seed { get; private set; }
@@ -22,13 +22,14 @@ namespace LestingCraft.Runtime
         public bool Ready { get; private set; }
         public int LoadedChunks => chunks.Count;
         public Transform Player;
-        const int Radius = 2;
+        int Radius => LestingCraft.Presentation.VisualSettings.Current.ViewDistance;
         public void Initialize(int seed, Dimension dimension, bool online)
         {
             Seed=seed;Dimension=dimension;Online=online;
-            material=new Material(Resources.Load<Shader>("Voxel"));
+            material=new Material(Resources.Load<Material>("Generated/VoxelPBR"));
+            waterMaterial=new Material(Resources.Load<Material>("Generated/Water"));
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
-            RenderSettings.fogStartDistance=30;RenderSettings.fogEndDistance=75;
+            RenderSettings.fogStartDistance=Radius*10;RenderSettings.fogEndDistance=Radius*16;
             StartCoroutine(Stream());
         }
         public static int ChunkCoordinate(int value) => Mathf.FloorToInt(value/16f);
@@ -58,6 +59,7 @@ namespace LestingCraft.Runtime
         {
             while(true)
             {
+                RenderSettings.fogStartDistance=Mathf.Max(18,Radius*10);RenderSettings.fogEndDistance=Radius*16;
                 var center=Player?new Vector2Int(ChunkCoordinate(Mathf.FloorToInt(Player.position.x)),ChunkCoordinate(Mathf.FloorToInt(Player.position.z))):Vector2Int.zero;
                 // Center first, then rings; each generation job can run off the main thread.
                 for(int ring=0;ring<=Radius;ring++) for(int dz=-ring;dz<=ring;dz++)for(int dx=-ring;dx<=ring;dx++)
@@ -76,7 +78,7 @@ namespace LestingCraft.Runtime
                         handle.Complete();
                         var view=new View {Data=new ChunkData(buffer.ToArray()),Object=new GameObject($"Chunk {key.x} {key.y}")};
                         view.Object.transform.SetParent(transform,false);view.Object.transform.localPosition=new Vector3(key.x*16,0,key.y*16);
-                        view.Object.AddComponent<MeshFilter>();view.Object.AddComponent<MeshRenderer>().sharedMaterial=material;
+                        view.Object.AddComponent<MeshFilter>();var renderer=view.Object.AddComponent<MeshRenderer>();renderer.sharedMaterials=new[]{material,waterMaterial};renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;renderer.receiveShadows=true;
                         view.Object.AddComponent<MeshCollider>();chunks.Add(key,view);
                         foreach(var edit in edits)if(ChunkCoordinate(edit.Key.x)==key.x&&ChunkCoordinate(edit.Key.z)==key.y)
                             view.Data.SetBlock(edit.Key.x-key.x*16,edit.Key.y,edit.Key.z-key.y*16,edit.Value);
@@ -107,6 +109,6 @@ namespace LestingCraft.Runtime
             if(v.Visual)Destroy(v.Visual);if(v.Collision)Destroy(v.Collision);v.Visual=mesh;v.Collision=collider;
         }
         void DisposeView(View v){if(v.Visual)Destroy(v.Visual);if(v.Collision)Destroy(v.Collision);if(v.Object)Destroy(v.Object);}
-        void OnDestroy(){StopAllCoroutines();pendingJob.Complete();if(pendingBuffer.IsCreated){pendingBuffer.Dispose();pendingBuffer=default;}foreach(var v in chunks.Values)DisposeView(v);if(material)Destroy(material);}
+        void OnDestroy(){StopAllCoroutines();pendingJob.Complete();if(pendingBuffer.IsCreated){pendingBuffer.Dispose();pendingBuffer=default;}foreach(var v in chunks.Values)DisposeView(v);if(material)Destroy(material);if(waterMaterial)Destroy(waterMaterial);}
     }
 }

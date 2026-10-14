@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "resolution": 512,
+  "normalEncoding": "RGB linear tangent-space",
+  "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
+  "source": "AI albedo + derived estimates; no scan/displacement",
+  "layers": [
+    "stone",
+    "dirt",
+    "grass",
+    "grass-side",
+    "bark",
+    "wood-end",
+    "leaves",
+    "sand",
+    "water",
+    "lava",
+    "bedrock",
+    "basalt",
+    "crystal",
+    "aether",
+    "ore",
+    "snow"
+  ]
+}

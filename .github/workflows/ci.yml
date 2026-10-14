@@ -59,7 +59,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-tests-${{ hashFiles('Packages/manifest.json') }}
+          key: Library-tests-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Art/PBR/**') }}
           restore-keys: |
             Library-tests-
             Library-

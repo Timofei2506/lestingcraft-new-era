@@ -35,6 +35,7 @@ public static class BuildScript
             return;
         }
 
+        PresentationAssets.Ensure();
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;

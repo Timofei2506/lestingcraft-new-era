@@ -21,8 +21,8 @@ namespace LestingCraft.Runtime
             var keyboard=Keyboard.current;var mouse=Mouse.current;if(keyboard==null||mouse==null||World==null)return;
             if(keyboard.escapeKey.wasPressedThisFrame){Game.TogglePause();return;}
             if(!Active||!World.Ready)return;
-            var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*.1f,-85,85);
-            transform.Rotate(0,delta.x*.1f,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
+            var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
+            transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
             var move=new Vector2((keyboard.dKey.isPressed?1:0)-(keyboard.aKey.isPressed?1:0),(keyboard.wKey.isPressed?1:0)-(keyboard.sKey.isPressed?1:0));
             if(move.sqrMagnitude>1)move.Normalize();
             float speed=keyboard.leftShiftKey.isPressed?8:5;
