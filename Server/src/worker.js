@@ -81,7 +81,7 @@ export class GameRoom {
       },(key,save,config)=>{
         this.ctx.storage.transactionSync(()=>{
           this.ctx.storage.sql.exec('INSERT INTO player_saves VALUES (?,?) ON CONFLICT(key) DO UPDATE SET json=excluded.json',key,JSON.stringify(save));
-          this.ctx.storage.sql.exec('UPDATE meta SET json=? WHERE id=1',JSON.stringify(config));
+          if(config.runEnded!==this.room.config.runEnded||config.campaign?.milestones!==this.room.config.campaign?.milestones)this.ctx.storage.sql.exec('UPDATE meta SET json=? WHERE id=1',JSON.stringify(config));
         });
       });
       socket.serializeAttachment(peer);this.broadcast(message,message.type==='player'?socket:null);

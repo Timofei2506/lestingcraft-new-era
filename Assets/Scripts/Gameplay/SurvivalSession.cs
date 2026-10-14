@@ -14,7 +14,7 @@ namespace LestingCraft.Gameplay
         public bool Creative=>Mode==GameMode.Creative;public GameMode Mode=>(GameMode)Data.mode;
         public Inventory Inventory=>Data.player.inventory;public SurvivalState Vitals=>Data.player.survival;
         public string Notice="";public bool Pending=>pending;public float MiningProgress {get;private set;}
-        bool pending,wasDead;Vector3Int pendingCell,miningCell;int drop,spend,toolSlot;float mineTime,saveTime,tick;GameObject grave;
+        public bool ServerRunEnded;bool pending,wasDead;Vector3Int pendingCell,miningCell;int drop,spend,toolSlot;float mineTime,saveTime,tick;GameObject grave;
         public void Initialize(PrototypeGame game,VoxelWorld world,FirstPersonController player,int mode,PlayerSave restored=null,SessionSave local=null,double clock=420)
         {
             Game=game;World=world;Player=player;Data=local??new SessionSave{seed=world.Seed,mode=mode,clock=clock};
@@ -25,7 +25,7 @@ namespace LestingCraft.Gameplay
                 else {Inventory.Add(110,6);Inventory.Add(111,2);}
             }
             if(local!=null)foreach(var e in Data.blocks)if(e.realm==(int)World.Dimension)World.Edit(e.x,e.y,e.z,(ushort)e.block);
-            Weather=gameObject.AddComponent<DynamicWeather>();Weather.Initialize(this,player.Camera);wasDead=false;UpdateGrave();
+            Weather=gameObject.AddComponent<DynamicWeather>();Weather.Initialize(this,player.Camera);wasDead=Vitals.dead;UpdateGrave();
         }
         public void Mine(Vector3Int cell,float dt)
         {
@@ -106,14 +106,15 @@ namespace LestingCraft.Gameplay
                 }
                 Checkpoint();Game.OpenDeathScreen();
             }
-            if(saveTime>10){saveTime=0;Checkpoint();}
+            if(saveTime>20){saveTime=0;Checkpoint();}
             if(grave&&!Vitals.dead&&Vector3.Distance(Player.transform.position,grave.transform.position)<2)
             {
                 var copy=Inventory.Clone();bool fits=true;
                 foreach(var s in Data.player.grave)if(s.count>0)
                 {
+                    int free=Array.FindIndex(copy.slots,slot=>slot.count==0);
                     if(!copy.Add(s.item,s.count)){fits=false;break;}
-                    if(Items.Get(s.item).Durability>0)for(int i=copy.slots.Length-1;i>=0;i--)if(copy.slots[i].item==s.item&&copy.slots[i].durability==Items.Get(s.item).Durability){copy.slots[i].durability=s.durability;break;}
+                    if(Items.Get(s.item).Durability>0&&free>=0)copy.slots[free].durability=s.durability;
                 }
                 if(fits)
                 {
@@ -132,7 +133,7 @@ namespace LestingCraft.Gameplay
         public void Checkpoint()
         {
             if(Data==null||!World)return;
-            if(Game.Online)Game.SendSave(Data.player);
+            if(Game.Online){if(!ServerRunEnded)Game.SendSave(Data.player);}
             else {Data.blocks=World.ExportEdits();LocalSave.Store(Data);}
         }
     }

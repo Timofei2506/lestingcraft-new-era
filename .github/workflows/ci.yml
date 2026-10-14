@@ -29,7 +29,7 @@ concurrency:
 jobs:
   check-secrets:
     name: Check Unity secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       has: ${{ steps.check.outputs.has }}
     steps:
@@ -49,11 +49,16 @@ jobs:
     name: EditMode tests
     needs: check-secrets
     if: needs.check-secrets.outputs.has == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Free runner disk space for Unity
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
 
       - name: Cache Library
         uses: actions/cache@v4

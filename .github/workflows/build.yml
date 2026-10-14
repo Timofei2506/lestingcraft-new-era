@@ -53,10 +53,16 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        include: ${{ fromJSON(inputs.platform == 'WebGL' && '[{"os":"ubuntu-latest","targetPlatform":"WebGL","buildMethod":"BuildScript.BuildWebGL","artifactPath":"Builds/WebGL"}]' || inputs.platform == 'StandaloneWindows64' && '[{"os":"windows-latest","targetPlatform":"StandaloneWindows64","buildMethod":"BuildScript.BuildWindows64","artifactPath":"Builds/StandaloneWindows64"}]' || '[{"os":"ubuntu-latest","targetPlatform":"WebGL","buildMethod":"BuildScript.BuildWebGL","artifactPath":"Builds/WebGL"},{"os":"windows-latest","targetPlatform":"StandaloneWindows64","buildMethod":"BuildScript.BuildWindows64","artifactPath":"Builds/StandaloneWindows64"}]') }}
+        include: ${{ fromJSON(inputs.platform == 'WebGL' && '[{"os":"ubuntu-22.04","targetPlatform":"WebGL","buildMethod":"BuildScript.BuildWebGL","artifactPath":"Builds/WebGL"}]' || inputs.platform == 'StandaloneWindows64' && '[{"os":"windows-latest","targetPlatform":"StandaloneWindows64","buildMethod":"BuildScript.BuildWindows64","artifactPath":"Builds/StandaloneWindows64"}]' || '[{"os":"ubuntu-22.04","targetPlatform":"WebGL","buildMethod":"BuildScript.BuildWebGL","artifactPath":"Builds/WebGL"},{"os":"windows-latest","targetPlatform":"StandaloneWindows64","buildMethod":"BuildScript.BuildWindows64","artifactPath":"Builds/StandaloneWindows64"}]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Free runner disk space for Unity
+        if: runner.os == 'Linux'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
 
       - name: Cache Library
         uses: actions/cache@v4

@@ -29,7 +29,7 @@ namespace LestingCraft.Runtime
         VoxelWorld world; FirstPersonController player; RoomClient client;
         long revision; float lastPosition,previousYaw;Vector3 previousPosition;bool sentPosition;
         Material avatarMaterial;
-        GameUI ui;
+        GameUI ui;bool leaving,saveAcknowledged;
         public bool InWorld=>world;
         public bool Paused=>paused;
         public bool Online=>online;
@@ -59,11 +59,22 @@ namespace LestingCraft.Runtime
             if(ui.InventoryOpen){Resume();return;}paused=true;SetCursor(false);ui.ShowInventory();
         }
         public void OpenDeathScreen(){paused=true;SetCursor(false);ui.ShowDeathScreen();}
-        public void SendSave(PlayerSave save){if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save});}
+        public void SendSave(PlayerSave save,bool force=false){if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save,force=force});}
         public void CreateRoom(){if(!busy)StartCoroutine(CreateRoomRoutine());}
         public void JoinRoom(){if(!busy)JoinRoomInternal();}
         public void Resume(){if(!world||Session&&(Session.Vitals.dead||Session.Data.campaign.runEnded))return;paused=false;SetCursor(true);ui.ShowHUD();}
-        public void ReturnToMenu(){Leave();ui.ShowHome();}
+        public void ReturnToMenu(){if(!leaving)StartCoroutine(LeaveAfterCheckpoint());}
+        IEnumerator LeaveAfterCheckpoint()
+        {
+            leaving=true;paused=true;SetCursor(false);
+            if(online&&client&&client.Connected&&Session&&!Session.ServerRunEnded)
+            {
+                saveAcknowledged=false;SendSave(Session.Data.player,true);float deadline=Time.unscaledTime+2;
+                while(!saveAcknowledged&&Time.unscaledTime<deadline)yield return null;
+                if(!saveAcknowledged)Debug.LogWarning("Exit checkpoint not acknowledged; last periodic save is retained");
+            }
+            Leave();leaving=false;ui.ShowHome();
+        }
         void Fail(string message){status=message;lastError=message;busy=false;}
         void Awake()
         {
@@ -90,7 +101,7 @@ namespace LestingCraft.Runtime
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
         }
-        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=300)
+        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420)
         {
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer);
             var camera=Camera.main;camera.backgroundColor=realm==1?new Color(.19f,.08f,.07f):realm==3||realm==4?new Color(.075f,.045f,.14f):new Color(.42f,.66f,.78f);
@@ -104,7 +115,7 @@ namespace LestingCraft.Runtime
             world.Player=obj.transform;paused=false;SetCursor(true);busy=false;status="Генерируется мир…";lastError="";
             var sessionObject=new GameObject("Survival and weather");sessionObject.transform.SetParent(world.transform,false);
             Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;
-            ui.ShowHUD();
+            if(Session.Vitals.dead||Session.Data.campaign.runEnded)OpenDeathScreen();else ui.ShowHUD();
         }
         IEnumerator CreateRoomRoutine()
         {
@@ -151,7 +162,7 @@ namespace LestingCraft.Runtime
                     if(packet.rulesVersion!=GameRules.Version){Fail("Сервер ещё не обновлён для режимов выживания");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock);revision=packet.rev;
                     if(packet.campaign!=null)Session.Data.campaign=packet.campaign;
-                    if(packet.runEnded){Session.Data.campaign.runEnded=true;OpenDeathScreen();}
+                    if(packet.runEnded){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;OpenDeathScreen();}
                     if(packet.edits!=null)foreach(var edit in packet.edits)world.Edit(edit.x,edit.y,edit.z,(ushort)edit.block);
                     if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);
                     status="Комната подключена • "+code;break;
@@ -159,8 +170,8 @@ namespace LestingCraft.Runtime
                     if(world&&packet.rev>revision){revision=packet.rev;world.Edit((int)packet.x,(int)packet.y,(int)packet.z,(ushort)packet.block);if(packet.id==selfId&&Session)Session.ConfirmEdit(new Vector3Int((int)packet.x,(int)packet.y,(int)packet.z));}break;
                 case "player":SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw});break;
                 case "leave":if(avatars.TryGetValue(packet.id,out var avatar))Destroy(avatar);avatars.Remove(packet.id);targets.Remove(packet.id);break;
-                case "state_saved":if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
-                case "run_ended":if(Session){Session.Data.campaign.runEnded=true;Session.Notice="Хардкор завершён: погиб участник команды";OpenDeathScreen();}break;
+                case "state_saved":if(packet.id==selfId)saveAcknowledged=true;if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
+                case "run_ended":if(packet.id==selfId)saveAcknowledged=true;if(Session){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;Session.Notice="Хардкор завершён: погиб участник команды";OpenDeathScreen();}break;
                 case "error":Fail(packet.message);if(Session)Session.RejectEdit(packet.message);break;
             }
         }
@@ -190,7 +201,7 @@ namespace LestingCraft.Runtime
         }
         void Leave()
         {
-            if(Session)Session.Checkpoint();Session=null;
+            if(Session&&!online)Session.Checkpoint();Session=null;
             if(client)Destroy(client.gameObject);
             foreach(var a in avatars.Values)if(a)Destroy(a);avatars.Clear();targets.Clear();
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}

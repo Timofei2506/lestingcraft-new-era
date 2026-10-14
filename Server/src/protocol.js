@@ -16,7 +16,7 @@ export function createConfig(value) {
   if(value.rulesVersion===RULES_VERSION&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   return { version: VERSION, rulesVersion:value.rulesVersion||1, mode:value.rulesVersion===RULES_VERSION?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
-export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0};}
+export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0};}
 export function publicPeer(p) {return {id:p.id,name:p.name,x:p.x,y:p.y,z:p.z,yaw:p.yaw};}
 export function consumeRate(peer, now) {
   if (now - peer.windowStart >= 1000) {peer.windowStart=now;peer.count=0;}
@@ -61,12 +61,13 @@ export class RoomState {
       if(this.config.rulesVersion!==RULES_VERSION||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
       const save=validatePlayerSave(p.save),dead=save.survival.health<=0;
-      if(now-peer.lastState<9000&&!dead)throw new Error('Save update too frequent');
+      const forced=p.force===true;
+      if(peer.lastState>0&&now-peer.lastState<19000&&!dead&&!(forced&&(peer.lastForcedSave===0||now-peer.lastForcedSave>=60000)))throw new Error('Save update too frequent');
       if(!this.savedPlayers.has(peer.playerKey)&&this.savedPlayers.size>=64)throw new Error('Saved player limit reached');
       const ended=this.config.mode===1&&dead,next={...this.config,runEnded:ended||this.config.runEnded,campaign:{...this.config.campaign,milestones:(this.config.campaign?.milestones||0)|save.milestones,runEnded:ended||this.config.runEnded}};
       // Stats/inventory are trusted for friends; this is validation and persistence, not anti-cheat.
       persistPlayer(peer.playerKey,save,next);
-      this.savedPlayers.set(peer.playerKey,save);this.config=next;peer.lastState=now;
+      this.savedPlayers.set(peer.playerKey,save);this.config=next;peer.lastState=now;if(forced)peer.lastForcedSave=now;
       return ended?{type:'run_ended',id:peer.id,message:'A teammate died. The entire hardcore run is over.',runEnded:true}:{type:'state_saved',id:peer.id,campaign:next.campaign};
     }
     throw new Error('Unknown packet type');
