@@ -73,24 +73,12 @@ jobs:
           modules: None
           cache-installation: false
 
-      - name: Restore standalone Unity Editor cache
-        id: editor-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ runner.temp }}/UnityEditors
-          key: unity-direct-win64-mono-v1-${{ hashFiles('ProjectSettings/ProjectVersion.txt') }}
-
+      # A directory-only Editor cache omitted machine-level installer prerequisites (native startup 0x8007007e).
+      # Use the verified installer on each cloud runner until a portable dependency-complete cache is proven.
       - name: Install verified Unity Editor directly (Windows Mono)
         shell: pwsh
         timeout-minutes: 28
         run: ./.github/scripts/install-unity-windows.ps1
-
-      - name: Save verified Unity Editor cache
-        if: steps.editor-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ runner.temp }}/UnityEditors
-          key: unity-direct-win64-mono-v1-${{ hashFiles('ProjectSettings/ProjectVersion.txt') }}
 
       - name: Activate Unity license (Personal)
         uses: buildalon/activate-unity-license@v2
