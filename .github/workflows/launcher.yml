@@ -1,0 +1,55 @@
+name: Build Windows launcher
+on:
+  push:
+    branches: [main]
+    paths: ["Launcher/**", ".github/workflows/launcher.yml"]
+  pull_request:
+    paths: ["Launcher/**", ".github/workflows/launcher.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  launcher:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test real updater against ranged ZIP transport
+        run: dotnet run --project Launcher/Checks --configuration Release
+      - name: Publish standalone Windows launcher (no runtime install)
+        run: dotnet publish Launcher/Desktop -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o Builds/Launcher
+      - name: Smoke actual native WPF executable
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "$PWD/Builds/Launcher/LestingCraftLauncher.exe" -ArgumentList '--smoke' -WorkingDirectory "$PWD/Builds/Launcher" -PassThru
+          if (-not $p.WaitForExit(60000)) { Stop-Process -Id $p.Id -Force; throw 'Launcher startup timed out' }
+          if ($p.ExitCode -ne 0 -or -not (Test-Path Builds/Launcher/SmokeResults/launcher.png)) { throw 'Native launcher smoke failed' }
+          if ((Get-Content Builds/Launcher/SmokeResults/result.txt -Raw) -notmatch '^PASS:') { throw 'No native smoke proof' }
+      - name: Prepare private tester package
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          TEST_ACCESS: ${{ secrets.LAUNCHER_ACCESS_KEY }}
+        run: |
+          if ($env:TEST_ACCESS) { [IO.File]::WriteAllText("$PWD/Builds/Launcher/test-access.key", $env:TEST_ACCESS) }
+          Copy-Item Launcher/README-лаунчер.txt Builds/Launcher/
+          Get-FileHash Builds/Launcher/LestingCraftLauncher.exe -Algorithm SHA256 | Format-List | Out-String | Set-Content Builds/Launcher/SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LestingCraft-Launcher-Windows-x64
+          path: |
+            Builds/Launcher/LestingCraftLauncher.exe
+            Builds/Launcher/README-лаунчер.txt
+            Builds/Launcher/SHA256.txt
+            Builds/Launcher/test-access.key
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Launcher-native-smoke
+          path: Builds/Launcher/SmokeResults
+          if-no-files-found: warn

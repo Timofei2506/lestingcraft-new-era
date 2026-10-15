@@ -1,0 +1,27 @@
+name: Configure invited launcher channel
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci && npm test
+        working-directory: Website
+      - name: Configure secrets on existing website Worker only
+        working-directory: Website
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          LAUNCHER_READER: ${{ secrets.LAUNCHER_READER }}
+          LAUNCHER_ACCESS_KEY: ${{ secrets.LAUNCHER_ACCESS_KEY }}
+        run: |
+          test -n "$LAUNCHER_READER" && test -n "$LAUNCHER_ACCESS_KEY"
+          printf '%s' "$LAUNCHER_READER" | npx wrangler secret put LAUNCHER_READER
+          printf '%s' "$LAUNCHER_ACCESS_KEY" | npx wrangler secret put LAUNCHER_ACCESS_KEY

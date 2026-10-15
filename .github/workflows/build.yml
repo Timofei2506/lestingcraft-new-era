@@ -133,6 +133,18 @@ jobs:
             throw "Windows executable smoke test failed"
           }
 
+      - name: Generate verified launcher manifest
+        shell: pwsh
+        run: python Tools/build_launcher_manifest.py "${{ matrix.artifactPath }}" "${{ github.sha }}" Builds/LauncherFeed/game-manifest.json
+
+      - name: Upload launcher manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: launcher-manifest
+          path: Builds/LauncherFeed/game-manifest.json
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
