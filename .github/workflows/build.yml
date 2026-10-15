@@ -113,25 +113,35 @@ jobs:
           path: ${{ matrix.artifactPath }}
           if-no-files-found: error
 
-      - name: Smoke-test Windows executable (no GPU visual validation)
+      - name: Smoke-test real menu with Direct3D WARP
         shell: pwsh
         run: |
           $exe = Join-Path $PWD "Builds/StandaloneWindows64/LestingCraft.exe"
           $log = Join-Path $PWD "Builds/Logs/windows-smoke.log"
           New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
-          $args = @("-batchmode", "-nographics", "-lc-smoke-test", "-logFile", $log)
+          $args = @("-force-d3d11", "-force-driver-type-warp", "-screen-fullscreen", "0", "-screen-width", "1280", "-screen-height", "720", "-lc-smoke-test", "-logFile", $log)
           $process = Start-Process -FilePath $exe -ArgumentList $args -PassThru
-          if (-not $process.WaitForExit(120000)) {
+          $null = $process.Handle
+          if (-not $process.WaitForExit(240000)) {
             Stop-Process -Id $process.Id -Force
             if (Test-Path $log) { Get-Content $log -Tail 100 }
             throw "Windows smoke test timed out"
           }
           if (-not (Test-Path $log)) { throw "Windows smoke log missing" }
           Get-Content $log -Tail 100
+          $process.Refresh()
           $text = Get-Content $log -Raw
           if ($process.ExitCode -ne 0 -or $text -notmatch '\[Smoke\] PASS' -or $text -match 'NullReferenceException|MissingReferenceException|Shader error|\[Smoke\] FAIL') {
             throw "Windows executable smoke test failed"
           }
+
+      - name: Upload real menu screenshot
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-menu-screenshot
+          path: Builds/StandaloneWindows64/SmokeResults
+          if-no-files-found: warn
 
       - name: Upload Unity build logs
         uses: actions/upload-artifact@v4

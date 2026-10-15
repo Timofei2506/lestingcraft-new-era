@@ -89,7 +89,9 @@ namespace LestingCraft.Runtime
             var camera=new GameObject("Menu Camera").AddComponent<Camera>();camera.backgroundColor=new Color(.055f,.09f,.15f);camera.clearFlags=CameraClearFlags.SolidColor;
             camera.tag="MainCamera";camera.gameObject.AddComponent<AudioListener>();
             SetCursor(false);
-            ui=new GameObject("Game Interface").AddComponent<GameUI>();ui.Initialize(this);
+            ui=new GameObject("Game Interface").AddComponent<GameUI>();
+            try{ui.Initialize(this);}
+            catch(Exception error){Debug.LogException(error);StartupErrorPanel.Show();return;}
             VisualSettings.Current.Apply();
             Debug.Log("[Presentation] Interface ready");
         }

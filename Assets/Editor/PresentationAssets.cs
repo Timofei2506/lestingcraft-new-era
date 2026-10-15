@@ -15,6 +15,7 @@ public static class PresentationAssets
     {
         if(EditorApplication.isCompiling||EditorApplication.isUpdating){EditorApplication.delayCall+=Ensure;return;}
         if(!AssetDatabase.IsValidFolder(Folder))AssetDatabase.CreateFolder("Assets/Resources","Generated");
+        EnsureMenuBackdrop();
         var albedo=Array("Albedo","albedo",false);var normal=Array("Normal","normal",true);var mask=Array("Mask","mask",true);
         Material material=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/VoxelPBR.mat");
         if(!material){material=new Material(Shader.Find("LestingCraft/VoxelPBR"));AssetDatabase.CreateAsset(material,Folder+"/VoxelPBR.mat");}
@@ -73,6 +74,14 @@ public static class PresentationAssets
         var vignette=Component<Vignette>(profile);vignette.intensity.value=.09f;vignette.smoothness.value=.65f;
         foreach(var component in profile.components)EditorUtility.SetDirty(component);
         EditorUtility.SetDirty(material);EditorUtility.SetDirty(water);EditorUtility.SetDirty(profile);AssetDatabase.SaveAssets();
+    }
+    static void EnsureMenuBackdrop()
+    {
+        const string path=Folder+"/MenuBackdrop.asset";
+        if(AssetDatabase.LoadAssetAtPath<Texture2D>(path))return;
+        var texture=new Texture2D(2,2,TextureFormat.RGBA32,false){name="MenuBackdrop",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+        if(!texture.LoadImage(File.ReadAllBytes("Assets/Resources/UI/MenuBackground.jpg"),false))throw new InvalidOperationException("Cannot decode menu backdrop");
+        AssetDatabase.CreateAsset(texture,path);
     }
     static T Component<T>(VolumeProfile profile) where T:VolumeComponent
     {

@@ -14,26 +14,32 @@ namespace LestingCraft.Presentation
     public sealed class GameUI : MonoBehaviour
     {
         enum Page{Home,World,Rooms,Settings,Pause,Inventory,Death,HUD}
-        static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.65f,.86f,.48f);
+        static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
         Page page,settingsBack;Text status,realmHUD,netHUD,perfHUD,itemHUD,loadingHUD;Image[] slots;RectTransform[] slotRects;
         Text vitalsHUD,objectiveHUD,noticeHUD;RawImage[] slotIcons;Text[] slotCounts,slotFallback;int lastInventoryRevision=-1,lastSlot=-1,inventoryFrom=-1;
         public bool InventoryOpen=>page==Page.Inventory;
+        public bool IsReady=>ready;
+        public string ScreenName=>page.ToString();
         float timer,averageFrame=.016f;ushort lastSelection;bool ready;
         public void Initialize(PrototypeGame owner)
         {
             Debug.Log("[Presentation] Loading local UI fonts and sprites");
             game=owner;body=Resources.Load<Font>("UI/Manrope");display=Resources.Load<Font>("UI/Unbounded");
-            var texture=Resources.Load<Texture2D>("UI/RoundRect");rounded=Sprite.Create(texture,new Rect(0,0,texture.width,texture.height),new Vector2(.5f,.5f),100,0,SpriteMeshType.FullRect,new Vector4(16,16,16,16));
+            if(!body)body=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if(!display)display=body;
+            if(!body)throw new InvalidOperationException("UI font could not be loaded.");
+            rounded=MenuArtwork.Rounded;
+            if(!rounded)throw new InvalidOperationException("Procedural UI chrome could not be created.");
             Debug.Log("[Presentation] Creating canvas");
             canvas=gameObject.AddComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=100;
             var scale=gameObject.AddComponent<CanvasScaler>();scale.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scale.referenceResolution=new Vector2(1600,900);scale.screenMatchMode=CanvasScaler.ScreenMatchMode.Expand;
             gameObject.AddComponent<GraphicRaycaster>();
             if(!EventSystem.current){var input=new GameObject("Interface Input");input.AddComponent<EventSystem>();input.AddComponent<InputSystemUIInputModule>();}
             background=Rect("Menu Art",transform,0,0,0,0).gameObject;Stretch(background.GetComponent<RectTransform>());
-            var image=background.AddComponent<RawImage>();image.texture=Resources.Load<Texture2D>("UI/MenuBackground");image.raycastTarget=false;
-            var shade=Rect("Art Shade",background.transform,0,0,0,0);Stretch(shade);var shading=shade.gameObject.AddComponent<RawImage>();shading.texture=Resources.Load<Texture2D>("UI/MenuShade");shading.raycastTarget=false;
+            var image=background.AddComponent<RawImage>();image.texture=MenuArtwork.Backdrop;image.color=image.texture?Color.white:new Color(.035f,.065f,.078f);image.raycastTarget=false;background.AddComponent<MenuBackdropFit>();
+            var shade=Rect("Art Shade",background.transform,0,0,0,0);Stretch(shade);var shading=shade.gameObject.AddComponent<RawImage>();shading.texture=MenuArtwork.Shade;shading.raycastTarget=false;
             frame=Rect("1600x900 Interface",transform,0,0,1600,900);frame.anchorMin=frame.anchorMax=new Vector2(.5f,.5f);frame.pivot=new Vector2(.5f,.5f);frame.anchoredPosition=Vector2.zero;
             content=Rect("Content",frame,0,0,1600,900).gameObject;ready=true;ShowHome();
             Debug.Log("[Presentation] Home screen created");
@@ -45,7 +51,9 @@ namespace LestingCraft.Presentation
         static void Stretch(RectTransform rt){rt.anchorMin=Vector2.zero;rt.anchorMax=Vector2.one;rt.pivot=new Vector2(.5f,.5f);rt.offsetMin=rt.offsetMax=Vector2.zero;}
         void Clear(Page next)
         {
-            page=next;foreach(Transform child in content.transform){child.gameObject.SetActive(false);Destroy(child.gameObject);}actions.Clear();transient.Clear();status=null;
+            page=next;content.SetActive(true);
+            for(int i=content.transform.childCount-1;i>=0;i--){var child=content.transform.GetChild(i).gameObject;child.SetActive(false);if(Application.isPlaying)Destroy(child);else DestroyImmediate(child);}
+            actions.Clear();transient.Clear();status=null;
             background.SetActive(next!=Page.HUD);lastSelection=0;
             if(game.InWorld&&next!=Page.HUD)
             {
@@ -69,6 +77,8 @@ namespace LestingCraft.Presentation
             parent=parent?parent:content.transform;var image=Box(parent,x,y,w,h,primary?Accent:Panel);image.raycastTarget=true;
             var button=image.gameObject.AddComponent<Button>();button.targetGraphic=image;
             var colors=button.colors;colors.normalColor=Color.white;colors.highlightedColor=new Color(1.13f,1.13f,1.13f);colors.pressedColor=new Color(.83f,.87f,.85f);colors.disabledColor=new Color(.5f,.5f,.5f,.6f);colors.fadeDuration=.14f;button.colors=colors;
+            var stroke=Rect("Focus border",image.transform,0,0,0,0);Stretch(stroke);var border=stroke.gameObject.AddComponent<Image>();border.sprite=MenuArtwork.Outline;border.type=Image.Type.Sliced;border.raycastTarget=false;border.color=new Color(Accent.r,Accent.g,Accent.b,.2f);
+            var feedback=image.gameObject.AddComponent<MenuButtonFeedback>();feedback.Border=border;feedback.Tint=Accent;
             button.onClick.AddListener(()=>{if(action!=null)action();});var navigation=button.navigation;navigation.mode=Navigation.Mode.Automatic;button.navigation=navigation;
             Label(image.transform,text,14,0,w-28,h,18,primary?Ink:White,false,TextAnchor.MiddleCenter);
             return button;
@@ -88,24 +98,40 @@ namespace LestingCraft.Presentation
             Label(content.transform,section.ToUpperInvariant(),1060,48,470,40,14,Muted,false,TextAnchor.MiddleRight);
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            Label(content.transform,"Рабочий прототип  /  графическая итерация 02",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"Тестовая Windows-версия  /  интерфейс 04",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
         }
         public void ShowHome()
         {
-            Clear(Page.Home);Header("Voxel sandbox · облачный проект",false);
-            Label(content.transform,"ПОСТРОЙ ТО, ЧЕГО ЕЩЁ НЕТ",67,230,700,28,13,Accent);
-            Label(content.transform,"ТВОЙ МИР.\nНОВАЯ ЭРА.",58,282,980,170,56,White,true);
-            Label(content.transform,"Пять измерений. Один общий мир.\nИсследуй, строй и приглашай друзей.",67,487,790,92,24,White);
-            Button("Начать путешествие  →",64,631,370,64,ShowWorld,true);
-            Button("Играть с друзьями",452,631,290,64,ShowRooms);
-            if(game.HasSave)Button("Продолжить сохранение",760,631,307,64,game.ContinueOffline);
-            Button("Настройки",64,715,180,52,()=>ShowSettings(Page.Home));
-            Button("Выйти",261,715,150,52,()=>Application.Quit());
-            var card=Box(content.transform,1100,577,435,200,new Color(.045f,.085f,.095f,.84f));
-            Label(card.transform,"01  /  ПЕРВАЯ ЭКСПЕДИЦИЯ",24,23,380,28,13,Accent);
-            Label(card.transform,"ЛЕСТИНГИЯ",24,66,375,43,25,White,true);
-            Label(card.transform,"Леса и скалы. Озёра и горизонты.\nМесто, с которого всё начинается.",24,123,383,63,17,Muted);
-            Label(content.transform,"Фон — концепт-арт. Игровой мир создаётся из вокселей.",64,836,920,24,12,Muted);
+            Clear(Page.Home);
+            Label(content.transform,"L / C",86,46,220,40,27,Accent,true);
+            Label(content.transform,"A NEW ERA OF ADVENTURE",87,99,580,22,12,Muted);
+            var version=Box(content.transform,1247,48,267,40,new Color(.035f,.055f,.065f,.72f));
+            Label(version.transform,"WINDOWS · ТЕСТОВАЯ ВЕРСИЯ",10,0,247,40,11,White,false,TextAnchor.MiddleCenter);
+            Label(content.transform,"LESTINGCRAFT",80,223,1060,90,58,White,true);
+            Label(content.transform,"N E W   E R A",87,316,730,48,25,Accent,true);
+            Box(content.transform,88,395,64,2,Accent,false);
+            Label(content.transform,"Твоя история начинается здесь.",87,424,760,45,23,White);
+            Label(content.transform,"Исследуй Лестингию. Построй своё убежище.
+Отправляйся навстречу неизвестному — вместе.",88,480,720,69,17,Muted);
+            float y=594;
+            if(game.HasSave){HomeAction("Продолжить экспедицию","Вернуться в локальное сохранение",y,game.ContinueOffline,true,"Home.Continue");y+=82;}
+            HomeAction(game.HasSave?"Новая экспедиция":"Начать экспедицию","Выбрать режим и открыть новый мир",y,ShowWorld,!game.HasSave,"Home.Play");
+            HomeAction("Играть с друзьями","Создать комнату или войти по коду",y+82,ShowRooms,false,"Home.Coop");
+            var settings=Button("Настройки",88,game.HasSave?843:807,210,43,()=>ShowSettings(Page.Home));settings.name="Home.Settings";
+            var quit=Button("Выйти из игры",312,game.HasSave?843:807,229,43,()=>Application.Quit());quit.name="Home.Quit";
+            var card=Box(content.transform,1110,645,405,131,new Color(.035f,.055f,.065f,.83f));
+            Box(card.transform,0,22,2,87,Accent,false);
+            Label(card.transform,"01  /  ЛЕСТИНГИЯ",25,21,355,23,12,Accent);
+            Label(card.transform,"Первая экспедиция",25,56,355,31,22,White,true);
+            Label(card.transform,"Леса, озёра и неизведанные горизонты",25,98,357,20,12,Muted);
+            Label(content.transform,"Фон — концепт-арт. Кампания ещё разрабатывается.",1100,839,415,34,11,Muted,false,TextAnchor.MiddleRight);
+        }
+        void HomeAction(string title,string subtitle,float y,Action action,bool primary,string objectName)
+        {
+            var button=Button("",88,y,507,70,action,primary);button.name=objectName;
+            Label(button.transform,title,23,12,426,28,19,primary?Ink:White,true);
+            Label(button.transform,subtitle,24,43,425,20,12,primary?new Color(.20f,.23f,.20f):Muted);
+            Label(button.transform,"→",456,0,33,70,23,primary?Ink:Accent,false,TextAnchor.MiddleCenter);
         }
         public void ShowWorld()
         {
