@@ -20,3 +20,14 @@ for (const includeRetiredBrowser of [false, true]) {
 test('release API failure is not mistaken for no releases',async({page})=>{await page.unroute('**/api/releases');await page.route('**/api/releases',r=>r.fulfill({status:503,json:{available:false}}));await page.goto('/downloads');await expect(page.locator('#release-panel')).toContainText('Не удалось проверить сборки');});
 test('mobile menu and all pages fit the screen',async({page})=>{await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#menu-toggle').click();await page.locator('#mobile-nav a[href="/downloads"]').click();await expect(page).toHaveURL(/\/downloads$/);await expect(page.locator('#mobile-nav')).toBeHidden();for(const route of routes){await page.goto(route);await expect(page.locator('main h1')).toBeVisible();const width=await page.evaluate(()=>({screen:innerWidth,document:document.documentElement.scrollWidth}));expect(width.document,route).toBeLessThanOrEqual(width.screen+1);}});
 test('hosting commands copy to clipboard',async({page,context})=>{await context.grantPermissions(['clipboard-read','clipboard-write']);await page.goto('/hosting');await page.locator('[data-copy-code="node-code"]').click();await expect(page.locator('#toast')).toHaveText('Скопировано в буфер обмена');expect(await page.evaluate(()=>navigator.clipboard.readText())).toContain('npm ci --omit=dev');});
+test('real gameplay gallery opens and closes with keyboard',async({page})=>{
+ await page.goto('/');await page.locator('.field-window [data-view-shot]').click();await expect(page.locator('#media-dialog')).toBeVisible();await expect(page.locator('#media-image')).toHaveAttribute('src','/screenshots/world-hud.webp');await page.keyboard.press('Escape');await expect(page.locator('#media-dialog')).not.toBeVisible();
+ await page.locator('.gameplay-shot').nth(1).click();await expect(page.locator('#media-image')).toHaveAttribute('src','/screenshots/workbench-3x3.webp');await page.locator('[data-close-media]').click();await expect(page.locator('#media-dialog')).not.toBeVisible();
+});
+test('all local images load and test access never masquerades as a release',async({page})=>{
+ for(const route of ['/','/game','/press','/downloads']){
+  await page.goto(route);await page.locator('main h1').waitFor();
+  const broken=await page.evaluate(async()=>{const images=[...document.querySelectorAll('main img')];await Promise.all(images.map(i=>{i.loading='eager';return i.decode().catch(()=>{});}));return images.filter(i=>!i.naturalWidth).map(i=>i.getAttribute('src'));});expect(broken,route).toEqual([]);
+ }
+ await expect(page.locator('.tester-access')).toContainText('приватному репозиторию');await expect(page.locator('.platform-button')).toHaveCount(0);
+});

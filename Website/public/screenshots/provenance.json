@@ -1,0 +1,7 @@
+{
+  "source": "Native Windows executable screenshots; not concept art",
+  "commit": "2fde509e19288e1118495fcbb6bee3215f7da854",
+  "run": 38713107492,
+  "note": "This run launched the world and crafted at the workbench, then failed the furnace wait check. Screenshots do not certify the full build.",
+  "date": "2026-10-15"
+}
