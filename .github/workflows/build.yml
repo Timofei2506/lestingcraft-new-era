@@ -40,7 +40,7 @@ jobs:
     needs: check-secrets
     if: needs.check-secrets.outputs.has == 'true'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -63,13 +63,34 @@ jobs:
             Library-build-${{ matrix.targetPlatform }}-
             Library-
 
-      - name: Install Unity Editor
+      - name: Set up Unity Hub for licensing only
         uses: buildalon/unity-setup@v2
         with:
-          # Newer Linux Hub packages changed paths; pin compatible layout.
           hub-version: 3.12.0
-          cache-installation: true
-          build-targets: ${{ matrix.targetPlatform }}
+          auto-update-hub: false
+          unity-version: None
+          version-file: None
+          modules: None
+          cache-installation: false
+
+      - name: Restore standalone Unity Editor cache
+        id: editor-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/UnityEditors
+          key: unity-direct-win64-mono-v1-${{ hashFiles('ProjectSettings/ProjectVersion.txt') }}
+
+      - name: Install verified Unity Editor directly (Windows Mono)
+        shell: pwsh
+        timeout-minutes: 28
+        run: ./.github/scripts/install-unity-windows.ps1
+
+      - name: Save verified Unity Editor cache
+        if: steps.editor-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/UnityEditors
+          key: unity-direct-win64-mono-v1-${{ hashFiles('ProjectSettings/ProjectVersion.txt') }}
 
       - name: Activate Unity license (Personal)
         uses: buildalon/activate-unity-license@v2
