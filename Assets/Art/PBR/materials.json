@@ -34,5 +34,5 @@
   ],
   "stationSource": "Original procedural joinery/masonry + derived PBR estimates",
   "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries",
-  "iteration10": "Original firebrick/soot/iron firebox, fractured bedrock; iron/copper/coal-like visual lodes of the SAME existing ore block. Derived PBR, not scans."
+  "iteration10": "Original firebrick/soot/iron firebox, fractured bedrock, quartz inclusions/striations; iron/copper/coal-like visual lodes of the SAME existing ore block. Derived PBR, not scans."
 }

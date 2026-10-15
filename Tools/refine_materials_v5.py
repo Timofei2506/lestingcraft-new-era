@@ -54,7 +54,11 @@ ore_specs=[]
 for name,tint,metal,smooth in [('ore',(.48,.44,.35),.60,.43),('ore-copper',(.54,.29,.13),.68,.48),('ore-coal',(.035,.038,.043),.05,.27)]:
  a=base.copy();a[mineral]=np.array(tint)*( .70+fine[mineral,None]*.45);a*=1-np.exp(-np.abs(vein-.25)*38)[:,:,None]*.035
  ore_specs.append((name,a,smooth,mineral.astype(float)*metal))
-specs=[('bedrock',bed,.17,None),('furnace-side',side,.17,None),('furnace-front',front,.22,rim.astype(float)*.6),('furnace-top',top,.13,None)]+ore_specs
+# Visible crystal inclusions/striations replace the old nearly flat purple albedo.
+quartz=np.clip(np.abs(np.sin(u*2*np.pi*9+v*2*np.pi*3+blur(fine,2)*1.1)),0,1)
+crystal=np.array([.26,.12,.42])+quartz[:,:,None]*np.array([.24,.15,.30])+micro[:,:,None]*.045
+crystal+=np.exp(-edge*1.2)[:,:,None]*np.array([.19,.16,.22])
+specs=[('crystal',crystal,.64,None),('bedrock',bed,.17,None),('furnace-side',side,.17,None),('furnace-front',front,.22,rim.astype(float)*.6),('furnace-top',top,.13,None)]+ore_specs
 for name,a,smooth,metal in specs:
  a=periodic(np.clip(a,0,1));h=periodic(blur(a.mean(-1),.65));dx=(np.roll(h,-1,1)-np.roll(h,1,1))*4;dy=(np.roll(h,-1,0)-np.roll(h,1,0))*4
  slope=np.maximum(1,np.sqrt(dx*dx+dy*dy)/.83);dx/=slope;dy/=slope
@@ -62,5 +66,5 @@ for name,a,smooth,metal in specs:
  metallic=np.zeros_like(h) if metal is None else periodic(metal)
  mask=np.stack([metallic,np.clip(.94-(blur(h,4)-h)*.8,.63,1),h,np.clip(smooth+(h-h.mean())*.28,.06,.65)],-1)
  for kind,data in [('albedo',a),('normal',normal*.5+.5),('mask',mask)]:Image.fromarray(np.uint8(np.clip(data,0,1)*255)).save(O/f'{name}_{kind}.png',optimize=True)
-info=json.loads((O/'materials.json').read_text());info['layers']=[n for n in info['layers'] if n not in ('ore-copper','ore-coal')]+['ore-copper','ore-coal'];info['version']=5;info['iteration10']='Original firebrick/soot/iron firebox, fractured bedrock; iron/copper/coal-like visual lodes of the SAME existing ore block. Derived PBR, not scans.';(O/'materials.json').write_text(json.dumps(info,ensure_ascii=False,indent=2))
-print('7 PBR sets refined; total',len(info['layers']))
+info=json.loads((O/'materials.json').read_text());info['layers']=[n for n in info['layers'] if n not in ('ore-copper','ore-coal')]+['ore-copper','ore-coal'];info['version']=5;info['iteration10']='Original firebrick/soot/iron firebox, fractured bedrock, quartz inclusions/striations; iron/copper/coal-like visual lodes of the SAME existing ore block. Derived PBR, not scans.';(O/'materials.json').write_text(json.dumps(info,ensure_ascii=False,indent=2))
+print('8 PBR sets refined; total',len(info['layers']))
