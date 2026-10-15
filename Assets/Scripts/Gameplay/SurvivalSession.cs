@@ -66,7 +66,9 @@ namespace LestingCraft.Gameplay
         public bool FillRecipe(int index,int width)
         {
             if(!CanInteract||index<0||index>=CraftingTable.All.Length)return false;
-            bool ok=CraftingTable.Fill(Inventory,CraftingTable.All[index],width);Notice=ok?"Рецепт выложен — заберите результат":"Нужны ресурсы, место или верстак 3×3";return ok;
+            bool ok=CraftingTable.Fill(Inventory,CraftingTable.All[index],width);
+            string costs="";foreach(var cost in Recipes.All[index].inputs)costs+=(costs.Length==0?"":" · ")+Items.Get(cost.item).Name+" ×"+cost.count;
+            Notice=ok?"Рецепт выложен — заберите результат":(!CraftingTable.All[index].Fits(width)?"Нужен верстак 3×3. ":"Нужны ресурсы / место. ")+costs;return ok;
         }
         public int TakeCraft(int width,bool shift)
         {
@@ -124,17 +126,13 @@ namespace LestingCraft.Gameplay
             if(saveTime>20){saveTime=0;Checkpoint();}
             if(grave&&!Vitals.dead&&Vector3.Distance(Player.transform.position,grave.transform.position)<2)
             {
-                var copy=Inventory.Clone();bool fits=true;
-                var recovery=new System.Collections.Generic.List<ItemStack>(Data.player.grave);recovery.AddRange(Data.player.graveExtras);
-                foreach(var s in recovery)if(s.count>0)
-                {
-                    if(!copy.AddStack(s)){fits=false;break;}
-                }
-                if(fits)
-                {
-                    Data.player.inventory=copy;Data.player.grave=Array.Empty<ItemStack>();Data.player.graveExtras=Array.Empty<ItemStack>();Destroy(grave);grave=null;Notice="Вещи возвращены";Checkpoint();
-                }
-                else Notice="Освободите место для вещей у надгробия";
+                // A bag + crafting/cursor/furnace may contain more than 45 stacks. Recover what fits;
+                // preserve the rest at the grave instead of requiring an impossible all-at-once transfer.
+                int recovered=Inventory.RecoverStacks(Data.player.grave)+Inventory.RecoverStacks(Data.player.graveExtras);
+                bool remaining=Array.Exists(Data.player.grave,s=>s.count>0)||Array.Exists(Data.player.graveExtras,s=>s.count>0);
+                if(!remaining){Data.player.grave=Array.Empty<ItemStack>();Data.player.graveExtras=Array.Empty<ItemStack>();Destroy(grave);grave=null;Notice="Вещи возвращены";}
+                else Notice="Освободите место для оставшихся вещей у надгробия";
+                if(recovered>0)Checkpoint();
             }
         }
         void UpdateGrave()

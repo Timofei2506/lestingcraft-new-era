@@ -11,6 +11,7 @@ class Check
   inv=new Inventory();inv.slots[0]=S(101,1,17);InventoryInteraction.Click(inv,0,false,false);InventoryInteraction.Click(inv,45,false,false);InventoryInteraction.Click(inv,45,false,true);Assert(inv.slots[0].durability==17,"tool wear preserved");
   inv=new Inventory();inv.Add(1,2880);inv.grid[0]=S(4);Assert(CraftingTable.Take(inv,2,true)==0&&inv.grid[0].count==1,"atomic full");Assert(!CraftingTable.ReturnGrid(inv)&&inv.grid[0].count==1,"atomic return");
   var f=new FurnaceState{input=S(110,2),fuel=S(4)};for(int i=0;i<8;i++)f.Step(1);Assert(f.output.item==112&&f.output.count==1&&f.input.count==1&&f.burn==10,"timed cooking");
+  inv=new Inventory();var grave=new ItemStack[46];for(int i=0;i<46;i++)grave[i]=S(101,1,17);Assert(inv.RecoverStacks(grave)==45&&grave[45].count==1,"partial grave");InventoryInteraction.Click(inv,0,false,false);Assert(inv.RecoverStacks(grave)==1&&grave[45].count==0,"remaining grave");Assert(inv.cursor.durability==17,"grave preserves wear");
   inv=new Inventory();for(int i=0;i<30;i++)inv.Add(i%2==0?1:4,12+i);var random=new Random(971);
   int total=Total(inv);
   for(int i=0;i<50000;i++)

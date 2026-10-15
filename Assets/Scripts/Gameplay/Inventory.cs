@@ -85,6 +85,13 @@ namespace LestingCraft.Gameplay
             if(Items.Get(stack.item).MaxStack==1){for(int n=0;n<stack.count;n++){int free=Array.FindIndex(slots,s=>s.count==0);slots[free]=new ItemStack{item=stack.item,count=1,durability=stack.durability};}revision++;return true;}
             return Add(stack.item,stack.count);
         }
+        public int RecoverStacks(ItemStack[] remaining)
+        {
+            int recovered=0;if(remaining==null)return 0;
+            foreach(var stack in remaining)if(stack!=null&&stack.count>0&&AddStack(stack))
+            {recovered+=stack.count;stack.count=0;stack.item=0;stack.durability=0;}
+            return recovered;
+        }
         public ItemStack[] ExtraStacks()
         {var all=new ItemStack[13];for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
         public void WearTool()
