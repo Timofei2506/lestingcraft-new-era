@@ -1,0 +1,40 @@
+name: Index existing tested game for launcher
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Successful Build Windows run to index without reuploading the game
+        required: true
+        default: '38717714101'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify original native build succeeded
+        id: source
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId=Number(context.payload.inputs.source_run);
+            if(!Number.isSafeInteger(runId)||runId<=0)throw Error('Invalid run ID');
+            const {data:r}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:runId});
+            if(r.conclusion!=='success'||r.head_branch!=='main'||r.path!=='.github/workflows/build.yml'||r.event!=='workflow_dispatch')throw Error('Only successful native smoke builds on main qualify');
+            core.setOutput('sha',r.head_sha);
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-StandaloneWindows64
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ github.token }}
+          path: Builds/Recovered
+      - name: Hash already tested files (do not publish another game copy)
+        run: python3 Tools/build_launcher_manifest.py Builds/Recovered '${{ steps.source.outputs.sha }}' Builds/Feed/game-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: launcher-manifest-${{ inputs.source_run }}-${{ steps.source.outputs.sha }}
+          path: Builds/Feed/game-manifest.json
+          retention-days: 14

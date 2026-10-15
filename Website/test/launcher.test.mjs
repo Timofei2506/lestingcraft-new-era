@@ -16,3 +16,13 @@ test('launcher does not publish builds lacking a verification manifest',async()=
  const f=async url=>Response.json(url.includes('/workflows/')?{workflow_runs:[{id:1,head_sha:'a'.repeat(40),head_branch:'main',conclusion:'success',event:'workflow_dispatch'}]}:{artifacts:[]});assert.equal((await launcherFeed(request('invite'),env,f)).status,503);
 });
 test('artifact URLs must use HTTPS and trusted Azure/GitHub artifact hosts',()=>{assert.ok(archiveHost('https://x.blob.core.windows.net/y'));for(const bad of ['http://x.blob.core.windows.net/y','https://x.blob.core.windows.net.evil.test','https://user@x.blob.core.windows.net/y','https://evil.test/y'])assert.equal(archiveHost(bad),false);});
+test('bootstrap references original successful native artifact without duplicating game',async()=>{
+ const sha='c'.repeat(40);const f=async url=>{
+  if(url.includes('/workflows/build.yml'))return Response.json({workflow_runs:[]});
+  if(url.includes('/workflows/launcher-backfill.yml'))return Response.json({workflow_runs:[{id:50,conclusion:'success',head_branch:'main',event:'workflow_dispatch'}]});
+  if(url.includes('/runs/50/artifacts'))return Response.json({artifacts:[{id:2,name:'launcher-manifest-10-'+sha,size_in_bytes:128,expired:false}]});
+  if(url.endsWith('/runs/10'))return Response.json({conclusion:'success',head_branch:'main',event:'workflow_dispatch',path:'.github/workflows/build.yml',head_sha:sha});
+  if(url.includes('/runs/10/artifacts'))return Response.json({artifacts:[{id:1,name:'build-StandaloneWindows64',size_in_bytes:128,expired:false}]});
+  return new Response(null,{status:302,headers:{Location:'https://fixture.blob.core.windows.net/package?short-lived'}});
+ };const response=await launcherFeed(request('invite'),env,f);assert.equal(response.status,200);assert.equal((await response.json()).build,sha);
+});
