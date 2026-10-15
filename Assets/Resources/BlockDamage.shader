@@ -1,6 +1,6 @@
 Shader "LestingCraft/BlockDamage"
 {
- Properties { _Progress("Mining progress",Range(0,1))=0 }
+ Properties { _Progress("Mining progress",Range(0,1))=0 _Outline("Outline mode",Float)=0 _OutlineColor("Outline color",Color)=(.7,.78,.65,1) }
  SubShader
  {
   Tags { "RenderPipeline"="UniversalPipeline" "Queue"="Transparent+20" "RenderType"="Transparent" }
@@ -11,12 +11,13 @@ Shader "LestingCraft/BlockDamage"
    #pragma vertex Vert
    #pragma fragment Frag
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-   float _Progress;
+   float _Progress,_Outline;float4 _OutlineColor;
    struct A{float4 p:POSITION;float2 uv:TEXCOORD0;};struct V{float4 p:SV_POSITION;float2 uv:TEXCOORD0;};
    V Vert(A i){V o;o.p=TransformObjectToHClip(i.p.xyz);o.uv=frac(i.uv*4)*3.9;return o;}
    float2 Hash(float2 p){return frac(sin(float2(dot(p,float2(127.1,311.7)),dot(p,float2(269.5,183.3))))*43758.5453);}
    half4 Frag(V i):SV_Target
    {
+    if(_Outline>.5)return _OutlineColor;
     clip(_Progress-.005);float2 cell=floor(i.uv),uv=frac(i.uv);float first=20,second=20;
     [unroll]for(int y=-1;y<=1;y++)[unroll]for(int x=-1;x<=1;x++)
     {float2 offset=float2(x,y),r=offset+Hash(cell+offset)-uv;float d=dot(r,r);if(d<first){second=first;first=d;}else second=min(second,d);}

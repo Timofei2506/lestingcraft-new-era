@@ -46,6 +46,24 @@ namespace LestingCraft.Tests
   [TestCase("BlockDamage")] [TestCase("Precipitation")]
   public void NewFeedbackShadersImportWithoutErrors(string name)
   {var shader=Shader.Find("LestingCraft/"+name);Assert.IsNotNull(shader);Assert.IsFalse(UnityEditor.ShaderUtil.ShaderHasError(shader));}
+  [Test] public void SelectionFeedbackMovesOnlyItsOwnRootNeverThePlayer()
+  {
+   var owner=new GameObject("Inactive feedback ownership test");owner.SetActive(false);owner.transform.position=new Vector3(2,10,3);owner.transform.rotation=Quaternion.Euler(0,35,0);
+   try
+   {
+    var game=owner.AddComponent<PrototypeGame>();var session=owner.AddComponent<LestingCraft.Gameplay.SurvivalSession>();typeof(PrototypeGame).GetProperty("Session").SetValue(game,session);
+    var controller=owner.AddComponent<FirstPersonController>();controller.Game=game;controller.Active=true;
+    typeof(FirstPersonController).GetProperty("HasTarget").SetValue(controller,true);
+    var cell=new Vector3Int(7,8,9);typeof(FirstPersonController).GetProperty("Target").SetValue(controller,new VoxelRaycast.Hit(cell,Vector3Int.up,3));
+    var effect=owner.AddComponent<BlockFeedback>();effect.Initialize(controller);
+    effect.SendMessage("LateUpdate");
+    Assert.AreEqual(new Vector3(2,10,3),owner.transform.position,"Target selection must NEVER teleport the player");
+    Assert.IsNotNull(effect.VisualRoot);Assert.AreNotEqual(owner.transform,effect.VisualRoot.parent);
+    Assert.AreEqual((Vector3)cell+Vector3.one*.5f,effect.VisualRoot.position);Assert.Less(Quaternion.Angle(Quaternion.identity,effect.VisualRoot.rotation),.001f);
+    Assert.AreEqual(0,effect.VisualRoot.GetComponentsInChildren<Collider>().Length);
+   }
+   finally{Object.DestroyImmediate(owner);}
+  }
   [Test] public void HudDoesNotShowWorldSeedFpsObjectivesOrKeyHints()
   {
    var owner=new GameObject("Inactive feedback owner");owner.SetActive(false);var root=new GameObject("Clean HUD test");var previous=EventSystem.current;
