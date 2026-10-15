@@ -36,17 +36,18 @@ public static class PresentationAssets
         if(!avatar){avatar=new Material(Shader.Find("Universal Render Pipeline/Lit"));avatar.SetColor("_BaseColor",new Color(.3f,.65f,.6f));avatar.SetFloat("_Smoothness",.4f);AssetDatabase.CreateAsset(avatar,Folder+"/Avatar.mat");}
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/AtmosphericSky")),Folder+"/Sky.mat");
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Atmosphere.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/VolumetricAtmosphere")),Folder+"/Atmosphere.mat");
-        var cloud=AssetDatabase.LoadAssetAtPath<Texture3D>(Folder+"/CloudNoiseV2.asset");
+        var cloud=AssetDatabase.LoadAssetAtPath<Texture3D>(Folder+"/CloudNoise.asset");
+        if(cloud&&cloud.name!="CloudNoise-v2"){AssetDatabase.DeleteAsset(Folder+"/CloudNoise.asset");cloud=null;}
         if(!cloud)
         {
-            const int n=64;cloud=new Texture3D(n,n,n,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear};
+            const int n=64;cloud=new Texture3D(n,n,n,TextureFormat.RGBA32,false){name="CloudNoise-v2",wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear};
             var pixels=new Color[n*n*n];
             for(int z=0;z<n;z++)for(int y=0;y<n;y++)for(int x=0;x<n;x++)
             {
                 float value=LestingCraft.Presentation.CloudField.Shape((float)x/n,(float)y/n,(float)z/n);
                 pixels[x+n*(y+n*z)]=new Color(value,0,0,1);
             }
-            cloud.SetPixels(pixels);cloud.Apply(false,true);AssetDatabase.CreateAsset(cloud,Folder+"/CloudNoiseV2.asset");
+            cloud.SetPixels(pixels);cloud.Apply(false,true);AssetDatabase.CreateAsset(cloud,Folder+"/CloudNoise.asset");
         }
         var sky=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat");sky.SetTexture("_CloudNoise",cloud);sky.SetFloat("_CloudBase",144);EditorUtility.SetDirty(sky);
         var rain=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/RainStreaks.mat");

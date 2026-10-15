@@ -33,6 +33,7 @@ namespace LestingCraft.Gameplay
             ushort block=World.GetBlock(cell.x,cell.y,cell.z);if(block==0||block==9||block==7||block==8||cell.y==0){ResetMining();return;}
             if(!Creative&&(block==1||block>=10&&block<=13||block==17)&&!Items.IsPick(Inventory.Active.item)){Notice="Для этого материала нужна кирка";ResetMining();return;}
             int reward=Items.ToolDrop(block);if(!Creative&&!Inventory.CanAdd(reward,1)){Notice="Инвентарь заполнен";ResetMining();return;}
+            Notice="";
             if(cell!=miningCell){miningCell=cell;mineTime=0;}
             float speed=Items.IsPick(Inventory.Active.item)?3:Inventory.Active.item==102&&block==4?4:1;
             float duration=VoxelRaycast.MiningSeconds(Creative,BlockRegistry.Get(block).Hardness,speed);
