@@ -35,6 +35,10 @@ public static class BuildScript
         PlayerSettings.productName = "LestingCraft New Era";
         PlayerSettings.bundleVersion = "0.2.0-visual-test";
         PlayerSettings.colorSpace = ColorSpace.Linear;
+        var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
+        if(!icon)throw new InvalidOperationException("Application icon missing");
+        var sizes=PlayerSettings.GetIconSizes(UnityEditor.Build.NamedBuildTarget.Standalone,IconKind.Application);
+        PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Standalone,sizes.Select(_=>icon).ToArray(),IconKind.Application);
 
         var options = new BuildPlayerOptions
         {

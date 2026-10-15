@@ -37,6 +37,11 @@ namespace LestingCraft.Tests
                 ui.ShowHome();Find(ui,"Home.Settings").onClick.Invoke();Assert.AreEqual("Settings",ui.ScreenName);
                 ui.ShowHome();Assert.IsNotNull(Find(ui,"Home.Quit"));
                 Assert.Greater(interfaceObject.GetComponentsInChildren<Text>().Length,10);
+                ui.ShowHUD();Assert.IsNotNull(ui.GetComponentInChildren<HealthSilhouette>());
+                ui.ShowItemTooltip(110,new Vector2(500,500));
+                var tooltip=interfaceObject.GetComponentInChildren<Canvas>().transform.Find("1600x900 Interface/Item name tooltip");
+                Assert.IsNotNull(tooltip);Assert.AreEqual("Лесные ягоды",tooltip.GetComponentInChildren<Text>().text);
+                ui.ShowHome();Assert.IsFalse(tooltip.gameObject.activeSelf);
             }
             finally
             {

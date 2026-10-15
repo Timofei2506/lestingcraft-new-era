@@ -36,6 +36,7 @@ namespace LestingCraft.Runtime
             Vector3 target=transform.position+velocity*Time.deltaTime;
             if(!World.Loaded(target)||!World.Contains(Mathf.FloorToInt(target.x),1,Mathf.FloorToInt(target.z)))velocity=Vector3.zero;
             float impact=vertical;bool groundedBefore=controller.isGrounded;
+            PlayerCapsule.UpdateStep(controller,velocity);
             controller.Move((velocity+Vector3.up*vertical)*Time.deltaTime);
             if(!groundedBefore&&controller.isGrounded&&impact< -11&&Game.Session)Game.Session.Damage((-impact-11)*3);
             if(transform.position.y<1||transform.position.y>240){if(Game.Session)Game.Session.Damage(100);controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;}

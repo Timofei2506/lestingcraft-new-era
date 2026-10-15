@@ -29,7 +29,7 @@ namespace LestingCraft.Runtime
             material=new Material(Resources.Load<Material>("Generated/VoxelPBR"));
             waterMaterial=new Material(Resources.Load<Material>("Generated/Water"));
             grassMaterial=new Material(Resources.Load<Material>("Generated/Grass"));
-            RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
+            RenderSettings.fog=false;RenderSettings.fogMode=FogMode.Linear;
             RenderSettings.fogStartDistance=Radius*10;RenderSettings.fogEndDistance=Radius*16;
             StartCoroutine(Stream());
         }

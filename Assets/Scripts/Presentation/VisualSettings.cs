@@ -53,7 +53,7 @@ namespace LestingCraft.Presentation
             RenderSettings.skybox=sky;camera.clearFlags=CameraClearFlags.Skybox;
             AtmosphereLighting.At(clock,(LestingCraft.World.Dimension)realm,.28f,0).Apply(light,clock);
             root.AddComponent<AtmosphereLifetime>().Sky=sky;
-            RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
+            RenderSettings.fog=false;RenderSettings.fogMode=FogMode.Linear;
             var volume=root.AddComponent<Volume>();volume.isGlobal=true;volume.sharedProfile=Resources.Load<VolumeProfile>("Generated/WorldVolume");
             var data=camera.GetComponent<UniversalAdditionalCameraData>();if(!data)data=camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
             data.renderPostProcessing=true;data.requiresDepthTexture=true;data.requiresColorTexture=true;

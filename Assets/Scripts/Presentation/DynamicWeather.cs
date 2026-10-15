@@ -60,7 +60,7 @@ namespace LestingCraft.Presentation
             var se=snow.emission;se.rateOverTime=outside*snowAmount*80;
             var light=AtmosphereLighting.At(Session.Data.clock,Session.World.Dimension,clouds,precipitation);light.Apply(sunlight,Session.Data.clock);
             sky.SetFloat("_CloudCoverage",clouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:24);
-            fog.SetFloat("_Density",Mathf.Lerp(.0025f+precipitation*.008f,.20f,submerged));
+            fog.SetFloat("_Density",AtmosphereProfile.Density(precipitation,submerged));
             fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:16);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);
             Shader.SetGlobalFloat("_FogHeight",Session.World.Dimension==Dimension.Skyreach?86:44);

@@ -16,9 +16,11 @@ public static class PresentationAssets
         if(EditorApplication.isCompiling||EditorApplication.isUpdating){EditorApplication.delayCall+=Ensure;return;}
         if(!AssetDatabase.IsValidFolder(Folder))AssetDatabase.CreateFolder("Assets/Resources","Generated");
         EnsureMenuBackdrop();
+        EnsureItemIcons();
         var albedo=Array("Albedo","albedo",false);var normal=Array("Normal","normal",true);var mask=Array("Mask","mask",true);
         Material material=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/VoxelPBR.mat");
         if(!material){material=new Material(Shader.Find("LestingCraft/VoxelPBR"));AssetDatabase.CreateAsset(material,Folder+"/VoxelPBR.mat");}
+        material.SetFloat("_NormalStrength",1.15f);
         material.SetTexture("_AlbedoArray",albedo);material.SetTexture("_NormalArray",normal);material.SetTexture("_MaskArray",mask);
         Material water=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Water.mat");
         if(!water){water=new Material(Shader.Find("LestingCraft/Water"));AssetDatabase.CreateAsset(water,Folder+"/Water.mat");}
@@ -68,12 +70,25 @@ public static class PresentationAssets
         {
             profile=ScriptableObject.CreateInstance<VolumeProfile>();AssetDatabase.CreateAsset(profile,Folder+"/WorldVolume.asset");
         }
-        var bloom=Component<Bloom>(profile);bloom.threshold.value=1.15f;bloom.intensity.value=.17f;bloom.scatter.value=.65f;
+        var bloom=Component<Bloom>(profile);bloom.threshold.value=1.6f;bloom.intensity.value=.055f;bloom.scatter.value=.45f;
         var tone=Component<Tonemapping>(profile);tone.mode.value=TonemappingMode.ACES;
         var colors=Component<ColorAdjustments>(profile);colors.contrast.value=5;colors.saturation.value=-3;
         var vignette=Component<Vignette>(profile);vignette.intensity.value=.09f;vignette.smoothness.value=.65f;
         foreach(var component in profile.components)EditorUtility.SetDirty(component);
         EditorUtility.SetDirty(material);EditorUtility.SetDirty(water);EditorUtility.SetDirty(profile);AssetDatabase.SaveAssets();
+    }
+    static void EnsureItemIcons()
+    {
+        if(!AssetDatabase.IsValidFolder(Folder+"/Icons"))AssetDatabase.CreateFolder(Folder,"Icons");
+        foreach(int id in LestingCraft.Presentation.ItemArtwork.AllIds)
+        {
+            string path=Folder+"/Icons/Item"+id+".asset";
+            if(AssetDatabase.LoadAssetAtPath<Texture2D>(path))continue;
+            string source="Assets/Resources/Icons/"+(id<=15?LestingCraft.Presentation.SurfaceLayers.Icon((ushort)id):"Item"+id)+".png";
+            var texture=new Texture2D(2,2,TextureFormat.RGBA32,false){name="Item"+id,wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+            if(!texture.LoadImage(File.ReadAllBytes(source),false))throw new InvalidOperationException("Cannot decode item icon: "+source);
+            AssetDatabase.CreateAsset(texture,path);
+        }
     }
     static void EnsureMenuBackdrop()
     {

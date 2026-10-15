@@ -17,8 +17,8 @@ namespace LestingCraft.Presentation
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
-        Page page,settingsBack;Text status,realmHUD,netHUD,perfHUD,itemHUD,loadingHUD;Image[] slots;RectTransform[] slotRects;
-        Text vitalsHUD,objectiveHUD,noticeHUD;RawImage[] slotIcons;Text[] slotCounts,slotFallback;int lastInventoryRevision=-1,lastSlot=-1,inventoryFrom=-1;
+        Page page,settingsBack;Text status,realmHUD,netHUD,perfHUD,loadingHUD;Image[] slots;RectTransform[] slotRects;
+        Text vitalsHUD,objectiveHUD,noticeHUD,healthHUD;HealthSilhouette healthBody;RawImage[] slotIcons;Text[] slotCounts;ItemHover[] slotHovers;RectTransform tooltip;Text tooltipText;int lastInventoryRevision=-1,lastSlot=-1,inventoryFrom=-1;
         public bool InventoryOpen=>page==Page.Inventory;
         public bool IsReady=>ready;
         public string ScreenName=>page.ToString();
@@ -51,7 +51,7 @@ namespace LestingCraft.Presentation
         static void Stretch(RectTransform rt){rt.anchorMin=Vector2.zero;rt.anchorMax=Vector2.one;rt.pivot=new Vector2(.5f,.5f);rt.offsetMin=rt.offsetMax=Vector2.zero;}
         void Clear(Page next)
         {
-            page=next;content.SetActive(true);
+            HideItemTooltip();page=next;content.SetActive(true);
             for(int i=content.transform.childCount-1;i>=0;i--){var child=content.transform.GetChild(i).gameObject;child.SetActive(false);if(Application.isPlaying)Destroy(child);else DestroyImmediate(child);}
             actions.Clear();transient.Clear();status=null;
             background.SetActive(next!=Page.HUD);lastSelection=0;
@@ -193,7 +193,7 @@ namespace LestingCraft.Presentation
                     if(inventoryFrom<0){inventoryFrom=index;buttonHighlight(index);}
                     else {game.Session.Transfer(inventoryFrom,index);ShowInventory();}
                 });
-                Icon(button.transform,stack.item,22,3,48);Label(button.transform,stack.count>0?stack.count.ToString():"—",7,58,77,17,12,Muted,false,TextAnchor.MiddleRight);
+                AttachHover(button.gameObject,stack.item);Icon(button.transform,stack.item,22,3,48);Label(button.transform,stack.count>0?stack.count.ToString():"—",7,58,77,17,12,Muted,false,TextAnchor.MiddleRight);
                 if(i<9)Label(button.transform,(i+1).ToString(),7,5,20,20,11,Accent);
             }
             Label(content.transform,"СОЗДАТЬ",974,328,553,35,18,Accent,true);
@@ -210,17 +210,26 @@ namespace LestingCraft.Presentation
         {
             status.text="Перенос: "+Items.Get(game.Session.Inventory.slots[index].item).Name+" — выберите целевую ячейку";
         }
+        void AttachHover(GameObject target,int item)
+        {var hover=target.AddComponent<ItemHover>();hover.Owner=this;hover.Item=item;}
         void Icon(Transform parent,int item,float x,float y,float size)
         {
-            var texture=ItemIcon(item);
-            if(texture){var raw=Rect("Item icon",parent,x,y,size,size).gameObject.AddComponent<RawImage>();raw.texture=texture;raw.raycastTarget=false;}
-            else if(item>0)Label(parent,Items.Get(item).Name,x-9,y+8,size+18,size-8,10,White,false,TextAnchor.MiddleCenter);
+            if(item<=0)return;
+            var raw=Rect("Item icon",parent,x,y,size,size).gameObject.AddComponent<RawImage>();raw.texture=ItemArtwork.Get(item);raw.raycastTarget=false;
         }
-        Texture2D ItemIcon(int item)
+        public void ShowItemTooltip(int item,Vector2 screenPosition)
         {
-            if(item>0&&item<=15)return Resources.Load<Texture2D>("Icons/"+SurfaceLayers.Icon((ushort)item));
-            return Resources.Load<Texture2D>("Icons/Item"+item);
+            if(item<=0||!frame)return;
+            if(!tooltip)
+            {
+                var panel=Box(frame,0,0,360,58,new Color(.025f,.045f,.05f,.98f));tooltip=panel.rectTransform;
+                tooltip.name="Item name tooltip";tooltipText=Label(tooltip,"",17,0,326,58,18,White,false,TextAnchor.MiddleLeft);
+            }
+            tooltipText.text=Items.Get(item).Name;tooltip.gameObject.SetActive(true);tooltip.SetAsLastSibling();
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(frame,screenPosition,null,out var local);
+            tooltip.anchoredPosition=new Vector2(Mathf.Clamp(local.x+800+18,10,1230),-Mathf.Clamp(450-local.y+20,10,832));
         }
+        public void HideItemTooltip(){if(tooltip)tooltip.gameObject.SetActive(false);}
         public void ShowDeathScreen()
         {
             Clear(Page.Death);Header("Экспедиция",false);bool ended=game.Session&&game.Session.Data.campaign.runEnded;
@@ -262,6 +271,8 @@ namespace LestingCraft.Presentation
         public void ShowHUD()
         {
             Clear(Page.HUD);
+            Box(content.transform,22,16,800,105,new Color(.015f,.03f,.04f,.65f));
+            Box(content.transform,1110,16,467,97,new Color(.015f,.03f,.04f,.65f));
             Label(content.transform,"LESTINGCRAFT",36,27,430,27,15,White,true);
             realmHUD=Label(content.transform,"",36,66,800,42,16,White);
             netHUD=Label(content.transform,"",925,29,641,43,14,Accent,false,TextAnchor.MiddleRight);
@@ -269,19 +280,22 @@ namespace LestingCraft.Presentation
             loadingHUD=Label(content.transform,"",36,113,780,37,14,Accent);
             // Minimal reticle, not an IMGUI text '+'.
             foreach(var r in new[]{new Vector4(799,439,2,7),new Vector4(799,454,2,7),new Vector4(789,449,7,2),new Vector4(804,449,7,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.82f),false);
-            slots=new Image[9];slotRects=new RectTransform[9];slotIcons=new RawImage[9];slotCounts=new Text[9];slotFallback=new Text[9];lastInventoryRevision=-1;lastSlot=-1;
+            slots=new Image[9];slotRects=new RectTransform[9];slotIcons=new RawImage[9];slotCounts=new Text[9];slotHovers=new ItemHover[9];lastInventoryRevision=-1;lastSlot=-1;
             var backdrop=Box(content.transform,364,786,872,99,new Color(.025f,.05f,.055f,.88f));
             for(int i=0;i<9;i++)
             {
                 var image=Box(backdrop.transform,10+i*95,10,91,79,new Color(.10f,.155f,.165f,.92f));slots[i]=image;slotRects[i]=image.rectTransform;
-                var raw=Rect("Material icon",image.transform,24,5,48,48).gameObject.AddComponent<RawImage>();raw.raycastTarget=false;slotIcons[i]=raw;
+                image.raycastTarget=true;AttachHover(image.gameObject,0);slotHovers[i]=image.GetComponent<ItemHover>();
+                var raw=Rect("Item icon",image.transform,18,2,55,55).gameObject.AddComponent<RawImage>();raw.raycastTarget=false;slotIcons[i]=raw;
                 slotCounts[i]=Label(image.transform,"",51,57,32,18,11,White,false,TextAnchor.MiddleRight);
-                slotFallback[i]=Label(image.transform,"",8,13,75,35,10,White,false,TextAnchor.MiddleCenter);
                 Label(image.transform,(i+1).ToString(),0,55,91,18,11,Muted,false,TextAnchor.MiddleCenter);
             }
-            itemHUD=Label(content.transform,"",400,743,800,33,18,White,false,TextAnchor.MiddleCenter);
+            // Item names are hover/focus tooltips, never permanent slot text.
             Label(content.transform,"ЛКМ  добывать   ·   ПКМ  использовать   ·   E  инвентарь",413,712,774,24,12,Muted,false,TextAnchor.MiddleCenter);
-            vitalsHUD=Label(content.transform,"",36,751,325,121,15,White);
+            var healthPanel=Box(content.transform,26,546,310,226,new Color(.025f,.05f,.055f,.91f));
+            healthHUD=Label(healthPanel.transform,"СОСТОЯНИЕ · 100 / 100",16,12,280,30,13,White);
+            var body=Rect("Health silhouette",healthPanel.transform,17,52,91,157);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
+            vitalsHUD=Label(healthPanel.transform,"",124,61,175,146,13,White);
             objectiveHUD=Label(content.transform,"",36,175,1000,63,15,Accent);
             noticeHUD=Label(content.transform,"",400,656,800,41,14,Accent,false,TextAnchor.MiddleCenter);
             Label(content.transform,"F1  интерфейс · F2  снимок · ESC  меню",1140,841,427,29,12,Muted,false,TextAnchor.MiddleRight);
@@ -307,7 +321,8 @@ namespace LestingCraft.Presentation
                 if(game.Session)
                 {
                     var session=game.Session;var v=session.Vitals;
-                    vitalsHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"Здоровье  {v.health:0}   ·   Голод  {v.hunger:0}\nТемпература  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%   ·   Силы  {v.stamina:0}";
+                    healthBody.SetHealth(v.health);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
+                    vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}";
                     objectiveHUD.text=session.Creative?"":GameRules.NextObjective(session.Data.campaign.chapter,session.Data.campaign.milestones);
                     noticeHUD.text=session.Notice;
                 }
@@ -321,11 +336,11 @@ namespace LestingCraft.Presentation
                 for(int i=0;i<9;i++)
                 {
                     var stack=inventory.slots[i];slots[i].color=i==inventory.selected?new Color(.36f,.49f,.30f,.97f):new Color(.10f,.155f,.165f,.92f);
-                    var texture=ItemIcon(stack.item);slotIcons[i].texture=texture;slotIcons[i].enabled=texture;
-                    slotFallback[i].text=texture||stack.item==0?"":Items.Get(stack.item).Name;
+                    var texture=ItemArtwork.Get(stack.item);slotIcons[i].texture=texture;slotIcons[i].enabled=texture;
+                    slotHovers[i].Item=stack.count>0?stack.item:0;
                     slotCounts[i].text=stack.count>0?(game.Session.Creative?"∞":stack.count.ToString()):"";
                 }
-                itemHUD.text=inventory.Active.count>0?Items.Get(inventory.Active.item).Name:"Свободная рука";
+
             }
         }
         void OnDestroy(){if(rounded)Destroy(rounded);}

@@ -3,6 +3,8 @@ using System.IO;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using LestingCraft.Gameplay;
 using UnityEngine.Rendering;
 using LestingCraft.Presentation;
 
@@ -52,12 +54,38 @@ namespace LestingCraft.Runtime
             FindButton(ui,"Home.Play").onClick.Invoke();if(ui.ScreenName!="World"){Fail("Play button did not open mode selection.");yield break;}
             ui.ShowHome();FindButton(ui,"Home.Coop").onClick.Invoke();if(ui.ScreenName!="Rooms"){Fail("Coop button did not open rooms.");yield break;}
             ui.ShowHome();FindButton(ui,"Home.Settings").onClick.Invoke();if(ui.ScreenName!="Settings"){Fail("Settings button did not open settings.");yield break;}
-            ui.ShowHome();game.SelectedMode=2;game.PlayOffline();
-            deadline=Time.realtimeSinceStartup+150;
-            while(game.ChunkCount<5&&failure==null&&Time.realtimeSinceStartup<deadline)yield return null;
-            if(failure!=null||!game.Session||game.ChunkCount<5||!game.Session.Weather){Fail("World/meshes/weather initialization: "+failure);yield break;}
+            foreach(int id in ItemArtwork.AllIds)if(!ItemArtwork.Get(id)){Fail("Item icon missing: "+id);yield break;}
+            ui.ShowHome();game.SelectedMode=0;game.PlayOffline();
+            // A reproducible clear-day baseline; only the explicit smoke process fixes its clock.
+            deadline=Time.realtimeSinceStartup+210;
+            while(!game.WorldReady&&failure==null&&Time.realtimeSinceStartup<deadline)
+            {if(game.Session)game.Session.Data.clock=420;yield return null;}
+            if(failure!=null||!game.Session||!game.WorldReady||game.ChunkCount<5||!game.Session.Weather){Fail("World/meshes/weather initialization: "+failure);yield break;}
+            if(RenderSettings.fog){Fail("Duplicate linear fog must be disabled.");yield break;}
+            var player=game.Session.Player;player.enabled=false;
+            Camera.main.transform.localRotation=Quaternion.Euler(10,35,0);
+            yield return null;yield return new WaitForEndOfFrame();
+            var hands=player.GetComponent<FirstPersonHands>();
+            if(!hands||!hands.ViewCamera||!hands.ViewCamera.enabled){Fail("First-person hand camera not active.");yield break;}
+            var body=ui.GetComponentInChildren<HealthSilhouette>();
+            if(!body||body.Zones.Length!=6){Fail("HUD silhouette missing.");yield break;}
+            string worldshot=Path.GetFullPath(Path.Combine(folder,"world-hud.png"));ScreenCapture.CaptureScreenshot(worldshot);
+            yield return new WaitForSecondsRealtime(1);
+            if(!File.Exists(worldshot)||!ScreenshotHasDetail(worldshot)){Fail("World screenshot missing/empty.");yield break;}
+            Debug.Log("[Smoke] WORLD_SCREENSHOT: "+worldshot);
+            game.ToggleInventory();yield return null;
+            ItemHover item=null;foreach(var hover in ui.GetComponentsInChildren<ItemHover>())if(hover.Item>0){item=hover;break;}
+            if(!item){Fail("Inventory hover target missing.");yield break;}
+            var point=RectTransformUtility.WorldToScreenPoint(null,item.transform.position)+new Vector2(30,-30);
+            ExecuteEvents.Execute(item.gameObject,new PointerEventData(EventSystem.current){position=point},ExecuteEvents.pointerEnterHandler);
+            var tooltip=GameObject.Find("Item name tooltip");
+            if(!tooltip||tooltip.GetComponentInChildren<Text>().text!=Items.Get(item.Item).Name){Fail("Item tooltip did not show its name.");yield break;}
+            string inventoryshot=Path.GetFullPath(Path.Combine(folder,"inventory-tooltip.png"));
+            yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(inventoryshot);yield return new WaitForSecondsRealtime(1);
+            if(!File.Exists(inventoryshot)||!ScreenshotHasDetail(inventoryshot)||failure!=null){Fail("Inventory screenshot/runtime errors: "+failure);yield break;}
+            Debug.Log("[Smoke] INVENTORY_SCREENSHOT: "+inventoryshot);
             finishing=true;
-            Debug.Log("[Smoke] PASS: graphics device, nonempty menu screenshot, Play/Coop/Settings navigation, resources, five world chunks and weather. No FPS/visual-quality claim.");
+            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip and three executable screenshots. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);
         }
         static Button FindButton(GameUI ui,string name)

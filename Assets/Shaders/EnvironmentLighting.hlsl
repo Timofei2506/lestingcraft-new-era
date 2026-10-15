@@ -13,7 +13,7 @@ float3 LC_SkyRadiance(float3 direction)
     float3 sky=lerp(_EnvironmentHorizon.rgb,_EnvironmentZenith.rgb,pow(h,.45));
     float sun=saturate(dot(ray,_EnvironmentSunDirection.xyz));
     float daylight=saturate(_EnvironmentSunDirection.y*12+.5);
-    sky+=_EnvironmentSunColor.rgb*(smoothstep(.999955,.999975,sun)*8+pow(sun,32)*.12)*daylight;
+    sky+=_EnvironmentSunColor.rgb*(smoothstep(.999955,.999975,sun)*3+pow(sun,96)*.035)*daylight;
     float moon=saturate(dot(ray,_EnvironmentMoonDirection.xyz));
     float night=1-_EnvironmentDaylight;
     sky+=float3(.44,.57,.80)*smoothstep(.99988,.99993,moon)*night*1.2;

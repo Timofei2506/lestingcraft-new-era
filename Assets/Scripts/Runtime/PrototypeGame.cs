@@ -46,7 +46,7 @@ namespace LestingCraft.Runtime
         public ushort SelectedBlock=>Session?Items.Get(Session.Inventory.Active.item).Block:(ushort)1;
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
         public void PlayOffline()
-        {if(busy||world)return;int seed=Guid.NewGuid().GetHashCode();seedText=seed.ToString();StartWorld(seed,0,false);}
+        {if(busy||world)return;int seed=Array.IndexOf(Environment.GetCommandLineArgs(),"-lc-smoke-test")>=0?2506:Guid.NewGuid().GetHashCode();seedText=seed.ToString();StartWorld(seed,0,false);}
         public void ContinueOffline()
         {
             if(busy||world)return;resumeSave=LocalSave.Load();if(resumeSave==null){Fail("Сохранение повреждено");return;}
@@ -110,11 +110,12 @@ namespace LestingCraft.Runtime
             var camera=Camera.main;camera.backgroundColor=realm==1?new Color(.19f,.08f,.07f):realm==3||realm==4?new Color(.075f,.045f,.14f):new Color(.42f,.66f,.78f);
             RenderSettings.fogColor=camera.backgroundColor;
             var obj=new GameObject("Player");obj.transform.position=FindSpawn(seed,(Dimension)realm);
-            var controller=obj.AddComponent<CharacterController>();controller.height=1.8f;controller.radius=.3f;controller.center=new Vector3(0,.9f,0);controller.stepOffset=.45f;
+            var controller=obj.AddComponent<CharacterController>();PlayerCapsule.Configure(controller);
             player=obj.AddComponent<FirstPersonController>();player.World=world;player.Game=this;player.Camera=camera;
-            camera.transform.SetParent(obj.transform,false);camera.transform.localPosition=new Vector3(0,1.62f,0);camera.nearClipPlane=.05f;camera.farClipPlane=160;
+            camera.transform.SetParent(obj.transform,false);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.nearClipPlane=.05f;camera.farClipPlane=160;
             dimension=realm;seedText=seed.ToString();camera.farClipPlane=256;
             WorldAtmosphere.Configure(camera,realm,resumeSave?.clock??clock);
+            obj.AddComponent<FirstPersonHands>().Initialize(player,camera);
             world.Player=obj.transform;paused=false;SetCursor(true);busy=false;status="Генерируется мир…";lastError="";
             var sessionObject=new GameObject("Survival and weather");sessionObject.transform.SetParent(world.transform,false);
             Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;

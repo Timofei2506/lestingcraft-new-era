@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
