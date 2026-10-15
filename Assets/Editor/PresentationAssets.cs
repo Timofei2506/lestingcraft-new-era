@@ -21,7 +21,10 @@ public static class PresentationAssets
         material.SetTexture("_AlbedoArray",albedo);material.SetTexture("_NormalArray",normal);material.SetTexture("_MaskArray",mask);
         Material water=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Water.mat");
         if(!water){water=new Material(Shader.Find("LestingCraft/Water"));AssetDatabase.CreateAsset(water,Folder+"/Water.mat");}
-        water.SetTexture("_AlbedoArray",albedo);water.SetTexture("_NormalArray",normal);
+        water.SetTexture("_NormalArray",normal);
+        var grass=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Grass.mat");
+        if(!grass){grass=new Material(Shader.Find("LestingCraft/Grass"));AssetDatabase.CreateAsset(grass,Folder+"/Grass.mat");}
+        grass.SetTexture("_AlbedoArray",albedo);EditorUtility.SetDirty(grass);
         var avatar=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Avatar.mat");
         if(!avatar){avatar=new Material(Shader.Find("Universal Render Pipeline/Lit"));avatar.SetColor("_BaseColor",new Color(.3f,.65f,.6f));avatar.SetFloat("_Smoothness",.4f);AssetDatabase.CreateAsset(avatar,Folder+"/Avatar.mat");}
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/AtmosphericSky")),Folder+"/Sky.mat");
@@ -47,28 +50,34 @@ public static class PresentationAssets
         {
             var renderer=ScriptableObject.CreateInstance<UniversalRendererData>();AssetDatabase.CreateAsset(renderer,Folder+"/Renderer.asset");
             pipeline=UniversalRenderPipelineAsset.Create(renderer);
-            pipeline.supportsHDR=true;pipeline.msaaSampleCount=4;pipeline.renderScale=1f;
-            pipeline.supportsCameraDepthTexture=true;pipeline.supportsCameraOpaqueTexture=true;
-            pipeline.maxAdditionalLightsCount=8;pipeline.mainLightShadowmapResolution=2048;pipeline.shadowDistance=80;pipeline.shadowCascadeCount=2;
-            var serialized=new SerializedObject(pipeline);
-            serialized.FindProperty("m_MainLightShadowsSupported").boolValue=true;
-            serialized.FindProperty("m_SoftShadowsSupported").boolValue=true;
-            serialized.FindProperty("m_AdditionalLightsRenderingMode").intValue=(int)LightRenderingMode.PerPixel;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.CreateAsset(pipeline,Folder+"/HighDefinition.asset");
         }
+        // Reapply on every Ensure, including an existing Generated directory/cache.
+        pipeline.supportsHDR=true;pipeline.msaaSampleCount=4;pipeline.renderScale=1f;
+        pipeline.supportsCameraDepthTexture=true;pipeline.supportsCameraOpaqueTexture=true;
+        pipeline.maxAdditionalLightsCount=8;pipeline.mainLightShadowmapResolution=2048;pipeline.shadowDistance=80;pipeline.shadowCascadeCount=2;
+        var serialized=new SerializedObject(pipeline);
+        serialized.FindProperty("m_MainLightShadowsSupported").boolValue=true;
+        serialized.FindProperty("m_SoftShadowsSupported").boolValue=true;
+        serialized.FindProperty("m_AdditionalLightsRenderingMode").intValue=(int)LightRenderingMode.PerPixel;
+        serialized.ApplyModifiedPropertiesWithoutUndo();EditorUtility.SetDirty(pipeline);
         GraphicsSettings.defaultRenderPipeline=pipeline;QualitySettings.renderPipeline=pipeline;
         var profile=AssetDatabase.LoadAssetAtPath<VolumeProfile>(Folder+"/WorldVolume.asset");
         if(!profile)
         {
             profile=ScriptableObject.CreateInstance<VolumeProfile>();AssetDatabase.CreateAsset(profile,Folder+"/WorldVolume.asset");
-            var bloom=profile.Add<Bloom>(true);bloom.threshold.value=1.1f;bloom.intensity.value=.22f;bloom.scatter.value=.65f;
-            var tone=profile.Add<Tonemapping>(true);tone.mode.value=TonemappingMode.ACES;
-            var colors=profile.Add<ColorAdjustments>(true);colors.contrast.value=7;colors.saturation.value=-5;
-            var vignette=profile.Add<Vignette>(true);vignette.intensity.value=.13f;vignette.smoothness.value=.65f;
-            foreach(var component in profile.components)AssetDatabase.AddObjectToAsset(component,profile);
         }
+        var bloom=Component<Bloom>(profile);bloom.threshold.value=1.15f;bloom.intensity.value=.17f;bloom.scatter.value=.65f;
+        var tone=Component<Tonemapping>(profile);tone.mode.value=TonemappingMode.ACES;
+        var colors=Component<ColorAdjustments>(profile);colors.contrast.value=5;colors.saturation.value=-3;
+        var vignette=Component<Vignette>(profile);vignette.intensity.value=.09f;vignette.smoothness.value=.65f;
+        foreach(var component in profile.components)EditorUtility.SetDirty(component);
         EditorUtility.SetDirty(material);EditorUtility.SetDirty(water);EditorUtility.SetDirty(profile);AssetDatabase.SaveAssets();
+    }
+    static T Component<T>(VolumeProfile profile) where T:VolumeComponent
+    {
+        if(profile.TryGet<T>(out var component))return component;
+        component=profile.Add<T>(true);AssetDatabase.AddObjectToAsset(component,profile);return component;
     }
     static void ParticleMaterial(string name,bool additive)
     {

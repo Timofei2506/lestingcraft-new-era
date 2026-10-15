@@ -259,7 +259,7 @@ namespace LestingCraft.Presentation
             vitalsHUD=Label(content.transform,"",36,751,325,121,15,White);
             objectiveHUD=Label(content.transform,"",36,175,1000,63,15,Accent);
             noticeHUD=Label(content.transform,"",400,656,800,41,14,Accent,false,TextAnchor.MiddleCenter);
-            Label(content.transform,"ESC  меню",1357,841,210,29,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"F1  интерфейс · F2  снимок · ESC  меню",1140,841,427,29,12,Muted,false,TextAnchor.MiddleRight);
         }
         void Update()
         {
@@ -274,6 +274,7 @@ namespace LestingCraft.Presentation
                 foreach(var action in actions)if(action)action.interactable=!game.IsConnecting;
             }
             if(page!=Page.HUD)return;
+            if(UnityEngine.InputSystem.Keyboard.current!=null&&UnityEngine.InputSystem.Keyboard.current.f1Key.wasPressedThisFrame)content.gameObject.SetActive(!content.gameObject.activeSelf);
             averageFrame=Mathf.Lerp(averageFrame,Mathf.Min(Time.unscaledDeltaTime,.5f),.04f);timer+=Time.unscaledDeltaTime;
             if(timer>.25f)
             {

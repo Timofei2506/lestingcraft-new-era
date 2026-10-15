@@ -42,23 +42,18 @@ namespace LestingCraft.Presentation
     }
     public static class WorldAtmosphere
     {
-        public static void Configure(Camera camera,int realm)
+        public static void Configure(Camera camera,int realm,double clock=420)
         {
             var old=GameObject.Find("WorldAtmosphere");if(old)UnityEngine.Object.Destroy(old);
             var root=new GameObject("WorldAtmosphere");
             var sunlight=new GameObject("Sun");sunlight.transform.SetParent(root.transform);sunlight.transform.rotation=Quaternion.Euler(38,-32,0);
             var light=sunlight.AddComponent<Light>();light.type=LightType.Directional;light.shadows=LightShadows.Soft;light.shadowStrength=.82f;light.shadowBias=.04f;light.shadowNormalBias=.25f;
-            light.color=realm==1?new Color(1,.67f,.4f):realm>=3?new Color(.67f,.65f,1):new Color(1,.91f,.77f);
-            light.intensity=realm>=3?.75f:1.5f;RenderSettings.sun=light;
-            RenderSettings.ambientMode=AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor=realm>=3?new Color(.20f,.21f,.35f):new Color(.45f,.58f,.65f);
-            RenderSettings.ambientEquatorColor=new Color(.22f,.26f,.25f);RenderSettings.ambientGroundColor=new Color(.10f,.12f,.10f);
+            RenderSettings.sun=light;RenderSettings.ambientMode=AmbientMode.Trilight;
             var sky=new Material(Resources.Load<Material>("Generated/Sky"));
-            sky.SetVector("_SunDirection",-sunlight.transform.forward);sky.SetColor("_SunColor",light.color);
-            sky.SetColor("_Zenith",realm>=3?new Color(.04f,.02f,.105f):realm==1?new Color(.21f,.07f,.035f):new Color(.14f,.36f,.54f));
-            sky.SetColor("_Horizon",camera.backgroundColor);RenderSettings.skybox=sky;camera.clearFlags=CameraClearFlags.Skybox;
+            RenderSettings.skybox=sky;camera.clearFlags=CameraClearFlags.Skybox;
+            AtmosphereLighting.At(clock,(LestingCraft.World.Dimension)realm,.28f,0).Apply(light,clock);
             root.AddComponent<AtmosphereLifetime>().Sky=sky;
-            RenderSettings.fogColor=camera.backgroundColor;RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
+            RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
             var volume=root.AddComponent<Volume>();volume.isGlobal=true;volume.sharedProfile=Resources.Load<VolumeProfile>("Generated/WorldVolume");
             var data=camera.GetComponent<UniversalAdditionalCameraData>();if(!data)data=camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
             data.renderPostProcessing=true;data.requiresDepthTexture=true;data.requiresColorTexture=true;

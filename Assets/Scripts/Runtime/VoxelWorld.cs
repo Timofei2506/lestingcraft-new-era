@@ -13,7 +13,7 @@ namespace LestingCraft.Runtime
         readonly Dictionary<Vector2Int,View> chunks = new Dictionary<Vector2Int,View>();
         readonly Dictionary<Vector3Int,ushort> edits = new Dictionary<Vector3Int,ushort>();
         readonly HashSet<Vector2Int> dirty = new HashSet<Vector2Int>();
-        Material material,waterMaterial;
+        Material material,waterMaterial,grassMaterial;
         NativeArray<ushort> pendingBuffer;
         JobHandle pendingJob;
         public int Seed { get; private set; }
@@ -28,6 +28,7 @@ namespace LestingCraft.Runtime
             Seed=seed;Dimension=dimension;Online=online;
             material=new Material(Resources.Load<Material>("Generated/VoxelPBR"));
             waterMaterial=new Material(Resources.Load<Material>("Generated/Water"));
+            grassMaterial=new Material(Resources.Load<Material>("Generated/Grass"));
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
             RenderSettings.fogStartDistance=Radius*10;RenderSettings.fogEndDistance=Radius*16;
             StartCoroutine(Stream());
@@ -79,7 +80,7 @@ namespace LestingCraft.Runtime
                         handle.Complete();
                         var view=new View {Data=new ChunkData(buffer.ToArray()),Object=new GameObject($"Chunk {key.x} {key.y}")};
                         view.Object.transform.SetParent(transform,false);view.Object.transform.localPosition=new Vector3(key.x*16,0,key.y*16);
-                        view.Object.AddComponent<MeshFilter>();var renderer=view.Object.AddComponent<MeshRenderer>();renderer.sharedMaterials=new[]{material,waterMaterial};renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;renderer.receiveShadows=true;
+                        view.Object.AddComponent<MeshFilter>();var renderer=view.Object.AddComponent<MeshRenderer>();renderer.sharedMaterials=new[]{material,waterMaterial,grassMaterial};renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;renderer.receiveShadows=true;
                         view.Object.AddComponent<MeshCollider>();chunks.Add(key,view);
                         foreach(var edit in edits)if(ChunkCoordinate(edit.Key.x)==key.x&&ChunkCoordinate(edit.Key.z)==key.y)
                             view.Data.SetBlock(edit.Key.x-key.x*16,edit.Key.y,edit.Key.z-key.y*16,edit.Value);
@@ -112,13 +113,13 @@ namespace LestingCraft.Runtime
         {var found=new List<Vector3>();foreach(var edit in edits)if(edit.Value==15&&Vector3.Distance(point,(Vector3)edit.Key)<24)found.Add((Vector3)edit.Key+new Vector3(.5f,1,.5f));return found;}
         void Rebuild(Vector2Int key,View v)
         {
-            var data=ChunkMesher.Build(v.Data,key.x*16,key.y*16,GetBlock);
+            var data=ChunkMesher.Build(v.Data,key.x*16,key.y*16,GetBlock,Seed,Dimension==LestingCraft.World.Dimension.Lestingia);
             var mesh=data.CreateMesh();var collider=data.CreateMesh(true);
             v.Object.GetComponent<MeshFilter>().sharedMesh=mesh;
             v.Object.GetComponent<MeshCollider>().sharedMesh=collider;
             if(v.Visual)Destroy(v.Visual);if(v.Collision)Destroy(v.Collision);v.Visual=mesh;v.Collision=collider;
         }
         void DisposeView(View v){if(v.Visual)Destroy(v.Visual);if(v.Collision)Destroy(v.Collision);if(v.Object)Destroy(v.Object);}
-        void OnDestroy(){StopAllCoroutines();pendingJob.Complete();if(pendingBuffer.IsCreated){pendingBuffer.Dispose();pendingBuffer=default;}foreach(var v in chunks.Values)DisposeView(v);if(material)Destroy(material);if(waterMaterial)Destroy(waterMaterial);}
+        void OnDestroy(){StopAllCoroutines();pendingJob.Complete();if(pendingBuffer.IsCreated){pendingBuffer.Dispose();pendingBuffer=default;}foreach(var v in chunks.Values)DisposeView(v);if(material)Destroy(material);if(waterMaterial)Destroy(waterMaterial);if(grassMaterial)Destroy(grassMaterial);}
     }
 }

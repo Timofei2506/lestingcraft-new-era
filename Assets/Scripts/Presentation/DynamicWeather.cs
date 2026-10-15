@@ -1,20 +1,24 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using LestingCraft.Gameplay;
-using LestingCraft.Runtime;
+using LestingCraft.World;
 
 namespace LestingCraft.Presentation
 {
-    /// <summary>Camera-local precipitation, global deterministic weather, true sampled-depth/shadow light shafts.</summary>
+    /// <summary>Smoothed visual weather; survival continues using the unchanged deterministic WeatherSample.</summary>
     public sealed class DynamicWeather : MonoBehaviour
     {
         public SurvivalSession Session;
         Camera cameraView;Material fog;GameObject fogPlane;ParticleSystem rain,snow;float timer;Light sunlight;Material sky;
-        readonly System.Collections.Generic.List<GameObject> fires=new System.Collections.Generic.List<GameObject>();
+        float clouds,precipitation,wind,wetness,snowAmount,submerged;
+        readonly Dictionary<Vector3,GameObject> fires=new Dictionary<Vector3,GameObject>();
         public WeatherSample Sample {get;private set;}
         public void Initialize(SurvivalSession session,Camera view)
         {
             Session=session;cameraView=view;sunlight=RenderSettings.sun;sky=RenderSettings.skybox;
+            Sample=WeatherSample.At(session.Data.seed,(int)session.World.Dimension,session.Data.clock);
+            clouds=Sample.Clouds;precipitation=Sample.Precipitation;wind=Sample.Wind;
             fog=new Material(Resources.Load<Material>("Generated/Atmosphere"));
             fogPlane=GameObject.CreatePrimitive(PrimitiveType.Quad);fogPlane.name="Volumetric light shafts / height fog";Destroy(fogPlane.GetComponent<Collider>());
             fogPlane.transform.SetParent(view.transform,false);fogPlane.transform.localPosition=Vector3.forward;
@@ -24,12 +28,12 @@ namespace LestingCraft.Presentation
         ParticleSystem Precipitation(string name,bool isSnow)
         {
             var obj=new GameObject(name);obj.transform.SetParent(transform,false);var ps=obj.AddComponent<ParticleSystem>();ps.Stop();
-            var main=ps.main;main.loop=true;main.simulationSpace=ParticleSystemSimulationSpace.World;main.startSpeed=isSnow?1.7f:26;main.startLifetime=isSnow?7:.8f;
-            main.startSize=isSnow?.08f:.025f;main.startColor=isSnow?new Color(.92f,.96f,1,.75f):new Color(.68f,.8f,.9f,.4f);main.maxParticles=isSnow?700:1800;
+            var main=ps.main;main.loop=true;main.simulationSpace=ParticleSystemSimulationSpace.World;main.startSpeed=0;main.startLifetime=isSnow?7:.8f;
+            main.startSize=isSnow?.075f:.022f;main.startColor=isSnow?new Color(.92f,.96f,1,.72f):new Color(.68f,.8f,.9f,.32f);main.maxParticles=isSnow?700:1800;
             main.startRotation=new ParticleSystem.MinMaxCurve(0,Mathf.PI*2);
             var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Box;shape.scale=new Vector3(24,.3f,24);
             var velocity=ps.velocityOverLifetime;velocity.enabled=true;velocity.space=ParticleSystemSimulationSpace.World;velocity.x=isSnow?.7f:2;velocity.y=isSnow?-1.7f:-26;velocity.z=.2f;
-            main.startSpeed=0;var emission=ps.emission;emission.rateOverTime=0;
+            var emission=ps.emission;emission.rateOverTime=0;
             var collision=ps.collision;collision.enabled=true;collision.type=ParticleSystemCollisionType.World;collision.mode=ParticleSystemCollisionMode.Collision3D;collision.lifetimeLoss=1;collision.collidesWith=~0;collision.quality=ParticleSystemCollisionQuality.Low;
             var renderer=ps.GetComponent<ParticleSystemRenderer>();renderer.sharedMaterial=Resources.Load<Material>("Generated/Precipitation");
             renderer.renderMode=isSnow?ParticleSystemRenderMode.Billboard:ParticleSystemRenderMode.Stretch;renderer.lengthScale=isSnow?1:5;renderer.velocityScale=.03f;renderer.shadowCastingMode=ShadowCastingMode.Off;
@@ -37,42 +41,58 @@ namespace LestingCraft.Presentation
         }
         void LateUpdate()
         {
-            if(!Session||!cameraView)return;
+            if(!Session||!cameraView||!sunlight||!sky)return;
             Sample=WeatherSample.At(Session.Data.seed,(int)Session.World.Dimension,Session.Data.clock);
-            float windX=Mathf.Sin((float)(Session.Data.clock/90)+Session.Data.seed%1000)*Sample.Wind;
-            var rainWind=rain.velocityOverLifetime;rainWind.x=windX*3;rainWind.z=Sample.Wind;
-            var snowWind=snow.velocityOverLifetime;snowWind.x=windX*1.5f;snowWind.z=Sample.Wind*.3f;
-            Shader.SetGlobalFloat("_GlobalWindStrength",Sample.Wind);
+            float dt=Mathf.Min(Time.deltaTime,.25f),blend=1-Mathf.Exp(-dt/6);
+            clouds=Mathf.Lerp(clouds,Sample.Clouds,blend);precipitation=Mathf.Lerp(precipitation,Sample.Precipitation,blend);wind=Mathf.Lerp(wind,Sample.Wind,blend);
+            snowAmount=Mathf.Lerp(snowAmount,Sample.Kind==WeatherKind.Snow?precipitation:0,blend);
+            wetness=Mathf.MoveTowards(wetness,Sample.Kind==WeatherKind.Snow?0:precipitation,dt*(precipitation>wetness?.035f:.007f));
+            var cell=Vector3Int.FloorToInt(cameraView.transform.position);
+            bool inWater=Session.World.GetBlock(cell.x,cell.y,cell.z)==BlockRegistry.WaterId;
+            submerged=Mathf.MoveTowards(submerged,inWater?1:0,dt*5);
+            float windX=Mathf.Sin((float)(Session.Data.clock/90)+Session.Data.seed%1000)*wind;
+            var rainWind=rain.velocityOverLifetime;rainWind.x=windX*3;rainWind.z=wind;
+            var snowWind=snow.velocityOverLifetime;snowWind.x=windX*1.5f;snowWind.z=wind*.3f;
+            Shader.SetGlobalFloat("_GlobalWindStrength",wind);Shader.SetGlobalFloat("_GlobalWetness",wetness);Shader.SetGlobalFloat("_GlobalSnow",snowAmount);
             rain.transform.position=snow.transform.position=cameraView.transform.position+Vector3.up*12;
-            var re=rain.emission;re.rateOverTime=Session.Sheltered?0:(Sample.Kind==WeatherKind.Rain||Sample.Kind==WeatherKind.Storm)?Sample.Precipitation*1400:0;
-            var se=snow.emission;se.rateOverTime=Session.Sheltered?0:Sample.Kind==WeatherKind.Snow?Sample.Precipitation*80:0;
-            float hour=(float)(Session.Data.clock%1200)/1200*24,angle=hour*15-90;
-            sunlight.transform.rotation=Quaternion.Euler(angle,-32,0);float day=Mathf.Clamp01(Mathf.Sin((hour-6)*Mathf.PI/12));
-            sunlight.intensity=Mathf.Lerp(.045f,1.6f,day)*(1-Sample.Clouds*.50f);
-            sunlight.color=Color.Lerp(new Color(.55f,.65f,1),new Color(1,.89f,.74f),day);
-            sky.SetVector("_SunDirection",-sunlight.transform.forward);sky.SetColor("_SunColor",sunlight.color*(.12f+day));sky.SetFloat("_CloudCoverage",Sample.Clouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:24);
-            sky.SetColor("_Zenith",Color.Lerp(new Color(.007f,.015f,.04f),new Color(.13f,.33f,.51f),day));
-            var horizon=Color.Lerp(new Color(.03f,.045f,.07f),new Color(.43f,.59f,.66f),day);horizon=Color.Lerp(horizon,new Color(.24f,.29f,.32f),Sample.Precipitation*.55f);
-            sky.SetColor("_Horizon",horizon);RenderSettings.fogColor=horizon;
-            RenderSettings.ambientSkyColor=Color.Lerp(new Color(.025f,.04f,.07f),new Color(.4f,.53f,.62f),day);
-            RenderSettings.ambientEquatorColor=Color.Lerp(new Color(.012f,.019f,.028f),new Color(.19f,.23f,.21f),day);
-            fog.SetFloat("_Density",.004f+Sample.Precipitation*.009f);fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:16);fog.SetColor("_FogTint",horizon);
-            Shader.SetGlobalFloat("_FogHeight",LestingCraft.World.TerrainGenerator.Height(0,0,Session.Data.seed,Session.World.Dimension)+12);
-            Shader.SetGlobalFloat("_GlobalWetness",Sample.Kind==WeatherKind.Snow?0:Sample.Precipitation);
-            float height=Mathf.Tan(cameraView.fieldOfView*Mathf.Deg2Rad*.5f)*2;fogPlane.transform.localScale=new Vector3(height*cameraView.aspect,height,1);
-            timer+=Time.deltaTime;if(timer>2){timer=0;RefreshFires();}
+            float outside=Session.Sheltered||inWater?0:1;
+            var re=rain.emission;re.rateOverTime=outside*(precipitation-snowAmount)*1400;
+            var se=snow.emission;se.rateOverTime=outside*snowAmount*80;
+            var light=AtmosphereLighting.At(Session.Data.clock,Session.World.Dimension,clouds,precipitation);light.Apply(sunlight,Session.Data.clock);
+            sky.SetFloat("_CloudCoverage",clouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:24);
+            fog.SetFloat("_Density",Mathf.Lerp(.0025f+precipitation*.008f,.20f,submerged));
+            fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:16);
+            fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);
+            Shader.SetGlobalFloat("_FogHeight",Session.World.Dimension==Dimension.Skyreach?86:44);
+            float height=Mathf.Tan(cameraView.fieldOfView*Mathf.Deg2Rad*.5f)*2;
+            fogPlane.transform.localScale=new Vector3(height*cameraView.aspect*1.01f,height*1.01f,1);
+            timer+=dt;if(timer>2){timer=0;RefreshFires();}
+            foreach(var pair in fires)
+            {
+                var source=pair.Value.GetComponent<Light>();
+                source.intensity=3.2f+Mathf.PerlinNoise(pair.Key.x*.7f+(float)Session.Data.clock*2,pair.Key.z)*1.3f;
+            }
         }
         void RefreshFires()
         {
-            foreach(var fire in fires)if(fire)Destroy(fire);fires.Clear();
-            foreach(var point in Session.World.NearbyFires(cameraView.transform.position))
+            var points=Session.World.NearbyFires(cameraView.transform.position);points.Sort((a,b)=>(a-cameraView.transform.position).sqrMagnitude.CompareTo((b-cameraView.transform.position).sqrMagnitude));
+            if(points.Count>8)points.RemoveRange(8,points.Count-8);
+            var remove=new List<Vector3>();foreach(var key in fires.Keys)if(!points.Contains(key))remove.Add(key);
+            foreach(var key in remove){if(fires[key])Destroy(fires[key]);fires.Remove(key);}
+            foreach(var point in points)
             {
-                if(fires.Count>=8)break;var obj=new GameObject("Campfire light");obj.transform.SetParent(transform);obj.transform.position=point;var light=obj.AddComponent<Light>();light.type=LightType.Point;light.color=new Color(1,.42f,.10f);light.intensity=2.5f;light.range=9;light.shadows=LightShadows.None;
-                var ps=obj.AddComponent<ParticleSystem>();var main=ps.main;main.startLifetime=.65f;main.startSpeed=.8f;main.startSize=.22f;main.startColor=new Color(1,.4f,.06f,.55f);main.maxParticles=64;var emission=ps.emission;emission.rateOverTime=18;
-                var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Cone;shape.radius=.25f;shape.angle=12;shape.rotation=new Vector3(-90,0,0);
-                ps.GetComponent<ParticleSystemRenderer>().sharedMaterial=Resources.Load<Material>("Generated/Fire");fires.Add(obj);
+                if(fires.ContainsKey(point))continue;
+                var obj=new GameObject("Persistent campfire light");obj.transform.SetParent(transform);obj.transform.position=point;
+                var source=obj.AddComponent<Light>();source.type=LightType.Point;source.color=new Color(1,.39f,.075f);source.intensity=3.6f;source.range=9;source.shadows=LightShadows.None;
+                var ps=obj.AddComponent<ParticleSystem>();var main=ps.main;main.startLifetime=.65f;main.startSpeed=.8f;main.startSize=.22f;main.startColor=new Color(1,.4f,.06f,.55f);main.maxParticles=64;
+                var emission=ps.emission;emission.rateOverTime=18;var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Cone;shape.radius=.25f;shape.angle=12;shape.rotation=new Vector3(-90,0,0);
+                ps.GetComponent<ParticleSystemRenderer>().sharedMaterial=Resources.Load<Material>("Generated/Fire");fires.Add(point,obj);
             }
         }
-        void OnDestroy(){Shader.SetGlobalFloat("_GlobalWetness",0);if(fogPlane)Destroy(fogPlane);if(fog)Destroy(fog);}
+        void OnDestroy()
+        {
+            Shader.SetGlobalFloat("_GlobalWetness",0);Shader.SetGlobalFloat("_GlobalSnow",0);Shader.SetGlobalFloat("_GlobalWindStrength",0);
+            if(fogPlane)Destroy(fogPlane);if(fog)Destroy(fog);
+        }
     }
 }

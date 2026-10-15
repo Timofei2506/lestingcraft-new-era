@@ -1,6 +1,6 @@
 Shader "LestingCraft/VolumetricAtmosphere"
 {
-    Properties {_Density("Density",Float)=.006 _Steps("Steps",Float)=16 _FogTint("Fog tint",Color)=(.6,.7,.7,1)}
+    Properties {_Density("Density",Float)=.006 _Steps("Steps",Float)=16 _Submerged("Underwater",Float)=0 _FogTint("Fog tint",Color)=(.6,.7,.7,1)}
     SubShader
     {
         Tags {"RenderPipeline"="UniversalPipeline" "Queue"="Transparent+50" "RenderType"="Transparent"}
@@ -17,7 +17,7 @@ Shader "LestingCraft/VolumetricAtmosphere"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
-            float _Density,_Steps;half4 _FogTint;float _FogHeight;
+            float _Density,_Steps,_Submerged;half4 _FogTint;float _FogHeight;
             struct A{float4 p:POSITION;};struct V{float4 p:SV_POSITION;};
             V Vert(A i){V o;o.p=TransformObjectToHClip(i.p.xyz);return o;}
             half4 Frag(V i):SV_Target
@@ -35,10 +35,10 @@ Shader "LestingCraft/VolumetricAtmosphere"
                 {
                     if(n>=(int)_Steps)break;
                     float3 point=_WorldSpaceCameraPos+direction*(n+jitter)*stepLength;
-                    float heightDensity=exp(-max(0,point.y-_FogHeight)*.034);
+                    float heightDensity=lerp(exp(-max(0,point.y-_FogHeight)*.034),1,_Submerged);
                     float extinction=1-exp(-_Density*heightDensity*stepLength);
                     half shadow=MainLightRealtimeShadow(TransformWorldToShadowCoord(point));
-                    half3 light=_FogTint.rgb*.42+sun.color*(phase*4+.13)*shadow;
+                    half3 light=_FogTint.rgb*.42+sun.color*(phase*4+.13)*shadow*(1-_Submerged*.9);
                     scattering+=transmittance*extinction*light;transmittance*=1-extinction;
                 }
                 return half4(scattering,1-transmittance);

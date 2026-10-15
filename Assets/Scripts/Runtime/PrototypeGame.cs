@@ -82,6 +82,7 @@ namespace LestingCraft.Runtime
             var config=Resources.Load<TextAsset>("NetworkConfig");if(config)endpoint=JsonUtility.FromJson<NetworkConfig>(config.text).endpoint;
             Application.targetFrameRate=60;
             VisualSettings.Load();
+            gameObject.AddComponent<VisualCapture>();
             var pipeline=Resources.Load<UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset>("Generated/HighDefinition");
             UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline=pipeline;QualitySettings.renderPipeline=pipeline;
             Debug.Log("[Presentation] Pipeline configured");
@@ -111,7 +112,7 @@ namespace LestingCraft.Runtime
             player=obj.AddComponent<FirstPersonController>();player.World=world;player.Game=this;player.Camera=camera;
             camera.transform.SetParent(obj.transform,false);camera.transform.localPosition=new Vector3(0,1.62f,0);camera.nearClipPlane=.05f;camera.farClipPlane=160;
             dimension=realm;seedText=seed.ToString();camera.farClipPlane=256;
-            WorldAtmosphere.Configure(camera,realm);
+            WorldAtmosphere.Configure(camera,realm,resumeSave?.clock??clock);
             world.Player=obj.transform;paused=false;SetCursor(true);busy=false;status="Генерируется мир…";lastError="";
             var sessionObject=new GameObject("Survival and weather");sessionObject.transform.SetParent(world.transform,false);
             Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;

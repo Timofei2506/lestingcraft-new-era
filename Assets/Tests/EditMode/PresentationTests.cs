@@ -29,7 +29,7 @@ namespace LestingCraft.Tests
             var chunk=new ChunkData();chunk.SetBlock(2,4,2,7);chunk.SetBlock(5,4,5,1);
             var data=ChunkMesher.Build(chunk,0,0,(x,y,z)=>0);
             Assert.AreEqual(36,data.WaterTriangles.Count);Assert.AreEqual(36,data.OpaqueTriangles.Count);Assert.AreEqual(36,data.ColliderTriangles.Count);
-            var mesh=data.CreateMesh();Assert.AreEqual(2,mesh.subMeshCount);Object.DestroyImmediate(mesh);
+            var mesh=data.CreateMesh();Assert.AreEqual(3,mesh.subMeshCount);Object.DestroyImmediate(mesh);
         }
         [Test] public void MaterialLayerIdsAreValidForEveryBlockAndFace()
         {for(ushort id=1;id<=14;id++)for(int face=0;face<6;face++)Assert.That(SurfaceLayers.ForFace(id,face),Is.InRange(0,15));}

@@ -33,6 +33,7 @@ public static class BuildScript
         PresentationAssets.Ensure();
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
+        PlayerSettings.bundleVersion = "0.2.0-visual-test";
         PlayerSettings.colorSpace = ColorSpace.Linear;
 
         var options = new BuildPlayerOptions
@@ -50,6 +51,12 @@ public static class BuildScript
                   $"size={summary.totalSize}, time={summary.totalTime}, " +
                   $"errors={summary.totalErrors}, warnings={summary.totalWarnings}");
 
-        EditorApplication.Exit(summary.result == BuildResult.Succeeded && summary.totalErrors == 0 ? 0 : 1);
+        bool shaderErrors=false;
+        foreach(var name in new[]{"VoxelPBR","Water","Grass","AtmosphericSky","VolumetricAtmosphere"})
+        {
+            var shader=Shader.Find("LestingCraft/"+name);
+            if(!shader||ShaderUtil.ShaderHasError(shader)){Debug.LogError("BuildScript: invalid shader "+name);shaderErrors=true;}
+        }
+        EditorApplication.Exit(summary.result == BuildResult.Succeeded && summary.totalErrors == 0 && !shaderErrors ? 0 : 1);
     }
 }

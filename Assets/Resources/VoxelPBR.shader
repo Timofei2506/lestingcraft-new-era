@@ -31,7 +31,7 @@ Shader "LestingCraft/VoxelPBR"
             CBUFFER_START(UnityPerMaterial)
                 half _NormalStrength;
             CBUFFER_END
-            float _GlobalWetness;
+            float _GlobalWetness,_GlobalSnow;
             struct Attributes {float4 positionOS:POSITION;float3 normalOS:NORMAL;float4 tangentOS:TANGENT;float3 uv:TEXCOORD0;half4 color:COLOR;};
             struct Varyings {float4 positionCS:SV_POSITION;float3 positionWS:TEXCOORD0;half3 normalWS:TEXCOORD1;half4 tangentWS:TEXCOORD2;float3 uv:TEXCOORD3;half4 color:COLOR;float4 shadowCoord:TEXCOORD4;half fog:TEXCOORD5;};
             Varyings Vert(Attributes input)
@@ -55,8 +55,12 @@ Shader "LestingCraft/VoxelPBR"
                 lighting.fogCoord=i.fog;lighting.vertexLighting=VertexLighting(i.positionWS,lighting.normalWS);
                 lighting.bakedGI=SampleSH(lighting.normalWS);lighting.normalizedScreenSpaceUV=GetNormalizedScreenSpaceUV(i.positionCS);lighting.shadowMask=half4(1,1,1,1);
                 SurfaceData surface=(SurfaceData)0;
-                surface.albedo=albedo.rgb*(1-_GlobalWetness*.15);surface.metallic=mask.r;surface.specular=half3(.04,.04,.04);
-                surface.smoothness=saturate(mask.a+_GlobalWetness*.28);surface.normalTS=normalTS;surface.occlusion=mask.g*i.color.r;
+                float upward=saturate(i.normalWS.y);
+                float snow=upward*_GlobalSnow*.75*step(i.uv.z,8.5);
+                float macro=.94+.06*sin(i.positionWS.x*.29+sin(i.positionWS.z*.23))*sin(i.positionWS.z*.31+i.positionWS.y*.13);
+                float wet=_GlobalWetness*lerp(.3,1,upward);
+                surface.albedo=lerp(albedo.rgb*macro*(1-wet*.18),half3(.73,.79,.84),snow);surface.metallic=mask.r;surface.specular=half3(.04,.04,.04);
+                surface.smoothness=saturate(lerp(mask.a+wet*.32,.16,snow));surface.normalTS=normalTS;surface.occlusion=mask.g*i.color.r;
                 surface.alpha=1;
                 if(i.uv.z>8.5&&i.uv.z<9.5)surface.emission=albedo.rgb*2.8;
                 if(i.uv.z>11.5&&i.uv.z<12.5)surface.emission=albedo.rgb*.16;
