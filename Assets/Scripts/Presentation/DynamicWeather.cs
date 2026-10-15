@@ -69,6 +69,7 @@ namespace LestingCraft.Presentation
             timer+=dt;if(timer>2){timer=0;RefreshFires();}
             foreach(var pair in fires)
             {
+                pair.Value.GetComponent<CampfireEffects>().SetWind(windX,wind);
                 var source=pair.Value.GetComponent<Light>();
                 source.intensity=3.2f+Mathf.PerlinNoise(pair.Key.x*.7f+(float)Session.Data.clock*2,pair.Key.z)*1.3f;
             }
@@ -84,9 +85,7 @@ namespace LestingCraft.Presentation
                 if(fires.ContainsKey(point))continue;
                 var obj=new GameObject("Persistent campfire light");obj.transform.SetParent(transform);obj.transform.position=point;
                 var source=obj.AddComponent<Light>();source.type=LightType.Point;source.color=new Color(1,.39f,.075f);source.intensity=3.6f;source.range=9;source.shadows=LightShadows.None;
-                var ps=obj.AddComponent<ParticleSystem>();var main=ps.main;main.startLifetime=.35f;main.startSpeed=.35f;main.startSize=.10f;main.startColor=new Color(1,.4f,.06f,.55f);main.maxParticles=64;
-                var emission=ps.emission;emission.rateOverTime=18;var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Cone;shape.radius=.25f;shape.angle=12;shape.rotation=new Vector3(-90,0,0);
-                ps.GetComponent<ParticleSystemRenderer>().sharedMaterial=Resources.Load<Material>("Generated/Fire");fires.Add(point,obj);
+                obj.AddComponent<CampfireEffects>().Build();fires.Add(point,obj);
             }
         }
         void OnDestroy()

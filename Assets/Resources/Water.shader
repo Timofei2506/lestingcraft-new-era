@@ -22,7 +22,7 @@ Shader "LestingCraft/Water"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
             #include "../Shaders/EnvironmentLighting.hlsl"
             TEXTURE2D_ARRAY(_NormalArray);SAMPLER(sampler_NormalArray);
-            float4 _EnvironmentShallowWater,_EnvironmentDeepWater;float _LCWaterSteps;
+            float4 _EnvironmentShallowWater,_EnvironmentDeepWater;float _LCWaterSteps,_LCWaterReflectionProbe;
             struct A{float4 p:POSITION;float3 n:NORMAL;float4 t:TANGENT;};
             struct V{float4 p:SV_POSITION;float3 ws:TEXCOORD0;half3 n:TEXCOORD1;half4 t:TEXCOORD2;half fog:TEXCOORD3;};
             // Continuous world-space waves: adjacent chunks evaluate exactly the same phase.
@@ -38,12 +38,12 @@ Shader "LestingCraft/Water"
                 o.n=normalize(lerp(n.normalWS,normalize(float3(-slope.x,1,-slope.y)),saturate(n.normalWS.y)));
                 o.t=half4(n.tangentWS,i.t.w*GetOddNegativeScale());o.fog=ComputeFogFactor(o.p.z);return o;
             }
-            half3 ReflectScene(float3 ws,half3 normal,half3 view,half3 sky)
+            half3 ReflectScene(float3 ws,half3 normal,half3 view,half3 sky,out half confidence)
             {
                 // Bounded SSR, no history/ghosting; off-screen geometry deliberately falls back to sky.
                 float3 origin=TransformWorldToView(ws+normal*.07);
                 float3 direction=TransformWorldToViewDir(reflect(-view,normal),true);
-                float previousDiff=-1;
+                confidence=0;float previousDiff=-1,previousAlong=0;
                 int steps=clamp((int)_LCWaterSteps,10,24);[loop] for(int stepIndex=1;stepIndex<=24;stepIndex++)
                 {
                     if(stepIndex>steps)break;float along=stepIndex*10.0/steps;float distanceAlong=.20+along*along*.27;
@@ -55,10 +55,19 @@ Shader "LestingCraft/Water"
                     float diff=-ray.z-opaqueDepth;
                     if(diff>0&&previousDiff<0&&diff<.30+distanceAlong*.06)
                     {
-                        float edge=saturate(min(min(uv.x,1-uv.x),min(uv.y,1-uv.y))*12);
-                        return lerp(sky,SampleSceneColor(uv),edge*.82);
+                        // Refine the first depth crossing instead of sampling the overshot foreground.
+                        float low=previousAlong,high=distanceAlong;float2 hitUV=uv;
+                        [unroll]for(int refine=0;refine<4;refine++)
+                        {
+                            float mid=(low+high)*.5;float3 q=origin+direction*mid;
+                            float4 h=ComputeScreenPos(mul(UNITY_MATRIX_P,float4(q,1)));float2 candidate=h.xy/h.w;
+                            float depth=LinearEyeDepth(SampleSceneDepth(candidate),_ZBufferParams);
+                            if(-q.z>depth){high=mid;hitUV=candidate;}else low=mid;
+                        }
+                        float edge=saturate(min(min(hitUV.x,1-hitUV.x),min(hitUV.y,1-hitUV.y))*12);
+                        confidence=edge*.82;return lerp(sky,SampleSceneColor(hitUV),confidence);
                     }
-                    previousDiff=diff;
+                    previousDiff=diff;previousAlong=distanceAlong;
                 }
                 return sky;
             }
@@ -86,7 +95,9 @@ Shader "LestingCraft/Water"
                 body*=lerp(.12,1,_EnvironmentDaylight);
                 half3 refracted=behind*transmission+body*(1-transmission);
                 half fresnel=.02+.98*pow(1-saturate(dot(n,view)),5);
-                half3 reflected=ReflectScene(i.ws,n,view,LC_SkyRadiance(reflect(-view,n)));
+                half confidence;half3 reflected=ReflectScene(i.ws,n,view,LC_SkyRadiance(reflect(-view,n)),confidence);
+                // Native smoke-test readback only. Zero by default; never exposed as a visual effect.
+                if(_LCWaterReflectionProbe>.5)return half4(confidence>.02?half3(1,0,1):half3(0,0,1),1);
                 // Energy-limited GGX sun lobe replaces the previous painted-looking pow highlight.
                 half nv=max(.04,saturate(dot(n,view))),nl=saturate(dot(n,sun.direction));
                 half nh=saturate(dot(n,normalize(sun.direction+view)));half rough=.075+_GlobalWindStrength*.04;

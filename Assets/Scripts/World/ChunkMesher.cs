@@ -54,6 +54,8 @@ namespace LestingCraft.World
                 case 9:return new Color32(39,45,56,255); case 10:return new Color32(79,68,78,255);
                 case 11:return new Color32(174,108,224,255); case 12:return new Color32(105,211,216,255);
                 case 13:return new Color32(194,160,103,255); case 14:return new Color32(224,236,244,255);
+                case 15:return new Color32(153,91,43,255);case 16:return new Color32(139,101,61,255);
+                case 17:return new Color32(106,103,97,255);case 18:return new Color32(154,113,68,255);
                 default:return new Color32(255,0,255,255);
             }
         }
@@ -64,7 +66,7 @@ namespace LestingCraft.World
             var grassCells=decorate?new List<Vector3Int>():null;
             for(int y=0;y<ChunkData.SizeY;y++) for(int z=0;z<16;z++) for(int x=0;x<16;x++)
             {
-                ushort id=chunk.GetBlock(x,y,z); if(id==0)continue;
+                ushort id=chunk.GetBlock(x,y,z); if(id==0||id==BlockRegistry.CrystalId)continue; // Crystal surface/collision use the shared authored mesh.
                 bool solid=BlockRegistry.IsSolid(id);
                 for(int face=0;face<6;face++)
                 {
@@ -73,7 +75,7 @@ namespace LestingCraft.World
                     if(BlockRegistry.Occludes(other)||(!solid&&other==id))continue;
                     int start=data.Vertices.Count;
                     Vector3 u=Corners[face][3]-Corners[face][0],v=Corners[face][1]-Corners[face][0];
-                    int layer=SurfaceLayers.ForFace(id,face);
+                    int layer=SurfaceLayers.ForCellFace(id,face,ox+x,y,oz+z,seed);
                     for(int c=0;c<4;c++)
                     {
                         float ux=c>=2?1:0,vy=(c==1||c==2)?1:0;

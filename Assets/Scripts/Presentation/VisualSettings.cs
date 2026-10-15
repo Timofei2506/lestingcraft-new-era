@@ -12,6 +12,7 @@ namespace LestingCraft.Presentation
         public float RenderScale=1;
         public int ShadowResolution=2048;
         public bool PostEffects=true;
+        public bool AmbientOcclusion=true;
         public int VolumetricQuality=1;
         public float Sensitivity=.10f;
         public float FieldOfView=75;
@@ -28,6 +29,8 @@ namespace LestingCraft.Presentation
         {
             var asset=GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
             if(asset){asset.renderScale=RenderScale;asset.mainLightShadowmapResolution=ShadowResolution;asset.shadowDistance=ViewDistance*(Preset==1?30:22);asset.shadowCascadeCount=Preset==1?4:2;}
+            var renderer=Resources.Load<UniversalRendererData>("Generated/Renderer");
+            if(renderer)foreach(var feature in renderer.rendererFeatures)if(feature is ScreenSpaceAmbientOcclusion)feature.SetActive(AmbientOcclusion);
             Shader.SetGlobalFloat("_LCParallaxSteps",Preset==1?16:8);Shader.SetGlobalFloat("_LCWaterSteps",Preset==1?24:12);
             Shader.SetGlobalFloat("_LCGrassRange",Preset==1?64:42);Shader.SetGlobalFloat("_LCUltra",Preset);
             if(Camera.main)
@@ -38,8 +41,8 @@ namespace LestingCraft.Presentation
         }
         public static bool HardwareRayTracing=>SystemInfo.supportsRayTracing;
         public static bool PipelineRayTracing=>false; // URP 17 has no hardware RT renderer. Never mislabel SSR as RTX.
-        public void Ultra(){Preset=1;ViewDistance=4;RenderScale=1.15f;ShadowResolution=4096;PostEffects=true;VolumetricQuality=2;Save();}
-        public void HighDefault(){Preset=0;ViewDistance=3;RenderScale=1;ShadowResolution=2048;PostEffects=true;VolumetricQuality=1;Sensitivity=.1f;FieldOfView=75;Save();}
+        public void Ultra(){Preset=1;ViewDistance=4;RenderScale=1.15f;ShadowResolution=4096;PostEffects=true;AmbientOcclusion=true;VolumetricQuality=2;Save();}
+        public void HighDefault(){Preset=0;ViewDistance=3;RenderScale=1;ShadowResolution=2048;PostEffects=true;AmbientOcclusion=true;VolumetricQuality=1;Sensitivity=.1f;FieldOfView=75;Save();}
     }
     public sealed class AtmosphereLifetime : MonoBehaviour
     {

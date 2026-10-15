@@ -8,8 +8,9 @@ namespace LestingCraft.Gameplay
   public static int Slot(int id){switch(id){case 130:return 0;case 104:return 1;case 131:return 2;case 132:return 3;case 105:return 4;case 106:return 5;case 107:return 6;case 108:return 7;default:return -1;}}
   public static bool Accept(int slot,int id)=>slot>=0&&slot<Count&&Slot(id)==slot;
   public static float Insulation(Inventory inv){float n=0;foreach(var s in inv.equipment)if(s.count>0)n+=Items.Get(s.item).Insulation;return n;}
+  public static float ItemProtection(int id)=>id==105||id==108?.09f:id==106?.18f:id==107?.14f:0;
   public static float Protection(Inventory inv)
-  {float n=0;for(int i=4;i<Count;i++)if(inv.equipment[i].count>0&&inv.equipment[i].durability>0)n+=i==5?.18f:i==6?.14f:.09f;return n;}
+  {float n=0;for(int i=4;i<Count;i++)if(inv.equipment[i].count>0&&inv.equipment[i].durability>0)n+=ItemProtection(inv.equipment[i].item);return n;}
   public static bool Equip(Inventory inv,int bagSlot)
   {
    if(bagSlot<0||bagSlot>=Inventory.SlotCount)return false;var s=inv.slots[bagSlot];int target=Slot(s.item);if(s.count!=1||target<0||s.durability<=0&&Items.Get(s.item).Durability>0)return false;

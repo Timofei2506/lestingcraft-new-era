@@ -123,8 +123,20 @@ namespace LestingCraft.Runtime
         {
             if(v.Specials)Destroy(v.Specials);
             v.Specials=new GameObject("Authored placed objects");v.Specials.transform.SetParent(v.Object.transform,false);
+            var crystals=new List<Vector3>();
             for(int y=0;y<ChunkData.SizeY;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++)
-                if(v.Data.GetBlock(x,y,z)==15)LestingCraft.Presentation.PlacedVoxelModel.Create(15,v.Specials.transform,new Vector3(x,y,z),objectMaterial);
+            {
+                ushort id=v.Data.GetBlock(x,y,z);
+                if(id==15)LestingCraft.Presentation.PlacedVoxelModel.Create(15,v.Specials.transform,new Vector3(x,y,z),objectMaterial);
+                if(id==11)
+                {
+                    int wx=key.x*16+x,wz=key.y*16+z;
+                    if(!BlockRegistry.Occludes(GetBlock(wx+1,y,wz))||!BlockRegistry.Occludes(GetBlock(wx-1,y,wz))||
+                       !BlockRegistry.Occludes(GetBlock(wx,y+1,wz))||!BlockRegistry.Occludes(GetBlock(wx,y-1,wz))||
+                       !BlockRegistry.Occludes(GetBlock(wx,y,wz+1))||!BlockRegistry.Occludes(GetBlock(wx,y,wz-1)))crystals.Add(new Vector3(x,y,z));
+                }
+            }
+            LestingCraft.Presentation.PlacedVoxelModel.CreateCrystalBatch(v.Specials.transform,crystals,objectMaterial);
             var data=ChunkMesher.Build(v.Data,key.x*16,key.y*16,GetBlock,Seed,Dimension==LestingCraft.World.Dimension.Lestingia,detailQuality);
             var mesh=data.CreateMesh();var collider=data.CreateMesh(true);
             v.Object.GetComponent<MeshFilter>().sharedMesh=mesh;

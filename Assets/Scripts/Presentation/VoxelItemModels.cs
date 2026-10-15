@@ -17,6 +17,21 @@ namespace LestingCraft.Presentation
             var data=Resources.Load<TextAsset>("Models/VoxelItems");if(!data)throw new InvalidOperationException("Voxel object catalog missing");
             catalog=JsonUtility.FromJson<Catalog>(data.text);definitions=new Dictionary<int,Definition>();foreach(var model in catalog.models)definitions.Add(model.id,model);
         }
+        sealed class Occupancy
+        {public readonly HashSet<Vector3Int> Cells=new HashSet<Vector3Int>();public Vector3 Center;public float Unit;}
+        static readonly Dictionary<int,Occupancy> occupied=new Dictionary<int,Occupancy>();
+        public static bool TracePlaced(int id,Vector3 cell,Vector3 origin,Vector3 direction,float reach,out LestingCraft.Runtime.VoxelRaycast.Hit hit)
+        {
+            if(!occupied.TryGetValue(id,out var shape))
+            {
+                shape=new Occupancy();var model=Get(id);Vector3 lo=Vector3.positiveInfinity,hi=Vector3.negativeInfinity;
+                for(int i=0;i<model.cells.Length;i+=4){var p=new Vector3Int(model.cells[i],model.cells[i+1],model.cells[i+2]);shape.Cells.Add(p);lo=Vector3.Min(lo,p);hi=Vector3.Max(hi,(Vector3)p+Vector3.one);}
+                shape.Center=(lo+hi)*.5f;shape.Unit=PlacedVoxelModel.Scale/Mathf.Max(hi.x-lo.x,Mathf.Max(hi.y-lo.y,hi.z-lo.z));occupied[id]=shape;
+            }
+            Vector3 source=(origin-cell-PlacedVoxelModel.Offset(id))/shape.Unit+shape.Center;
+            bool found=LestingCraft.Runtime.VoxelRaycast.Trace(source,direction,reach/shape.Unit,(x,y,z)=>(ushort)(shape.Cells.Contains(new Vector3Int(x,y,z))?1:0),out var fine);
+            hit=new LestingCraft.Runtime.VoxelRaycast.Hit(Vector3Int.RoundToInt(cell),fine.Normal,fine.Distance*shape.Unit);return found;
+        }
         public static Definition Get(int id){Load();return definitions.TryGetValue(id,out var model)?model:null;}
         public static Mesh MeshFor(int id)
         {
@@ -29,7 +44,7 @@ namespace LestingCraft.Presentation
             foreach(var pair in cells)for(int face=0;face<6;face++)
             {
                 if(cells.ContainsKey(pair.Key+BlockGeometry.Directions[face]))continue;int start=vertices.Count,palette=pair.Value;
-                ColorUtility.TryParseHtmlString(catalog.colors[palette],out var tint);tint.a=palette==32||palette==36?1:0;
+                ColorUtility.TryParseHtmlString(catalog.colors[palette],out var tint);tint.a=palette==32||palette==36?1:palette==12?.08f:palette==13?.025f:0;
                 var tangent=BlockGeometry.Corners[face][3]-BlockGeometry.Corners[face][0];
                 for(int k=0;k<4;k++)
                 {

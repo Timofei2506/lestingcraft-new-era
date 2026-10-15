@@ -31,7 +31,7 @@ namespace LestingCraft.Runtime
             var game=FindFirstObjectByType<PrototypeGame>();var ui=FindFirstObjectByType<GameUI>();
             if(!game||!Camera.main||!ui||!ui.IsReady||failure!=null){Fail("Bootstrap/menu initialization: "+failure);yield break;}
             if(!MenuArtwork.Backdrop){Fail("Menu backdrop is missing.");yield break;}
-            foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","Sky","Atmosphere","Precipitation","Fire"})
+            foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","Sky","Atmosphere","Precipitation","Fire","Smoke"})
             {
                 var material=Resources.Load<Material>("Generated/"+name);
                 if(!material||!material.shader||!material.shader.isSupported){Fail("Missing/unsupported material: "+name);yield break;}
@@ -66,6 +66,25 @@ namespace LestingCraft.Runtime
             yield return null;yield return null;yield return new WaitForEndOfFrame();
             var placed=GameObject.Find("Placed voxel model 15");if(!placed||placed.GetComponent<MeshFilter>().sharedMesh!=VoxelItemModels.MeshFor(15)){Fail("Placed campfire must use authored icon geometry");yield break;}
             Debug.Log("[Smoke] CAMPFIRE_PARITY: same shared mesh as icon/held model, no opaque cube");
+            var crystalCell=Vector3Int.FloorToInt(player.transform.position)+new Vector3Int(2,0,3);
+            game.Session.World.Edit(crystalCell.x,crystalCell.y-1,crystalCell.z,1);
+            game.Session.World.Edit(crystalCell.x,crystalCell.y,crystalCell.z,11);
+            game.Session.World.Edit(crystalCell.x,crystalCell.y+1,crystalCell.z,0);
+            yield return null;yield return null;
+            var crystal=GameObject.Find("Placed crystal clusters");if(!crystal||!crystal.GetComponent<MeshCollider>().sharedMesh){Fail("Authored crystal render/collision missing");yield break;}
+            var crystalOrigin=(Vector3)crystalCell+new Vector3(.5f,.5f,-1);
+            if(!VoxelRaycast.Trace(crystalOrigin,Vector3.forward,3,game.Session.World.GetBlock,out var crystalHit)||crystalHit.Cell!=crystalCell){Fail("Native crystal voxel targeting mismatch");yield break;}
+            deadline=Time.realtimeSinceStartup+25;CampfireEffects effects=null;
+            while(!effects&&Time.realtimeSinceStartup<deadline){effects=FindFirstObjectByType<CampfireEffects>();yield return null;}
+            if(!effects||!effects.Smoke||!effects.Sparks){Fail("Campfire smoke/spark emitters missing");yield break;}
+            effects.Smoke.Simulate(1,true,false,true);effects.Smoke.Play();effects.Sparks.Simulate(.8f,true,false,true);effects.Sparks.Play();
+            if(effects.Smoke.particleCount==0||effects.Sparks.particleCount==0){Fail("Campfire emitters did not produce live particles");yield break;}
+            var rendererData=Resources.Load<UnityEngine.Rendering.Universal.UniversalRendererData>("Generated/Renderer");bool ssao=false;
+            foreach(var feature in rendererData.rendererFeatures)if(feature is UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion&&feature.isActive)ssao=true;
+            yield return new WaitForEndOfFrame();
+            var aoTexture=Shader.GetGlobalTexture("_ScreenSpaceOcclusionTexture");
+            if(!ssao||!aoTexture||aoTexture.width<16){Fail("SSAO did not produce its real screen-space texture");yield break;}
+            Debug.Log("[Smoke] FOUNDATION10: live smoke="+effects.Smoke.particleCount+" sparks="+effects.Sparks.particleCount+"; shared crystal shape/render/collision/targeting; SSAO="+aoTexture.width+"x"+aoTexture.height);
             var hands=player.GetComponent<FirstPersonHands>();
             if(!hands||!hands.ViewCamera||!hands.ViewCamera.enabled){Fail("First-person hand camera not active.");yield break;}
             var body=ui.GetComponentInChildren<HealthSilhouette>();
@@ -78,13 +97,19 @@ namespace LestingCraft.Runtime
             game.ToggleInventory();yield return null;
             foreach(int gear in new[]{104,105,106,107,108,130,131,132})
             {var bag=game.Session.Inventory;bag.Add(gear,1);int index=Array.FindIndex(bag.slots,s=>s.item==gear&&s.count>0);ui.InventoryClick(index,false,true);if(bag.equipment[Equipment.Slot(gear)].item!=gear){Fail("Native shift-equip failed: "+gear);yield break;}}
-            yield return null;Debug.Log("[Smoke] EQUIPMENT: eight independent clothing/armor slots equipped through actual inventory clicks");
+            yield return null;
+            var summary=GameObject.Find("Equipment summary");if(!summary||!summary.GetComponent<Text>().text.Contains("50%")){Fail("Live armor protection summary missing");yield break;}
+            var helmetHover=Array.Find(ui.GetComponentsInChildren<ItemHover>(),h=>h.Item==105);
+            if(!helmetHover||helmetHover.Durability!=180){Fail("Equipment tooltip has no real durability");yield break;}
+            ui.ShowItemTooltip(105,new Vector2(1000,400),helmetHover.Durability);
+            var gearTip=GameObject.Find("Item name tooltip");if(!gearTip||!gearTip.GetComponentInChildren<Text>().text.Contains("180 / 180")){Fail("Armor durability tooltip missing");yield break;}
+            Debug.Log("[Smoke] EQUIPMENT: eight independent clothing/armor slots equipped through actual inventory clicks");
             ItemHover item=null;foreach(var hover in ui.GetComponentsInChildren<ItemHover>())if(hover.Item>0){item=hover;break;}
             if(!item){Fail("Inventory hover target missing.");yield break;}
             var point=RectTransformUtility.WorldToScreenPoint(null,item.transform.position)+new Vector2(30,-30);
             ExecuteEvents.Execute(item.gameObject,new PointerEventData(EventSystem.current){position=point},ExecuteEvents.pointerEnterHandler);
             var tooltip=GameObject.Find("Item name tooltip");
-            if(!tooltip||tooltip.GetComponentInChildren<Text>().text!=Items.Get(item.Item).Name){Fail("Item tooltip did not show its name.");yield break;}
+            if(!tooltip||!tooltip.GetComponentInChildren<Text>().text.StartsWith(Items.Get(item.Item).Name)){Fail("Item tooltip did not show its name.");yield break;}
             string inventoryshot=Path.GetFullPath(Path.Combine(folder,"inventory-tooltip.png"));
             yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(inventoryshot);
             yield return WaitForScreenshot(inventoryshot);
@@ -139,8 +164,29 @@ namespace LestingCraft.Runtime
             string ultraShot=Path.GetFullPath(Path.Combine(folder,"world-ultra.png"));ScreenCapture.CaptureScreenshot(ultraShot);yield return WaitForScreenshot(ultraShot);
             if(!ScreenshotReady(ultraShot)||!ScreenshotHasDetail(ultraShot)||failure!=null){Fail("Ultra graphics frame/runtime errors: "+failure);yield break;}
             Debug.Log("[Smoke] ULTRA: 4096 shadows / 40 cloud steps / 32 volume steps / no hardware RT claim");
+            // Reproducible in-world water fixture, not a painted reflection or a mock render.
+            var savedPosition=Camera.main.transform.position;var savedRotation=Camera.main.transform.rotation;
+            var pool=Vector3Int.FloorToInt(player.transform.position);var world=game.Session.World;
+            for(int z=1;z<=10;z++)for(int x=3;x<=7;x++)
+            {
+                world.Edit(pool.x+x,pool.y-2,pool.z+z,1);world.Edit(pool.x+x,pool.y-1,pool.z+z,7);
+                for(int y=0;y<4;y++)world.Edit(pool.x+x,pool.y+y,pool.z+z,0);
+            }
+            for(int x=3;x<=7;x++)for(int y=0;y<3;y++)world.Edit(pool.x+x,pool.y+y,pool.z+10,17);
+            Camera.main.transform.position=(Vector3)pool+new Vector3(5.5f,1.9f,-.5f);
+            Camera.main.transform.LookAt((Vector3)pool+new Vector3(5.5f,.15f,6));
+            for(int frame=0;frame<5;frame++)yield return null;
+            yield return new WaitForEndOfFrame();string waterShot=Path.GetFullPath(Path.Combine(folder,"water-reflections.png"));ScreenCapture.CaptureScreenshot(waterShot);yield return WaitForScreenshot(waterShot);
+            var cameraData=Camera.main.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();cameraData.renderPostProcessing=false;
+            Shader.SetGlobalFloat("_LCWaterReflectionProbe",1);yield return null;yield return null;yield return new WaitForEndOfFrame();
+            string reflectionMask=Path.GetFullPath(Path.Combine(folder,"water-ssr-proof.png"));ScreenCapture.CaptureScreenshot(reflectionMask);yield return WaitForScreenshot(reflectionMask);
+            Shader.SetGlobalFloat("_LCWaterReflectionProbe",0);cameraData.renderPostProcessing=true;Camera.main.transform.SetPositionAndRotation(savedPosition,savedRotation);
+            var readback=new Texture2D(2,2,TextureFormat.RGBA32,false);readback.LoadImage(File.ReadAllBytes(reflectionMask));int hits=0;
+            foreach(var pixel in readback.GetPixels32())if(pixel.r>175&&pixel.b>175&&pixel.g<55)hits++;Destroy(readback);
+            if(hits<32||failure!=null){Fail("SSR fixture did not reflect on-screen scene geometry: "+hits+" pixels / "+failure);yield break;}
+            Debug.Log("[Smoke] WATER_SSR_READBACK: "+hits+" actual ray/depth hits in real EXE; magenta=scene reflection, blue=sky fallback; four-step crossing refinement; NOT hardware ray tracing");
             finishing=true;
-            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking and five executable screenshots. WARP is not a user-GPU/FPS benchmark.");
+            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking live smoke/sparks, authored crystal collision/targeting, real SSAO texture, SSR hit-mask readback and eight executable screenshots. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);
         }
         // A bounded simulation budget AND a wall-clock guard: a stalled/paused furnace must still fail.

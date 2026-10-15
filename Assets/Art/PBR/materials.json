@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -28,8 +28,11 @@
     "furnace-front",
     "furnace-top",
     "campfire-side",
-    "campfire-top"
+    "campfire-top",
+    "ore-copper",
+    "ore-coal"
   ],
   "stationSource": "Original procedural joinery/masonry + derived PBR estimates",
-  "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries"
+  "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries",
+  "iteration10": "Original firebrick/soot/iron firebox, fractured bedrock; iron/copper/coal-like visual lodes of the SAME existing ore block. Derived PBR, not scans."
 }

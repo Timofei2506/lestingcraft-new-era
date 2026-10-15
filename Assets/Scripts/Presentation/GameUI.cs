@@ -27,9 +27,9 @@ namespace LestingCraft.Presentation
             else {chatInput.DeactivateInputField();UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);}
         }
         System.Collections.IEnumerator FocusChat(){yield return null;if(chatInput&&game.ChatOpen){chatInput.text="";chatInput.ActivateInputField();}}
-        sealed class CellView {public int Index;public RawImage Icon;public Text Count;public ItemHover Hover;}
+        sealed class CellView {public int Index;public RawImage Icon;public Text Count;public ItemHover Hover;public Image Wear;public float WearWidth;}
         readonly List<CellView> inventoryViews=new List<CellView>();int stationKind,craftWidth=2;Vector3Int stationCell;
-        RawImage craftOutput,cursorImage;Text craftCount,cursorCount,stoveStatus;RectTransform cursorRoot;int craftRevision=-1;
+        RawImage craftOutput,cursorImage;Text craftCount,cursorCount,stoveStatus,equipmentStatus;RectTransform cursorRoot;int craftRevision=-1;
         public bool InventoryOpen=>page==Page.Inventory;
         public bool IsReady=>ready;
         public string ScreenName=>page.ToString();
@@ -224,7 +224,7 @@ namespace LestingCraft.Presentation
             for(int i=0;i<Equipment.Count;i++)
             {float x=64+i*145;Label(content.transform,Equipment.Names[i],x,165,176,23,12,Muted);CreateCell(58+i,x,191,62,55);}
             var portrait=Rect("3D equipped character",content.transform,1260,145,100,150).gameObject.AddComponent<RawImage>();portrait.raycastTarget=false;portrait.gameObject.AddComponent<CharacterPreview>().Initialize(game);
-            Label(content.transform,"Броня снижает\nурон от ударов;\nодежда греет.\nНезависимые слоты.",1375,172,160,98,12,Muted);
+            equipmentStatus=Label(content.transform,"",1370,157,168,141,12,Muted);equipmentStatus.name="Equipment summary";
             BuildRecipeBook();
             status=Label(content.transform,game.Session.Notice,340,812,1180,56,15,Accent);
             Button("←  В мир",64,812,230,51,game.ToggleInventory,true);
@@ -239,7 +239,8 @@ namespace LestingCraft.Presentation
             var click=button.gameObject.AddComponent<InventorySlot>();click.Owner=this;click.Index=index;
             AttachHover(button.gameObject,0);var icon=Rect("Stack icon",button.transform,10,2,w-20,h-15).gameObject.AddComponent<RawImage>();icon.raycastTarget=false;
             var count=Label(button.transform,"",5,h-21,w-10,18,12,White,false,TextAnchor.MiddleRight);
-            inventoryViews.Add(new CellView{Index=index,Icon=icon,Count=count,Hover=button.GetComponent<ItemHover>()});
+            var wear=Box(button.transform,4,h-5,w-8,3,Accent,false);wear.gameObject.name="Equipment durability "+index;
+            inventoryViews.Add(new CellView{Index=index,Icon=icon,Count=count,Hover=button.GetComponent<ItemHover>(),Wear=wear,WearWidth=w-8});
             if(index<9)Label(button.transform,(index+1).ToString(),5,3,17,17,10,Accent);
         }
         void BuildRecipeBook()
@@ -276,8 +277,11 @@ namespace LestingCraft.Presentation
             foreach(var view in inventoryViews)
             {
                 var stack=InventoryInteraction.Get(inv,view.Index);view.Icon.texture=ItemArtwork.Get(stack.item);view.Icon.enabled=stack.count>0&&view.Icon.texture;
-                view.Count.text=stack.count>0?stack.count.ToString():"";view.Hover.Item=stack.count>0?stack.item:0;
+                view.Count.text=stack.count>0?stack.count.ToString():"";view.Hover.Item=stack.count>0?stack.item:0;view.Hover.Durability=stack.count>0?stack.durability:-1;
+                int max=Items.Get(stack.item).Durability;bool worn=stack.count>0&&max>0;view.Wear.gameObject.SetActive(worn);
+                if(worn){float fraction=Mathf.Clamp01((float)stack.durability/max);view.Wear.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal,view.WearWidth*fraction);view.Wear.color=Color.Lerp(new Color(.95f,.25f,.12f),Accent,fraction);view.Count.text=Mathf.RoundToInt(fraction*100)+"%";}
             }
+            if(equipmentStatus)equipmentStatus.text="Защита от ударов: "+Mathf.RoundToInt(Equipment.Protection(inv)*100)+"%\nУтепление: +"+Equipment.Insulation(inv).ToString("0")+"°\n\nShift + клик — надеть\nили снять. Рецепты\nброни — на верстаке.";
             if(stationKind!=17&&craftOutput)
             {
                 var recipe=CraftingTable.Match(inv.grid,craftWidth);craftOutput.texture=recipe==null?null:ItemArtwork.Get(recipe.Output);craftOutput.enabled=craftOutput.texture;
@@ -293,17 +297,21 @@ namespace LestingCraft.Presentation
             if(item<=0)return;
             var raw=Rect("Item icon",parent,x,y,size,size).gameObject.AddComponent<RawImage>();raw.texture=ItemArtwork.Get(item);raw.raycastTarget=false;
         }
-        public void ShowItemTooltip(int item,Vector2 screenPosition)
+        public void ShowItemTooltip(int item,Vector2 screenPosition,int durability=-1)
         {
             if(item<=0||!frame)return;
             if(!tooltip)
             {
-                var panel=Box(frame,0,0,360,58,new Color(.025f,.045f,.05f,.98f));tooltip=panel.rectTransform;
-                tooltip.name="Item name tooltip";tooltipText=Label(tooltip,"",17,0,326,58,18,White,false,TextAnchor.MiddleLeft);
+                var panel=Box(frame,0,0,360,104,new Color(.025f,.045f,.05f,.98f));tooltip=panel.rectTransform;
+                tooltip.name="Item name tooltip";tooltipText=Label(tooltip,"",17,5,326,94,15,White,false,TextAnchor.MiddleLeft);
             }
-            tooltipText.text=Items.Get(item).Name;tooltip.gameObject.SetActive(true);tooltip.SetAsLastSibling();
+            var definition=Items.Get(item);tooltipText.text=definition.Name;
+            if(definition.Durability>0&&durability>=0)tooltipText.text+="\nПрочность: "+durability+" / "+definition.Durability;
+            if(Equipment.ItemProtection(item)>0)tooltipText.text+=" · защита "+Mathf.RoundToInt(Equipment.ItemProtection(item)*100)+"%";
+            if(definition.Insulation>0)tooltipText.text+="\nУтепление: +"+definition.Insulation.ToString("0")+"°";
+            if(Equipment.Slot(item)>=0)tooltipText.text+="\nShift + клик — надеть / снять";tooltip.gameObject.SetActive(true);tooltip.SetAsLastSibling();
             RectTransformUtility.ScreenPointToLocalPointInRectangle(frame,screenPosition,null,out var local);
-            tooltip.anchoredPosition=new Vector2(Mathf.Clamp(local.x+800+18,10,1230),-Mathf.Clamp(450-local.y+20,10,832));
+            tooltip.anchoredPosition=new Vector2(Mathf.Clamp(local.x+800+18,10,1230),-Mathf.Clamp(450-local.y+20,10,786));
         }
         public void HideItemTooltip(){if(tooltip)tooltip.gameObject.SetActive(false);}
         public void ShowDeathScreen()
@@ -325,7 +333,8 @@ namespace LestingCraft.Presentation
             Slider("Масштаб рендера",92,469,655,settings.RenderScale,.85f,1.5f,false,v=>{settings.RenderScale=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
             Button("Тени: "+settings.ShadowResolution.ToString(),92,589,309,58,()=>{settings.ShadowResolution=settings.ShadowResolution==1024?2048:settings.ShadowResolution==2048?4096:1024;settings.Save();ShowSettings(settingsBack);});
             Button("Постэффекты: "+(settings.PostEffects?"вкл.":"выкл."),419,589,328,58,()=>{settings.PostEffects=!settings.PostEffects;settings.Save();ShowSettings(settingsBack);});
-            Button("Объёмы: "+(settings.VolumetricQuality==2?"Ultra":settings.VolumetricQuality==1?"высокие":"сокращённые"),92,667,655,38,()=>{settings.VolumetricQuality=(settings.VolumetricQuality+1)%3;settings.Save();ShowSettings(settingsBack);});
+            Button("Объёмы: "+(settings.VolumetricQuality==2?"Ultra":settings.VolumetricQuality==1?"высокие":"сокращённые"),92,667,315,38,()=>{settings.VolumetricQuality=(settings.VolumetricQuality+1)%3;settings.Save();ShowSettings(settingsBack);});
+            Button("SSAO: "+(settings.AmbientOcclusion?"вкл.":"выкл."),424,667,323,38,()=>{settings.AmbientOcclusion=!settings.AmbientOcclusion;settings.Save();ShowSettings(settingsBack);});
             Slider("Поле зрения",828,354,680,settings.FieldOfView,60,100,true,v=>{settings.FieldOfView=v;settings.Save();},v=>(int)v+"°");
             Slider("Чувствительность мыши",828,469,680,settings.Sensitivity,.04f,.25f,false,v=>{settings.Sensitivity=v;settings.Save();},v=>v.ToString("0.00"));
             Label(content.transform,"WASD — движение     SPACE — прыжок\nЛКМ — убрать блок     ПКМ — поставить\n1–9 — быстрые слоты     E — инвентарь         ESC — меню",828,596,679,106,18,White);

@@ -2,7 +2,7 @@ namespace LestingCraft.Presentation
 {
     public static class SurfaceLayers
     {
-        public static readonly string[] Names={"stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava","bedrock","basalt","crystal","aether","ore","snow","planks","workbench-top","workbench-side","furnace-side","furnace-front","furnace-top","campfire-side","campfire-top"};
+        public static readonly string[] Names={"stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava","bedrock","basalt","crystal","aether","ore","snow","planks","workbench-top","workbench-side","furnace-side","furnace-front","furnace-top","campfire-side","campfire-top","ore-copper","ore-coal"};
         public static int ForFace(ushort block,int face)
         {
             switch(block)
@@ -17,6 +17,13 @@ namespace LestingCraft.Presentation
                 case 18:return 16;
                 default:return 0;
             }
+        }
+        // Appearance only: the existing ore ID, drops, save format and generator remain unchanged.
+        public static int ForCellFace(ushort block,int face,int x,int y,int z,int seed)
+        {
+            if(block!=13)return ForFace(block,face);
+            uint variant=LestingCraft.World.TerrainGenerator.Hash(UnityEngine.Mathf.FloorToInt(x/4f),UnityEngine.Mathf.FloorToInt(y/4f),UnityEngine.Mathf.FloorToInt(z/4f),seed^27183)%3;
+            return variant==0?14:variant==1?24:25;
         }
         public static string DisplayName(ushort id)
         {

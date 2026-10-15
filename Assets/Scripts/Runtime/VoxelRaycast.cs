@@ -27,7 +27,13 @@ namespace LestingCraft.Runtime
             for(int step=0;step<128&&distance<=reach;step++)
             {
                 ushort block=sample(cell.x,cell.y,cell.z);
-                if(block!=0&&block!=7&&block!=8){hit=new Hit(cell,normal,distance);return true;}
+                if(block==11||block==15)
+                {
+                    float start=distance,limit=Mathf.Min(reach,Mathf.Min(tx,Mathf.Min(ty,tz)));
+                    if(LestingCraft.Presentation.VoxelItemModels.TracePlaced(block,cell,origin+direction*start,direction,Mathf.Max(0,limit-start),out var shaped))
+                    {hit=new Hit(cell,shaped.Normal==Vector3Int.zero?normal:shaped.Normal,start+shaped.Distance);return true;}
+                }
+                else if(block!=0&&block!=7&&block!=8){hit=new Hit(cell,normal,distance);return true;}
                 if(tx<=ty&&tx<=tz){distance=tx;tx+=dx;cell.x+=sx;normal=new Vector3Int(-sx,0,0);}
                 else if(ty<=tz){distance=ty;ty+=dy;cell.y+=sy;normal=new Vector3Int(0,-sy,0);}
                 else {distance=tz;tz+=dz;cell.z+=sz;normal=new Vector3Int(0,0,-sz);}

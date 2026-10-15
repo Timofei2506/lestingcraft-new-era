@@ -53,7 +53,7 @@ public static class PresentationAssets
         var sky=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat");sky.SetTexture("_CloudNoise",cloud);sky.SetFloat("_CloudBase",144);EditorUtility.SetDirty(sky);
         var rain=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/RainStreaks.mat");
         if(!rain){rain=new Material(Shader.Find("LestingCraft/Precipitation"));AssetDatabase.CreateAsset(rain,Folder+"/RainStreaks.mat");}
-        ParticleMaterial("Precipitation",false);ParticleMaterial("Fire",true);
+        ParticleMaterial("Precipitation",false);ParticleMaterial("Fire",true);EnsureSmokeMaterial();
         var pipeline=AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(Folder+"/HighDefinition.asset");
         if(!pipeline)
         {
@@ -61,6 +61,7 @@ public static class PresentationAssets
             pipeline=UniversalRenderPipelineAsset.Create(renderer);
             AssetDatabase.CreateAsset(pipeline,Folder+"/HighDefinition.asset");
         }
+        EnsureAmbientOcclusion();
         // Reapply on every Ensure, including an existing Generated directory/cache.
         pipeline.supportsHDR=true;pipeline.msaaSampleCount=4;pipeline.renderScale=1f;
         pipeline.supportsCameraDepthTexture=true;pipeline.supportsCameraOpaqueTexture=true;
@@ -82,6 +83,33 @@ public static class PresentationAssets
         var vignette=Component<Vignette>(profile);vignette.intensity.value=.09f;vignette.smoothness.value=.65f;
         foreach(var component in profile.components)EditorUtility.SetDirty(component);
         EditorUtility.SetDirty(material);EditorUtility.SetDirty(water);EditorUtility.SetDirty(profile);AssetDatabase.SaveAssets();
+    }
+    static void EnsureAmbientOcclusion()
+    {
+        var renderer=AssetDatabase.LoadAssetAtPath<UniversalRendererData>(Folder+"/Renderer.asset");
+        ScreenSpaceAmbientOcclusion feature=null;
+        foreach(var candidate in renderer.rendererFeatures)if(candidate is ScreenSpaceAmbientOcclusion ao)feature=ao;
+        if(!feature){feature=ScriptableObject.CreateInstance<ScreenSpaceAmbientOcclusion>();feature.name="Contact SSAO";AssetDatabase.AddObjectToAsset(feature,renderer);renderer.rendererFeatures.Add(feature);}
+        var data=new SerializedObject(feature);var settings=data.FindProperty("m_Settings");
+        settings.FindPropertyRelative("Source").intValue=0; // Depth; normals reconstructed, not a missing DepthNormals pass.
+        settings.FindPropertyRelative("NormalSamples").intValue=2;
+        settings.FindPropertyRelative("AOMethod").intValue=1; // Interleaved gradient, no missing noise texture dependency.
+        settings.FindPropertyRelative("Downsample").boolValue=true;
+        settings.FindPropertyRelative("AfterOpaque").boolValue=false; // Correct direct/indirect lighting integration, not a black overlay.
+        settings.FindPropertyRelative("Intensity").floatValue=.85f;settings.FindPropertyRelative("Radius").floatValue=.23f;
+        settings.FindPropertyRelative("DirectLightingStrength").floatValue=.18f;settings.FindPropertyRelative("Falloff").floatValue=65;
+        settings.FindPropertyRelative("Samples").intValue=1;settings.FindPropertyRelative("BlurQuality").intValue=0;
+        data.ApplyModifiedPropertiesWithoutUndo();feature.SetActive(true);feature.Create();
+        EditorUtility.SetDirty(feature);EditorUtility.SetDirty(renderer);
+    }
+    static void EnsureSmokeMaterial()
+    {
+        const string path=Folder+"/Smoke.mat";if(AssetDatabase.LoadAssetAtPath<Material>(path))return;
+        var texture=new Texture2D(64,64,TextureFormat.RGBA32,false,true){name="Smoke soft turbulence",wrapMode=TextureWrapMode.Clamp};
+        for(int y=0;y<64;y++)for(int x=0;x<64;x++)
+        {float r=Vector2.Distance(new Vector2(x,y),new Vector2(31.5f,31.5f))/31.5f;float noise=Mathf.PerlinNoise(x*.11f+9,y*.11f+3)*.65f+Mathf.PerlinNoise(x*.29f,y*.29f)*.35f;texture.SetPixel(x,y,new Color(1,1,1,Mathf.Pow(Mathf.Clamp01(1-r*r),1.7f)*Mathf.Lerp(.2f,1,noise)));}
+        texture.Apply();AssetDatabase.CreateAsset(texture,Folder+"/SmokeNoise.asset");
+        var material=new Material(Shader.Find("LestingCraft/SmokeParticles"));material.SetTexture("_BaseMap",texture);AssetDatabase.CreateAsset(material,path);
     }
     static void EnsureCharacterAtlas()
     {
