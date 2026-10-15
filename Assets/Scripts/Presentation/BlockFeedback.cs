@@ -27,6 +27,13 @@ namespace LestingCraft.Presentation
             if(outline)outline.enabled=active;if(!surface)return;surface.SetActive(active);
             if(!active)return;
             visualRoot.position=(Vector3)player.Target.Cell+Vector3.one*.5f;
+            ushort id=player.World.GetBlock(player.Target.Cell.x,player.Target.Cell.y,player.Target.Cell.z);
+            bool authored=id==11||id==15;var mesh=authored?VoxelItemModels.MeshFor(id):BlockGeometry.Box(0);
+            surface.GetComponent<MeshFilter>().sharedMesh=mesh;
+            surface.transform.localPosition=authored?PlacedVoxelModel.Offset(id)-Vector3.one*.5f:Vector3.zero;
+            surface.transform.localScale=Vector3.one*(authored?PlacedVoxelModel.Scale*1.004f:1.004f);
+            outline.transform.localPosition=surface.transform.localPosition;
+            outline.transform.localScale=authored?mesh.bounds.size*PlacedVoxelModel.Scale:Vector3.one;
             float progress=player.Game.Session.MiningProgress;damage.SetFloat("_Progress",progress);
             var color=Color.Lerp(new Color(.70f,.78f,.65f),new Color(1,.77f,.32f),progress);
             line.SetColor("_OutlineColor",color);

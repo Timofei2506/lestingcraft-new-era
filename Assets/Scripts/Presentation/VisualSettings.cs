@@ -19,8 +19,15 @@ namespace LestingCraft.Presentation
         public static VisualSettings Current {get;private set;}
         public static void Load()
         {
-            try{Current=JsonUtility.FromJson<VisualSettings>(PlayerPrefs.GetString("VisualSettings",""));}catch{}
-            if(Current==null)Current=new VisualSettings();Current.Clamp();
+            Current=FromJson(PlayerPrefs.GetString("VisualSettings",""));
+        }
+        public static VisualSettings FromJson(string json)
+        {
+            VisualSettings parsed=null;try{parsed=JsonUtility.FromJson<VisualSettings>(json);}catch{}
+            if(parsed==null)parsed=new VisualSettings();
+            // Old saved settings predate this control; an upgrade must not silently disable SSAO.
+            if(string.IsNullOrEmpty(json)||!json.Contains("\"AmbientOcclusion\""))parsed.AmbientOcclusion=true;
+            parsed.Clamp();return parsed;
         }
         public void Clamp()
         {VolumetricQuality=Mathf.Clamp(VolumetricQuality,0,2);ViewDistance=Mathf.Clamp(ViewDistance,2,5);RenderScale=Mathf.Clamp(RenderScale,.85f,1.5f);Sensitivity=Mathf.Clamp(Sensitivity,.04f,.25f);FieldOfView=Mathf.Clamp(FieldOfView,60,100);Preset=Mathf.Clamp(Preset,0,1);ShadowResolution=ShadowResolution>=4096?4096:ShadowResolution<2048?1024:2048;}

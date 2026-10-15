@@ -75,6 +75,8 @@ namespace LestingCraft.Tests
    var inv=new Inventory();foreach(int id in new[]{105,106,107,108}){inv.Add(id,1);Equipment.Equip(inv,System.Array.FindIndex(inv.slots,s=>s.item==id));}
    Assert.AreEqual(.5f,Equipment.Protection(inv),.0001f);Assert.AreEqual(.09f,Equipment.ItemProtection(105));Assert.AreEqual(.18f,Equipment.ItemProtection(106));Assert.AreEqual(0,Equipment.ItemProtection(104));
   }
+  [Test] public void ExistingSettingsUpgradeEnablesSsaoButRespectsExplicitOptOut()
+  {Assert.IsTrue(VisualSettings.FromJson("{\"Preset\":0,\"PostEffects\":true}").AmbientOcclusion);Assert.IsFalse(VisualSettings.FromJson("{\"AmbientOcclusion\":false}").AmbientOcclusion);}
   [Test] public void HighQualityPresetsEnableRealSsaoWithoutClaimingHardwareRt()
   {var settings=new VisualSettings();Assert.IsTrue(settings.AmbientOcclusion);Assert.IsFalse(VisualSettings.PipelineRayTracing);}
  }
