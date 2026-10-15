@@ -19,6 +19,14 @@ namespace LestingCraft.Presentation
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
         Page page,settingsBack;Text status,realmHUD,netHUD,perfHUD,loadingHUD;Image[] slots;RectTransform[] slotRects;
         Text vitalsHUD,objectiveHUD,noticeHUD,healthHUD;HealthSilhouette healthBody;RawImage[] slotIcons;Text[] slotCounts;ItemHover[] slotHovers;RectTransform tooltip;Text tooltipText;int lastInventoryRevision=-1,lastSlot=-1;
+        Image miningBar;Text miningLabel;GameObject chatRoot;Text chatText;InputField chatInput;int chatRevision=-1;string lastNotice="";float noticeAt;
+        public string ChatText=>chatInput?chatInput.text:"";
+        public void SetChatOpen(bool open)
+        {
+            if(!chatInput)return;chatInput.gameObject.SetActive(open);if(open){chatRoot.SetActive(true);chatInput.text="";StartCoroutine(FocusChat());}
+            else {chatInput.DeactivateInputField();UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);}
+        }
+        System.Collections.IEnumerator FocusChat(){yield return null;if(chatInput&&game.ChatOpen){chatInput.text="";chatInput.ActivateInputField();}}
         sealed class CellView {public int Index;public RawImage Icon;public Text Count;public ItemHover Hover;}
         readonly List<CellView> inventoryViews=new List<CellView>();int stationKind,craftWidth=2;Vector3Int stationCell;
         RawImage craftOutput,cursorImage;Text craftCount,cursorCount,stoveStatus;RectTransform cursorRoot;int craftRevision=-1;
@@ -180,7 +188,7 @@ namespace LestingCraft.Presentation
             Button("Продолжить  →",64,534,395,64,game.Resume,true);
             Button("Настройки",64,619,395,58,()=>ShowSettings(Page.Pause));
             Button("В главное меню",64,698,395,58,game.ReturnToMenu);
-            Label(content.transform,"ESC — продолжить",505,552,760,37,16,Muted);
+            Label(content.transform,"ESC — продолжить · E — инвентарь · Enter / T — чат\nЛКМ — добывать · ПКМ — использовать · F1 — интерфейс · F2 — снимок",505,535,950,68,15,Muted);
             if(game.Online)Button("Скопировать код комнаты",505,619,380,58,()=>GUIUtility.systemCopyBuffer=game.RoomCode);
         }
         public void ShowInventory(int station=0,Vector3Int cell=default)
@@ -335,13 +343,7 @@ namespace LestingCraft.Presentation
         public void ShowHUD()
         {
             Clear(Page.HUD);
-            Box(content.transform,22,16,800,105,new Color(.015f,.03f,.04f,.65f));
-            Box(content.transform,1110,16,467,97,new Color(.015f,.03f,.04f,.65f));
-            Label(content.transform,"LESTINGCRAFT",36,27,430,27,15,White,true);
-            realmHUD=Label(content.transform,"",36,66,800,42,16,White);
-            netHUD=Label(content.transform,"",925,29,641,43,14,Accent,false,TextAnchor.MiddleRight);
-            perfHUD=Label(content.transform,"",1110,71,455,28,12,Muted,false,TextAnchor.MiddleRight);
-            loadingHUD=Label(content.transform,"",36,113,780,37,14,Accent);
+            loadingHUD=Label(content.transform,"",36,31,780,37,14,Accent);
             // Minimal reticle, not an IMGUI text '+'.
             foreach(var r in new[]{new Vector4(799,439,2,7),new Vector4(799,454,2,7),new Vector4(789,449,7,2),new Vector4(804,449,7,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.82f),false);
             slots=new Image[9];slotRects=new RectTransform[9];slotIcons=new RawImage[9];slotCounts=new Text[9];slotHovers=new ItemHover[9];lastInventoryRevision=-1;lastSlot=-1;
@@ -355,14 +357,22 @@ namespace LestingCraft.Presentation
                 Label(image.transform,(i+1).ToString(),0,55,91,18,11,Muted,false,TextAnchor.MiddleCenter);
             }
             // Item names are hover/focus tooltips, never permanent slot text.
-            Label(content.transform,"ЛКМ  добывать   ·   ПКМ  использовать   ·   E  инвентарь",413,712,774,24,12,Muted,false,TextAnchor.MiddleCenter);
+
             var healthPanel=Box(content.transform,26,546,310,226,new Color(.025f,.05f,.055f,.91f));
             healthHUD=Label(healthPanel.transform,"СОСТОЯНИЕ · 100 / 100",16,12,280,30,13,White);
             var body=Rect("Health silhouette",healthPanel.transform,17,52,91,157);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
             vitalsHUD=Label(healthPanel.transform,"",124,61,175,146,13,White);
-            objectiveHUD=Label(content.transform,"",36,175,1000,63,15,Accent);
+            miningBar=Box(content.transform,725,484,0,4,Accent,false);miningBar.gameObject.name="Mining progress";
+            miningLabel=Label(content.transform,"",700,494,200,29,12,White,false,TextAnchor.MiddleCenter);
+            chatRoot=Box(content.transform,26,265,590,260,new Color(.025f,.045f,.04f,.78f)).gameObject;
+            chatText=Label(chatRoot.transform,"",18,13,554,168,15,White);chatText.verticalOverflow=VerticalWrapMode.Truncate;
+            var chatBox=Box(chatRoot.transform,14,193,562,49,Panel);chatBox.raycastTarget=true;chatInput=chatBox.gameObject.AddComponent<InputField>();
+            chatInput.targetGraphic=chatBox;chatInput.characterLimit=240;chatInput.lineType=InputField.LineType.SingleLine;
+            chatInput.textComponent=Label(chatBox.transform,"",12,0,538,49,15,White,false,TextAnchor.MiddleLeft);
+            chatInput.placeholder=Label(chatBox.transform,"Сообщение…",12,0,538,49,15,Muted,false,TextAnchor.MiddleLeft);
+            chatInput.gameObject.SetActive(false);chatRoot.SetActive(false);chatRevision=-1;
             noticeHUD=Label(content.transform,"",400,656,800,41,14,Accent,false,TextAnchor.MiddleCenter);
-            Label(content.transform,"F1  интерфейс · F2  снимок · ESC  меню",1140,841,427,29,12,Muted,false,TextAnchor.MiddleRight);
+
         }
         void Update()
         {
@@ -391,18 +401,27 @@ namespace LestingCraft.Presentation
             averageFrame=Mathf.Lerp(averageFrame,Mathf.Min(Time.unscaledDeltaTime,.5f),.04f);timer+=Time.unscaledDeltaTime;
             if(timer>.25f)
             {
-                timer=0;realmHUD.text=game.WorldLabel+"  /  "+game.ModeName;
+                timer=0;
                 if(game.Session)
                 {
                     var session=game.Session;var v=session.Vitals;
                     healthBody.SetHealth(v.health);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
                     vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}"+(v.air<100?$"\nВоздух  {v.air:0}%":"");
-                    objectiveHUD.text=session.Creative?"":GameRules.NextObjective(session.Data.campaign.chapter,session.Data.campaign.milestones);
-                    noticeHUD.text=session.Notice;
+
+                    if(lastNotice!=session.Notice){lastNotice=session.Notice;noticeAt=Time.unscaledTime;}
+                    noticeHUD.text=Time.unscaledTime-noticeAt<4?lastNotice:"";
                 }
-                netHUD.text=game.Online?(game.LastError.Length>0?game.LastError:"●  КООПЕРАТИВ   ·   "+game.PlayerCount+" / 8"):"ЛОКАЛЬНЫЙ МИР";
-                perfHUD.text=Mathf.RoundToInt(1/Mathf.Max(.001f,averageFrame))+" FPS   ·   "+game.ChunkCount+" чанков";
                 loadingHUD.text=!game.WorldReady?"Формирование ландшафта… "+game.ChunkCount+" чанков":"";
+            }
+            if(game.Session)
+            {
+                float progress=game.Session.MiningProgress;miningBar.rectTransform.sizeDelta=new Vector2(150*progress,4);miningLabel.text=progress>.01f?$"{progress*100:0}%":"";
+            }
+            if(chatRoot)
+            {
+                bool visible=game.ChatOpen||(game.ChatRevision>0&&Time.unscaledTime-game.ChatLastTime<9&&!string.IsNullOrEmpty(game.ChatLog));
+                chatRoot.SetActive(visible);
+                if(chatRevision!=game.ChatRevision){chatRevision=game.ChatRevision;chatText.text=game.ChatLog;}
             }
             if(game.Session&&(lastInventoryRevision!=game.Session.Inventory.revision||lastSlot!=game.Session.Inventory.selected))
             {

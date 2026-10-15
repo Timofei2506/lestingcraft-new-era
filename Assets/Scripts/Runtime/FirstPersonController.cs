@@ -14,16 +14,19 @@ namespace LestingCraft.Runtime
         public bool Active;public bool Sprinting {get;private set;}
         public ushort Selected=BlockRegistry.StoneId;
         CharacterController controller;
+        public bool HasTarget {get;private set;}public VoxelRaycast.Hit Target {get;private set;}
         float pitch,vertical;
         Vector3 spawn;
         public void TeleportSpawn(){if(!controller)controller=GetComponent<CharacterController>();controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;}
-        void Start(){controller=GetComponent<CharacterController>();spawn=transform.position;}
+        void Start(){controller=GetComponent<CharacterController>();spawn=transform.position;gameObject.AddComponent<LestingCraft.Presentation.BlockFeedback>().Initialize(this);}
         void Update()
         {
             var keyboard=Keyboard.current;var mouse=Mouse.current;if(keyboard==null||mouse==null||World==null)return;
+            if(Game.ChatOpen){if(keyboard.escapeKey.wasPressedThisFrame)Game.CloseChat();else if(keyboard.enterKey.wasPressedThisFrame)Game.SubmitChat();return;}
+            if(!Game.Paused&&World.Ready&&(keyboard.enterKey.wasPressedThisFrame||keyboard.tKey.wasPressedThisFrame)){Game.OpenChat();Game.Session.ResetMining();HasTarget=false;return;}
             if(keyboard.escapeKey.wasPressedThisFrame){if(Game.InventoryOpen)Game.ToggleInventory();else Game.TogglePause();return;}
             if(keyboard.eKey.wasPressedThisFrame){Game.ToggleInventory();return;}
-            if(!Active||!World.Ready){Sprinting=false;return;}
+            if(!Active||!World.Ready){Sprinting=false;HasTarget=false;if(Game.Session)Game.Session.ResetMining();return;}
             var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
             transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
             var move=new Vector2((keyboard.dKey.isPressed?1:0)-(keyboard.aKey.isPressed?1:0),(keyboard.wKey.isPressed?1:0)-(keyboard.sKey.isPressed?1:0));
@@ -45,29 +48,26 @@ namespace LestingCraft.Runtime
             var keys=new[]{keyboard.digit1Key,keyboard.digit2Key,keyboard.digit3Key,keyboard.digit4Key,keyboard.digit5Key,keyboard.digit6Key,keyboard.digit7Key,keyboard.digit8Key,keyboard.digit9Key};
             for(int i=0;i<keys.Length;i++)if(keys[i].wasPressedThisFrame)Game.Session.Inventory.selected=i;
             Selected=Items.Get(Game.Session.Inventory.Active.item).Block;
-            if(mouse.rightButton.wasPressedThisFrame)
+            HasTarget=VoxelRaycast.Trace(Camera.transform.position,Camera.transform.forward,6,World.GetBlock,out var target);
+            Target=target;
+            bool place=mouse.rightButton.wasPressedThisFrame;
+            if(place)
             {
-                if(!keyboard.leftShiftKey.isPressed&&Physics.Raycast(Camera.transform.position,Camera.transform.forward,out var stationHit,6f)&&stationHit.collider.transform.parent==World.transform)
+                Game.Session.ResetMining();
+                if(!keyboard.leftShiftKey.isPressed&&HasTarget)
                 {
-                    var stationCell=Vector3Int.FloorToInt(stationHit.point-stationHit.normal*.01f);int station=World.GetBlock(stationCell.x,stationCell.y,stationCell.z);
-                    if(station==16||station==17){Game.OpenStation(station,stationCell);return;}
+                    int station=World.GetBlock(target.Cell.x,target.Cell.y,target.Cell.z);
+                    if(station==16||station==17){Game.OpenStation(station,target.Cell);return;}
                 }
                 if(Selected==0){Game.Session.UseActive();return;}
+                if(!HasTarget||target.Normal==Vector3Int.zero)return;
+                var cell=target.Adjacent;
+                if(cell.y<=0||!World.Contains(cell.x,cell.y,cell.z)||!World.Loaded((Vector3)cell))return;
+                if(!VoxelRaycast.OverlapsPlayer(cell,controller.bounds))Game.Session.Place(cell);
+                else Game.Session.Notice="Нельзя поставить блок внутри персонажа";
             }
-            if(mouse.leftButton.isPressed||mouse.rightButton.wasPressedThisFrame)
-            {
-                if(Physics.Raycast(Camera.transform.position,Camera.transform.forward,out var hit,6f)&&hit.collider.transform.parent==World.transform)
-                {
-                    bool place=mouse.rightButton.wasPressedThisFrame;var cell=Vector3Int.FloorToInt(hit.point+hit.normal*(place?.01f:-.01f));
-                    if(cell.y==0||!World.Contains(cell.x,cell.y,cell.z))return;
-                    if(place)
-                    {
-                        if(!new Bounds((Vector3)cell+Vector3.one*.5f,Vector3.one).Intersects(controller.bounds))Game.Session.Place(cell);
-                    }
-                    else Game.Session.Mine(cell,Time.deltaTime);
-                }
-                else Game.Session.ResetMining();
-            }
+            else if(mouse.leftButton.isPressed&&HasTarget)
+                Game.Session.Mine(target.Cell,Mathf.Min(Time.deltaTime,.25f));
             else Game.Session.ResetMining();
         }
     }

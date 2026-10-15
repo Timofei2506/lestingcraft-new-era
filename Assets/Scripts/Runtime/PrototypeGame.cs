@@ -24,6 +24,33 @@ namespace LestingCraft.Runtime
         public SurvivalSession Session {get;private set;}
         public int SelectedMode {get=>selectedMode;set=>selectedMode=Mathf.Clamp(value,0,3);}
         public bool HasSave=>LocalSave.Exists;
+        public bool ChatOpen {get;private set;}
+        readonly Queue<string> chatLog=new Queue<string>();public int ChatRevision {get;private set;}public float ChatLastTime {get;private set;}float chatSentAt=-10;
+        public string ChatLog=>string.Join("\n",chatLog);
+        public void OpenChat()
+        {
+            if(!world||paused)return;
+            if(!online){if(Session)Session.Notice="Чат доступен в кооперативной комнате";return;}
+            ChatOpen=true;SetCursor(false);ui.SetChatOpen(true);
+        }
+        public void CloseChat(){ChatOpen=false;if(ui)ui.SetChatOpen(false);SetCursor(world&&!paused);}
+        public void SubmitChat()
+        {
+            string text=ui.ChatText.Trim();
+            if(text.Length>0&&online&&client&&client.Connected)
+            {
+                if(Time.unscaledTime-chatSentAt<1.2f){Session.Notice="Подождите секунду перед следующим сообщением";return;}
+                chatSentAt=Time.unscaledTime;client.Send(new NetPacket{type="chat",message=text});
+            }
+            CloseChat();
+        }
+        void AddChat(NetPacket packet)
+        {
+            string name=(packet.name??"Player").Replace("\n"," ").Replace("\r"," ");
+            string text=(packet.message??"").Replace("\n"," ").Replace("\r"," ");
+            if(name.Length>24)name=name.Substring(0,24);if(text.Length>240)text=text.Substring(0,240);
+            chatLog.Enqueue(name+": "+text);while(chatLog.Count>6)chatLog.Dequeue();ChatRevision++;ChatLastTime=Time.unscaledTime;
+        }
         public bool InventoryOpen=>ui&&ui.InventoryOpen;
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
@@ -178,6 +205,7 @@ namespace LestingCraft.Runtime
                     status="Комната подключена • "+code;break;
                 case "edit":
                     if(world&&packet.rev>revision){revision=packet.rev;world.Edit((int)packet.x,(int)packet.y,(int)packet.z,(ushort)packet.block);if(packet.id==selfId&&Session)Session.ConfirmEdit(new Vector3Int((int)packet.x,(int)packet.y,(int)packet.z));}break;
+                case "chat":AddChat(packet);break;
                 case "player":SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw});break;
                 case "leave":if(avatars.TryGetValue(packet.id,out var avatar))Destroy(avatar);avatars.Remove(packet.id);targets.Remove(packet.id);break;
                 case "state_saved":if(packet.id==selfId)saveAcknowledged=true;if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
@@ -211,6 +239,7 @@ namespace LestingCraft.Runtime
         }
         void Leave()
         {
+            ChatOpen=false;chatLog.Clear();ChatRevision++;
             if(Session&&!online)Session.Checkpoint();Session=null;
             if(client)Destroy(client.gameObject);
             foreach(var a in avatars.Values)if(a)Destroy(a);avatars.Clear();targets.Clear();

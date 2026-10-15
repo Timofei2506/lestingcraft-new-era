@@ -29,13 +29,13 @@ namespace LestingCraft.Gameplay
         }
         public void Mine(Vector3Int cell,float dt)
         {
-            if(pending||Vitals.dead||Data.campaign.runEnded)return;
-            ushort block=World.GetBlock(cell.x,cell.y,cell.z);if(block==0||block==9||block==7||block==8||cell.y==0)return;
-            if(!Creative&&(block==1||block>=10&&block<=13||block==17)&&!Items.IsPick(Inventory.Active.item)){Notice="Для этого материала нужна кирка";MiningProgress=0;return;}
-            int reward=Items.ToolDrop(block);if(!Creative&&!Inventory.CanAdd(reward,1)){Notice="Инвентарь заполнен";return;}
+            if(pending||Vitals.dead||Data.campaign.runEnded){ResetMining();return;}
+            ushort block=World.GetBlock(cell.x,cell.y,cell.z);if(block==0||block==9||block==7||block==8||cell.y==0){ResetMining();return;}
+            if(!Creative&&(block==1||block>=10&&block<=13||block==17)&&!Items.IsPick(Inventory.Active.item)){Notice="Для этого материала нужна кирка";ResetMining();return;}
+            int reward=Items.ToolDrop(block);if(!Creative&&!Inventory.CanAdd(reward,1)){Notice="Инвентарь заполнен";ResetMining();return;}
             if(cell!=miningCell){miningCell=cell;mineTime=0;}
             float speed=Items.IsPick(Inventory.Active.item)?3:Inventory.Active.item==102&&block==4?4:1;
-            float duration=Creative?.01f:Mathf.Max(.18f,BlockRegistry.Get(block).Hardness*.6f/speed);
+            float duration=VoxelRaycast.MiningSeconds(Creative,BlockRegistry.Get(block).Hardness,speed);
             mineTime+=dt;MiningProgress=Mathf.Clamp01(mineTime/duration);if(mineTime<duration)return;
             mineTime=0;MiningProgress=0;pending=true;pendingCell=cell;drop=Creative?0:reward;harvestBlock=block;spend=0;toolSlot=Inventory.selected;Game.RequestEdit(cell,0);
         }
@@ -44,7 +44,7 @@ namespace LestingCraft.Gameplay
         {
             if(pending||Vitals.dead||Data.campaign.runEnded)return;var item=Items.Get(Inventory.Active.item);
             if(item.Block==0||Inventory.Active.count<=0)return;
-            if(World.GetBlock(cell.x,cell.y,cell.z)!=0){Notice="Место занято";return;}
+            if(World.GetBlock(cell.x,cell.y,cell.z)!=0&&World.GetBlock(cell.x,cell.y,cell.z)!=7){Notice="Место занято";return;}
             pending=true;pendingCell=cell;drop=0;spend=Creative?0:item.Id;toolSlot=-1;Game.RequestEdit(cell,item.Block);
         }
         public void ConfirmEdit(Vector3Int cell)

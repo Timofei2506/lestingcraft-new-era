@@ -36,21 +36,21 @@ public static class PresentationAssets
         if(!avatar){avatar=new Material(Shader.Find("Universal Render Pipeline/Lit"));avatar.SetColor("_BaseColor",new Color(.3f,.65f,.6f));avatar.SetFloat("_Smoothness",.4f);AssetDatabase.CreateAsset(avatar,Folder+"/Avatar.mat");}
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/AtmosphericSky")),Folder+"/Sky.mat");
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Atmosphere.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/VolumetricAtmosphere")),Folder+"/Atmosphere.mat");
-        var cloud=AssetDatabase.LoadAssetAtPath<Texture3D>(Folder+"/CloudNoise.asset");
+        var cloud=AssetDatabase.LoadAssetAtPath<Texture3D>(Folder+"/CloudNoiseV2.asset");
         if(!cloud)
         {
             const int n=64;cloud=new Texture3D(n,n,n,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear};
             var pixels=new Color[n*n*n];
             for(int z=0;z<n;z++)for(int y=0;y<n;y++)for(int x=0;x<n;x++)
             {
-                // Periodic smooth 3D value field from trigonometric domain warping, no seams at wrapping.
-                float a=x*2*Mathf.PI/n,b=y*2*Mathf.PI/n,c=z*2*Mathf.PI/n;
-                float v=.5f+.19f*Mathf.Sin(a+Mathf.Sin(b))+.14f*Mathf.Cos(b+Mathf.Sin(c))+.12f*Mathf.Sin(c+Mathf.Cos(a))+.06f*Mathf.Sin(a*3+b*2-c);
-                pixels[x+n*(y+n*z)]=new Color(Mathf.Clamp01(v),0,0,1);
+                float value=LestingCraft.Presentation.CloudField.Shape((float)x/n,(float)y/n,(float)z/n);
+                pixels[x+n*(y+n*z)]=new Color(value,0,0,1);
             }
-            cloud.SetPixels(pixels);cloud.Apply(false,true);AssetDatabase.CreateAsset(cloud,Folder+"/CloudNoise.asset");
+            cloud.SetPixels(pixels);cloud.Apply(false,true);AssetDatabase.CreateAsset(cloud,Folder+"/CloudNoiseV2.asset");
         }
         var sky=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat");sky.SetTexture("_CloudNoise",cloud);sky.SetFloat("_CloudBase",144);EditorUtility.SetDirty(sky);
+        var rain=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/RainStreaks.mat");
+        if(!rain){rain=new Material(Shader.Find("LestingCraft/Precipitation"));AssetDatabase.CreateAsset(rain,Folder+"/RainStreaks.mat");}
         ParticleMaterial("Precipitation",false);ParticleMaterial("Fire",true);
         var pipeline=AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(Folder+"/HighDefinition.asset");
         if(!pipeline)

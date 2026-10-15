@@ -94,12 +94,17 @@ namespace LestingCraft.Runtime
                 foreach(var pair in chunks)
                     if(Mathf.Abs(pair.Key.x-center.x)>Radius+1||Mathf.Abs(pair.Key.y-center.y)>Radius+1)remove.Add(pair.Key);
                 foreach(var key in remove){DisposeView(chunks[key]);chunks.Remove(key);}
-                if(dirty.Count>0)
-                {
-                    var keys=new List<Vector2Int>(dirty);dirty.Clear();
-                    foreach(var key in keys)if(chunks.TryGetValue(key,out var v)){Rebuild(key,v);yield return null;}
-                }
                 yield return null;
+            }
+        }
+        // Edits must not wait for every distant streaming/generation ring to finish.
+        void LateUpdate()
+        {
+            if(dirty.Count==0)return;
+            var keys=new List<Vector2Int>(dirty);int count=0;
+            foreach(var key in keys)
+            {
+                dirty.Remove(key);if(chunks.TryGetValue(key,out var view)){Rebuild(key,view);if(++count>=3)break;}
             }
         }
         public LestingCraft.Gameplay.SavedBlock[] ExportEdits()

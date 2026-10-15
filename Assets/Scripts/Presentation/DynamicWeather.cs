@@ -28,15 +28,15 @@ namespace LestingCraft.Presentation
         ParticleSystem Precipitation(string name,bool isSnow)
         {
             var obj=new GameObject(name);obj.transform.SetParent(transform,false);var ps=obj.AddComponent<ParticleSystem>();ps.Stop();
-            var main=ps.main;main.loop=true;main.simulationSpace=ParticleSystemSimulationSpace.World;main.startSpeed=0;main.startLifetime=isSnow?7:.8f;
-            main.startSize=isSnow?.075f:.022f;main.startColor=isSnow?new Color(.92f,.96f,1,.72f):new Color(.68f,.8f,.9f,.32f);main.maxParticles=isSnow?700:1800;
-            main.startRotation=new ParticleSystem.MinMaxCurve(0,Mathf.PI*2);
-            var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Box;shape.scale=new Vector3(24,.3f,24);
+            var main=ps.main;main.loop=true;main.simulationSpace=ParticleSystemSimulationSpace.World;main.startSpeed=0;main.startLifetime=isSnow?7:1.7f;main.prewarm=true;
+            main.startSize=isSnow?new ParticleSystem.MinMaxCurve(.045f,.085f):new ParticleSystem.MinMaxCurve(.010f,.019f);main.startColor=isSnow?new Color(.92f,.96f,1,.72f):new Color(.68f,.8f,.9f,.32f);main.maxParticles=isSnow?700:1800;
+            main.startRotation=isSnow?new ParticleSystem.MinMaxCurve(0,Mathf.PI*2):new ParticleSystem.MinMaxCurve(0);
+            var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Box;shape.scale=isSnow?new Vector3(30,16,30):new Vector3(32,24,32);
             var velocity=ps.velocityOverLifetime;velocity.enabled=true;velocity.space=ParticleSystemSimulationSpace.World;velocity.x=isSnow?.7f:2;velocity.y=isSnow?-1.7f:-26;velocity.z=.2f;
             var emission=ps.emission;emission.rateOverTime=0;
             var collision=ps.collision;collision.enabled=true;collision.type=ParticleSystemCollisionType.World;collision.mode=ParticleSystemCollisionMode.Collision3D;collision.lifetimeLoss=1;collision.collidesWith=~0;collision.quality=ParticleSystemCollisionQuality.Low;
-            var renderer=ps.GetComponent<ParticleSystemRenderer>();renderer.sharedMaterial=Resources.Load<Material>("Generated/Precipitation");
-            renderer.renderMode=isSnow?ParticleSystemRenderMode.Billboard:ParticleSystemRenderMode.Stretch;renderer.lengthScale=isSnow?1:5;renderer.velocityScale=.03f;renderer.shadowCastingMode=ShadowCastingMode.Off;
+            var renderer=ps.GetComponent<ParticleSystemRenderer>();renderer.sharedMaterial=Resources.Load<Material>(isSnow?"Generated/Precipitation":"Generated/RainStreaks");
+            renderer.renderMode=isSnow?ParticleSystemRenderMode.Billboard:ParticleSystemRenderMode.Stretch;renderer.lengthScale=isSnow?1:1.2f;renderer.velocityScale=isSnow?0:.012f;renderer.cameraVelocityScale=0;renderer.shadowCastingMode=ShadowCastingMode.Off;
             ps.Play();return ps;
         }
         void LateUpdate()
@@ -54,12 +54,12 @@ namespace LestingCraft.Presentation
             var rainWind=rain.velocityOverLifetime;rainWind.x=windX*3;rainWind.z=wind;
             var snowWind=snow.velocityOverLifetime;snowWind.x=windX*1.5f;snowWind.z=wind*.3f;
             Shader.SetGlobalFloat("_GlobalWindStrength",wind);Shader.SetGlobalFloat("_GlobalWetness",wetness);Shader.SetGlobalFloat("_GlobalSnow",snowAmount);
-            rain.transform.position=snow.transform.position=cameraView.transform.position+Vector3.up*12;
+            rain.transform.position=snow.transform.position=cameraView.transform.position+Vector3.up*15;
             float outside=Session.Sheltered||inWater?0:1;
             var re=rain.emission;re.rateOverTime=outside*(precipitation-snowAmount)*1400;
             var se=snow.emission;se.rateOverTime=outside*snowAmount*80;
             var light=AtmosphereLighting.At(Session.Data.clock,Session.World.Dimension,clouds,precipitation);light.Apply(sunlight,Session.Data.clock);
-            sky.SetFloat("_CloudCoverage",clouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:24);
+            sky.SetVector("_CloudOffset",CloudField.Offset(Session.Data.clock,Session.Data.seed,wind));sky.SetFloat("_CloudCoverage",clouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:24);
             fog.SetFloat("_Density",AtmosphereProfile.Density(precipitation,submerged));
             fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:16);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);

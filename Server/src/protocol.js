@@ -16,7 +16,7 @@ export function createConfig(value) {
   if([2,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   return { version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
-export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0};}
+export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
 export function publicPeer(p) {return {id:p.id,name:p.name,x:p.x,y:p.y,z:p.z,yaw:p.yaw};}
 export function consumeRate(peer, now) {
   if (now - peer.windowStart >= 1000) {peer.windowStart=now;peer.count=0;}
@@ -50,6 +50,14 @@ export class RoomState {
     if(!consumeRate(peer,now))throw new Error('Rate limit');
     const p=parseMessage(raw);
     if(p.type==='position') {const message=validatePosition(p,peer,now);Object.assign(peer,message,{positioned:true,lastPosition:now});return message;}
+    if(p.type==='chat') {
+      if(typeof p.message!=='string'||p.message.length>240)throw new Error('Chat must be at most 240 characters');
+      const message=p.message.replace(/[<>\x00-\x1f\x7f]/g,'').trim();
+      if(!message)throw new Error('Empty chat message');
+      if(now-(peer.lastChat??-10000)<1000)throw new Error('Chat cooldown');
+      peer.lastChat=now;
+      return {type:'chat',id:peer.id,name:peer.name,message};
+    }
     if(p.type==='edit') {
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
       const edit=validateEdit(p,peer,this.edits,now),record={x:edit.x,y:edit.y,z:edit.z,block:edit.block,rev:this.config.rev+1};

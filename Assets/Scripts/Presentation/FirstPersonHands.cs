@@ -46,7 +46,7 @@ namespace LestingCraft.Presentation
 
             var keyboard=Keyboard.current;bool walking=keyboard!=null&&(keyboard.wKey.isPressed||keyboard.aKey.isPressed||keyboard.sKey.isPressed||keyboard.dKey.isPressed);
             phase+=Time.deltaTime*(walking?(player.Sprinting?12:8):1.8f);
-            var mouse=Mouse.current;if(mouse!=null&&(mouse.leftButton.wasPressedThisFrame||mouse.rightButton.wasPressedThisFrame))strike=1;
+            var mouse=Mouse.current;if(mouse!=null&&(mouse.rightButton.wasPressedThisFrame||mouse.leftButton.isPressed&&player.HasTarget&&strike<=0))strike=1;
             strike=Mathf.MoveTowards(strike,0,Time.deltaTime*4);
             Pose(walking?.012f:.003f);
         }

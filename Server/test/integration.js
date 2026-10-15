@@ -17,7 +17,8 @@ try {
  a.ws.send(JSON.stringify({type:'position',x:1,y:42,z:1,yaw:10}));assert.equal((await b.next('player')).id,wa.id);
  a.ws.send(JSON.stringify({type:'edit',x:1,y:41,z:1,block:4}));const[ea,eb]=await Promise.all([a.next('edit'),b.next('edit')]);assert.equal(ea.rev,1);assert.equal(eb.block,4);
  const c=connect('Charlie');try{const wc=await c.next('welcome');assert.equal(wc.edits[0].block,4);assert.equal(wc.rev,1);assert.equal(wc.players[0].name,'Alice');}finally{c.ws.close();}
+ a.ws.send(JSON.stringify({type:'chat',message:'Привет, Bob!'}));const[ca,cb]=await Promise.all([a.next('chat'),b.next('chat')]);assert.equal(ca.message,'Привет, Bob!');assert.equal(cb.name,'Alice');
  a.ws.send(JSON.stringify({type:'edit',x:1,y:0,z:1,block:0}));assert.equal((await a.next('error')).type,'error');
  b.ws.close();let left;do {left=await a.next('leave');} while(left.id!==wb.id);assert.equal(left.id,wb.id);
- console.log('PASS:health,create,two peers,positions,block broadcast,reconnect snapshot,invalid edit,leave');
+ console.log('PASS:health,create,two peers,positions,block broadcast,reconnect snapshot,chat broadcast,invalid edit,leave');
 }finally{a.ws.close();b.ws.close();}
