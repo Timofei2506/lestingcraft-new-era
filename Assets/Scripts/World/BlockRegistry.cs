@@ -43,7 +43,7 @@ namespace LestingCraft.World
         public const ushort AetherId = 12;
         public const ushort OreId = 13;
         public const ushort SnowId = 14;
-        public const ushort CampfireId = 15;
+        public const ushort CampfireId = 15,WorkbenchId=16,FurnaceId=17,PlanksId=18;
 
         private static readonly Dictionary<ushort, BlockDefinition> Blocks = new Dictionary<ushort, BlockDefinition>();
 
@@ -63,6 +63,7 @@ namespace LestingCraft.World
             Register(new BlockDefinition(AetherId, "Aether", 1f, true));
             Register(new BlockDefinition(OreId, "Ore", 3f, true));
             Register(new BlockDefinition(CampfireId, "Campfire", 1f, true, 12));
+            Register(new BlockDefinition(WorkbenchId,"Workbench",2f,true));Register(new BlockDefinition(FurnaceId,"Furnace",2.8f,true));Register(new BlockDefinition(PlanksId,"Planks",1.2f,true));
             Register(new BlockDefinition(SnowId, "Snow", .3f, true));
             Register(new BlockDefinition(BedrockId, "Bedrock", float.PositiveInfinity, isSolid: true));
         }

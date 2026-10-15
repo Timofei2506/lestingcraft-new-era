@@ -29,7 +29,7 @@ namespace LestingCraft.World
                 mesh.subMeshCount=3;mesh.SetTriangles(OpaqueTriangles,0);mesh.SetTriangles(WaterTriangles,1);mesh.SetTriangles(DetailTriangles,2);
                 mesh.SetNormals(Normals);mesh.SetColors(Colors);mesh.SetUVs(0,UVs);mesh.SetTangents(Tangents);
             }
-            mesh.RecalculateBounds();if(!collision&&DetailTriangles.Count>0){var bounds=mesh.bounds;bounds.Expand(.4f);mesh.bounds=bounds;}return mesh;
+            mesh.RecalculateBounds();if(!collision&&(DetailTriangles.Count>0||WaterTriangles.Count>0)){var bounds=mesh.bounds;bounds.Expand(.4f);mesh.bounds=bounds;}return mesh;
         }
     }
     public static class ChunkMesher

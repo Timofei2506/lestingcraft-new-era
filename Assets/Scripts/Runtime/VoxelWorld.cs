@@ -47,7 +47,7 @@ namespace LestingCraft.Runtime
         public bool CanAcceptEdit(Vector3Int cell)=>edits.ContainsKey(cell)||edits.Count<(Online?4096:8192);
         public void Edit(int x,int y,int z,ushort block)
         {
-            if(!Contains(x,y,z)||y==0||block==BlockRegistry.BedrockId||block>15)return;
+            if(!Contains(x,y,z)||y==0||block==BlockRegistry.BedrockId||block>18)return;
             var pos=new Vector3Int(x,y,z);edits[pos]=block;
             var key=new Vector2Int(ChunkCoordinate(x),ChunkCoordinate(z));
             if(chunks.TryGetValue(key,out var v))v.Data.SetBlock(x-key.x*16,y,z-key.y*16,block);

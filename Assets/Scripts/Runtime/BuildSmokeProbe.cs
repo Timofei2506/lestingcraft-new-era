@@ -84,8 +84,38 @@ namespace LestingCraft.Runtime
             yield return WaitForScreenshot(inventoryshot);
             if(!ScreenshotReady(inventoryshot)||!ScreenshotHasDetail(inventoryshot)||failure!=null){Fail("Inventory screenshot/runtime errors: "+failure);yield break;}
             Debug.Log("[Smoke] INVENTORY_SCREENSHOT: "+inventoryshot);
+            // Explicit smoke fixtures only: exercise native inventory events and the station UI, not a mock-up.
+            var inventory=game.Session.Inventory;inventory.Add(4,4);
+            if(!game.Session.FillRecipe(0,2)){Fail("Could not fill logs recipe");yield break;}
+            ui.InventoryClick(57,false,false);
+            if(inventory.cursor.item!=120||inventory.cursor.count!=4){Fail("Native result click did not craft planks");yield break;}
+            if(!inventory.AddStack(inventory.cursor)){Fail("Fixture bag full");yield break;}inventory.cursor=new ItemStack();inventory.revision++;
+            if(!game.Session.FillRecipe(8,2)){Fail("Could not fill workbench recipe");yield break;}
+            ui.InventoryClick(57,false,true);
+            if(inventory.Count(16)!=1){Fail("Shift-craft did not make a workbench");yield break;}
+            game.Resume();
+            var benchCell=Vector3Int.FloorToInt(player.transform.position+Vector3.forward*2+Vector3.up);
+            game.Session.World.Edit(benchCell.x,benchCell.y,benchCell.z,16);
+            game.OpenStation(16,benchCell);
+            if(!ui.InventoryOpen){Fail("Placed workbench did not open");yield break;}
+            inventory.Add(1,12);inventory.Add(121,8);
+            if(!game.Session.FillRecipe(3,3)){Fail("Workbench 3x3 recipe did not fill");yield break;}
+            yield return null;yield return new WaitForEndOfFrame();
+            string craftShot=Path.GetFullPath(Path.Combine(folder,"workbench-3x3.png"));ScreenCapture.CaptureScreenshot(craftShot);yield return WaitForScreenshot(craftShot);
+            if(!ScreenshotReady(craftShot)||!ScreenshotHasDetail(craftShot)){Fail("Workbench screenshot invalid");yield break;}
+            ui.InventoryClick(57,false,true);
+            if(inventory.Count(101)!=1){Fail("Workbench result was not crafted");yield break;}
+            game.Resume();game.Session.World.Edit(benchCell.x,benchCell.y,benchCell.z,17);game.OpenStation(17,benchCell);
+            inventory.furnace.input=new ItemStack{item=110,count=2};inventory.furnace.fuel=new ItemStack{item=4,count=1};inventory.revision++;
+            deadline=Time.realtimeSinceStartup+20;
+            while(inventory.furnace.output.count==0&&Time.realtimeSinceStartup<deadline&&failure==null)yield return null;
+            if(inventory.furnace.output.item!=112){Fail("Live furnace did not finish cooking");yield break;}
+            yield return new WaitForEndOfFrame();
+            string furnaceShot=Path.GetFullPath(Path.Combine(folder,"furnace-cooking.png"));ScreenCapture.CaptureScreenshot(furnaceShot);yield return WaitForScreenshot(furnaceShot);
+            if(!ScreenshotReady(furnaceShot)||!ScreenshotHasDetail(furnaceShot)||failure!=null){Fail("Furnace screenshot/runtime errors: "+failure);yield break;}
+            Debug.Log("[Smoke] CRAFTING_SCREENSHOTS: "+craftShot+" / "+furnaceShot);
             finishing=true;
-            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip and three executable screenshots. WARP is not a user-GPU/FPS benchmark.");
+            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking and five executable screenshots. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);
         }
         static IEnumerator WaitForScreenshot(string path)

@@ -8,7 +8,7 @@ using UnityEngine.Rendering.Universal;
 /// <summary>Reproducible presentation assets on clean cloud runners, not hand-authored YAML.</summary>
 public static class PresentationAssets
 {
-    static readonly string[] Names={"stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava","bedrock","basalt","crystal","aether","ore","snow"};
+    static readonly string[] Names=LestingCraft.Presentation.SurfaceLayers.Names;
     const string Folder="Assets/Resources/Generated";
     [InitializeOnLoadMethod] static void Queue(){EditorApplication.delayCall+=Ensure;}
     public static void Ensure()
@@ -127,7 +127,7 @@ public static class PresentationAssets
     static Texture2DArray Array(string assetName,string kind,bool linear)
     {
         var path=Folder+"/"+assetName+".asset";
-        var existing=AssetDatabase.LoadAssetAtPath<Texture2DArray>(path);if(existing)return existing;
+        var existing=AssetDatabase.LoadAssetAtPath<Texture2DArray>(path);if(existing&&existing.depth==Names.Length)return existing;if(existing)AssetDatabase.DeleteAsset(path);
         const int size=512;
         var result=new Texture2DArray(size,size,Names.Length,TextureFormat.RGBA32,true,linear){name=assetName,wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear,anisoLevel=8};
         for(int i=0;i<Names.Length;i++)

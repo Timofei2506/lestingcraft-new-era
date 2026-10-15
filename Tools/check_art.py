@@ -16,4 +16,4 @@ for layer in info['layers']:
 for name in ('PrototypeGame','FirstPersonController'):
  assert 'OnGUI(' not in (root/f'Assets/Scripts/Runtime/{name}.cs').read_text()
 assert 'defaultRenderPipeline=null' not in (root/'Assets/Scripts/Runtime/PrototypeGame.cs').read_text()
-print('PASS: 16 material sets, dimensions, periodic albedo seams, normals/masks, no legacy IMGUI/pipeline shutdown')
+print('PASS:',len(info['layers']),'material sets, dimensions, periodic albedo seams, normals/masks, no legacy IMGUI/pipeline shutdown')

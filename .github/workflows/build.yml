@@ -81,6 +81,23 @@ jobs:
         run: ./.github/scripts/install-unity-windows.ps1
 
       - name: Activate Unity license (Personal)
+        id: activate
+        continue-on-error: true
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      # Hub's licensing client can exit with ObjectDisposedException before authentication.
+      # One bounded retry; an activation failure must still block building/uploading.
+      - name: Brief backoff after licensing-client failure
+        if: steps.activate.outcome == 'failure'
+        shell: pwsh
+        run: Start-Sleep -Seconds 15
+
+      - name: Retry Unity license activation once
+        if: steps.activate.outcome == 'failure'
         uses: buildalon/activate-unity-license@v2
         with:
           license: 'Personal'

@@ -14,14 +14,14 @@ namespace LestingCraft.Gameplay
         public bool Creative=>Mode==GameMode.Creative;public GameMode Mode=>(GameMode)Data.mode;
         public Inventory Inventory=>Data.player.inventory;public SurvivalState Vitals=>Data.player.survival;
         public string Notice="";public bool Pending=>pending;public float MiningProgress {get;private set;}
-        public bool ServerRunEnded;bool pending,wasDead;Vector3Int pendingCell,miningCell;int drop,spend,toolSlot;float mineTime,saveTime,tick;GameObject grave;
+        public bool ServerRunEnded;bool pending,wasDead;Vector3Int pendingCell,miningCell;int drop,spend,toolSlot,harvestBlock;float mineTime,saveTime,tick;GameObject grave;
         public void Initialize(PrototypeGame game,VoxelWorld world,FirstPersonController player,int mode,PlayerSave restored=null,SessionSave local=null,double clock=420)
         {
             Game=game;World=world;Player=player;Data=local??new SessionSave{seed=world.Seed,mode=mode,clock=clock};
             if(restored!=null)Data.player=restored;Data.player.Normalize();
             if(local==null&&restored==null)
             {
-                if(Creative){foreach(int id in new[]{1,2,3,4,5,6,11,12,14,15})Inventory.Add(id,64);foreach(int id in new[]{100,101,102,103,104})Inventory.Add(id,1);}
+                if(Creative){foreach(int id in new[]{1,2,3,4,5,6,11,12,14,15,16,17,120})Inventory.Add(id,64);foreach(int id in new[]{100,101,102,103,104})Inventory.Add(id,1);}
                 else {Inventory.Add(110,6);Inventory.Add(111,2);}
             }
             if(local!=null)foreach(var e in Data.blocks)if(e.realm==(int)World.Dimension)World.Edit(e.x,e.y,e.z,(ushort)e.block);
@@ -31,13 +31,13 @@ namespace LestingCraft.Gameplay
         {
             if(pending||Vitals.dead||Data.campaign.runEnded)return;
             ushort block=World.GetBlock(cell.x,cell.y,cell.z);if(block==0||block==9||block==7||block==8||cell.y==0)return;
-            if(!Creative&&(block==1||block>=10&&block<=14)&&!Items.IsPick(Inventory.Active.item)){Notice="Для этого материала нужна кирка";MiningProgress=0;return;}
+            if(!Creative&&(block==1||block>=10&&block<=13||block==17)&&!Items.IsPick(Inventory.Active.item)){Notice="Для этого материала нужна кирка";MiningProgress=0;return;}
             int reward=Items.ToolDrop(block);if(!Creative&&!Inventory.CanAdd(reward,1)){Notice="Инвентарь заполнен";return;}
             if(cell!=miningCell){miningCell=cell;mineTime=0;}
             float speed=Items.IsPick(Inventory.Active.item)?3:Inventory.Active.item==102&&block==4?4:1;
             float duration=Creative?.01f:Mathf.Max(.18f,BlockRegistry.Get(block).Hardness*.6f/speed);
             mineTime+=dt;MiningProgress=Mathf.Clamp01(mineTime/duration);if(mineTime<duration)return;
-            mineTime=0;MiningProgress=0;pending=true;pendingCell=cell;drop=Creative?0:reward;spend=0;toolSlot=Inventory.selected;Game.RequestEdit(cell,0);
+            mineTime=0;MiningProgress=0;pending=true;pendingCell=cell;drop=Creative?0:reward;harvestBlock=block;spend=0;toolSlot=Inventory.selected;Game.RequestEdit(cell,0);
         }
         public void ResetMining(){mineTime=0;MiningProgress=0;}
         public void Place(Vector3Int cell)
@@ -50,18 +50,28 @@ namespace LestingCraft.Gameplay
         public void ConfirmEdit(Vector3Int cell)
         {
             if(!pending||cell!=pendingCell)return;
-            if(drop>0){Inventory.Add(drop,1);if(drop==122&&UnityEngine.Random.value<.25f)Inventory.Add(110,1);}
+            if(drop>0){Inventory.Add(drop,1);if(drop==122&&UnityEngine.Random.value<.25f)Inventory.Add(110,1);if(harvestBlock==3&&UnityEngine.Random.value<.45f)Inventory.Add(113,1);}
             if(spend>0)Inventory.Remove(spend,1);
             if(toolSlot>=0&&!Creative){int selected=Inventory.selected;Inventory.selected=toolSlot;Inventory.WearTool();Inventory.selected=selected;}
             pending=false;drop=spend=0;Notice="";
         }
         public void RejectEdit(string message){pending=false;Notice=message;ResetMining();}
+        public bool CanInteract=>!pending&&!Vitals.dead&&!Data.campaign.runEnded;
+        public bool StationNearby(int id,Vector3Int cell)=>CanInteract&&Vector3.Distance(Player.Camera.transform.position,(Vector3)cell+Vector3.one*.5f)<=6.5f&&World.GetBlock(cell.x,cell.y,cell.z)==id;
         public bool Craft(int index)
         {
-            if(pending||Vitals.dead||Data.campaign.runEnded||index<0||index>=Recipes.All.Length)return false;
-            bool result=Recipes.All[index].Craft(Inventory);Notice=result?"Создано: "+Recipes.All[index].Name:"Недостаточно ресурсов или места";
-            if(result&&(Recipes.All[index].output==100||Recipes.All[index].output==101))Data.player.milestones|=1;
-            return result;
+            if(!CanInteract||index<0||index>=CraftingTable.All.Length)return false;
+            Notice="Рецепт выкладывается через книгу в сетку";return false;
+        }
+        public bool FillRecipe(int index,int width)
+        {
+            if(!CanInteract||index<0||index>=CraftingTable.All.Length)return false;
+            bool ok=CraftingTable.Fill(Inventory,CraftingTable.All[index],width);Notice=ok?"Рецепт выложен — заберите результат":"Нужны ресурсы, место или верстак 3×3";return ok;
+        }
+        public int TakeCraft(int width,bool shift)
+        {
+            if(!CanInteract)return 0;var recipe=CraftingTable.Match(Inventory.grid,width);int count=CraftingTable.Take(Inventory,width,shift);
+            if(count>0){if(recipe.Output==100||recipe.Output==101)Data.player.milestones|=1;Notice="Создано: "+Items.Get(recipe.Output).Name;}return count;
         }
         public void UseActive()
         {
@@ -79,11 +89,16 @@ namespace LestingCraft.Gameplay
         void Update()
         {
             if(Data==null||!World||!Player||!World.Ready)return;
-            if(!Game.Online&&Game.Paused)return;
+            if(!Game.Online&&Game.Paused&&!Game.InventoryOpen)return;
             Data.clock+=Time.deltaTime;tick+=Time.deltaTime;saveTime+=Time.unscaledDeltaTime;
             if(tick>=1)
             {
                 float elapsed=Mathf.Min(2,tick);tick=0;
+                var stove=Inventory.furnace;var stoveCell=new Vector3Int(stove.x,stove.y,stove.z);
+                if(stove.realm==(int)World.Dimension&&World.GetBlock(stove.x,stove.y,stove.z)==17&&Vector3.Distance(Player.transform.position,(Vector3)stoveCell+Vector3.one*.5f)<=6.5f)
+                    if(stove.Step(elapsed))Inventory.revision++;
+                var eye=Vector3Int.FloorToInt(Player.Camera.transform.position);var bodyCell=Vector3Int.FloorToInt(Player.transform.position+Vector3.up*.8f);
+                Vitals.StepWater(elapsed,Mode,World.GetBlock(eye.x,eye.y,eye.z)==7,World.GetBlock(bodyCell.x,bodyCell.y,bodyCell.z)==7);
                 Sheltered=Physics.Raycast(Player.Camera.transform.position,Vector3.up,out var hit,16)&&hit.collider.transform.parent==World.transform;
                 bool warm=World.NearCampfire(Player.transform.position);if(warm&&Sheltered)Data.player.milestones|=2;
                 if(Data.player.equippedCoat&&Inventory.Count(104)==0)Data.player.equippedCoat=false;
@@ -100,7 +115,7 @@ namespace LestingCraft.Gameplay
                 else
                 {
                     // One personal recoverable grave; older grave items are forfeited on the next death.
-                    Data.player.grave=Inventory.Clone().slots;Data.player.graveX=Player.transform.position.x;Data.player.graveZ=Player.transform.position.z;
+                    Data.player.grave=Inventory.Clone().slots;Data.player.graveExtras=Inventory.ExtraStacks();Data.player.graveX=Player.transform.position.x;Data.player.graveZ=Player.transform.position.z;
                     Data.player.graveY=TerrainGenerator.Height(Mathf.FloorToInt(Data.player.graveX),Mathf.FloorToInt(Data.player.graveZ),Data.seed,World.Dimension)+1.2f;
                     Data.player.inventory=new Inventory();Notice="Вещи остались у надгробия. Можно возродиться.";UpdateGrave();
                 }
@@ -110,15 +125,14 @@ namespace LestingCraft.Gameplay
             if(grave&&!Vitals.dead&&Vector3.Distance(Player.transform.position,grave.transform.position)<2)
             {
                 var copy=Inventory.Clone();bool fits=true;
-                foreach(var s in Data.player.grave)if(s.count>0)
+                var recovery=new System.Collections.Generic.List<ItemStack>(Data.player.grave);recovery.AddRange(Data.player.graveExtras);
+                foreach(var s in recovery)if(s.count>0)
                 {
-                    int free=Array.FindIndex(copy.slots,slot=>slot.count==0);
-                    if(!copy.Add(s.item,s.count)){fits=false;break;}
-                    if(Items.Get(s.item).Durability>0&&free>=0)copy.slots[free].durability=s.durability;
+                    if(!copy.AddStack(s)){fits=false;break;}
                 }
                 if(fits)
                 {
-                    Data.player.inventory=copy;Data.player.grave=Array.Empty<ItemStack>();Destroy(grave);grave=null;Notice="Вещи возвращены";Checkpoint();
+                    Data.player.inventory=copy;Data.player.grave=Array.Empty<ItemStack>();Data.player.graveExtras=Array.Empty<ItemStack>();Destroy(grave);grave=null;Notice="Вещи возвращены";Checkpoint();
                 }
                 else Notice="Освободите место для вещей у надгробия";
             }

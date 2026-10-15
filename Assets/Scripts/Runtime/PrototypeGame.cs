@@ -58,6 +58,12 @@ namespace LestingCraft.Runtime
             if(!Session||Session.Vitals.dead||Session.Data.campaign.runEnded)return;
             if(ui.InventoryOpen){Resume();return;}paused=true;SetCursor(false);ui.ShowInventory();
         }
+        public void OpenStation(int id,Vector3Int cell)
+        {
+            if(!Session||!Session.StationNearby(id,cell))return;
+            if(id==17){var f=Session.Inventory.furnace;f.x=cell.x;f.y=cell.y;f.z=cell.z;f.realm=(int)Session.World.Dimension;}
+            paused=true;SetCursor(false);ui.ShowInventory(id,cell);
+        }
         public void OpenDeathScreen(){paused=true;SetCursor(false);ui.ShowDeathScreen();}
         public void SendSave(PlayerSave save,bool force=false){if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save,force=force});}
         public void CreateRoom(){if(!busy)StartCoroutine(CreateRoomRoutine());}
@@ -163,7 +169,7 @@ namespace LestingCraft.Runtime
             {
                 case "welcome":
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
-                    if(packet.rulesVersion!=GameRules.Version){Fail("Сервер ещё не обновлён для режимов выживания");Destroy(client.gameObject);return;}
+                    if(packet.rulesVersion!=GameRules.Version){Fail("Версия комнаты отличается. Для новой версии создайте новую комнату");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock);revision=packet.rev;
                     if(packet.campaign!=null)Session.Data.campaign=packet.campaign;
                     if(packet.runEnded){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;OpenDeathScreen();}

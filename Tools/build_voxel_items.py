@@ -7,10 +7,11 @@ import numpy as np
 from PIL import Image,ImageDraw,ImageFilter
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT/'Assets/Resources/VoxelIcons';OUT.mkdir(parents=True,exist_ok=True)
 MODELS=ROOT/'Assets/Resources/Models';MODELS.mkdir(parents=True,exist_ok=True)
-NAMES=['stone','dirt','grass','grass-side','bark','wood-end','leaves','sand','water','lava','bedrock','basalt','crystal','aether','ore','snow']
+NAMES=['stone','dirt','grass','grass-side','bark','wood-end','leaves','sand','water','lava','bedrock','basalt','crystal','aether','ore','snow','planks','workbench-top','workbench-side','furnace-side','furnace-front','furnace-top','campfire-side','campfire-top']
 TEXTURES=[np.asarray(Image.open(ROOT/f'Assets/Art/PBR/{n}_albedo.png').convert('RGB').resize((256,256)),dtype=float)/255 for n in NAMES]
 # Palette (colour multiplies material texture); snow is a neutral textile/paint basis.
 PALETTE=[('#ffffff',0),('#ffffff',1),('#ffffff',2),('#ffffff',3),('#ffffff',4),('#ffffff',5),('#ffffff',6),('#ffffff',7),('#ffffff',8),('#ffffff',9),('#ffffff',10),('#ffffff',11),('#ffffff',12),('#ffffff',13),('#ffffff',14),('#ffffff',15),('#fff0ce',5),('#e6bb8c',4),('#68513e',4),('#ffffff',0),('#777e82',0),('#f0d294',15),('#54705a',15),('#263a30',15),('#c69a55',15),('#a21d38',15),('#d53951',15),('#5c102a',15),('#618535',15),('#34532b',15),('#c7b78e',15),('#867955',15),('#ff9f18',15),('#d6a258',15),('#92612f',15),('#edd29b',15),('#ffdc65',15)]
+PALETTE += [('#ffffff',i) for i in range(16,24)]
 COLORS=[np.array([int(c[i:i+2],16)/255 for i in (1,3,5)]) for c,_ in PALETTE]
 models=[]
 def model(id,name):return {'id':id,'name':name,'voxels':{}}
@@ -82,6 +83,24 @@ for y in [4,10]:box(m,-1,y,-1,13,y+2,9,31)
 models.append(m)
 DIRECTIONS=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(0,0,1),(0,0,-1)]
 CORNERS=[[(1,0,0),(1,1,0),(1,1,1),(1,0,1)],[(0,0,1),(0,1,1),(0,1,0),(0,0,0)],[(0,1,1),(1,1,1),(1,1,0),(0,1,0)],[(0,0,0),(1,0,0),(1,0,1),(0,0,1)],[(1,0,1),(1,1,1),(0,1,1),(0,0,1)],[(0,0,0),(0,1,0),(1,1,0),(1,0,0)]]
+# New survival stations and ingredients, exported and rendered by the SAME mesh pipeline.
+for id,name,p in [(16,'Верстак',39),(17,'Печь',40)]:
+ m=model(id,name);box(m,0,0,0,12,12,12,p)
+ box(m,0,11,0,12,12,12,38 if id==16 else 42)
+ if id==17:box(m,0,0,0,12,11,1,41)
+ models.append(m)
+m=model(112,'Печёные ягоды')
+for px,py,pz,p in [(0,1,1,27),(5,0,3,25),(3,5,0,27),(7,5,4,25),(1,6,6,27)]:box(m,px,py,pz,px+5,py+5,pz+5,p)
+box(m,0,0,0,13,1,12,16);models.append(m)
+m=model(113,'Дикое зерно')
+for px,pz,ht in [(1,2,18),(5,5,22),(9,3,19),(3,8,16)]:
+ box(m,px,0,pz,px+1,ht,pz+1,31)
+ for yy in range(ht-9,ht,3):box(m,px-1,yy,pz-1,px+3,yy+2,pz+2,21)
+box(m,1,4,1,11,6,10,18);models.append(m)
+m=model(114,'Тесто');box(m,0,0,0,16,4,10,35);box(m,1,4,1,15,6,9,21);box(m,3,6,2,13,8,8,35);models.append(m)
+m=model(123,'Древесный уголь');box(m,1,0,1,13,6,11,10);box(m,2,6,2,12,10,10,11);box(m,3,10,3,10,12,8,10)
+for xx in [3,7,10]:box(m,xx,2,0,xx+1,6,1,20)
+models.append(m)
 def faces(m):
  cells=m['voxels']
  for (x,y,z),p in cells.items():
@@ -140,5 +159,5 @@ with zipfile.ZipFile(path/'LestingCraft-voxel-objects.zip','w',zipfile.ZIP_DEFLA
  archive.writestr('palette.mtl','\n'.join(f'newmtl palette{i}\nKd '+ ' '.join(str(round(float(v),4)) for v in COLORS[i])+'\nmap_Kd textures/'+NAMES[PALETTE[i][1]]+'.png\n' for i in range(len(PALETTE))))
  for i,name in enumerate(NAMES):
   stream=io.BytesIO();Image.fromarray(np.uint8(TEXTURES[i]*255)).save(stream,format='PNG');archive.writestr('textures/'+name+'.png',stream.getvalue())
- archive.writestr('README.txt','25 original voxel objects. OBJ/MTL export includes UVs and 256px albedo textures. Unity uses the same voxel coordinates plus full PBR normal/mask layers. Icons are textured orthographic renders of these objects. No spherical geometry.\n')
-print('Generated 25 textured voxel icons and shared model catalog')
+ archive.writestr('README.txt',str(len(models))+' original voxel objects. OBJ/MTL export includes UVs and 256px albedo textures. Unity uses the same voxel coordinates plus full PBR normal/mask layers. Icons are textured orthographic renders of these objects. No spherical geometry.\n')
+print('Generated',len(models),'textured voxel icons and shared model catalog')

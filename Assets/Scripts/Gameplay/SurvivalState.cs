@@ -5,7 +5,7 @@ namespace LestingCraft.Gameplay
     public enum WeatherKind { Clear,Cloudy,Rain,Snow,Storm }
     [Serializable] public sealed class SurvivalState
     {
-        public float health=100,hunger=100,stamina=100,temperature=37,wetness;public bool dead;
+        public float health=100,hunger=100,stamina=100,temperature=37,wetness,air=100;public bool dead;
         public void Step(float seconds,GameMode mode,float air,float precipitation,bool sheltered,bool nearFire,bool sprinting,float insulation)
         {
             if(seconds<=0||dead||mode==GameMode.Creative)return;seconds=Mathf.Min(seconds,2);
@@ -20,10 +20,16 @@ namespace LestingCraft.Gameplay
             if(temperature>39)Damage(seconds*(temperature-39)*.15f,mode);
             if(hunger>75&&temperature>35&&temperature<38.5f)health=Mathf.Min(100,health+seconds*.2f);
         }
+        public void StepWater(float seconds,GameMode mode,bool underwater,bool immersed)
+        {
+            if(mode==GameMode.Creative){air=100;return;}if(dead||seconds<=0)return;
+            if(immersed)wetness=1;air=Mathf.Clamp(air+seconds*(underwater?-8:25),0,100);
+            if(underwater&&air<=0)Damage(seconds*5,mode);
+        }
         public void Damage(float amount,GameMode mode){if(mode==GameMode.Creative||dead)return;health=Mathf.Max(0,health-Mathf.Max(0,amount));dead=health<=0;}
         public void Eat(float amount){if(!dead)hunger=Mathf.Min(100,hunger+amount);}
-        public void Respawn(){health=100;hunger=70;temperature=37;wetness=0;stamina=100;dead=false;}
-        public void Normalize(){health=Mathf.Clamp(health,0,100);hunger=Mathf.Clamp(hunger,0,100);stamina=Mathf.Clamp(stamina,0,100);temperature=Mathf.Clamp(temperature,25,43);wetness=Mathf.Clamp01(wetness);dead=health<=0;}
+        public void Respawn(){health=100;hunger=70;temperature=37;wetness=0;stamina=100;air=100;dead=false;}
+        public void Normalize(){air=Mathf.Clamp(air,0,100);health=Mathf.Clamp(health,0,100);hunger=Mathf.Clamp(hunger,0,100);stamina=Mathf.Clamp(stamina,0,100);temperature=Mathf.Clamp(temperature,25,43);wetness=Mathf.Clamp01(wetness);dead=health<=0;}
     }
     public readonly struct WeatherSample
     {
@@ -45,8 +51,8 @@ namespace LestingCraft.Gameplay
     }
     [Serializable] public sealed class PlayerSave
     {
-        public Inventory inventory=new Inventory();public SurvivalState survival=new SurvivalState();public bool equippedCoat;public int milestones;public ItemStack[] grave=Array.Empty<ItemStack>();public float graveX,graveY,graveZ;
-        public void Normalize(){if(grave==null)grave=Array.Empty<ItemStack>();if(grave.Length>0){var graveInventory=new Inventory{slots=grave};graveInventory.Normalize();grave=graveInventory.slots;}if(inventory==null)inventory=new Inventory();inventory.Normalize();if(survival==null)survival=new SurvivalState();survival.Normalize();}
+        public Inventory inventory=new Inventory();public SurvivalState survival=new SurvivalState();public bool equippedCoat;public int milestones;public ItemStack[] graveExtras=Array.Empty<ItemStack>();public ItemStack[] grave=Array.Empty<ItemStack>();public float graveX,graveY,graveZ;
+        public void Normalize(){if(graveExtras==null)graveExtras=Array.Empty<ItemStack>();if(graveExtras.Length!=0&&graveExtras.Length!=13)graveExtras=Array.Empty<ItemStack>();for(int i=0;i<graveExtras.Length;i++)graveExtras[i]=Inventory.Clean(graveExtras[i]);if(grave==null)grave=Array.Empty<ItemStack>();if(grave.Length>0){var graveInventory=new Inventory{slots=grave};graveInventory.Normalize();grave=graveInventory.slots;}if(inventory==null)inventory=new Inventory();inventory.Normalize();if(survival==null)survival=new SurvivalState();survival.Normalize();}
     }
     [Serializable] public sealed class SessionSave
     {

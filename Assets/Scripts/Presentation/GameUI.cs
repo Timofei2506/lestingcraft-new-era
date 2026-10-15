@@ -18,7 +18,10 @@ namespace LestingCraft.Presentation
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
         Page page,settingsBack;Text status,realmHUD,netHUD,perfHUD,loadingHUD;Image[] slots;RectTransform[] slotRects;
-        Text vitalsHUD,objectiveHUD,noticeHUD,healthHUD;HealthSilhouette healthBody;RawImage[] slotIcons;Text[] slotCounts;ItemHover[] slotHovers;RectTransform tooltip;Text tooltipText;int lastInventoryRevision=-1,lastSlot=-1,inventoryFrom=-1;
+        Text vitalsHUD,objectiveHUD,noticeHUD,healthHUD;HealthSilhouette healthBody;RawImage[] slotIcons;Text[] slotCounts;ItemHover[] slotHovers;RectTransform tooltip;Text tooltipText;int lastInventoryRevision=-1,lastSlot=-1;
+        sealed class CellView {public int Index;public RawImage Icon;public Text Count;public ItemHover Hover;}
+        readonly List<CellView> inventoryViews=new List<CellView>();int stationKind,craftWidth=2;Vector3Int stationCell;
+        RawImage craftOutput,cursorImage;Text craftCount,cursorCount,stoveStatus;RectTransform cursorRoot;int craftRevision=-1;
         public bool InventoryOpen=>page==Page.Inventory;
         public bool IsReady=>ready;
         public string ScreenName=>page.ToString();
@@ -180,35 +183,96 @@ namespace LestingCraft.Presentation
             Label(content.transform,"ESC — продолжить",505,552,760,37,16,Muted);
             if(game.Online)Button("Скопировать код комнаты",505,619,380,58,()=>GUIUtility.systemCopyBuffer=game.RoomCode);
         }
-        public void ShowInventory()
+        public void ShowInventory(int station=0,Vector3Int cell=default)
         {
-            Clear(Page.Inventory);Header("Инвентарь · крафт",false);inventoryFrom=-1;
+            stationKind=station;stationCell=cell;craftWidth=station==16?3:2;
+            Clear(Page.Inventory);Header(station==16?"Верстак · 3×3":station==17?"Печь · готовка":"Инвентарь · 2×2",false);
+            inventoryViews.Clear();craftRevision=-1;
             Label(content.transform,"СНАРЯЖЕНИЕ И ПРИПАСЫ",64,165,1400,59,32,White,true);
-            Label(content.transform,"Выберите ячейку, затем ячейку назначения. Первые 9 — быстрые слоты. ПКМ в мире: еда / накидка / установка.",66,250,1465,53,16,Muted);
-            if(!game.Session)return;var inventory=game.Session.Inventory;
-            for(int i=0;i<45;i++)
+            Label(content.transform,"ЛКМ — взять / положить · ПКМ — половина / по одному · Shift-клик — быстро перенести · Можно перетаскивать мышью",66,248,1465,50,15,Muted);
+            if(!game.Session)return;
+            for(int i=0;i<45;i++)CreateCell(i,64+(i%9)*82,328+(i/9)*83,77,74);
+            Label(content.transform,"Первые 9 ячеек — быстрые слоты",64,759,740,25,14,Muted);
+            Label(content.transform,station==17?"ПЕРСОНАЛЬНАЯ ОЧЕРЕДЬ ГОТОВКИ":"СЕТКА "+craftWidth+"×"+craftWidth,852,307,380,32,16,Accent,true);
+            if(station==17)
             {
-                int index=i;var stack=inventory.slots[i];var button=Button("",64+(i%9)*96,328+(i/9)*89,91,79,()=>
-                {
-                    if(inventoryFrom<0){inventoryFrom=index;buttonHighlight(index);}
-                    else {game.Session.Transfer(inventoryFrom,index);ShowInventory();}
-                });
-                AttachHover(button.gameObject,stack.item);Icon(button.transform,stack.item,22,3,48);Label(button.transform,stack.count>0?stack.count.ToString():"—",7,58,77,17,12,Muted,false,TextAnchor.MiddleRight);
-                if(i<9)Label(button.transform,(i+1).ToString(),7,5,20,20,11,Accent);
+                CreateCell(54,867,377,82,82);CreateCell(55,867,527,82,82);CreateCell(56,1103,431,86,86);
+                Label(content.transform,"Сырьё",867,349,145,26,14,Muted);Label(content.transform,"Топливо",867,498,145,26,14,Muted);
+                Label(content.transform,"→",1016,446,65,50,29,Accent);Label(content.transform,"Результат",1084,534,145,26,14,Muted);
+                stoveStatus=Label(content.transform,"",852,642,370,103,15,Muted);
+                Label(content.transform,"Ягоды → печёные ягоды\nТесто → хлеб · Древесина → уголь\nОчередь сохраняется у игрока; работает рядом с печью.",852,702,370,90,13,Muted);
             }
-            Label(content.transform,"СОЗДАТЬ",974,328,553,35,18,Accent,true);
-            for(int i=0;i<Recipes.All.Length;i++)
+            else
             {
-                int index=i;var recipe=Recipes.All[i];string costs="";foreach(var ingredient in recipe.inputs)costs+=(costs.Length==0?"":" · ")+Items.Get(ingredient.item).Name+" ×"+ingredient.count;
-                var button=Button(recipe.Name+"  |  "+costs,974,383+i*48,553,42,()=>{game.Session.Craft(index);ShowInventory();});
-                button.GetComponentInChildren<Text>().fontSize=14;
+                for(int y=0;y<craftWidth;y++)for(int x=0;x<craftWidth;x++)CreateCell(45+y*3+x,852+x*77,365+y*77,70,70);
+                Label(content.transform,"→",1088,414,55,48,28,Accent);
+                var result=Button("",1141,407,83,83,()=>{});result.name="Craft.Result";
+                var click=result.gameObject.AddComponent<InventorySlot>();click.Owner=this;click.Index=57;
+                craftOutput=Rect("Recipe output icon",result.transform,9,3,65,65).gameObject.AddComponent<RawImage>();craftOutput.raycastTarget=false;
+                craftCount=Label(result.transform,"",8,60,65,20,13,White,false,TextAnchor.MiddleRight);AttachHover(result.gameObject,0);
+                Button("Вернуть материалы",852,625,372,45,()=>{if(game.Session.CanInteract){game.Session.Notice=CraftingTable.ReturnGrid(game.Session.Inventory)?"Материалы возвращены":"Недостаточно места — сетка сохранена";RefreshCraftInventory();}});
+                Label(content.transform,"Книга справа выкладывает рецепт из ваших ресурсов. Результат забирается вручную.\nShift-клик по результату — изготовить максимум.\nМатериалы в сетке и на курсоре сохраняются.",852,690,370,112,14,Muted);
             }
-            status=Label(content.transform,game.Session.Notice,340,803,1150,62,16,Accent);
-            Button("←  В мир",64,802,230,55,game.ToggleInventory,true);
+            BuildRecipeBook();
+            status=Label(content.transform,game.Session.Notice,340,812,1180,56,15,Accent);
+            Button("←  В мир",64,812,230,51,game.ToggleInventory,true);
+            cursorRoot=Rect("Carried inventory stack",content.transform,0,0,64,77);
+            cursorImage=cursorRoot.gameObject.AddComponent<RawImage>();cursorImage.raycastTarget=false;
+            cursorCount=Label(cursorRoot,"",0,57,62,20,13,White,false,TextAnchor.MiddleRight);
+            RefreshCraftInventory();
         }
-        void buttonHighlight(int index)
+        void CreateCell(int index,float x,float y,float w,float h)
         {
-            status.text="Перенос: "+Items.Get(game.Session.Inventory.slots[index].item).Name+" — выберите целевую ячейку";
+            var button=Button("",x,y,w,h,()=>{});button.name="Inventory.Slot."+index;
+            var click=button.gameObject.AddComponent<InventorySlot>();click.Owner=this;click.Index=index;
+            AttachHover(button.gameObject,0);var icon=Rect("Stack icon",button.transform,10,2,w-20,h-15).gameObject.AddComponent<RawImage>();icon.raycastTarget=false;
+            var count=Label(button.transform,"",5,h-21,w-10,18,12,White,false,TextAnchor.MiddleRight);
+            inventoryViews.Add(new CellView{Index=index,Icon=icon,Count=count,Hover=button.GetComponent<ItemHover>()});
+            if(index<9)Label(button.transform,(index+1).ToString(),5,3,17,17,10,Accent);
+        }
+        void BuildRecipeBook()
+        {
+            Label(content.transform,"КНИГА РЕЦЕПТОВ",1250,307,285,32,16,Accent,true);
+            var viewport=Rect("Recipe viewport",content.transform,1250,350,285,407);viewport.gameObject.AddComponent<RectMask2D>();
+            var backing=viewport.gameObject.AddComponent<Image>();backing.color=new Color(.06f,.10f,.11f,.7f);
+            var list=Rect("Recipes",viewport,0,0,285,CraftingTable.All.Length*55);
+            var scroll=viewport.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.content=list;scroll.horizontal=false;scroll.movementType=ScrollRect.MovementType.Clamped;scroll.scrollSensitivity=30;
+            for(int i=0;i<CraftingTable.All.Length;i++)
+            {
+                int index=i;var r=CraftingTable.All[i];
+                var button=Button("",0,i*55,280,50,()=>{if(stationKind==17){game.Session.Notice="Крафт — в инвентаре или на верстаке";}else game.Session.FillRecipe(index,craftWidth);RefreshCraftInventory();},false,list);
+                Icon(button.transform,r.Output,3,1,46);Label(button.transform,Items.Get(r.Output).Name+(r.Fits(craftWidth)?"":" · 3×3"),55,8,216,39,13,r.Fits(craftWidth)?White:Muted);
+            }
+            Label(content.transform,"Колёсико мыши — прокрутка",1250,769,290,25,12,Muted);
+        }
+        public bool BeginInventoryDrag(int index)
+        {
+            if(!game.Session||!game.Session.CanInteract)return false;
+            if(game.Session.Inventory.cursor.count==0)InventoryClick(index,false,false);
+            return game.Session.Inventory.cursor.count>0;
+        }
+        public void InventoryClick(int index,bool right,bool shift)
+        {
+            if(!game.Session||!game.Session.CanInteract)return;
+            if(stationKind!=0&&!game.Session.StationNearby(stationKind,stationCell)){game.Session.Notice="Станция недоступна — закройте окно";RefreshCraftInventory();return;}
+            if(index==57)game.Session.TakeCraft(craftWidth,shift);else InventoryInteraction.Click(game.Session.Inventory,index,right,shift);
+            RefreshCraftInventory();
+        }
+        void RefreshCraftInventory()
+        {
+            if(!game.Session)return;var inv=game.Session.Inventory;craftRevision=inv.revision;
+            foreach(var view in inventoryViews)
+            {
+                var stack=InventoryInteraction.Get(inv,view.Index);view.Icon.texture=ItemArtwork.Get(stack.item);view.Icon.enabled=stack.count>0&&view.Icon.texture;
+                view.Count.text=stack.count>0?stack.count.ToString():"";view.Hover.Item=stack.count>0?stack.item:0;
+            }
+            if(stationKind!=17&&craftOutput)
+            {
+                var recipe=CraftingTable.Match(inv.grid,craftWidth);craftOutput.texture=recipe==null?null:ItemArtwork.Get(recipe.Output);craftOutput.enabled=craftOutput.texture;
+                craftCount.text=recipe==null?"":recipe.Count.ToString();craftOutput.transform.parent.GetComponent<ItemHover>().Item=recipe==null?0:recipe.Output;
+            }
+            if(cursorImage){cursorImage.texture=ItemArtwork.Get(inv.cursor.item);cursorImage.enabled=inv.cursor.count>0&&cursorImage.texture;cursorCount.text=inv.cursor.count>0?inv.cursor.count.ToString():"";}
+            if(status)status.text=game.Session.Notice;
         }
         void AttachHover(GameObject target,int item)
         {var hover=target.AddComponent<ItemHover>();hover.Owner=this;hover.Item=item;}
@@ -312,6 +376,16 @@ namespace LestingCraft.Presentation
                 if(status)status.text=game.IsConnecting?"Подключаемся к комнате…":game.LastError;
                 foreach(var action in actions)if(action)action.interactable=!game.IsConnecting;
             }
+            if(page==Page.Inventory&&game.Session)
+            {
+                if(craftRevision!=game.Session.Inventory.revision)RefreshCraftInventory();
+                if(cursorRoot&&UnityEngine.InputSystem.Mouse.current!=null)
+                {
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(frame,UnityEngine.InputSystem.Mouse.current.position.ReadValue(),null,out var local);
+                    cursorRoot.anchoredPosition=new Vector2(local.x+812,local.y-438);cursorRoot.SetAsLastSibling();
+                }
+                if(stationKind==17&&stoveStatus){var f=game.Session.Inventory.furnace;stoveStatus.text=$"Готовка: {Mathf.Clamp01(f.progress/FurnaceState.CookSeconds)*100:0}%\nТопливо: {f.burn:0.0} с\nПауза вдали от печи / при полном выходе";}
+            }
             if(page!=Page.HUD)return;
             if(UnityEngine.InputSystem.Keyboard.current!=null&&UnityEngine.InputSystem.Keyboard.current.f1Key.wasPressedThisFrame)content.gameObject.SetActive(!content.gameObject.activeSelf);
             averageFrame=Mathf.Lerp(averageFrame,Mathf.Min(Time.unscaledDeltaTime,.5f),.04f);timer+=Time.unscaledDeltaTime;
@@ -322,7 +396,7 @@ namespace LestingCraft.Presentation
                 {
                     var session=game.Session;var v=session.Vitals;
                     healthBody.SetHealth(v.health);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
-                    vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}";
+                    vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}"+(v.air<100?$"\nВоздух  {v.air:0}%":"");
                     objectiveHUD.text=session.Creative?"":GameRules.NextObjective(session.Data.campaign.chapter,session.Data.campaign.milestones);
                     noticeHUD.text=session.Notice;
                 }

@@ -44,10 +44,16 @@ Shader "LestingCraft/VoxelPBR"
             }
             half4 Frag(Varyings i):SV_Target
             {
-                half4 albedo=SAMPLE_TEXTURE2D_ARRAY(_AlbedoArray,sampler_AlbedoArray,i.uv.xy,i.uv.z);
-                half3 normalTS=SAMPLE_TEXTURE2D_ARRAY(_NormalArray,sampler_NormalArray,i.uv.xy,i.uv.z).xyz*2-1;
+                // Restrained single-step height parallax, never silhouette displacement.
+                half3 geometricN=normalize(i.normalWS),geometricT=normalize(i.tangentWS.xyz),geometricB=cross(geometricN,geometricT)*i.tangentWS.w;
+                half3 viewWS=GetWorldSpaceNormalizeViewDir(i.positionWS);
+                half3 viewTS=half3(dot(viewWS,geometricT),dot(viewWS,geometricB),dot(viewWS,geometricN));
+                half height=SAMPLE_TEXTURE2D_ARRAY(_MaskArray,sampler_MaskArray,i.uv.xy,i.uv.z).b;
+                float2 surfaceUV=i.uv.xy+viewTS.xy/max(.35,abs(viewTS.z))*(height-.5)*.012;
+                half4 albedo=SAMPLE_TEXTURE2D_ARRAY(_AlbedoArray,sampler_AlbedoArray,surfaceUV,i.uv.z);
+                half3 normalTS=SAMPLE_TEXTURE2D_ARRAY(_NormalArray,sampler_NormalArray,surfaceUV,i.uv.z).xyz*2-1;
                 normalTS.xy*=_NormalStrength;normalTS=normalize(normalTS);
-                half4 mask=SAMPLE_TEXTURE2D_ARRAY(_MaskArray,sampler_MaskArray,i.uv.xy,i.uv.z);
+                half4 mask=SAMPLE_TEXTURE2D_ARRAY(_MaskArray,sampler_MaskArray,surfaceUV,i.uv.z);
                 half3 n=normalize(i.normalWS),t=normalize(i.tangentWS.xyz),b=cross(n,t)*i.tangentWS.w;
                 InputData lighting=(InputData)0;
                 lighting.positionWS=i.positionWS;lighting.normalWS=normalize(mul(normalTS,half3x3(t,b,n)));

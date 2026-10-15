@@ -4,7 +4,7 @@ namespace LestingCraft.Gameplay
     public enum GameMode { Survival=0,Hardcore=1,Creative=2,Story=3 }
     public static class GameRules
     {
-        public const int Version=2;
+        public const int Version=3;
         public static readonly string[] ModeNames={"Выживание","Хардкор","Творческий","Сюжет"};
         public static readonly string[] ModeDescriptions={"Добыча, крафт, голод и холод.\nОбщий мир и возрождение.","Одна жизнь на команду.\nЛюбая смерть завершает забег.","Свободное строительство.\nБез голода, холода и урона.","Путь через пять измерений.\nЦели, открытия и общий прогресс."};
         public static bool IsValid(int mode)=>mode>=0&&mode<4;

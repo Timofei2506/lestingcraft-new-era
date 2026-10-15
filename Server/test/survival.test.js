@@ -14,3 +14,14 @@ test('inventory bounds, unknown items, NaN and excessive stacks rejected',()=>{f
 test('private saves are included only for reconnecting identity',()=>{const r=new RoomState(config(0)),p=peer();r.handle(p,JSON.stringify({type:'state',save:save()}),10000,()=>{});assert.equal(r.welcome(newPeer('b','Bob','b'.repeat(32)),[]).save,null);const restored=new RoomState(r.config,[],[...r.savedPlayers].map(([key,save])=>({key,save})));assert.equal(restored.welcome(p,[]).save.survival.wetness,.4);});
 test('forced exit checkpoint is limited to once per minute',()=>{const r=new RoomState(config(0)),p=peer();r.handle(p,JSON.stringify({type:'state',save:save()}),100000,()=>{});assert.equal(r.handle(p,JSON.stringify({type:'state',save:save(),force:true}),100001,()=>{}).type,'state_saved');assert.throws(()=>r.handle(p,JSON.stringify({type:'state',save:save(),force:true}),100002,()=>{}),/frequent/);});
 test('repeated dead reports cannot bypass ordinary save cooldown',()=>{const r=new RoomState(config(0)),p=peer(),state=save();state.survival.health=0;r.handle(p,JSON.stringify({type:'state',save:state}),100000,()=>{});assert.throws(()=>r.handle(p,JSON.stringify({type:'state',save:state}),100001,()=>{}),/frequent/);});
+test('rules 3 preserve grid, cursor wear, personal furnace, grave extras and oxygen',()=>{
+ const s=save(),stack=(item,count=1,durability=0)=>({item,count,durability});
+ s.inventory.grid=Array.from({length:9},()=>stack(0,0));s.inventory.grid[0]=stack(120,5);s.inventory.cursor=stack(101,1,17);
+ s.inventory.furnace={input:stack(114,2),fuel:stack(123,3),output:stack(111),progress:4,burn:8,recipe:114,x:1,y:42,z:1,realm:0};s.survival.air=51;
+ s.grave=s.inventory.slots;s.graveExtras=Array.from({length:13},()=>stack(0,0));s.graveExtras[0]=stack(16);s.graveX=1;s.graveY=42;s.graveZ=1;
+ const validated=validatePlayerSave(s);assert.equal(validated.inventory.grid[0].count,5);assert.equal(validated.inventory.cursor.durability,17);assert.equal(validated.inventory.furnace.progress,4);assert.equal(validated.graveExtras[0].item,16);assert.equal(validated.survival.air,51);
+ const c=createConfig({version:1,rulesVersion:3,mode:0,seed:2506,dimension:0});assert.equal(c.rulesVersion,3);
+});
+test('extra crafting storage and furnace timers are bounded',()=>{
+ for(const change of [s=>s.inventory.grid=[],s=>s.inventory.cursor={item:101,count:1,durability:141},s=>s.inventory.furnace={burn:NaN},s=>s.inventory.furnace={progress:99},s=>s.survival.air=-1]){const s=save();change(s);assert.throws(()=>validatePlayerSave(s));}
+});

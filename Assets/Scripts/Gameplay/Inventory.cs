@@ -15,7 +15,7 @@ namespace LestingCraft.Gameplay
     }
     public static class Items
     {
-        public const int WoodPick=100,StonePick=101,Axe=102,Sword=103,Coat=104,Berries=110,Bread=111,Planks=120,Stick=121,Fiber=122;
+        public const int WoodPick=100,StonePick=101,Axe=102,Sword=103,Coat=104,Berries=110,Bread=111,Planks=120,Stick=121,Fiber=122,Charcoal=123,RoastedBerries=112,Grain=113,Dough=114,Workbench=16,Furnace=17;
         static readonly Dictionary<int,ItemDefinition> all=new Dictionary<int,ItemDefinition>();
         static Items()
         {
@@ -28,18 +28,21 @@ namespace LestingCraft.Gameplay
             all[Coat]=new ItemDefinition(Coat,"Тёплая накидка",1,0,insulation:10);
             all[Berries]=new ItemDefinition(Berries,"Лесные ягоды",32,food:16);
             all[Bread]=new ItemDefinition(Bread,"Походный хлеб",32,food:30);
-            all[Planks]=new ItemDefinition(Planks,"Доски");all[Stick]=new ItemDefinition(Stick,"Палки");all[Fiber]=new ItemDefinition(Fiber,"Волокно");
+            all[Workbench]=new ItemDefinition(Workbench,"Верстак",block:16);all[Furnace]=new ItemDefinition(Furnace,"Печь",block:17);
+            all[RoastedBerries]=new ItemDefinition(RoastedBerries,"Печёные ягоды",32,food:24);all[Grain]=new ItemDefinition(Grain,"Дикое зерно");all[Dough]=new ItemDefinition(Dough,"Тесто");all[Charcoal]=new ItemDefinition(Charcoal,"Древесный уголь");
+            all[Planks]=new ItemDefinition(Planks,"Доски",block:18);all[Stick]=new ItemDefinition(Stick,"Палки");all[Fiber]=new ItemDefinition(Fiber,"Волокно");
         }
         public static bool Exists(int id)=>all.ContainsKey(id);
         public static ItemDefinition Get(int id)=>all.TryGetValue(id,out var item)?item:default;
         public static bool IsPick(int id)=>id==WoodPick||id==StonePick;
-        public static int ToolDrop(int block)=>block==3?2:block==5?Fiber:block;
+        public static int ToolDrop(int block)=>block==3?2:block==5?Fiber:block==18?Planks:block;
     }
     [Serializable] public sealed class Inventory
     {
         public const int SlotCount=45,HotbarCount=9;
+        public ItemStack[] grid=new ItemStack[9];public ItemStack cursor=new ItemStack();public FurnaceState furnace=new FurnaceState();
         public ItemStack[] slots=new ItemStack[SlotCount];public int selected;public int revision;
-        public Inventory(){for(int i=0;i<slots.Length;i++)slots[i]=new ItemStack();}
+        public Inventory(){for(int i=0;i<slots.Length;i++)slots[i]=new ItemStack();for(int i=0;i<9;i++)grid[i]=new ItemStack();}
         public ItemStack Active=>slots[Math.Max(0,Math.Min(HotbarCount-1,selected))];
         public int Count(int item){int n=0;foreach(var s in slots)if(s.item==item)n+=s.count;return n;}
         public bool CanAdd(int item,int count)
@@ -69,14 +72,29 @@ namespace LestingCraft.Gameplay
             {int amount=Math.Min(a.count,Items.Get(a.item).MaxStack-b.count);a.count-=amount;b.count+=amount;if(a.count==0){a.item=0;a.durability=0;}}
             else {slots[from]=b;slots[to]=a;}revision++;
         }
-        public Inventory Clone(){var n=new Inventory();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();n.selected=selected;n.revision=revision;return n;}
+        public Inventory Clone(){var n=new Inventory();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();for(int i=0;i<9;i++)n.grid[i]=grid[i].Clone();n.cursor=cursor.Clone();n.furnace=furnace.Clone();n.selected=selected;n.revision=revision;return n;}
+        public static ItemStack Clean(ItemStack s)
+        {
+            if(s==null||!Items.Exists(s.item)||s.count<=0)return new ItemStack();
+            s.count=Math.Min(s.count,Items.Get(s.item).MaxStack);s.durability=Math.Max(0,Math.Min(Items.Get(s.item).Durability,s.durability));return s;
+        }
+        public bool AddStack(ItemStack stack)
+        {
+            if(stack==null||stack.count<=0)return true;if(!CanAdd(stack.item,stack.count))return false;
+            // Non-stackable equipment must retain its actual wear, not be repaired by transfer/save.
+            if(Items.Get(stack.item).MaxStack==1){for(int n=0;n<stack.count;n++){int free=Array.FindIndex(slots,s=>s.count==0);slots[free]=new ItemStack{item=stack.item,count=1,durability=stack.durability};}revision++;return true;}
+            return Add(stack.item,stack.count);
+        }
+        public ItemStack[] ExtraStacks()
+        {var all=new ItemStack[13];for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
         public void WearTool()
-        {if(Active.count>0&&Items.Get(Active.item).Durability>0){Active.durability--;if(Active.durability<=0){Active.count=0;Active.item=0;}revision++;}}
+        {if(Active.count>0&&Items.Get(Active.item).Durability>0){Active.durability--;if(Active.durability<=0){Active.count=0;Active.item=0;Active.durability=0;}revision++;}}
         public void Normalize()
         {
             if(slots==null||slots.Length!=SlotCount)slots=new ItemStack[SlotCount];
             for(int i=0;i<SlotCount;i++)
             {if(slots[i]==null)slots[i]=new ItemStack();var s=slots[i];if(!Items.Exists(s.item)||s.count<=0){s.item=0;s.count=0;s.durability=0;}else{s.count=Math.Min(s.count,Items.Get(s.item).MaxStack);s.durability=Math.Max(0,Math.Min(Items.Get(s.item).Durability,s.durability));}}
+            if(grid==null||grid.Length!=9)grid=new ItemStack[9];for(int i=0;i<9;i++)grid[i]=Clean(grid[i]);cursor=Clean(cursor);if(furnace==null)furnace=new FurnaceState();furnace.Normalize();
             selected=Math.Max(0,Math.Min(8,selected));
         }
     }
@@ -93,13 +111,17 @@ namespace LestingCraft.Gameplay
     }
     public static class Recipes
     {
-        public static readonly Recipe[] All={
-            new Recipe("Доски ×4",120,4,new Ingredient(4,1)),new Recipe("Палки ×4",121,4,new Ingredient(120,2)),
-            new Recipe("Деревянная кирка",100,1,new Ingredient(120,3),new Ingredient(121,2)),
-            new Recipe("Каменная кирка",101,1,new Ingredient(1,3),new Ingredient(121,2)),
-            new Recipe("Каменный топор",102,1,new Ingredient(1,3),new Ingredient(121,2)),
-            new Recipe("Каменный меч",103,1,new Ingredient(1,2),new Ingredient(121,1)),
-            new Recipe("Костёр",15,1,new Ingredient(1,6),new Ingredient(4,4)),
-            new Recipe("Тёплая накидка",104,1,new Ingredient(122,12),new Ingredient(120,2))};
+        public static readonly Recipe[] All=Build();
+        static Recipe[] Build()
+        {
+            var recipes=new Recipe[CraftingTable.All.Length];
+            for(int i=0;i<recipes.Length;i++)
+            {
+                var r=CraftingTable.All[i];var counts=new Dictionary<int,int>();foreach(int item in r.Pattern)if(item>0){if(!counts.ContainsKey(item))counts[item]=0;counts[item]++;}
+                var costs=new List<Ingredient>();foreach(var pair in counts)costs.Add(new Ingredient(pair.Key,pair.Value));
+                recipes[i]=new Recipe(Items.Get(r.Output).Name+" ×"+r.Count,r.Output,r.Count,costs.ToArray());
+            }
+            return recipes;
+        }
     }
 }

@@ -1,0 +1,17 @@
+name: Crafting core
+on:
+  push:
+    paths: ["Assets/Scripts/Gameplay/**", "Tools/check_crafting_core.cs", ".github/workflows/core.yml"]
+  pull_request:
+    paths: ["Assets/Scripts/Gameplay/**", "Tools/check_crafting_core.cs", ".github/workflows/core.yml"]
+jobs:
+  conservation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq mono-mcs
+      - name: Compile real gameplay core and fuzz inventory transfers
+        run: |
+          mcs -langversion:7.2 -out:/tmp/crafting-check.exe Assets/Scripts/Gameplay/Inventory.cs Assets/Scripts/Gameplay/CraftingTable.cs Assets/Scripts/Gameplay/FurnaceState.cs Tools/check_crafting_core.cs
+          mono /tmp/crafting-check.exe

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -20,6 +20,15 @@
     "crystal",
     "aether",
     "ore",
-    "snow"
-  ]
+    "snow",
+    "planks",
+    "workbench-top",
+    "workbench-side",
+    "furnace-side",
+    "furnace-front",
+    "furnace-top",
+    "campfire-side",
+    "campfire-top"
+  ],
+  "stationSource": "Original procedural joinery/masonry + derived PBR estimates"
 }

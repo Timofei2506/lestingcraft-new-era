@@ -28,10 +28,11 @@ namespace LestingCraft.Runtime
             transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
             var move=new Vector2((keyboard.dKey.isPressed?1:0)-(keyboard.aKey.isPressed?1:0),(keyboard.wKey.isPressed?1:0)-(keyboard.sKey.isPressed?1:0));
             if(move.sqrMagnitude>1)move.Normalize();
-            Sprinting=keyboard.leftShiftKey.isPressed&&move.sqrMagnitude>0&&Game.Session&&Game.Session.Vitals.stamina>5;float speed=Sprinting?8:5;
+            bool swimming=World.GetBlock(Mathf.FloorToInt(transform.position.x),Mathf.FloorToInt(transform.position.y+.8f),Mathf.FloorToInt(transform.position.z))==7;
+            Sprinting=!swimming&&keyboard.leftShiftKey.isPressed&&move.sqrMagnitude>0&&Game.Session&&Game.Session.Vitals.stamina>5;float speed=swimming?2.6f:Sprinting?8:5;
             if(controller.isGrounded&&vertical<0)vertical=-2;
-            if(controller.isGrounded&&keyboard.spaceKey.wasPressedThisFrame)vertical=8;
-            vertical=Mathf.Max(vertical-22*Time.deltaTime,-40);
+            if(swimming)vertical=keyboard.spaceKey.isPressed?3:keyboard.leftCtrlKey.isPressed?-3:Mathf.MoveTowards(vertical,-.35f,Time.deltaTime*8);
+            else {if(controller.isGrounded&&keyboard.spaceKey.wasPressedThisFrame)vertical=8;vertical=Mathf.Max(vertical-22*Time.deltaTime,-40);}
             Vector3 velocity=(transform.right*move.x+transform.forward*move.y)*speed;
             Vector3 target=transform.position+velocity*Time.deltaTime;
             if(!World.Loaded(target)||!World.Contains(Mathf.FloorToInt(target.x),1,Mathf.FloorToInt(target.z)))velocity=Vector3.zero;
@@ -44,7 +45,15 @@ namespace LestingCraft.Runtime
             var keys=new[]{keyboard.digit1Key,keyboard.digit2Key,keyboard.digit3Key,keyboard.digit4Key,keyboard.digit5Key,keyboard.digit6Key,keyboard.digit7Key,keyboard.digit8Key,keyboard.digit9Key};
             for(int i=0;i<keys.Length;i++)if(keys[i].wasPressedThisFrame)Game.Session.Inventory.selected=i;
             Selected=Items.Get(Game.Session.Inventory.Active.item).Block;
-            if(mouse.rightButton.wasPressedThisFrame&&Selected==0){Game.Session.UseActive();return;}
+            if(mouse.rightButton.wasPressedThisFrame)
+            {
+                if(!keyboard.leftShiftKey.isPressed&&Physics.Raycast(Camera.transform.position,Camera.transform.forward,out var stationHit,6f)&&stationHit.collider.transform.parent==World.transform)
+                {
+                    var stationCell=Vector3Int.FloorToInt(stationHit.point-stationHit.normal*.01f);int station=World.GetBlock(stationCell.x,stationCell.y,stationCell.z);
+                    if(station==16||station==17){Game.OpenStation(station,stationCell);return;}
+                }
+                if(Selected==0){Game.Session.UseActive();return;}
+            }
             if(mouse.leftButton.isPressed||mouse.rightButton.wasPressedThisFrame)
             {
                 if(Physics.Raycast(Camera.transform.position,Camera.transform.forward,out var hit,6f)&&hit.collider.transform.parent==World.transform)
