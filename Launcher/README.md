@@ -15,7 +15,7 @@ Native WPF / .NET 8, self-contained single EXE. No Unity Hub/Editor, SDK, admin 
 - Local game starts offline. Automatic self-update/signing of the launcher itself is **not implemented**; launcher updates are manual. Downloads are user-triggered; no arbitrary script execution.
 
 ## Storage and constraints
-New game manifests retain for 14 days; game artifacts must still exist. Free GitHub quotas and artifact expiration apply. This is a tester distribution service, not permanent public release hosting. It cannot promise an old build can be reinstalled months later.
+New game manifests retain for 14 days; game artifacts must still exist. Free GitHub quotas and artifact expiration apply. The newest successful native build is the only download candidate: expired latest artifacts fail closed instead of silently downgrading to an older bootstrap. This is a tester distribution service, not permanent public release hosting. It cannot promise an old build can be reinstalled months later.
 
 No version cleanup policy yet: old complete versions remain for rollback and consume disk. Failed staging folders are cleaned after normal cancellation/errors; OS/power-loss orphan staging may remain. An interrupted file is retried, not resumed byte-by-byte. SHA-256 verifies integrity from the trusted channel; it does not replace publisher code signing.
 

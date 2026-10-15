@@ -18,11 +18,12 @@ export async function launcherFeed(request,env,fetcher=fetch){
    const [archive,manifestArchive]=await Promise.all([signed(game.id),signed(manifest.id)]);
    return reply({schema:1,build,archive,manifestArchive,channel:'invited-testers',publishedAt:updated});
   }
-  for(const run of data.workflow_runs||[]){
-   if(run.conclusion!=='success'||run.head_branch!=='main'||!/^[a-f0-9]{40}$/.test(run.head_sha)||run.event!=='workflow_dispatch')continue;
-   const {artifacts=[]}=await get(`actions/runs/${run.id}/artifacts?per_page=100`);
-   const game=find(artifacts,'build-StandaloneWindows64'),manifest=find(artifacts,'launcher-manifest');if(!game||!manifest)continue;
-   return await packageFeed(game,manifest,run.head_sha,run.updated_at);
+  // Never silently downgrade to an older successful build when the newest package expires.
+  const latest=(data.workflow_runs||[]).find(run=>run.conclusion==='success'&&run.head_branch==='main'&&/^[a-f0-9]{40}$/.test(run.head_sha)&&run.event==='workflow_dispatch');
+  if(latest){
+   const {artifacts=[]}=await get(`actions/runs/${latest.id}/artifacts?per_page=100`);
+   const game=find(artifacts,'build-StandaloneWindows64'),manifest=find(artifacts,'launcher-manifest');
+   if(game&&manifest)return await packageFeed(game,manifest,latest.head_sha,latest.updated_at);
   }
   // Bootstrap the already downloaded, smoke-tested game without duplicating a large game artifact.
   const indexed=await get('actions/workflows/launcher-backfill.yml/runs?branch=main&status=success&per_page=3');
@@ -31,7 +32,7 @@ export async function launcherFeed(request,env,fetcher=fetch){
    const {artifacts=[]}=await get(`actions/runs/${index.id}/artifacts?per_page=100`);
    for(const manifest of artifacts){
     const match=manifest.name?.match(/^launcher-manifest-(\d+)-([a-f0-9]{40})$/);if(!match||manifest.expired||manifest.size_in_bytes<=0)continue;
-    const id=Number(match[1]);if(!Number.isSafeInteger(id))continue;
+    const id=Number(match[1]);if(!Number.isSafeInteger(id)||!latest||id!==latest.id)continue;
     const source=await get(`actions/runs/${id}`);
     if(source.conclusion!=='success'||source.head_branch!=='main'||source.path!=='.github/workflows/build.yml'||source.event!=='workflow_dispatch'||source.head_sha!==match[2])continue;
     const native=await get(`actions/runs/${id}/artifacts?per_page=100`),game=find(native.artifacts||[],'build-StandaloneWindows64');

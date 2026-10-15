@@ -1,3 +1,15 @@
+## Windows-лаунчер (тестовая версия)
+
+Готов отдельный native WPF / .NET 8 self-contained лаунчер: [приватный Windows x64 artifact](https://github.com/Timofei2506/lestingcraft-new-era/actions/runs/38736871408/artifacts/11974517325), около 63 MiB. Распаковать **весь** архив, затем `LestingCraftLauncher.exe`; .NET/Unity устанавливать не нужно. «Уже есть игра?» использует файлы уже скачанной папки; обновляются только несовпадающие SHA-256 файлы плюс ZIP-метаданные. Сохранения LocalLow не затрагиваются, есть офлайн-запуск и откат.
+
+Тестовый канал закрыт приглашением, исходники приватные. Нет GitHub/CF-токенов в EXE; bootstrap test-access.key — отдельный tester invite из частного artifact, затем Windows DPAPI. Автообновление самого лаунчера пока не реализовано. EXE без платной цифровой подписи.
+
+Проверки: 32 updater checks, настоящий WPF EXE smoke на Windows, реальная установка 156 файлов / 312,187,955 bytes через production CF endpoint и ranged GitHub artifact, все hashes PASS; повторное использование файлов и откат PASS. Инструкции и ограничения (включая сроки хранения пакетов) — [Launcher/README.md](Launcher/README.md). Не выкладывать тестовый архив/приглашение публично без решения владельца.
+
+Игровые исправления итерации 08 описаны в [Docs/Итерация-08.md](Docs/Итерация-08.md); наличие исходников или готового лаунчера не означает, что новый игровой EXE уже прошёл smoke.
+
+---
+
 # LestingCraft: New Era
 
 [![CI](https://github.com/Timofei2506/lestingcraft-new-era/actions/workflows/ci.yml/badge.svg)](https://github.com/Timofei2506/lestingcraft-new-era/actions/workflows/ci.yml)
