@@ -28,9 +28,17 @@ if (-not (Test-Path $editorExe)) {
     }
     $installer = Join-Path $env:RUNNER_TEMP "UnitySetup64-$version.exe"
     Write-Host "Downloading official Unity $version ($revision), not optional IL2CPP/Android/WebGL modules."
-    & curl.exe --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 600 --output $installer $uri.AbsoluteUri
+    $headersFile = Join-Path $env:RUNNER_TEMP "UnitySetup64-$version.headers"
+    & curl.exe --dump-header $headersFile --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 600 --output $installer $uri.AbsoluteUri
     if ($LASTEXITCODE -ne 0) { throw 'Unity Editor download failed.' }
-    if ((Get-Item $installer).Length -ne [long]$download.downloadSize.value) { throw 'Incomplete Unity installer download.' }
+    $actualLength = (Get-Item $installer).Length
+    # Release API rounds this 4 GB size (272 bytes short for 6000.0.32f1).
+    # Use the final CDN response Content-Length, then exact digest + Authenticode.
+    $lengthHeaders = [regex]::Matches((Get-Content $headersFile -Raw), '(?im)^Content-Length:\s*(\d+)\s*$')
+    if ($lengthHeaders.Count -eq 0) { throw 'CDN Content-Length is missing.' }
+    $expectedLength = [long]$lengthHeaders[$lengthHeaders.Count-1].Groups[1].Value
+    Write-Host "Installer bytes: $actualLength; CDN: $expectedLength; release metadata (approximate): $($download.downloadSize.value)"
+    if ($actualLength -ne $expectedLength) { throw 'Incomplete Unity installer transfer.' }
     if (-not $download.integrity.StartsWith('md5-')) { throw 'Expected checksum metadata missing.' }
     $digestBytes = [Convert]::FromBase64String($download.integrity.Substring(4))
     $expected = [Text.Encoding]::UTF8.GetString($digestBytes)
