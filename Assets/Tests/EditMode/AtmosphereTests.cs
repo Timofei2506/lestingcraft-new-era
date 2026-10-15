@@ -68,7 +68,10 @@ namespace LestingCraft.Tests
         public void PresentationShadersImportWithoutReportedErrors(string name)
         {
             var shader=Shader.Find("LestingCraft/"+name);Assert.IsNotNull(shader);
-            Assert.IsFalse(UnityEditor.ShaderUtil.ShaderHasError(shader),"Shader import error: "+name);
+            var messages=UnityEditor.ShaderUtil.GetShaderMessages(shader);
+            var report=new System.Text.StringBuilder();
+            foreach(var message in messages)report.AppendLine(message.file+":"+message.line+" "+message.message);
+            Assert.IsFalse(UnityEditor.ShaderUtil.ShaderHasError(shader),"Shader import error: "+name+"\n"+report);
         }
         [Test] public void GeneratedGrassHasTheExpectedShaderAndTextureArray()
         {

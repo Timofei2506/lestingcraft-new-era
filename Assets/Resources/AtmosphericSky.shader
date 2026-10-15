@@ -43,10 +43,10 @@ Shader "LestingCraft/AtmosphericSky"
                 for(int n=0;n<32;n++)
                 {
                     if(n>=(int)_CloudSteps||transmittance<.015)break;
-                    float3 point=_WorldSpaceCameraPos+ray*(start+(n+jitter)*stepLength);float d=density(point);
+                    float3 samplePosition=_WorldSpaceCameraPos+ray*(start+(n+jitter)*stepLength);float d=density(samplePosition);
                     if(d>.003)
                     {
-                        float sunlight=exp(-(density(point+sunDir*14)+density(point+sunDir*30))*1.7);
+                        float sunlight=exp(-(density(samplePosition+sunDir*14)+density(samplePosition+sunDir*30))*1.7);
                         float alpha=1-exp(-d*stepLength*.065);
                         half3 lighting=_EnvironmentHorizon.rgb*.28+direct*(sunlight*.70+pow(sun,8)*.18);
                         // More aerial perspective along the horizon, less floating white slabs.

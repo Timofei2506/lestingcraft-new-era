@@ -34,10 +34,10 @@ Shader "LestingCraft/VolumetricAtmosphere"
                 for(int n=0;n<24;n++)
                 {
                     if(n>=(int)_Steps)break;
-                    float3 point=_WorldSpaceCameraPos+direction*(n+jitter)*stepLength;
-                    float heightDensity=lerp(exp(-max(0,point.y-_FogHeight)*.034),1,_Submerged);
+                    float3 samplePosition=_WorldSpaceCameraPos+direction*(n+jitter)*stepLength;
+                    float heightDensity=lerp(exp(-max(0,samplePosition.y-_FogHeight)*.034),1,_Submerged);
                     float extinction=1-exp(-_Density*heightDensity*stepLength);
-                    half shadow=MainLightRealtimeShadow(TransformWorldToShadowCoord(point));
+                    half shadow=MainLightRealtimeShadow(TransformWorldToShadowCoord(samplePosition));
                     half3 light=_FogTint.rgb*.42+sun.color*(phase*4+.13)*shadow*(1-_Submerged*.9);
                     scattering+=transmittance*extinction*light;transmittance*=1-extinction;
                 }

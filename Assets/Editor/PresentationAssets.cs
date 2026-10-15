@@ -43,7 +43,7 @@ public static class PresentationAssets
             }
             cloud.SetPixels(pixels);cloud.Apply(false,true);AssetDatabase.CreateAsset(cloud,Folder+"/CloudNoise.asset");
         }
-        var sky=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat");sky.SetTexture("_CloudNoise",cloud);EditorUtility.SetDirty(sky);
+        var sky=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat");sky.SetTexture("_CloudNoise",cloud);sky.SetFloat("_CloudBase",144);EditorUtility.SetDirty(sky);
         ParticleMaterial("Precipitation",false);ParticleMaterial("Fire",true);
         var pipeline=AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(Folder+"/HighDefinition.asset");
         if(!pipeline)
