@@ -18,7 +18,7 @@ namespace LestingCraft.Presentation
             player=owner;main=camera;previousMask=main.cullingMask;main.cullingMask&=~(1<<Layer);
             var obj=new GameObject("First-person viewmodel camera");obj.transform.SetParent(camera.transform,false);
             view=obj.AddComponent<Camera>();view.cullingMask=1<<Layer;view.nearClipPlane=.01f;view.farClipPlane=3;view.fieldOfView=60;view.allowHDR=true;
-            mainData=main.GetUniversalAdditionalCameraData();var data=view.GetUniversalAdditionalCameraData();data.renderType=CameraRenderType.Overlay;data.clearDepth=true;data.renderPostProcessing=false;data.renderShadows=false;mainData.cameraStack.Add(view);
+            mainData=main.GetUniversalAdditionalCameraData();var data=view.GetUniversalAdditionalCameraData();data.renderType=CameraRenderType.Overlay;data.renderPostProcessing=false;data.renderShadows=false;mainData.cameraStack.Add(view);
             var baseMaterial=Resources.Load<Material>("Generated/Avatar");
             skin=new Material(baseMaterial);skin.SetColor("_BaseColor",new Color(.63f,.43f,.30f));skin.SetFloat("_Smoothness",.23f);
             cloth=new Material(baseMaterial);cloth.SetColor("_BaseColor",new Color(.15f,.22f,.18f));cloth.SetFloat("_Smoothness",.12f);

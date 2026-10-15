@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using LestingCraft.Presentation;
 using LestingCraft.Runtime;
+using LestingCraft.World;
 
 namespace LestingCraft.Tests
 {
@@ -53,6 +54,43 @@ namespace LestingCraft.Tests
                 else Assert.Less(player.transform.position.z,-.7f,"One-block opening must remain impassable");
             }
             finally{Object.DestroyImmediate(root);Physics.SyncTransforms();}
+        }
+        [Test] public void TwoBlockOpeningInRealVoxelColliderIsTraversable()
+        {
+            var root=new GameObject("Voxel tunnel fixture");Mesh mesh=null;
+            try
+            {
+                var chunk=new ChunkData();
+                for(int z=0;z<12;z++)for(int x=0;x<3;x++)chunk.SetBlock(x,0,z,1);
+                for(int z=2;z<10;z++)
+                {
+                    for(int x=0;x<3;x++)chunk.SetBlock(x,3,z,1);
+                    for(int y=1;y<3;y++){chunk.SetBlock(0,y,z,1);chunk.SetBlock(2,y,z,1);}
+                }
+                mesh=ChunkMesher.Build(chunk,0,0,(x,y,z)=>0).CreateMesh(true);
+                root.AddComponent<MeshCollider>().sharedMesh=mesh;
+                var obj=new GameObject("Voxel tunnel player");obj.transform.SetParent(root.transform);obj.transform.position=new Vector3(1.5f,1.025f,.5f);
+                var controller=obj.AddComponent<CharacterController>();PlayerCapsule.Configure(controller);Physics.SyncTransforms();
+                for(int n=0;n<100;n++){PlayerCapsule.UpdateStep(controller,Vector3.forward);controller.Move(new Vector3(0,-.02f,.06f));}
+                Assert.Greater(obj.transform.position.z,6,"Player must cross actual meshed voxel lintel");
+            }
+            finally{Object.DestroyImmediate(root);if(mesh)Object.DestroyImmediate(mesh);Physics.SyncTransforms();}
+        }
+        [Test] public void HandUsesAnIsolatedCameraAndDoesNotAddPhysicsColliders()
+        {
+            var cameraObject=new GameObject("Viewmodel test camera");var playerObject=new GameObject("Inactive hand owner");playerObject.SetActive(false);
+            try
+            {
+                var camera=cameraObject.AddComponent<Camera>();int mask=camera.cullingMask;
+                var controller=playerObject.AddComponent<FirstPersonController>();
+                var hands=playerObject.AddComponent<FirstPersonHands>();hands.Initialize(controller,camera);
+                Assert.IsNotNull(hands.ViewCamera);Assert.AreEqual(1<<30,hands.ViewCamera.cullingMask);
+                Assert.AreEqual(0,camera.cullingMask&(1<<30));
+                Assert.GreaterOrEqual(cameraObject.GetComponentsInChildren<Renderer>().Length,12);
+                Assert.AreEqual(0,cameraObject.GetComponentsInChildren<Collider>().Length);
+                Object.DestroyImmediate(hands);Assert.AreEqual(mask,camera.cullingMask);
+            }
+            finally{Object.DestroyImmediate(playerObject);Object.DestroyImmediate(cameraObject);}
         }
         static void Box(GameObject root,string name,Vector3 position,Vector3 scale)
         {var obj=new GameObject(name,typeof(BoxCollider));obj.transform.SetParent(root.transform);obj.transform.position=position;obj.GetComponent<BoxCollider>().size=scale;}
