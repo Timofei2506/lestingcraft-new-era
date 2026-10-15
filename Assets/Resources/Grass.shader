@@ -29,6 +29,7 @@ Shader "LestingCraft/Grass"
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            float _LCAmbientOcclusionProbe;
             TEXTURE2D_ARRAY(_AlbedoArray);SAMPLER(sampler_AlbedoArray);
             struct V{float4 p:SV_POSITION;float3 ws:TEXCOORD0;half3 n:TEXCOORD1;float2 uv:TEXCOORD2;half4 color:COLOR;half fog:TEXCOORD3;};
             V Vert(A i){V o;o.ws=GrassPosition(i);o.p=TransformWorldToHClip(o.ws);o.n=TransformObjectToWorldNormal(i.n);o.uv=i.uv.xy;o.color=i.color;o.fog=ComputeFogFactor(o.p.z);return o;}
@@ -42,6 +43,17 @@ Shader "LestingCraft/Grass"
                 SurfaceData s=(SurfaceData)0;s.albedo=albedo*i.color.rgb*lerp(.55,1.12,i.uv.y);s.alpha=1;s.smoothness=.13;s.occlusion=lerp(.65,1,i.uv.y);
                 // Small transmitted term for sunlit blades; this is not a subsurface-scattering solver.
                 Light sun=GetMainLight(lighting.shadowCoord);s.emission=albedo*sun.color*pow(saturate(dot(-sun.direction,lighting.viewDirectionWS)),4)*.12*sun.shadowAttenuation;
+                // Native evidence mode: sample the REAL GPU-bound SSAO during opaque rendering.
+                // RenderGraph textures are transient; Shader.GetGlobalTexture after the frame is not a valid proof.
+                if(_LCAmbientOcclusionProbe>.5)
+                {
+                    #if defined(_SCREEN_SPACE_OCCLUSION)
+                        half ao=GetScreenSpaceAmbientOcclusion(lighting.normalizedScreenSpaceUV).indirectAmbientOcclusion;
+                        return half4(0,ao,0,1);
+                    #else
+                        return half4(1,0,1,1);
+                    #endif
+                }
                 half4 color=UniversalFragmentPBR(lighting,s);color.rgb=MixFog(color.rgb,i.fog);return color;
             }
             ENDHLSL

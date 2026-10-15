@@ -121,7 +121,7 @@ def faces(m):
     yield np.array(CORNERS[side],float)+[x,y,z],side,p
 # Orthographic z-buffer renderer, transparent output, actual textured cube faces (not flattened illustrations).
 def render(m,S=768):
- camera=np.array([1.4,1.05,1.8]);camera/=np.linalg.norm(camera);right=np.cross([0,1,0],camera);right/=np.linalg.norm(right);up=np.cross(camera,right)
+ camera=np.array([1.4,1.05,-1.8 if m["id"]==17 else 1.8]);camera/=np.linalg.norm(camera);right=np.cross([0,1,0],camera);right/=np.linalg.norm(right);up=np.cross(camera,right)
  fs=list(faces(m));pts=np.concatenate([f[0] for f in fs]);xy=np.stack([pts@right,pts@up],axis=1);lo=xy.min(0);hi=xy.max(0);scale=(S*.82)/max(hi-lo);mid=(lo+hi)/2
  rgba=np.zeros((S,S,4),dtype=np.uint8);depth=np.full((S,S),-1e6,dtype=float)
  light=np.array([-.4,.85,.6]);light/=np.linalg.norm(light)
@@ -141,7 +141,8 @@ def render(m,S=768):
    if not vis.any():continue
    pos=a[:,:,None]*world[0]+b[:,:,None]*world[1]+c[:,:,None]*world[2]
    uv=pos[:,:,[2,1]] if side<2 else pos[:,:,[0,2]] if side<4 else pos[:,:,[0,1]]
-   tex=TEXTURES[PALETTE[p][1]];ij=np.floor(uv*256/12).astype(int)%256;albedo=tex[255-ij[:,:,1],ij[:,:,0]]*COLORS[p]
+   material_layer=([18,18,17,16,18,18] if m["id"]==16 else [19,19,21,21,19,20])[side] if m["id"] in [16,17] else PALETTE[p][1]
+   tex=TEXTURES[material_layer];ij=np.floor(uv*256/12).astype(int)%256;albedo=tex[255-ij[:,:,1],ij[:,:,0]]*COLORS[p]
    illumination=.43+.65*max(0,np.dot(n,light));shade=albedo*illumination
    # Restrained microfacet-ish highlights for crystals/ore, not a baked bloom cloud.
    if p in [12,13,14,24]:shade+=max(0,np.dot(n,(camera+light)/np.linalg.norm(camera+light)))**36*.12

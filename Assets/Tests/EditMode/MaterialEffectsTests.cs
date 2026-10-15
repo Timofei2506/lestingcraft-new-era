@@ -71,6 +71,11 @@ namespace LestingCraft.Tests
   }
   [Test] public void CampfireRaycastDoesNotSelectAnInvisibleUpperCornerOfItsCell()
   {Assert.IsFalse(VoxelRaycast.Trace(new Vector3(.02f,.95f,-1),Vector3.forward,2,(x,y,z)=>(ushort)(x==0&&y==0&&z==0?15:0),out _));}
+  [TestCase(16)] [TestCase(17)] public void StationItemFacesUseTheSamePbrLayersAsPlacedWorldFaces(int id)
+  {
+   var mesh=VoxelItemModels.MeshFor(id);var uv=new List<Vector3>();mesh.GetUVs(0,uv);var normals=mesh.normals;
+   for(int i=0;i<normals.Length;i++){int face=System.Array.IndexOf(BlockGeometry.Directions,Vector3Int.RoundToInt(normals[i]));Assert.AreEqual(SurfaceLayers.ForFace((ushort)id,face),uv[i].z);}
+  }
   [Test] public void SmokeSparksAndFlameHaveDifferentBoundedEmittersAndRealMaterials()
   {
    var root=new GameObject("Campfire FX test");try

@@ -26,6 +26,7 @@ Shader "LestingCraft/VoxelObjects"
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            float _LCAmbientOcclusionProbe;
             TEXTURE2D_ARRAY(_AlbedoArray);SAMPLER(sampler_AlbedoArray);
             TEXTURE2D_ARRAY(_NormalArray);SAMPLER(sampler_NormalArray);
             TEXTURE2D_ARRAY(_MaskArray);SAMPLER(sampler_MaskArray);
@@ -64,6 +65,17 @@ Shader "LestingCraft/VoxelObjects"
                 surface.smoothness=saturate(lerp(mask.a+wet*.32,.16,snow));surface.normalTS=normalTS;surface.occlusion=mask.g;
                 surface.alpha=1;
                 surface.emission=surface.albedo*i.color.a*1.5;
+                // Native evidence mode: sample the REAL GPU-bound SSAO during opaque rendering.
+                // RenderGraph textures are transient; Shader.GetGlobalTexture after the frame is not a valid proof.
+                if(_LCAmbientOcclusionProbe>.5)
+                {
+                    #if defined(_SCREEN_SPACE_OCCLUSION)
+                        half ao=GetScreenSpaceAmbientOcclusion(lighting.normalizedScreenSpaceUV).indirectAmbientOcclusion;
+                        return half4(0,ao,0,1);
+                    #else
+                        return half4(1,0,1,1);
+                    #endif
+                }
                 half4 c=UniversalFragmentPBR(lighting,surface);c.rgb=MixFog(c.rgb,i.fog);return c;
             }
             ENDHLSL

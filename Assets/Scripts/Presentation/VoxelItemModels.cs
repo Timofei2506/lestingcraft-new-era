@@ -45,12 +45,13 @@ namespace LestingCraft.Presentation
             {
                 if(cells.ContainsKey(pair.Key+BlockGeometry.Directions[face]))continue;int start=vertices.Count,palette=pair.Value;
                 ColorUtility.TryParseHtmlString(catalog.colors[palette],out var tint);tint.a=palette==32||palette==36?1:palette==12?.08f:palette==13?.025f:0;
+                int layer=id==16||id==17?SurfaceLayers.ForFace((ushort)id,face):catalog.layers[palette];
                 var tangent=BlockGeometry.Corners[face][3]-BlockGeometry.Corners[face][0];
                 for(int k=0;k<4;k++)
                 {
                     Vector3 pos=(Vector3)pair.Key+BlockGeometry.Corners[face][k];vertices.Add((pos-center)*scale);normals.Add(BlockGeometry.Directions[face]);colors.Add(tint.linear);
                     Vector2 uv=face<2?new Vector2(pos.z,pos.y):face<4?new Vector2(pos.x,pos.z):new Vector2(pos.x,pos.y);
-                    uvs.Add(new Vector3(uv.x/12,uv.y/12,catalog.layers[palette]));tangents.Add(new Vector4(tangent.x,tangent.y,tangent.z,-1));
+                    uvs.Add(new Vector3(uv.x/12,uv.y/12,layer));tangents.Add(new Vector4(tangent.x,tangent.y,tangent.z,-1));
                 }
                 foreach(int k in new[]{0,1,2,0,2,3})triangles.Add(start+k);
             }

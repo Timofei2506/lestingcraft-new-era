@@ -82,10 +82,18 @@ namespace LestingCraft.Runtime
             if(effects.Smoke.particleCount==0||effects.Sparks.particleCount==0){Fail("Campfire emitters did not produce live particles");yield break;}
             var rendererData=Resources.Load<UnityEngine.Rendering.Universal.UniversalRendererData>("Generated/Renderer");bool ssao=false;
             foreach(var feature in rendererData.rendererFeatures)if(feature is UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion&&feature.isActive)ssao=true;
-            yield return new WaitForEndOfFrame();
-            var aoTexture=Shader.GetGlobalTexture("_ScreenSpaceOcclusionTexture");
-            if(!ssao||!aoTexture||aoTexture.width<16){Fail("SSAO did not produce its real screen-space texture");yield break;}
-            Debug.Log("[Smoke] FOUNDATION10: live smoke="+effects.Smoke.particleCount+" sparks="+effects.Sparks.particleCount+"; shared crystal shape/render/collision/targeting; SSAO="+aoTexture.width+"x"+aoTexture.height);
+            if(!ssao){Fail("Serialized SSAO feature is missing/inactive");yield break;}
+            var mainCameraData=Camera.main.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+            var fogEvidence=GameObject.Find("Volumetric light shafts / height fog").GetComponent<MeshRenderer>();
+            fogEvidence.enabled=false;mainCameraData.renderPostProcessing=false;Shader.SetGlobalFloat("_LCAmbientOcclusionProbe",1);
+            yield return null;yield return null;yield return new WaitForEndOfFrame();
+            string aoShot=Path.GetFullPath(Path.Combine(folder,"ssao-gpu-proof.png"));ScreenCapture.CaptureScreenshot(aoShot);yield return WaitForScreenshot(aoShot);
+            Shader.SetGlobalFloat("_LCAmbientOcclusionProbe",0);mainCameraData.renderPostProcessing=true;fogEvidence.enabled=true;
+            var aoReadback=new Texture2D(2,2,TextureFormat.RGBA32,false);aoReadback.LoadImage(File.ReadAllBytes(aoShot));int aoPixels=0,occludedPixels=0;
+            foreach(var pixel in aoReadback.GetPixels32())if(pixel.r<30&&pixel.b<30&&pixel.g>20){aoPixels++;if(pixel.g<250)occludedPixels++;}Destroy(aoReadback);
+            if(aoPixels<2048||occludedPixels<32){Fail("GPU SSAO output has no active sampling/occlusion: green="+aoPixels+", occluded="+occludedPixels);yield break;}
+            Debug.Log("[Smoke] FOUNDATION10: live smoke="+effects.Smoke.particleCount+" sparks="+effects.Sparks.particleCount+"; shared crystal shape/render/collision/targeting; GPU SSAO="+aoPixels+" sampled pixels, "+occludedPixels+" occluded pixels");
+            yield return null;yield return new WaitForEndOfFrame();
             var hands=player.GetComponent<FirstPersonHands>();
             if(!hands||!hands.ViewCamera||!hands.ViewCamera.enabled){Fail("First-person hand camera not active.");yield break;}
             var body=ui.GetComponentInChildren<HealthSilhouette>();
@@ -168,6 +176,8 @@ namespace LestingCraft.Runtime
             // Reproducible in-world water fixture, not a painted reflection or a mock render.
             var savedPosition=Camera.main.transform.position;var savedRotation=Camera.main.transform.rotation;
             var pool=Vector3Int.FloorToInt(player.transform.position);var world=game.Session.World;
+            for(int z=-1;z<=0;z++)for(int x=2;x<=8;x++)
+            {world.Edit(pool.x+x,pool.y-1,pool.z+z,1);for(int y=0;y<5;y++)world.Edit(pool.x+x,pool.y+y,pool.z+z,0);}
             for(int z=1;z<=10;z++)for(int x=3;x<=7;x++)
             {
                 world.Edit(pool.x+x,pool.y-2,pool.z+z,1);world.Edit(pool.x+x,pool.y-1,pool.z+z,7);
@@ -179,15 +189,15 @@ namespace LestingCraft.Runtime
             for(int frame=0;frame<5;frame++)yield return null;
             yield return new WaitForEndOfFrame();string waterShot=Path.GetFullPath(Path.Combine(folder,"water-reflections.png"));ScreenCapture.CaptureScreenshot(waterShot);yield return WaitForScreenshot(waterShot);
             var cameraData=Camera.main.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();cameraData.renderPostProcessing=false;
-            Shader.SetGlobalFloat("_LCWaterReflectionProbe",1);yield return null;yield return null;yield return new WaitForEndOfFrame();
+            fogEvidence.enabled=false;Shader.SetGlobalFloat("_LCWaterReflectionProbe",1);yield return null;yield return null;yield return new WaitForEndOfFrame();
             string reflectionMask=Path.GetFullPath(Path.Combine(folder,"water-ssr-proof.png"));ScreenCapture.CaptureScreenshot(reflectionMask);yield return WaitForScreenshot(reflectionMask);
-            Shader.SetGlobalFloat("_LCWaterReflectionProbe",0);cameraData.renderPostProcessing=true;Camera.main.transform.SetPositionAndRotation(savedPosition,savedRotation);
+            Shader.SetGlobalFloat("_LCWaterReflectionProbe",0);fogEvidence.enabled=true;cameraData.renderPostProcessing=true;Camera.main.transform.SetPositionAndRotation(savedPosition,savedRotation);
             var readback=new Texture2D(2,2,TextureFormat.RGBA32,false);readback.LoadImage(File.ReadAllBytes(reflectionMask));int hits=0;
             foreach(var pixel in readback.GetPixels32())if(pixel.r>175&&pixel.b>175&&pixel.g<55)hits++;Destroy(readback);
             if(hits<32||failure!=null){Fail("SSR fixture did not reflect on-screen scene geometry: "+hits+" pixels / "+failure);yield break;}
             Debug.Log("[Smoke] WATER_SSR_READBACK: "+hits+" actual ray/depth hits in real EXE; magenta=scene reflection, blue=sky fallback; four-step crossing refinement; NOT hardware ray tracing");
             finishing=true;
-            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking live smoke/sparks, authored crystal collision/targeting, real SSAO texture, SSR hit-mask readback and eight executable screenshots. WARP is not a user-GPU/FPS benchmark.");
+            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking live smoke/sparks, authored crystal collision/targeting, real GPU SSAO sampling/occlusion, SSR hit-mask readback and nine executable screenshots. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);
         }
         // A bounded simulation budget AND a wall-clock guard: a stalled/paused furnace must still fail.
