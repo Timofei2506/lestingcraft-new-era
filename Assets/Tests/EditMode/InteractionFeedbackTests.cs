@@ -56,7 +56,7 @@ namespace LestingCraft.Tests
     typeof(FirstPersonController).GetProperty("HasTarget").SetValue(controller,true);
     var cell=new Vector3Int(7,8,9);typeof(FirstPersonController).GetProperty("Target").SetValue(controller,new VoxelRaycast.Hit(cell,Vector3Int.up,3));
     var effect=owner.AddComponent<BlockFeedback>();effect.Initialize(controller);
-    effect.SendMessage("LateUpdate");
+    typeof(BlockFeedback).GetMethod("LateUpdate",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(effect,null);
     Assert.AreEqual(new Vector3(2,10,3),owner.transform.position,"Target selection must NEVER teleport the player");
     Assert.IsNotNull(effect.VisualRoot);Assert.AreNotEqual(owner.transform,effect.VisualRoot.parent);
     Assert.AreEqual((Vector3)cell+Vector3.one*.5f,effect.VisualRoot.position);Assert.Less(Quaternion.Angle(Quaternion.identity,effect.VisualRoot.rotation),.001f);
