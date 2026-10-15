@@ -21,11 +21,6 @@ public static class BuildScript
         Build(BuildTarget.StandaloneWindows64, "Builds/StandaloneWindows64/LestingCraft.exe");
     }
 
-    public static void BuildWebGL()
-    {
-        Build(BuildTarget.WebGL, "Builds/WebGL");
-    }
-
     private static void Build(BuildTarget target, string outputPath)
     {
         if (Scenes.Length == 0)
@@ -38,11 +33,7 @@ public static class BuildScript
         PresentationAssets.Ensure();
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
-        PlayerSettings.WebGL.decompressionFallback = false;
         PlayerSettings.colorSpace = ColorSpace.Linear;
-        PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.FullWithStacktrace;
-        PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.Embedded;
 
         var options = new BuildPlayerOptions
         {

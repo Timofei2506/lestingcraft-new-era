@@ -221,7 +221,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,"WASD — движение     SPACE — прыжок\nЛКМ — убрать блок     ПКМ — поставить\n1–9 — быстрые слоты     E — инвентарь         ESC — меню",828,596,679,106,18,White);
             Button("←  Готово",64,798,210,54,()=>{settings.Save();if(settingsBack==Page.Pause)ShowPause();else ShowHome();},true);
             Button("Вернуть высокий пресет",296,798,327,54,()=>{settings.HighDefault();ShowSettings(settingsBack);});
-            Label(content.transform,"FPS зависит от железа. WebGL обычно медленнее Windows-сборки.",663,792,873,69,15,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"FPS зависит от железа. Текущая платформа — Windows x64.",663,792,873,69,15,Muted,false,TextAnchor.MiddleRight);
         }
         void Slider(string title,float x,float y,float w,float value,float min,float max,bool integer,Action<float> changed,Func<float,string> format)
         {

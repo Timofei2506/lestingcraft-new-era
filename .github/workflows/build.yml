@@ -1,23 +1,15 @@
-# Облачная сборка: Windows + WebGL в Releases, WebGL на GitHub Pages.
+# Только Windows x64. WebGL и публикация GitHub Pages отложены.
 # Лицензия — онлайн-вход по Unity ID (Personal), без .ulf-файлов.
 # Запуск: тег v* или вручную (workflow_dispatch). Требует UNITY_USERNAME / UNITY_PASSWORD.
-name: Build
+name: Build Windows
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
-    inputs:
-      platform:
-        description: Build platform
-        type: choice
-        options: [all, WebGL, StandaloneWindows64]
-        default: all
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 # Personal-лицензия имеет мало мест — не даём сборкам конкурировать за seat
 concurrency:
@@ -53,16 +45,14 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        include: ${{ fromJSON(inputs.platform == 'WebGL' && '[{"os":"ubuntu-22.04","targetPlatform":"WebGL","buildMethod":"BuildScript.BuildWebGL","artifactPath":"Builds/WebGL"}]' || inputs.platform == 'StandaloneWindows64' && '[{"os":"windows-latest","targetPlatform":"StandaloneWindows64","buildMethod":"BuildScript.BuildWindows64","artifactPath":"Builds/StandaloneWindows64"}]' || '[{"os":"ubuntu-22.04","targetPlatform":"WebGL","buildMethod":"BuildScript.BuildWebGL","artifactPath":"Builds/WebGL"},{"os":"windows-latest","targetPlatform":"StandaloneWindows64","buildMethod":"BuildScript.BuildWindows64","artifactPath":"Builds/StandaloneWindows64"}]') }}
+        include:
+          - os: windows-latest
+            targetPlatform: StandaloneWindows64
+            buildMethod: BuildScript.BuildWindows64
+            artifactPath: Builds/StandaloneWindows64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Free runner disk space for Unity
-        if: runner.os == 'Linux'
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          df -h /
 
       - name: Cache Library
         uses: actions/cache@v4
@@ -133,27 +123,3 @@ jobs:
           files: artifacts/*.zip
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
-
-  deploy-pages:
-    name: Deploy WebGL to GitHub Pages
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Download WebGL build
-        uses: actions/download-artifact@v4
-        with:
-          name: build-WebGL
-          path: site
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4

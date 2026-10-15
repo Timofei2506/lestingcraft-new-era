@@ -5,10 +5,9 @@ export function readyReleases(releases) {
   return releases.filter(r => !r.draft && !r.prerelease).map(r => {
     const assets = (r.assets || []).filter(a => a.state === 'uploaded' && a.size > 0 && a.browser_download_url?.startsWith(`https://github.com/${REPO}/releases/download/`));
     const windows = assets.find(a => a.name === 'build-StandaloneWindows64.zip');
-    const webgl = assets.find(a => a.name === 'build-WebGL.zip');
-    if (!windows || !webgl) return null;
+    if (!windows) return null;
     const asset = a => ({ name:a.name, size:a.size, url:a.browser_download_url, digest:a.digest || null });
-    return {tag:r.tag_name,name:r.name || r.tag_name,date:r.published_at,url:`https://github.com/${REPO}/releases/tag/${encodeURIComponent(r.tag_name)}`,windows:asset(windows),webgl:asset(webgl)};
+    return {tag:r.tag_name,name:r.name || r.tag_name,date:r.published_at,url:`https://github.com/${REPO}/releases/tag/${encodeURIComponent(r.tag_name)}`,windows:asset(windows)};
   }).filter(Boolean);
 }
 async function timedFetch(url,options={},ms=8000) {
