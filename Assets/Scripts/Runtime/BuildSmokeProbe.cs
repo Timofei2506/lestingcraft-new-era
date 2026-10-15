@@ -45,10 +45,8 @@ namespace LestingCraft.Runtime
             yield return new WaitForEndOfFrame();
             string folder=Path.Combine(Application.dataPath,"..","SmokeResults");Directory.CreateDirectory(folder);
             string screenshot=Path.GetFullPath(Path.Combine(folder,"menu.png"));ScreenCapture.CaptureScreenshot(screenshot);
-            deadline=Time.realtimeSinceStartup+20;
-            while(!File.Exists(screenshot)&&Time.realtimeSinceStartup<deadline)yield return null;
-            if(!File.Exists(screenshot)){Fail("Menu screenshot was not written.");yield break;}
-            yield return new WaitForSecondsRealtime(.5f);
+            yield return WaitForScreenshot(screenshot);
+            if(!ScreenshotReady(screenshot)){Fail("Menu screenshot write timeout.");yield break;}
             if(!ScreenshotHasDetail(screenshot)){Fail("Menu screenshot is uniform/empty.");yield break;}
             Debug.Log("[Smoke] MENU_SCREENSHOT: "+screenshot);
             FindButton(ui,"Home.Play").onClick.Invoke();if(ui.ScreenName!="World"){Fail("Play button did not open mode selection.");yield break;}
@@ -70,8 +68,9 @@ namespace LestingCraft.Runtime
             var body=ui.GetComponentInChildren<HealthSilhouette>();
             if(!body||body.Zones.Length!=6){Fail("HUD silhouette missing.");yield break;}
             string worldshot=Path.GetFullPath(Path.Combine(folder,"world-hud.png"));ScreenCapture.CaptureScreenshot(worldshot);
-            yield return new WaitForSecondsRealtime(1);
-            if(!File.Exists(worldshot)||!ScreenshotHasDetail(worldshot)){Fail("World screenshot missing/empty.");yield break;}
+            yield return WaitForScreenshot(worldshot);
+            if(!ScreenshotReady(worldshot)){Fail("World screenshot write timeout.");yield break;}
+            if(!ScreenshotHasDetail(worldshot)){Fail("World screenshot has no detail.");yield break;}
             Debug.Log("[Smoke] WORLD_SCREENSHOT: "+worldshot);
             game.ToggleInventory();yield return null;
             ItemHover item=null;foreach(var hover in ui.GetComponentsInChildren<ItemHover>())if(hover.Item>0){item=hover;break;}
@@ -81,12 +80,30 @@ namespace LestingCraft.Runtime
             var tooltip=GameObject.Find("Item name tooltip");
             if(!tooltip||tooltip.GetComponentInChildren<Text>().text!=Items.Get(item.Item).Name){Fail("Item tooltip did not show its name.");yield break;}
             string inventoryshot=Path.GetFullPath(Path.Combine(folder,"inventory-tooltip.png"));
-            yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(inventoryshot);yield return new WaitForSecondsRealtime(1);
-            if(!File.Exists(inventoryshot)||!ScreenshotHasDetail(inventoryshot)||failure!=null){Fail("Inventory screenshot/runtime errors: "+failure);yield break;}
+            yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(inventoryshot);
+            yield return WaitForScreenshot(inventoryshot);
+            if(!ScreenshotReady(inventoryshot)||!ScreenshotHasDetail(inventoryshot)||failure!=null){Fail("Inventory screenshot/runtime errors: "+failure);yield break;}
             Debug.Log("[Smoke] INVENTORY_SCREENSHOT: "+inventoryshot);
             finishing=true;
             Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip and three executable screenshots. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);
+        }
+        static IEnumerator WaitForScreenshot(string path)
+        {
+            // CaptureScreenshot writes asynchronously; one fixed second is not a completion signal on WARP.
+            float deadline=Time.realtimeSinceStartup+25;
+            while(!ScreenshotReady(path)&&Time.realtimeSinceStartup<deadline)yield return null;
+            yield return null;
+        }
+        static bool ScreenshotReady(string path)
+        {
+            try
+            {
+                // An exclusive read succeeds only after the native PNG writer closes its handle.
+                using(var file=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.None))return file.Length>1024;
+            }
+            catch(IOException){return false;}
+            catch(UnauthorizedAccessException){return false;}
         }
         static Button FindButton(GameUI ui,string name)
         {foreach(var button in ui.GetComponentsInChildren<Button>())if(button.name==name)return button;return null;}
