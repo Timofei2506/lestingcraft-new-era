@@ -209,7 +209,7 @@ namespace LestingCraft.Runtime
             if(client)Destroy(client.gameObject);
             foreach(var a in avatars.Values)if(a)Destroy(a);avatars.Clear();targets.Clear();
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
-            if(player)Destroy(player.gameObject);if(world)Destroy(world.gameObject);
+            if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
             client=null;world=null;player=null;online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }
         static Vector3 FindSpawn(int seed,Dimension realm)

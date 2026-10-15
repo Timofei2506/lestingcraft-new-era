@@ -11,10 +11,11 @@ namespace LestingCraft.Presentation
     {
         const int Layer=30;
         Camera view,main;Transform hand;FirstPersonController player;UniversalAdditionalCameraData mainData;
-        Material skin,cloth;float phase,strike;int previousMask;
+        Material skin,cloth;float phase,strike;int previousMask;bool initialized;
         public Camera ViewCamera=>view;
         public void Initialize(FirstPersonController owner,Camera camera)
         {
+            if(initialized)Release();initialized=true;
             player=owner;main=camera;previousMask=main.cullingMask;main.cullingMask&=~(1<<Layer);
             var obj=new GameObject("First-person viewmodel camera");obj.transform.SetParent(camera.transform,false);
             view=obj.AddComponent<Camera>();view.cullingMask=1<<Layer;view.nearClipPlane=.01f;view.farClipPlane=3;view.fieldOfView=60;view.allowHDR=true;
@@ -60,11 +61,15 @@ namespace LestingCraft.Presentation
             hand.localPosition=new Vector3(.30f+Mathf.Sin(phase)*bob,-.31f+Mathf.Cos(phase*2)*bob-swing*.045f,.51f+swing*.12f);
             hand.localRotation=Quaternion.Euler(-18-swing*24,-12,-12+Mathf.Sin(phase)*bob*150);
         }
-        void OnDestroy()
+        /// <summary>Explicit owner cleanup also works in EditMode and before deferred player destruction.</summary>
+        public void Release()
         {
+            if(!initialized)return;initialized=false;
             if(mainData&&view)mainData.cameraStack.Remove(view);if(main)main.cullingMask=previousMask;
-            if(view){if(Application.isPlaying)Destroy(view.gameObject);else DestroyImmediate(view.gameObject);}
+            if(view){view.enabled=false;if(Application.isPlaying)Destroy(view.gameObject);else DestroyImmediate(view.gameObject);}
             if(skin){if(Application.isPlaying)Destroy(skin);else DestroyImmediate(skin);}if(cloth){if(Application.isPlaying)Destroy(cloth);else DestroyImmediate(cloth);}
+            view=null;hand=null;skin=null;cloth=null;mainData=null;main=null;
         }
+        void OnDestroy(){Release();}
     }
 }

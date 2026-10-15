@@ -88,7 +88,10 @@ namespace LestingCraft.Tests
                 Assert.AreEqual(0,camera.cullingMask&(1<<30));
                 Assert.GreaterOrEqual(cameraObject.GetComponentsInChildren<Renderer>().Length,12);
                 Assert.AreEqual(0,cameraObject.GetComponentsInChildren<Collider>().Length);
-                Object.DestroyImmediate(hands);Assert.AreEqual(mask,camera.cullingMask);
+                hands.Release();Assert.AreEqual(mask,camera.cullingMask);
+                Assert.AreEqual(1,cameraObject.GetComponentsInChildren<Camera>().Length);
+                hands.Release();Assert.AreEqual(mask,camera.cullingMask); // idempotent owner cleanup
+                Object.DestroyImmediate(hands);
             }
             finally{Object.DestroyImmediate(playerObject);Object.DestroyImmediate(cameraObject);}
         }
