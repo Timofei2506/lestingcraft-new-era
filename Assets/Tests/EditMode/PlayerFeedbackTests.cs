@@ -78,7 +78,7 @@ namespace LestingCraft.Tests
         }
         [Test] public void HandUsesAnIsolatedCameraAndDoesNotAddPhysicsColliders()
         {
-            var cameraObject=new GameObject("Viewmodel test camera");var playerObject=new GameObject("Inactive hand owner");playerObject.SetActive(false);
+            var cameraObject=new GameObject("Viewmodel test camera");var playerObject=new GameObject("Active hand owner");
             try
             {
                 var camera=cameraObject.AddComponent<Camera>();int mask=camera.cullingMask;
