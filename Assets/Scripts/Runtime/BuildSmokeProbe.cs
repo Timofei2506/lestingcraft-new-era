@@ -107,9 +107,24 @@ namespace LestingCraft.Runtime
             if(inventory.Count(101)!=1){Fail("Workbench result was not crafted");yield break;}
             game.Resume();game.Session.World.Edit(benchCell.x,benchCell.y,benchCell.z,17);game.OpenStation(17,benchCell);
             inventory.furnace.input=new ItemStack{item=110,count=2};inventory.furnace.fuel=new ItemStack{item=4,count=1};inventory.revision++;
-            deadline=Time.realtimeSinceStartup+20;
-            while(inventory.furnace.output.count==0&&Time.realtimeSinceStartup<deadline&&failure==null)yield return null;
-            if(inventory.furnace.output.item!=112){Fail("Live furnace did not finish cooking");yield break;}
+            if(!ui.InventoryOpen||!game.Session.StationNearby(17,benchCell))
+            {Fail("Furnace fixture did not open at the placed block");yield break;}
+            // WARP renders at ~2 FPS: Unity caps deltaTime, so 20 wall seconds may contain
+            // fewer than eight simulation seconds. Observe the REAL session update, never Step() it here.
+            double cookingStartSimulation=Time.timeAsDouble,cookingStartWall=Time.realtimeSinceStartupAsDouble;
+            float lastCookingProgress=-1;
+            while(game.Session.Inventory.furnace.output.count==0&&failure==null&&
+                !CookingWaitExpired(cookingStartSimulation,cookingStartWall,Time.timeAsDouble,Time.realtimeSinceStartupAsDouble))
+            {
+                var stove=game.Session.Inventory.furnace;
+                if(Mathf.Abs(stove.progress-lastCookingProgress)>=.9f)
+                {Debug.Log("[Smoke] FURNACE_WAIT: "+CookingState(game,ui,cookingStartSimulation,cookingStartWall));lastCookingProgress=stove.progress;}
+                yield return null;
+            }
+            var cooked=game.Session.Inventory.furnace;
+            if(cooked.output.item!=112||cooked.output.count<1||cooked.input.count!=1||cooked.fuel.count!=0||failure!=null)
+            {Fail("Live furnace did not cook and consume ingredients correctly: "+CookingState(game,ui,cookingStartSimulation,cookingStartWall)+" / "+failure);yield break;}
+            Debug.Log("[Smoke] FURNACE_COOKED: "+CookingState(game,ui,cookingStartSimulation,cookingStartWall));
             yield return new WaitForEndOfFrame();
             string furnaceShot=Path.GetFullPath(Path.Combine(folder,"furnace-cooking.png"));ScreenCapture.CaptureScreenshot(furnaceShot);yield return WaitForScreenshot(furnaceShot);
             if(!ScreenshotReady(furnaceShot)||!ScreenshotHasDetail(furnaceShot)||failure!=null){Fail("Furnace screenshot/runtime errors: "+failure);yield break;}
@@ -117,6 +132,15 @@ namespace LestingCraft.Runtime
             finishing=true;
             Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking and five executable screenshots. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);
+        }
+        // A bounded simulation budget AND a wall-clock guard: a stalled/paused furnace must still fail.
+        public static bool CookingWaitExpired(double startedSimulation,double startedWall,double simulation,double wall)
+            =>simulation-startedSimulation>=FurnaceState.CookSeconds+6||wall-startedWall>=150;
+        static string CookingState(PrototypeGame game,GameUI ui,double simulationStart,double wallStart)
+        {
+            var session=game.Session;var f=session.Inventory.furnace;
+            float distance=Vector3.Distance(session.Player.transform.position,new Vector3(f.x+.5f,f.y+.5f,f.z+.5f));
+            return $"sim={Time.timeAsDouble-simulationStart:F2}s wall={Time.realtimeSinceStartupAsDouble-wallStart:F2}s progress={f.progress:F2} burn={f.burn:F2} input={f.input.item}x{f.input.count} fuel={f.fuel.item}x{f.fuel.count} output={f.output.item}x{f.output.count} block={session.World.GetBlock(f.x,f.y,f.z)} distance={distance:F2} ready={session.World.Ready} paused={game.Paused} ui={ui.ScreenName} dead={session.Vitals.dead}";
         }
         static IEnumerator WaitForScreenshot(string path)
         {

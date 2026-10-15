@@ -22,6 +22,13 @@ namespace LestingCraft.Tests
         [Test] public void ToolSwapAndShiftRetainDurability(){var inv=new Inventory();inv.slots[0]=S(101,1,17);InventoryInteraction.Click(inv,0,false,false);InventoryInteraction.Click(inv,45,false,false);InventoryInteraction.Click(inv,45,false,true);Assert.AreEqual(17,inv.slots[0].durability);InventoryInteraction.Click(inv,0,false,true);Assert.AreEqual(17,inv.slots[9].durability);}
         [Test] public void ShiftMovesBetweenBagAndHotbar(){var inv=new Inventory();inv.slots[0]=S(4,12);InventoryInteraction.Click(inv,0,false,true);Assert.AreEqual(12,inv.slots[9].count);InventoryInteraction.Click(inv,9,false,true);Assert.AreEqual(12,inv.slots[0].count);Assert.AreEqual(12,inv.Count(4));}
         [Test] public void FurnaceCooksOnlyWithFuelAfterEightSeconds(){var f=new FurnaceState{input=S(110,2),fuel=S(4)};for(int i=0;i<7;i++)f.Step(1);Assert.AreEqual(0,f.output.count);f.Step(1);Assert.AreEqual(112,f.output.item);Assert.AreEqual(1,f.output.count);Assert.AreEqual(1,f.input.count);Assert.AreEqual(0,f.fuel.count);Assert.That(f.burn,Is.EqualTo(10).Within(.001));}
+        [Test] public void SmokeCookingBudgetAllowsSlowRenderingButHasBothLimits()
+        {
+            Assert.IsFalse(LestingCraft.Runtime.BuildSmokeProbe.CookingWaitExpired(0,0,4,20),"20 wall seconds are not necessarily 8 game seconds");
+            Assert.IsFalse(LestingCraft.Runtime.BuildSmokeProbe.CookingWaitExpired(0,0,9,90));
+            Assert.IsTrue(LestingCraft.Runtime.BuildSmokeProbe.CookingWaitExpired(0,0,14,100),"Failure after adequate simulation time");
+            Assert.IsTrue(LestingCraft.Runtime.BuildSmokeProbe.CookingWaitExpired(0,0,0,150),"A frozen simulation must not wait forever");
+        }
         [Test] public void FurnaceWithoutFuelCannotProgress(){var f=new FurnaceState{input=S(114)};for(int i=0;i<20;i++)f.Step(1);Assert.AreEqual(0,f.output.count);Assert.AreEqual(1,f.input.count);}
         [Test] public void BlockedOutputDoesNotBurnNewFuel(){var f=new FurnaceState{input=S(110),fuel=S(4),output=S(112,32)};f.Step(1);Assert.AreEqual(1,f.fuel.count);Assert.AreEqual(0,f.burn);}
         [Test] public void InvalidFurnaceDepositsAndOutputDepositsAreRejected(){var inv=new Inventory();inv.cursor=S(1);InventoryInteraction.Click(inv,54,false,false);InventoryInteraction.Click(inv,55,false,false);InventoryInteraction.Click(inv,56,false,false);Assert.AreEqual(1,inv.cursor.item);Assert.AreEqual(0,inv.furnace.input.count);Assert.AreEqual(0,inv.furnace.fuel.count);Assert.AreEqual(0,inv.furnace.output.count);}
