@@ -62,8 +62,7 @@ Shader "LestingCraft/VoxelObjects"
                 surface.albedo=albedo.rgb*i.color.rgb;surface.metallic=mask.r;surface.specular=half3(.04,.04,.04);
                 surface.smoothness=saturate(lerp(mask.a+wet*.32,.16,snow));surface.normalTS=normalTS;surface.occlusion=mask.g;
                 surface.alpha=1;
-                if(i.uv.z>8.5&&i.uv.z<9.5)surface.emission=albedo.rgb*2.8;
-                if(i.uv.z>11.5&&i.uv.z<12.5)surface.emission=albedo.rgb*.16;
+                surface.emission=surface.albedo*i.color.a*1.5;
                 half4 c=UniversalFragmentPBR(lighting,surface);c.rgb=MixFog(c.rgb,i.fog);return c;
             }
             ENDHLSL

@@ -10,7 +10,7 @@ MODELS=ROOT/'Assets/Resources/Models';MODELS.mkdir(parents=True,exist_ok=True)
 NAMES=['stone','dirt','grass','grass-side','bark','wood-end','leaves','sand','water','lava','bedrock','basalt','crystal','aether','ore','snow']
 TEXTURES=[np.asarray(Image.open(ROOT/f'Assets/Art/PBR/{n}_albedo.png').convert('RGB').resize((256,256)),dtype=float)/255 for n in NAMES]
 # Palette (colour multiplies material texture); snow is a neutral textile/paint basis.
-PALETTE=[('#ffffff',0),('#ffffff',1),('#ffffff',2),('#ffffff',3),('#ffffff',4),('#ffffff',5),('#ffffff',6),('#ffffff',7),('#ffffff',8),('#ffffff',9),('#ffffff',10),('#ffffff',11),('#ffffff',12),('#ffffff',13),('#ffffff',14),('#ffffff',15),('#fff0ce',5),('#e6bb8c',4),('#68513e',4),('#ffffff',0),('#777e82',0),('#f0d294',15),('#54705a',15),('#263a30',15),('#c69a55',15),('#a21d38',15),('#d53951',15),('#5c102a',15),('#618535',15),('#34532b',15),('#c7b78e',15),('#867955',15),('#d88b43',15)]
+PALETTE=[('#ffffff',0),('#ffffff',1),('#ffffff',2),('#ffffff',3),('#ffffff',4),('#ffffff',5),('#ffffff',6),('#ffffff',7),('#ffffff',8),('#ffffff',9),('#ffffff',10),('#ffffff',11),('#ffffff',12),('#ffffff',13),('#ffffff',14),('#ffffff',15),('#fff0ce',5),('#e6bb8c',4),('#68513e',4),('#ffffff',0),('#777e82',0),('#f0d294',15),('#54705a',15),('#263a30',15),('#c69a55',15),('#a21d38',15),('#d53951',15),('#5c102a',15),('#618535',15),('#34532b',15),('#c7b78e',15),('#867955',15),('#ff9f18',15),('#d6a258',15),('#92612f',15),('#edd29b',15),('#ffdc65',15)]
 COLORS=[np.array([int(c[i:i+2],16)/255 for i in (1,3,5)]) for c,_ in PALETTE]
 models=[]
 def model(id,name):return {'id':id,'name':name,'voxels':{}}
@@ -25,12 +25,17 @@ for id in range(1,15):
  m=model(id,ru[id-1]);box(m,0,0,0,12,12,12,layer[id])
  if id==3:box(m,0,10,0,12,12,12,2)
  if id==4:box(m,0,11,0,12,12,12,5)
+ if id==13:
+  m['voxels']={};box(m,0,0,0,12,12,12,0)
+  for x,y in [(2,3),(6,7),(8,2),(4,9)]:
+   box(m,x,y,10,x+2,y+2,12,24);box(m,10,y,x,12,y+2,x+2,24)
  if id==11:
   m['voxels']={};box(m,2,0,2,10,10,10,12);box(m,3,10,3,9,14,9,12);box(m,4,14,4,8,17,8,12)
   box(m,0,0,5,3,7,9,13);box(m,9,0,1,12,9,5,12)
  models.append(m)
 m=model(15,'Костёр');box(m,0,0,2,14,3,5,4);box(m,0,0,9,14,3,12,4);box(m,3,2,0,6,5,14,4);box(m,9,2,0,12,5,14,4)
-for x,z,h in [(5,5,8),(7,6,14),(9,8,10),(5,9,11)]:box(m,x,4,z,x+2,h,z+2,32)
+for x,z,h in [(5,5,8),(7,6,14),(9,8,10),(5,9,11)]:
+ box(m,x,4,z,x+2,h,z+2,32);box(m,x,5,z,x+1,max(6,h-2),z+1,36)
 models.append(m)
 # Tools have 3D thickness, inset grip bands, dark stone edge, visibly stepped cutting profile.
 for id,name in [(100,'Деревянная кирка'),(101,'Каменная кирка'),(102,'Каменный топор'),(103,'Каменный меч')]:
@@ -59,9 +64,11 @@ m=model(110,'Лесные ягоды')
 for x,y,z,p in [(0,1,1,25),(5,0,3,26),(3,5,0,25),(7,5,4,27),(1,6,6,26)]:
  box(m,x,y,z,x+5,y+5,z+5,p);box(m,x+1,y+4,z+1,x+3,y+5,z+3,26)
 box(m,5,9,3,7,14,5,18);box(m,0,12,3,6,14,7,28);box(m,7,11,2,12,13,6,29);models.append(m)
-m=model(111,'Походный хлеб');box(m,0,0,0,19,5,9,17);box(m,1,5,0,18,8,9,24);box(m,2,8,1,17,10,8,16)
+m=model(111,'Походный хлеб');box(m,0,0,0,19,5,9,34);box(m,1,5,0,18,8,9,33);box(m,2,8,1,17,10,8,33)
 for x in [4,9,14]:box(m,x,9,1,x+1,10,8,21)
-box(m,18,1,1,19,6,8,21);models.append(m)
+box(m,18,1,1,19,6,8,35)
+for y,z in [(2,2),(4,5),(1,6),(4,3)]:box(m,18,y,z,19,y+1,z+1,34)
+models.append(m)
 m=model(120,'Доски');
 for y in [0,4,8]:box(m,0,y,0,18,y+3,8,16);box(m,0,y+1,0,18,y+2,1,17)
 for x in [3,14]:box(m,x,0,-1,x+2,11,9,18)
@@ -103,10 +110,11 @@ def render(m,S=768):
    if not vis.any():continue
    pos=a[:,:,None]*world[0]+b[:,:,None]*world[1]+c[:,:,None]*world[2]
    uv=pos[:,:,[2,1]] if side<2 else pos[:,:,[0,2]] if side<4 else pos[:,:,[0,1]]
-   tex=TEXTURES[PALETTE[p][1]];ij=np.floor(uv*256/12).astype(int)%256;albedo=tex[ij[:,:,1],ij[:,:,0]]*COLORS[p]
+   tex=TEXTURES[PALETTE[p][1]];ij=np.floor(uv*256/12).astype(int)%256;albedo=tex[255-ij[:,:,1],ij[:,:,0]]*COLORS[p]
    illumination=.43+.65*max(0,np.dot(n,light));shade=albedo*illumination
    # Restrained microfacet-ish highlights for crystals/ore, not a baked bloom cloud.
    if p in [12,13,14,24]:shade+=max(0,np.dot(n,(camera+light)/np.linalg.norm(camera+light)))**36*.12
+   if p in [32,36]:shade=np.maximum(shade,COLORS[p]*.95)
    pixels=np.uint8(np.clip(shade,0,1)*255);patch=rgba[y0:y1,x0:x1];patch[vis,:3]=pixels[vis];patch[vis,3]=255;depth[y0:y1,x0:x1][vis]=d[vis]
  return Image.fromarray(rgba).resize((384,384),Image.Resampling.LANCZOS)
 serial=[]
@@ -123,9 +131,14 @@ with zipfile.ZipFile(path/'LestingCraft-voxel-objects.zip','w',zipfile.ZIP_DEFLA
  for m in models:
   lines=['# LestingCraft original voxel object, same source as Unity and icon.'];index=1
   for verts,side,p in faces(m):
-   for v in verts:lines.append('v '+' '.join(str(round(float(a)/16,5)) for a in v))
-   lines.append(f'usemtl palette{p}');lines.append('f '+' '.join(str(index+k) for k in range(4)));index+=4
+   for v in verts:
+    lines.append('v '+' '.join(str(round(float(a)/16,5)) for a in v))
+    u,w=(v[2],v[1]) if side<2 else (v[0],v[2]) if side<4 else (v[0],v[1])
+    lines.append(f'vt {u/12:.6f} {w/12:.6f}')
+   lines.append(f'usemtl palette{p}');lines.append('f '+' '.join(f'{index+k}/{index+k}' for k in range(4)));index+=4
   lines.insert(0,'mtllib palette.mtl');archive.writestr(f'{m["id"]}.obj','\n'.join(lines))
- archive.writestr('palette.mtl','\n'.join(f'newmtl palette{i}\nKd '+ ' '.join(str(round(float(v),4)) for v in COLORS[i])+'\n' for i in range(len(PALETTE))))
- archive.writestr('README.txt','25 original voxel objects. OBJ/MTL export uses palette colours. Unity uses the same voxel coordinates plus PBR texture layers. Icons are textured orthographic renders of these objects. No spherical geometry.\n')
+ archive.writestr('palette.mtl','\n'.join(f'newmtl palette{i}\nKd '+ ' '.join(str(round(float(v),4)) for v in COLORS[i])+'\nmap_Kd textures/'+NAMES[PALETTE[i][1]]+'.png\n' for i in range(len(PALETTE))))
+ for i,name in enumerate(NAMES):
+  stream=io.BytesIO();Image.fromarray(np.uint8(TEXTURES[i]*255)).save(stream,format='PNG');archive.writestr('textures/'+name+'.png',stream.getvalue())
+ archive.writestr('README.txt','25 original voxel objects. OBJ/MTL export includes UVs and 256px albedo textures. Unity uses the same voxel coordinates plus full PBR normal/mask layers. Icons are textured orthographic renders of these objects. No spherical geometry.\n')
 print('Generated 25 textured voxel icons and shared model catalog')

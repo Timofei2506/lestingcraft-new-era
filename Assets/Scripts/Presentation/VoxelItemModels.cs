@@ -29,7 +29,7 @@ namespace LestingCraft.Presentation
             foreach(var pair in cells)for(int face=0;face<6;face++)
             {
                 if(cells.ContainsKey(pair.Key+BlockGeometry.Directions[face]))continue;int start=vertices.Count,palette=pair.Value;
-                ColorUtility.TryParseHtmlString(catalog.colors[palette],out var tint);
+                ColorUtility.TryParseHtmlString(catalog.colors[palette],out var tint);tint.a=palette==32||palette==36?1:0;
                 var tangent=BlockGeometry.Corners[face][3]-BlockGeometry.Corners[face][0];
                 for(int k=0;k<4;k++)
                 {
