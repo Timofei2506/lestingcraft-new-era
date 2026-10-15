@@ -26,7 +26,11 @@ public sealed class RangeZip(HttpClient http,Uri url)
  }
  public async Task Open(CancellationToken ct)
  {
-  byte[] tail=await Bytes(null,65557,65557,ct);int eocd=-1;
+  // Azure Blob does not implement HTTP suffix ranges: probe total size, then request an explicit tail.
+  using var probeRequest=new HttpRequestMessage(HttpMethod.Get,url);probeRequest.Headers.Range=new RangeHeaderValue(0,0);
+  using var probe=await http.SendAsync(probeRequest,HttpCompletionOption.ResponseHeadersRead,ct);CheckResponse(probe,0,0);
+  long size=probe.Content.Headers.ContentRange!.Length!.Value;if(size<22||size>uint.MaxValue)throw new InvalidDataException("Неподдерживаемый размер ZIP.");
+  byte[] tail=await Bytes(Math.Max(0,size-65557),size-1,65557,ct);int eocd=-1;
   for(int i=tail.Length-22;i>=0;i--)if(U32(tail,i)==0x06054b50&&i+22+U16(tail,i+20)==tail.Length){eocd=i;break;}
   if(eocd<0)throw new InvalidDataException("Не найдена таблица ZIP.");
   int count=U16(tail,eocd+10);uint length=U32(tail,eocd+12),offset=U32(tail,eocd+16);

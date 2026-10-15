@@ -25,7 +25,7 @@ public partial class MainWindow:Window
   VersionLabel.Text=updater.Installed==null?"Установленная версия: пока нет":"Установлено: "+updater.Installed.Build[..8];
   bool running=updater.Running;Play.IsEnabled=!busy&&updater.Installed!=null&&!running;Play.Content=running?"Игра запущена":"Играть  →";
   Update.IsEnabled=!busy&&!running&&manifest!=null;Check.IsEnabled=!busy;Import.IsEnabled=!busy&&manifest!=null;Cancel.IsEnabled=busy;Invite.IsEnabled=!busy;
-  Update.Content=updater.Installed?.Build==manifest?.Build?"Починить файлы":"Обновить";
+  Update.Content=manifest!=null&&updater.Installed?.Build==manifest.Build?"Починить файлы":"Обновить";
  }
  async Task Run(Func<CancellationToken,Task> action)
  {

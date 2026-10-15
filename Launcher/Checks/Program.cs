@@ -15,11 +15,12 @@ static class Program
  {using var ms=new MemoryStream();using(var z=new ZipArchive(ms,ZipArchiveMode.Create,true))foreach(var p in files){using var s=z.CreateEntry(p.Key,level).Open();s.Write(p.Value);}return ms.ToArray();}
  sealed class Fake:HttpMessageHandler
  {
-  public byte[] Archive=[];public byte[] ManifestZip=[];public ChannelFeed? Feed;public long Transferred;public bool IgnoreRange;
+  public byte[] Archive=[];public byte[] ManifestZip=[];public ChannelFeed? Feed;public long Transferred;public bool IgnoreRange;public bool SuffixUsed;
   protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)
   {
    byte[] b=request.RequestUri!.AbsolutePath switch{"/feed"=>JsonSerializer.SerializeToUtf8Bytes(Feed),"/manifest.zip"=>ManifestZip,_=>Archive};
-   var range=request.Headers.Range?.Ranges.Single();int start=0,end=b.Length-1;bool partial=range!=null&&!IgnoreRange;
+   var range=request.Headers.Range?.Ranges.Single();if(range!=null&&!range.From.HasValue){SuffixUsed=true;return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK){Content=new ByteArrayContent(b)});}
+   int start=0,end=b.Length-1;bool partial=range!=null&&!IgnoreRange;
    if(partial){start=range!.From.HasValue?(int)range.From.Value:Math.Max(0,b.Length-(int)range.To!.Value);end=range.From.HasValue?(int)(range.To??(b.Length-1)):b.Length-1;}
    if(request.RequestUri.AbsolutePath=="/game.zip")Transferred+=end-start+1;
    var response=new HttpResponseMessage(partial?HttpStatusCode.PartialContent:HttpStatusCode.OK){Content=new ByteArrayContent(b[start..(end+1)])};if(partial)response.Content.Headers.ContentRange=new ContentRangeHeaderValue(start,end,b.Length);return Task.FromResult(response);
@@ -56,6 +57,7 @@ static class Program
    var duplicate=new GameManifest(1,a,"LestingCraft.exe",[new("LestingCraft.exe",1,new('a',64)),new("lestingcraft.exe",1,new('a',64))]);Reject(duplicate.Validate,"case-insensitive duplicate path");
    // Stored payloads as well as deflated ones are accepted and hash-checked.
    handler.Archive=Zip(files,CompressionLevel.NoCompression);var stored=new RangeZip(http,new Uri(handler.Feed!.Archive));await stored.Open(default);var storedFile=second.Manifest.Files[0];await stored.Extract(storedFile,Path.Combine(root,"stored.exe"),default);Check(Hash(await File.ReadAllBytesAsync(Path.Combine(root,"stored.exe")))==storedFile.Sha256,"stored ZIP extraction");
+   Check(!handler.SuffixUsed,"Azure-incompatible suffix ranges are never used");
    Console.WriteLine($"PASS: {assertions} launcher checks — paths, ranges, changed files, hashes, rollback, cancellation, offline install state, save isolation.");
   }
   finally{Directory.Delete(root,true);}
