@@ -72,6 +72,7 @@ namespace LestingCraft.Runtime
             game.Session.World.Edit(crystalCell.x,crystalCell.y+1,crystalCell.z,0);
             yield return null;yield return null;
             var crystal=GameObject.Find("Placed crystal clusters");if(!crystal||!crystal.GetComponent<MeshCollider>().sharedMesh){Fail("Authored crystal render/collision missing");yield break;}
+            game.Session.World.Edit(crystalCell.x,crystalCell.y,crystalCell.z-1,0);
             var crystalOrigin=(Vector3)crystalCell+new Vector3(.5f,.5f,-1);
             if(!VoxelRaycast.Trace(crystalOrigin,Vector3.forward,3,game.Session.World.GetBlock,out var crystalHit)||crystalHit.Cell!=crystalCell){Fail("Native crystal voxel targeting mismatch");yield break;}
             deadline=Time.realtimeSinceStartup+25;CampfireEffects effects=null;

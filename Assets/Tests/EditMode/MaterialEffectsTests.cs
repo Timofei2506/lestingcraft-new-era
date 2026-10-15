@@ -24,7 +24,8 @@ namespace LestingCraft.Tests
    Assert.AreEqual(26,a.depth);Assert.AreEqual(26,n.depth);Assert.AreEqual(26,m.depth);
    for(int layer=0;layer<26;layer++)
    {
-    var colors=a.GetPixels(layer);float lo=1,hi=0;
+    var image=new Texture2D(2,2,TextureFormat.RGBA32,false);Assert.IsTrue(image.LoadImage(System.IO.File.ReadAllBytes("Assets/Art/PBR/"+SurfaceLayers.Names[layer]+"_albedo.png")));
+    var colors=image.GetPixels();Object.DestroyImmediate(image);float lo=1,hi=0;
     foreach(var c in colors){lo=Mathf.Min(lo,c.grayscale);hi=Mathf.Max(hi,c.grayscale);}
     Assert.Greater(hi-lo,.025f,SurfaceLayers.Names[layer]+" must not be a flat color");
    }
@@ -57,6 +58,16 @@ namespace LestingCraft.Tests
    Assert.IsTrue(VoxelRaycast.Trace(new Vector3(.5f,.5f,-1),Vector3.forward,4,Sample,out var core));Assert.AreEqual(Vector3Int.zero,core.Cell);Assert.Greater(core.Distance,1);
    Assert.IsTrue(VoxelRaycast.Trace(new Vector3(.05f,.9f,-1),Vector3.forward,4,Sample,out var air));Assert.AreEqual(new Vector3Int(0,0,2),air.Cell);
    Assert.IsFalse(VoxelRaycast.Trace(new Vector3(.05f,.9f,-1),Vector3.forward,2,Sample,out _));
+  }
+  [Test] public void MiningCracksUseTheAuthoredMeshAndRestoreTheFullCubeForOrdinaryBlocks()
+  {
+   var root=new GameObject("Shape feedback test");root.SetActive(false);try
+   {
+    var controller=root.AddComponent<FirstPersonController>();var feedback=root.AddComponent<BlockFeedback>();feedback.Initialize(controller);feedback.SetShape(11);
+    var cracks=feedback.VisualRoot.Find("Target cracks");Assert.AreSame(VoxelItemModels.MeshFor(11),cracks.GetComponent<MeshFilter>().sharedMesh);
+    Assert.AreEqual(PlacedVoxelModel.Scale*1.004f,cracks.localScale.x,.0001f);
+    feedback.SetShape(1);Assert.AreSame(BlockGeometry.Box(0),cracks.GetComponent<MeshFilter>().sharedMesh);Assert.AreEqual(Vector3.zero,cracks.localPosition);
+   }finally{Object.DestroyImmediate(root);}
   }
   [Test] public void CampfireRaycastDoesNotSelectAnInvisibleUpperCornerOfItsCell()
   {Assert.IsFalse(VoxelRaycast.Trace(new Vector3(.02f,.95f,-1),Vector3.forward,2,(x,y,z)=>(ushort)(x==0&&y==0&&z==0?15:0),out _));}
