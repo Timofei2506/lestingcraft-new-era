@@ -41,7 +41,7 @@ namespace LestingCraft.Presentation
             var image=background.AddComponent<RawImage>();image.texture=MenuArtwork.Backdrop;image.color=image.texture?Color.white:new Color(.035f,.065f,.078f);image.raycastTarget=false;background.AddComponent<MenuBackdropFit>();
             var shade=Rect("Art Shade",background.transform,0,0,0,0);Stretch(shade);var shading=shade.gameObject.AddComponent<RawImage>();shading.texture=MenuArtwork.Shade;shading.raycastTarget=false;
             frame=Rect("1600x900 Interface",transform,0,0,1600,900);frame.anchorMin=frame.anchorMax=new Vector2(.5f,.5f);frame.pivot=new Vector2(.5f,.5f);frame.anchoredPosition=Vector2.zero;
-            content=Rect("Content",frame,0,0,1600,900).gameObject;ready=true;ShowHome();
+            content=Rect("Content",frame,0,0,1600,900).gameObject;ShowHome();ready=true;
             Debug.Log("[Presentation] Home screen created");
         }
         static RectTransform Rect(string name,Transform parent,float x,float y,float w,float h)
@@ -111,8 +111,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,"N E W   E R A",87,316,730,48,25,Accent,true);
             Box(content.transform,88,395,64,2,Accent,false);
             Label(content.transform,"Твоя история начинается здесь.",87,424,760,45,23,White);
-            Label(content.transform,"Исследуй Лестингию. Построй своё убежище.
-Отправляйся навстречу неизвестному — вместе.",88,480,720,69,17,Muted);
+            Label(content.transform,"Исследуй Лестингию. Построй своё убежище.\nОтправляйся навстречу неизвестному — вместе.",88,480,720,69,17,Muted);
             float y=594;
             if(game.HasSave){HomeAction("Продолжить экспедицию","Вернуться в локальное сохранение",y,game.ContinueOffline,true,"Home.Continue");y+=82;}
             HomeAction(game.HasSave?"Новая экспедиция":"Начать экспедицию","Выбрать режим и открыть новый мир",y,ShowWorld,!game.HasSave,"Home.Play");
