@@ -22,10 +22,11 @@ namespace LestingCraft.Runtime
         public bool Ready { get; private set; }
         public int LoadedChunks => chunks.Count;
         public Transform Player;
+        int detailQuality;
         int Radius => LestingCraft.Presentation.VisualSettings.Current.ViewDistance;
         public void Initialize(int seed, Dimension dimension, bool online)
         {
-            Seed=seed;Dimension=dimension;Online=online;
+            Seed=seed;Dimension=dimension;Online=online;detailQuality=LestingCraft.Presentation.VisualSettings.Current.Preset;
             objectMaterial=new Material(Resources.Load<Material>("Generated/VoxelObjects"));
             material=new Material(Resources.Load<Material>("Generated/VoxelPBR"));
             waterMaterial=new Material(Resources.Load<Material>("Generated/Water"));
@@ -101,6 +102,7 @@ namespace LestingCraft.Runtime
         // Edits must not wait for every distant streaming/generation ring to finish.
         void LateUpdate()
         {
+            if(detailQuality!=LestingCraft.Presentation.VisualSettings.Current.Preset){detailQuality=LestingCraft.Presentation.VisualSettings.Current.Preset;foreach(var key in chunks.Keys)dirty.Add(key);}
             if(dirty.Count==0)return;
             var keys=new List<Vector2Int>(dirty);int count=0;
             foreach(var key in keys)
@@ -123,7 +125,7 @@ namespace LestingCraft.Runtime
             v.Specials=new GameObject("Authored placed objects");v.Specials.transform.SetParent(v.Object.transform,false);
             for(int y=0;y<ChunkData.SizeY;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++)
                 if(v.Data.GetBlock(x,y,z)==15)LestingCraft.Presentation.PlacedVoxelModel.Create(15,v.Specials.transform,new Vector3(x,y,z),objectMaterial);
-            var data=ChunkMesher.Build(v.Data,key.x*16,key.y*16,GetBlock,Seed,Dimension==LestingCraft.World.Dimension.Lestingia);
+            var data=ChunkMesher.Build(v.Data,key.x*16,key.y*16,GetBlock,Seed,Dimension==LestingCraft.World.Dimension.Lestingia,detailQuality);
             var mesh=data.CreateMesh();var collider=data.CreateMesh(true);
             v.Object.GetComponent<MeshFilter>().sharedMesh=mesh;
             v.Object.GetComponent<MeshCollider>().sharedMesh=collider;

@@ -58,7 +58,7 @@ namespace LestingCraft.World
             }
         }
         // Visible unit faces, not greedy yet. Neighbor sampling prevents seams at chunk boundaries.
-        public static ChunkMeshData Build(ChunkData chunk, int ox, int oz, Func<int,int,int,ushort> neighbor,int seed=0,bool decorate=false)
+        public static ChunkMeshData Build(ChunkData chunk, int ox, int oz, Func<int,int,int,ushort> neighbor,int seed=0,bool decorate=false,int detailQuality=0)
         {
             var data = new ChunkMeshData();
             var grassCells=decorate?new List<Vector3Int>():null;
@@ -95,7 +95,7 @@ namespace LestingCraft.World
                         grassCells.Add(new Vector3Int(x,y,z));
                 }
             }
-            if(grassCells!=null)foreach(var cell in grassCells)SurfaceDetailMesher.AddGrass(data,cell.x,cell.y,cell.z,ox,oz,seed);
+            if(grassCells!=null)foreach(var cell in grassCells)SurfaceDetailMesher.AddGrass(data,cell.x,cell.y,cell.z,ox,oz,seed,detailQuality);
             return data;
         }
         static int Solid(ChunkData chunk,int ox,int oz,int x,int y,int z,Func<int,int,int,ushort> neighbor)
