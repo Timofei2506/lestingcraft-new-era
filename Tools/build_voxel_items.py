@@ -101,6 +101,20 @@ m=model(114,'Тесто');box(m,0,0,0,16,4,10,35);box(m,1,4,1,15,6,9,21);box(m,3
 m=model(123,'Древесный уголь');box(m,1,0,1,13,6,11,10);box(m,2,6,2,12,10,10,11);box(m,3,10,3,10,12,8,10)
 for xx in [3,7,10]:box(m,xx,2,0,xx+1,6,1,20)
 models.append(m)
+# Equipment shares the very same authored catalogue/icon/held-object pipeline.
+for id,name in [(105,'Рудный шлем'),(106,'Рудный нагрудник'),(107,'Рудные поножи'),(108,'Рудные сапоги'),(130,'Тканевый капюшон'),(131,'Походные штаны'),(132,'Кожаные ботинки')]:
+ m=model(id,name);armor=id<110;p=19 if armor else 22;edge=20 if armor else 23
+ if id in [105,130]:
+  box(m,0,11,0,16,15,14,p);box(m,0,0,0,3,12,14,p);box(m,13,0,0,16,12,14,p);box(m,3,0,0,13,12,3,edge)
+  for xx in [2,13]:box(m,xx,8,14,xx+1,10,15,24)
+ elif id==106:
+  box(m,3,0,1,17,16,6,p);box(m,0,13,0,6,19,7,edge);box(m,14,13,0,20,19,7,edge);box(m,5,2,6,15,14,8,p)
+  for xx in [5,14]:box(m,xx,3,8,xx+1,14,9,24)
+ elif id in [107,131]:
+  box(m,0,12,0,16,17,6,edge);box(m,0,0,0,7,14,6,p);box(m,9,0,0,16,14,6,p);box(m,0,0,6,7,3,7,edge);box(m,9,0,6,16,3,7,edge)
+ else:
+  for xx in [0,10]:box(m,xx,0,0,xx+8,4,13,edge);box(m,xx+1,4,0,xx+7,13,8,p);box(m,xx,1,1,xx+8,4,14,p)
+ models.append(m)
 def faces(m):
  cells=m['voxels']
  for (x,y,z),p in cells.items():

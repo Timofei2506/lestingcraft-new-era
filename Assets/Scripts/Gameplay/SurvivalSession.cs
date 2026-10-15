@@ -21,7 +21,7 @@ namespace LestingCraft.Gameplay
             if(restored!=null)Data.player=restored;Data.player.Normalize();
             if(local==null&&restored==null)
             {
-                if(Creative){foreach(int id in new[]{1,2,3,4,5,6,11,12,14,15,16,17,120})Inventory.Add(id,64);foreach(int id in new[]{100,101,102,103,104})Inventory.Add(id,1);}
+                if(Creative){foreach(int id in new[]{1,2,3,4,5,6,11,12,14,15,16,17,120})Inventory.Add(id,64);foreach(int id in new[]{100,101,102,103,104,105,106,107,108,130,131,132})Inventory.Add(id,1);}
                 else {Inventory.Add(110,6);Inventory.Add(111,2);}
             }
             if(local!=null)foreach(var e in Data.blocks)if(e.realm==(int)World.Dimension)World.Edit(e.x,e.y,e.z,(ushort)e.block);
@@ -80,10 +80,10 @@ namespace LestingCraft.Gameplay
         {
             if(pending||Vitals.dead)return;var item=Items.Get(Inventory.Active.item);
             if(item.Food>0&&Vitals.hunger<100){Inventory.Remove(item.Id,1);Vitals.Eat(item.Food);Notice="";}
-            else if(item.Id==104){Data.player.equippedCoat=!Data.player.equippedCoat;Notice=Data.player.equippedCoat?"Накидка надета":"Накидка снята";}
+            else if(Equipment.Slot(item.Id)>=0){Notice=Equipment.Equip(Inventory,Inventory.selected)?"Надето: "+item.Name:"Не удалось надеть предмет";}
         }
         public void Transfer(int from,int to){if(!pending&&!Vitals.dead&&!Data.campaign.runEnded)Inventory.Transfer(from,to);}
-        public void Damage(float amount){Vitals.Damage(amount,Mode);}
+        public void Damage(float amount){if(amount<=0||Vitals.dead||Creative)return;float protection=Equipment.Protection(Inventory);Vitals.Damage(amount*(1-protection),Mode);if(protection>0)Equipment.Wear(Inventory,amount);}
         public void Respawn()
         {
             if(Mode==GameMode.Hardcore||Data.campaign.runEnded)return;
@@ -104,11 +104,11 @@ namespace LestingCraft.Gameplay
                 Vitals.StepWater(elapsed,Mode,World.GetBlock(eye.x,eye.y,eye.z)==7,World.GetBlock(bodyCell.x,bodyCell.y,bodyCell.z)==7);
                 Sheltered=Physics.Raycast(Player.Camera.transform.position,Vector3.up,out var hit,16)&&hit.collider.transform.parent==World.transform;
                 bool warm=World.NearCampfire(Player.transform.position);if(warm&&Sheltered)Data.player.milestones|=2;
-                if(Data.player.equippedCoat&&Inventory.Count(104)==0)Data.player.equippedCoat=false;
+                
                 var sample=WeatherSample.At(Data.seed,(int)World.Dimension,Data.clock);
-                Vitals.Step(elapsed,Mode,sample.Air,sample.Precipitation,Sheltered,warm,Player.Sprinting,Data.player.equippedCoat?Items.Get(104).Insulation:0);
+                Vitals.Step(elapsed,Mode,sample.Air,sample.Precipitation,Sheltered,warm,Player.Sprinting,Equipment.Insulation(Inventory));
                 var feet=Vector3Int.FloorToInt(Player.transform.position+Vector3.up*.1f);
-                if(World.GetBlock(feet.x,feet.y,feet.z)==8)Vitals.Damage(elapsed*24,Mode);
+                if(World.GetBlock(feet.x,feet.y,feet.z)==8)Damage(elapsed*24);
                 if(!Game.Online)Data.campaign.milestones|=Data.player.milestones;
             }
             if(Vitals.dead&&!wasDead)

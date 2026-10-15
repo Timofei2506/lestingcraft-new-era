@@ -59,9 +59,9 @@ namespace LestingCraft.Presentation
             var re=rain.emission;re.rateOverTime=outside*(precipitation-snowAmount)*1400;
             var se=snow.emission;se.rateOverTime=outside*snowAmount*80;
             var light=AtmosphereLighting.At(Session.Data.clock,Session.World.Dimension,clouds,precipitation);light.Apply(sunlight,Session.Data.clock);
-            sky.SetVector("_CloudOffset",CloudField.Offset(Session.Data.clock,Session.Data.seed,wind));sky.SetFloat("_CloudCoverage",clouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:24);
+            sky.SetVector("_CloudOffset",CloudField.Offset(Session.Data.clock,Session.Data.seed,wind));sky.SetFloat("_CloudCoverage",clouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:VisualSettings.Current.VolumetricQuality==2?40:24);
             fog.SetFloat("_Density",AtmosphereProfile.Density(precipitation,submerged));
-            fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:16);
+            fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:VisualSettings.Current.VolumetricQuality==2?32:16);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);
             Shader.SetGlobalFloat("_FogHeight",Session.World.Dimension==Dimension.Skyreach?86:44);
             float height=Mathf.Tan(cameraView.fieldOfView*Mathf.Deg2Rad*.5f)*2;
@@ -84,7 +84,7 @@ namespace LestingCraft.Presentation
                 if(fires.ContainsKey(point))continue;
                 var obj=new GameObject("Persistent campfire light");obj.transform.SetParent(transform);obj.transform.position=point;
                 var source=obj.AddComponent<Light>();source.type=LightType.Point;source.color=new Color(1,.39f,.075f);source.intensity=3.6f;source.range=9;source.shadows=LightShadows.None;
-                var ps=obj.AddComponent<ParticleSystem>();var main=ps.main;main.startLifetime=.65f;main.startSpeed=.8f;main.startSize=.22f;main.startColor=new Color(1,.4f,.06f,.55f);main.maxParticles=64;
+                var ps=obj.AddComponent<ParticleSystem>();var main=ps.main;main.startLifetime=.35f;main.startSpeed=.35f;main.startSize=.10f;main.startColor=new Color(1,.4f,.06f,.55f);main.maxParticles=64;
                 var emission=ps.emission;emission.rateOverTime=18;var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Cone;shape.radius=.25f;shape.angle=12;shape.rotation=new Vector3(-90,0,0);
                 ps.GetComponent<ParticleSystemRenderer>().sharedMaterial=Resources.Load<Material>("Generated/Fire");fires.Add(point,obj);
             }

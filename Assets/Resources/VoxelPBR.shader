@@ -31,7 +31,7 @@ Shader "LestingCraft/VoxelPBR"
             CBUFFER_START(UnityPerMaterial)
                 half _NormalStrength;
             CBUFFER_END
-            float _GlobalWetness,_GlobalSnow;
+            float _GlobalWetness,_GlobalSnow,_LCParallaxSteps;
             struct Attributes {float4 positionOS:POSITION;float3 normalOS:NORMAL;float4 tangentOS:TANGENT;float3 uv:TEXCOORD0;half4 color:COLOR;};
             struct Varyings {float4 positionCS:SV_POSITION;float3 positionWS:TEXCOORD0;half3 normalWS:TEXCOORD1;half4 tangentWS:TEXCOORD2;float3 uv:TEXCOORD3;half4 color:COLOR;float4 shadowCoord:TEXCOORD4;half fog:TEXCOORD5;};
             Varyings Vert(Attributes input)
@@ -44,16 +44,23 @@ Shader "LestingCraft/VoxelPBR"
             }
             half4 Frag(Varyings i):SV_Target
             {
-                // Restrained single-step height parallax, never silhouette displacement.
+                // Bounded parallax occlusion: shader relief only, never changes voxel collision.
                 half3 geometricN=normalize(i.normalWS),geometricT=normalize(i.tangentWS.xyz),geometricB=cross(geometricN,geometricT)*i.tangentWS.w;
                 half3 viewWS=GetWorldSpaceNormalizeViewDir(i.positionWS);
                 half3 viewTS=half3(dot(viewWS,geometricT),dot(viewWS,geometricB),dot(viewWS,geometricN));
-                half height=SAMPLE_TEXTURE2D_ARRAY(_MaskArray,sampler_MaskArray,i.uv.xy,i.uv.z).b;
-                float2 surfaceUV=i.uv.xy+viewTS.xy/max(.35,abs(viewTS.z))*(height-.5)*.012;
-                half4 albedo=SAMPLE_TEXTURE2D_ARRAY(_AlbedoArray,sampler_AlbedoArray,surfaceUV,i.uv.z);
-                half3 normalTS=SAMPLE_TEXTURE2D_ARRAY(_NormalArray,sampler_NormalArray,surfaceUV,i.uv.z).xyz*2-1;
+                float2 dx=ddx(i.uv.xy),dy=ddy(i.uv.xy);int steps=clamp((int)_LCParallaxSteps,4,16);
+                float fade=1-smoothstep(12,26,distance(_WorldSpaceCameraPos,i.positionWS));float2 offset=-viewTS.xy/max(.45,abs(viewTS.z))*.024*fade;
+                float2 surfaceUV=i.uv.xy-offset*.5;float depth=0,stepDepth=1.0/steps;float2 delta=offset/steps;
+                [loop] for(int k=0;k<16;k++)
+                {
+                    if(k>=steps)break;
+                    float h=1-SAMPLE_TEXTURE2D_ARRAY_GRAD(_MaskArray,sampler_MaskArray,surfaceUV,i.uv.z,dx,dy).b;
+                    if(depth>=h)break;surfaceUV+=delta;depth+=stepDepth;
+                }
+                half4 albedo=SAMPLE_TEXTURE2D_ARRAY_GRAD(_AlbedoArray,sampler_AlbedoArray,surfaceUV,i.uv.z,dx,dy);
+                half3 normalTS=SAMPLE_TEXTURE2D_ARRAY_GRAD(_NormalArray,sampler_NormalArray,surfaceUV,i.uv.z,dx,dy).xyz*2-1;
                 normalTS.xy*=_NormalStrength;normalTS=normalize(normalTS);
-                half4 mask=SAMPLE_TEXTURE2D_ARRAY(_MaskArray,sampler_MaskArray,surfaceUV,i.uv.z);
+                half4 mask=SAMPLE_TEXTURE2D_ARRAY_GRAD(_MaskArray,sampler_MaskArray,surfaceUV,i.uv.z,dx,dy);
                 half3 n=normalize(i.normalWS),t=normalize(i.tangentWS.xyz),b=cross(n,t)*i.tangentWS.w;
                 InputData lighting=(InputData)0;
                 lighting.positionWS=i.positionWS;lighting.normalWS=normalize(mul(normalTS,half3x3(t,b,n)));

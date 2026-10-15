@@ -35,7 +35,7 @@ server.on('upgrade',(req,socket,head)=>{
   const reject=(status,reason)=>{socket.write(`HTTP/1.1 ${status} ${reason}\r\nConnection: close\r\n\r\n`);socket.destroy();};
   if(!room)return reject(404,'Not Found');if(peers(code).length>=MAX_PLAYERS)return reject(409,'Room Full');
   const key=url.searchParams.get('key');
-  if(room.config.rulesVersion===RULES_VERSION&&(!validCode(key)||peers(code).some(p=>p.peer.playerKey===key)))return reject(409,'Invalid Player Key');
+  if(room.config.rulesVersion>=2&&(!validCode(key)||peers(code).some(p=>p.peer.playerKey===key)))return reject(409,'Invalid Player Key');
   wss.handleUpgrade(req,socket,head,ws=>{
     ws.peer=newPeer(crypto.randomUUID(),url.searchParams.get('name'),key);if(!sockets.has(code))sockets.set(code,new Set());sockets.get(code).add(ws);
     ws.send(JSON.stringify(room.welcome(ws.peer,peers(code).map(s=>s.peer))));

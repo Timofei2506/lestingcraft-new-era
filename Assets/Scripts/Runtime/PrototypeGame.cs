@@ -30,19 +30,28 @@ namespace LestingCraft.Runtime
         public void OpenChat()
         {
             if(!world||paused)return;
-            if(!online){if(Session)Session.Notice="Чат доступен в кооперативной комнате";return;}
             ChatOpen=true;SetCursor(false);ui.SetChatOpen(true);
         }
         public void CloseChat(){ChatOpen=false;if(ui)ui.SetChatOpen(false);SetCursor(world&&!paused);}
         public void SubmitChat()
         {
             string text=ui.ChatText.Trim();
+            if(text.StartsWith("/")){ExecuteCommand(text);CloseChat();return;}
+            if(!online&&text.Length>0){AddChat(new NetPacket{name=playerName,message=text});CloseChat();return;}
             if(text.Length>0&&online&&client&&client.Connected)
             {
                 if(Time.unscaledTime-chatSentAt<1.2f){Session.Notice="Подождите секунду перед следующим сообщением";return;}
                 chatSentAt=Time.unscaledTime;client.Send(new NetPacket{type="chat",message=text});
             }
             CloseChat();
+        }
+        void ExecuteCommand(string text)
+        {
+            if(!Session)return;var result=ChatCommands.Execute(text,Session.Creative,!Online,Session.Inventory,world.Seed,player.transform.position,PlayerCount);
+            if(result.Action=="clear"){chatLog.Clear();ChatRevision++;}
+            else if(result.Action=="save")Session.Checkpoint();
+            else if(result.Action=="time")Session.Data.clock=result.Value;
+            AddChat(new NetPacket{name="Система",message=result.Message});
         }
         void AddChat(NetPacket packet)
         {
@@ -54,7 +63,7 @@ namespace LestingCraft.Runtime
         public bool InventoryOpen=>ui&&ui.InventoryOpen;
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
-        long revision; float lastPosition,previousYaw;Vector3 previousPosition;bool sentPosition;
+        long revision; float lastPosition,previousYaw;Vector3 previousPosition;bool sentPosition;int previousEquipment;
         Material avatarMaterial;
         GameUI ui;bool leaving,saveAcknowledged;
         public bool InWorld=>world;
@@ -151,7 +160,7 @@ namespace LestingCraft.Runtime
             obj.AddComponent<FirstPersonHands>().Initialize(player,camera);
             world.Player=obj.transform;paused=false;SetCursor(true);busy=false;status="Генерируется мир…";lastError="";
             var sessionObject=new GameObject("Survival and weather");sessionObject.transform.SetParent(world.transform,false);
-            Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;
+            Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;obj.AddComponent<LocalPlayerAppearance>().Initialize(this);
             if(Session.Vitals.dead||Session.Data.campaign.runEnded)OpenDeathScreen();else ui.ShowHUD();
         }
         IEnumerator CreateRoomRoutine()
@@ -206,7 +215,7 @@ namespace LestingCraft.Runtime
                 case "edit":
                     if(world&&packet.rev>revision){revision=packet.rev;world.Edit((int)packet.x,(int)packet.y,(int)packet.z,(ushort)packet.block);if(packet.id==selfId&&Session)Session.ConfirmEdit(new Vector3Int((int)packet.x,(int)packet.y,(int)packet.z));}break;
                 case "chat":AddChat(packet);break;
-                case "player":SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw});break;
+                case "player":SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw,equipment=packet.equipment});break;
                 case "leave":if(avatars.TryGetValue(packet.id,out var avatar))Destroy(avatar);avatars.Remove(packet.id);targets.Remove(packet.id);break;
                 case "state_saved":if(packet.id==selfId)saveAcknowledged=true;if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
                 case "run_ended":if(packet.id==selfId)saveAcknowledged=true;if(Session){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;Session.Notice="Хардкор завершён: погиб участник команды";OpenDeathScreen();}break;
@@ -222,6 +231,7 @@ namespace LestingCraft.Runtime
                 avatars.Add(peer.id,avatar);avatar.transform.position=new Vector3(peer.x,peer.y-PlayerCapsule.EyeHeight,peer.z);
                 var text=new GameObject("Name").AddComponent<TextMesh>();text.transform.SetParent(avatar.transform,false);text.transform.localPosition=new Vector3(0,2.1f,0);text.text=peer.name;text.characterSize=.13f;text.anchor=TextAnchor.MiddleCenter;
             }
+            avatar.GetComponent<CharacterVisual>().SetEquipment(peer.equipment);
             targets[peer.id]=new Vector3(peer.x,peer.y-PlayerCapsule.EyeHeight,peer.z);avatar.transform.rotation=Quaternion.Euler(0,peer.yaw,0);
         }
         void Update()
@@ -231,9 +241,10 @@ namespace LestingCraft.Runtime
             {pair.Value.transform.position=Vector3.Lerp(pair.Value.transform.position,target,Time.deltaTime*12);var label=pair.Value.GetComponentInChildren<TextMesh>();if(label&&Camera.main)label.transform.rotation=Camera.main.transform.rotation;}
             if(online&&client&&client.Connected&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
             {
-                var pos=player.Camera.transform.position;
-                if(!sentPosition||(pos-previousPosition).sqrMagnitude>.0009f||Mathf.Abs(Mathf.DeltaAngle(previousYaw,player.transform.eulerAngles.y))>1f)
-                {client.Send(new NetPacket{type="position",x=pos.x,y=pos.y,z=pos.z,yaw=player.transform.eulerAngles.y});previousPosition=pos;previousYaw=player.transform.eulerAngles.y;sentPosition=true;}
+                var pos=player.Camera.transform.position;var equipment=new int[8];int equipmentHash=17;
+                for(int i=0;i<8;i++){var slot=Session.Inventory.equipment[i];equipment[i]=slot.count>0?slot.item:0;equipmentHash=unchecked(equipmentHash*31+equipment[i]);}
+                if(!sentPosition||equipmentHash!=previousEquipment||(pos-previousPosition).sqrMagnitude>.0009f||Mathf.Abs(Mathf.DeltaAngle(previousYaw,player.transform.eulerAngles.y))>1f)
+                {client.Send(new NetPacket{type="position",x=pos.x,y=pos.y,z=pos.z,yaw=player.transform.eulerAngles.y,equipment=equipment});previousEquipment=equipmentHash;previousPosition=pos;previousYaw=player.transform.eulerAngles.y;sentPosition=true;}
                 lastPosition=Time.unscaledTime;
             }
         }

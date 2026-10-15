@@ -196,11 +196,11 @@ namespace LestingCraft.Presentation
             stationKind=station;stationCell=cell;craftWidth=station==16?3:2;
             Clear(Page.Inventory);Header(station==16?"Верстак · 3×3":station==17?"Печь · готовка":"Инвентарь · 2×2",false);
             inventoryViews.Clear();craftRevision=-1;
-            Label(content.transform,"СНАРЯЖЕНИЕ И ПРИПАСЫ",64,165,1400,59,32,White,true);
+            Label(content.transform,"",64,165,1400,59,32,White,true);
             Label(content.transform,"ЛКМ — взять / положить · ПКМ — половина / по одному · Shift-клик — быстро перенести · Можно перетаскивать мышью",66,248,1465,50,15,Muted);
             if(!game.Session)return;
             for(int i=0;i<45;i++)CreateCell(i,64+(i%9)*82,328+(i/9)*83,77,74);
-            Label(content.transform,"Первые 9 ячеек — быстрые слоты",64,759,740,25,14,Muted);
+            Label(content.transform,"Shift-клик по одежде/броне — надеть; по экипировке — снять",64,759,740,25,14,Muted);
             Label(content.transform,station==17?"ПЕРСОНАЛЬНАЯ ОЧЕРЕДЬ ГОТОВКИ":"СЕТКА "+craftWidth+"×"+craftWidth,852,307,380,32,16,Accent,true);
             if(station==17)
             {
@@ -221,6 +221,10 @@ namespace LestingCraft.Presentation
                 Button("Вернуть материалы",852,625,372,45,()=>{if(game.Session.CanInteract){game.Session.Notice=CraftingTable.ReturnGrid(game.Session.Inventory)?"Материалы возвращены":"Недостаточно места — сетка сохранена";RefreshCraftInventory();}});
                 Label(content.transform,"Книга справа выкладывает рецепт из ваших ресурсов. Результат забирается вручную.\nShift-клик по результату — изготовить максимум.\nМатериалы в сетке и на курсоре сохраняются.",852,690,370,112,14,Muted);
             }
+            for(int i=0;i<Equipment.Count;i++)
+            {float x=64+i*145;Label(content.transform,Equipment.Names[i],x,165,176,23,12,Muted);CreateCell(58+i,x,191,62,55);}
+            var portrait=Rect("3D equipped character",content.transform,1260,145,100,150).gameObject.AddComponent<RawImage>();portrait.raycastTarget=false;portrait.gameObject.AddComponent<CharacterPreview>().Initialize(game);
+            Label(content.transform,"Броня снижает\nурон от ударов;\nодежда греет.\nНезависимые слоты.",1375,172,160,98,12,Muted);
             BuildRecipeBook();
             status=Label(content.transform,game.Session.Notice,340,812,1180,56,15,Accent);
             Button("←  В мир",64,812,230,51,game.ToggleInventory,true);
@@ -314,20 +318,21 @@ namespace LestingCraft.Presentation
         {
             settingsBack=back;Clear(Page.Settings);Header("Графика и управление",false);
             Label(content.transform,"НАСТРОЙ ПОД СЕБЯ",64,171,1400,68,36,White,true);
-            Label(content.transform,"Высокое качество по умолчанию. Без скрытого автоматического снижения.",66,247,1400,42,19,Muted);
+            Label(content.transform,"Средние — качественный PBR без RTX. Ultra — усиленные эффекты, без автоматического понижения.",66,247,1400,42,19,Muted);
             var settings=VisualSettings.Current;
             Box(content.transform,64,323,713,402,Panel);Box(content.transform,800,323,736,402,Panel);
             Slider("Дальность мира",64+28,354,655,settings.ViewDistance,2,5,true,v=>{settings.ViewDistance=Mathf.RoundToInt(v);settings.Save();},v=>(int)v+" чанка/сторону");
-            Slider("Масштаб рендера",92,469,655,settings.RenderScale,.85f,1.15f,false,v=>{settings.RenderScale=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
-            Button("Тени: "+(settings.ShadowResolution==2048?"высокие · 2048":"умеренные · 1024"),92,589,309,58,()=>{settings.ShadowResolution=settings.ShadowResolution==2048?1024:2048;settings.Save();ShowSettings(settingsBack);});
+            Slider("Масштаб рендера",92,469,655,settings.RenderScale,.85f,1.5f,false,v=>{settings.RenderScale=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
+            Button("Тени: "+settings.ShadowResolution.ToString(),92,589,309,58,()=>{settings.ShadowResolution=settings.ShadowResolution==1024?2048:settings.ShadowResolution==2048?4096:1024;settings.Save();ShowSettings(settingsBack);});
             Button("Постэффекты: "+(settings.PostEffects?"вкл.":"выкл."),419,589,328,58,()=>{settings.PostEffects=!settings.PostEffects;settings.Save();ShowSettings(settingsBack);});
-            Button("Объёмы: "+(settings.VolumetricQuality==1?"высокие":"сокращённые"),92,667,655,38,()=>{settings.VolumetricQuality=1-settings.VolumetricQuality;settings.Save();ShowSettings(settingsBack);});
+            Button("Объёмы: "+(settings.VolumetricQuality==2?"Ultra":settings.VolumetricQuality==1?"высокие":"сокращённые"),92,667,655,38,()=>{settings.VolumetricQuality=(settings.VolumetricQuality+1)%3;settings.Save();ShowSettings(settingsBack);});
             Slider("Поле зрения",828,354,680,settings.FieldOfView,60,100,true,v=>{settings.FieldOfView=v;settings.Save();},v=>(int)v+"°");
             Slider("Чувствительность мыши",828,469,680,settings.Sensitivity,.04f,.25f,false,v=>{settings.Sensitivity=v;settings.Save();},v=>v.ToString("0.00"));
             Label(content.transform,"WASD — движение     SPACE — прыжок\nЛКМ — убрать блок     ПКМ — поставить\n1–9 — быстрые слоты     E — инвентарь         ESC — меню",828,596,679,106,18,White);
             Button("←  Готово",64,798,210,54,()=>{settings.Save();if(settingsBack==Page.Pause)ShowPause();else ShowHome();},true);
-            Button("Вернуть высокий пресет",296,798,327,54,()=>{settings.HighDefault();ShowSettings(settingsBack);});
-            Label(content.transform,"FPS зависит от железа. Текущая платформа — Windows x64.",663,792,873,69,15,Muted,false,TextAnchor.MiddleRight);
+            Button("Средние · PBR",296,798,240,54,()=>{settings.HighDefault();ShowSettings(settingsBack);});
+            Button("Ultra · без RT",551,798,230,54,()=>{settings.Ultra();ShowSettings(settingsBack);});
+            Label(content.transform,"Аппаратные лучи: URP не поддерживает. GPU RT: "+(VisualSettings.HardwareRayTracing?"да":"нет"),810,792,726,69,15,Muted,false,TextAnchor.MiddleRight);
         }
         void Slider(string title,float x,float y,float w,float value,float min,float max,bool integer,Action<float> changed,Func<float,string> format)
         {

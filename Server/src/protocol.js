@@ -1,5 +1,5 @@
 export const VERSION = 1;
-export const RULES_VERSION = 3;
+export const RULES_VERSION = 4;
 export const MAX_MESSAGE = 16384;
 export const MAX_PLAYERS = 8;
 export const MAX_EDITS = 4096;
@@ -12,12 +12,12 @@ const finite = v => typeof v === 'number' && Number.isFinite(v);
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
     throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
-  if(value.rulesVersion!==undefined&&![2,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
-  if([2,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
-  return { version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
+  if(value.rulesVersion!==undefined&&![2,3,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
+  if([2,3,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
+  return { version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
 export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
-export function publicPeer(p) {return {id:p.id,name:p.name,x:p.x,y:p.y,z:p.z,yaw:p.yaw};}
+export function publicPeer(p) {return {id:p.id,name:p.name,x:p.x,y:p.y,z:p.z,yaw:p.yaw,equipment:p.equipment||Array(8).fill(0)};}
 export function consumeRate(peer, now) {
   if (now - peer.windowStart >= 1000) {peer.windowStart=now;peer.count=0;}
   return ++peer.count <= 15;
@@ -32,7 +32,8 @@ export function validatePosition(p,peer,now) {
   if (!finite(p.x)||!finite(p.y)||!finite(p.z)||!finite(p.yaw)||p.x < -64||p.x>=64||p.z < -64||p.z>=64||p.y<0||p.y>256||Math.abs(p.yaw)>360000)throw new Error('Position outside room bounds');
   if(now-peer.lastPosition<80)throw new Error('Position update too frequent');
   // Client-authoritative movement: reach validation is not an anti-cheat.
-  return {type:'player',id:peer.id,name:peer.name,x:p.x,y:p.y,z:p.z,yaw:((p.yaw%360)+360)%360};
+  const equipment=validateEquipmentIds(p.equipment===undefined?(peer.equipment||Array(8).fill(0)):p.equipment);
+  return {type:'player',id:peer.id,name:peer.name,x:p.x,y:p.y,z:p.z,yaw:((p.yaw%360)+360)%360,equipment};
 }
 export function validateEdit(p,peer,edits,now) {
   if(!integer(p.x)||!integer(p.y)||!integer(p.z)||!integer(p.block)||p.x < -64||p.x>=64||p.z < -64||p.z>=64||p.y<=0||p.y>=256||p.block<0||p.block>18||p.block===9)throw new Error('Invalid block edit (bedrock and y=0 are protected)');
@@ -66,7 +67,7 @@ export class RoomState {
       return {type:'edit',...record,id:peer.id};
     }
     if(p.type==='state') {
-      if(![2,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
+      if(![2,3,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
       const save=validatePlayerSave(p.save),dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
       const forced=p.force===true;
@@ -84,17 +85,18 @@ export class RoomState {
 
 export function validatePlayerSave(save) {
   if(!save||typeof save!=='object'||!save.inventory||!save.survival)throw new Error('Invalid player save');
-  const maxStack=id=>[100,101,102,103,104].includes(id)?1:[110,111,112].includes(id)?32:64;
-  const validItem=id=>integer(id)&&(id===0||(id>=1&&id<=17)||(id>=100&&id<=104)||(id>=110&&id<=114)||(id>=120&&id<=123));
+  const maxStack=id=>((id>=100&&id<=108)||(id>=130&&id<=132))?1:[110,111,112].includes(id)?32:64;
+  const validItem=id=>integer(id)&&(id===0||(id>=1&&id<=17)||(id>=100&&id<=108)||(id>=130&&id<=132)||(id>=110&&id<=114)||(id>=120&&id<=123));
   const cleanStack=s=>{
-    if(!s||!validItem(s.item)||!integer(s.count)||s.count<0||s.count>maxStack(s.item)||!integer(s.durability)||s.durability<0||s.durability>160||(s.item===0)!==(s.count===0))throw new Error('Invalid item stack');
-    const life={100:60,101:140,102:120,103:160};if(s.durability>(life[s.item]||0))throw new Error('Invalid tool durability');
+    if(!s||!validItem(s.item)||!integer(s.count)||s.count<0||s.count>maxStack(s.item)||!integer(s.durability)||s.durability<0||s.durability>260||(s.item===0)!==(s.count===0))throw new Error('Invalid item stack');
+    const life={100:60,101:140,102:120,103:160,105:180,106:260,107:220,108:180};if(s.durability>(life[s.item]||0))throw new Error('Invalid tool durability');
     return {item:s.item,count:s.count,durability:s.durability};
   };
   const empty=()=>({item:0,count:0,durability:0});
   const extras=(value,length)=>{if(value===undefined)return Array.from({length},empty);if(!Array.isArray(value)||value.length!==length)throw new Error('Invalid crafting/storage size');return value.map(cleanStack);};
   const inv=save.inventory;
   if(!Array.isArray(inv.slots)||inv.slots.length!==45||!integer(inv.selected)||inv.selected<0||inv.selected>8)throw new Error('Expected 45 inventory slots and selected hotbar 0..8');
+  const equipment=extras(inv.equipment,8);validateEquipmentIds(equipment.map(s=>s.count?s.item:0));
   const slots=inv.slots.map(cleanStack),grid=extras(inv.grid,9),cursor=cleanStack(inv.cursor||empty());
   const raw=inv.furnace||{},furnace={input:cleanStack(raw.input||empty()),fuel:cleanStack(raw.fuel||empty()),output:cleanStack(raw.output||empty())};
   for(const [key,min,max] of [['burn',0,40],['progress',0,8],['recipe',0,123],['x',-64,63],['y',0,255],['z',-64,63],['realm',0,4]]){
@@ -103,11 +105,16 @@ export function validatePlayerSave(save) {
   let grave=[],graveExtras=[];
   if(save.grave?.length){
     if(!Array.isArray(save.grave)||save.grave.length!==45)throw new Error('Invalid grave inventory');
-    grave=save.grave.map(cleanStack);graveExtras=save.graveExtras?.length?extras(save.graveExtras,13):[];
+    grave=save.grave.map(cleanStack);if(save.graveExtras?.length&&![13,21].includes(save.graveExtras.length))throw new Error('Invalid grave equipment size');graveExtras=save.graveExtras?.length?extras(save.graveExtras,save.graveExtras.length):[];
     for(const key of ['graveX','graveY','graveZ'])if(!finite(save[key])||Math.abs(save[key])>32000)throw new Error('Invalid grave position');
   }
   const v=save.survival;
   for(const [key,min,max] of [['health',0,100],['hunger',0,100],['stamina',0,100],['temperature',25,43],['wetness',0,1]])if(!finite(v[key])||v[key]<min||v[key]>max)throw new Error('Invalid survival '+key);
   const air=v.air===undefined?100:v.air;if(!finite(air)||air<0||air>100)throw new Error('Invalid air');
-  return {grave,graveExtras,graveX:grave.length?save.graveX:0,graveY:grave.length?save.graveY:0,graveZ:grave.length?save.graveZ:0,milestones:integer(save.milestones)?save.milestones&3:0,inventory:{slots,grid,cursor,furnace,selected:inv.selected,revision:integer(inv.revision)?inv.revision:0},survival:{health:v.health,hunger:v.hunger,stamina:v.stamina,temperature:v.temperature,wetness:v.wetness,air,dead:v.health<=0},equippedCoat:save.equippedCoat===true&&slots.some(s=>s.item===104&&s.count===1)};
+  return {grave,graveExtras,graveX:grave.length?save.graveX:0,graveY:grave.length?save.graveY:0,graveZ:grave.length?save.graveZ:0,milestones:integer(save.milestones)?save.milestones&3:0,inventory:{slots,grid,cursor,furnace,equipment,selected:inv.selected,revision:integer(inv.revision)?inv.revision:0},survival:{health:v.health,hunger:v.hunger,stamina:v.stamina,temperature:v.temperature,wetness:v.wetness,air,dead:v.health<=0},equippedCoat:save.equippedCoat===true&&slots.some(s=>s.item===104&&s.count===1)};
+}
+
+export function validateEquipmentIds(ids){
+ const allowed=[130,104,131,132,105,106,107,108];
+ if(!Array.isArray(ids)||ids.length!==8||ids.some((id,i)=>!Number.isInteger(id)||(id!==0&&id!==allowed[i])))throw new Error('Invalid equipment slot');return [...ids];
 }

@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -30,5 +30,6 @@
     "campfire-side",
     "campfire-top"
   ],
-  "stationSource": "Original procedural joinery/masonry + derived PBR estimates"
+  "stationSource": "Original procedural joinery/masonry + derived PBR estimates",
+  "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries"
 }

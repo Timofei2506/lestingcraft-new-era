@@ -22,7 +22,7 @@ Shader "LestingCraft/Water"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
             #include "../Shaders/EnvironmentLighting.hlsl"
             TEXTURE2D_ARRAY(_NormalArray);SAMPLER(sampler_NormalArray);
-            float4 _EnvironmentShallowWater,_EnvironmentDeepWater;
+            float4 _EnvironmentShallowWater,_EnvironmentDeepWater;float _LCWaterSteps;
             struct A{float4 p:POSITION;float3 n:NORMAL;float4 t:TANGENT;};
             struct V{float4 p:SV_POSITION;float3 ws:TEXCOORD0;half3 n:TEXCOORD1;half4 t:TEXCOORD2;half fog:TEXCOORD3;};
             // Continuous world-space waves: adjacent chunks evaluate exactly the same phase.
@@ -44,9 +44,9 @@ Shader "LestingCraft/Water"
                 float3 origin=TransformWorldToView(ws+normal*.07);
                 float3 direction=TransformWorldToViewDir(reflect(-view,normal),true);
                 float previousDiff=-1;
-                [unroll] for(int stepIndex=1;stepIndex<=10;stepIndex++)
+                int steps=clamp((int)_LCWaterSteps,10,24);[loop] for(int stepIndex=1;stepIndex<=24;stepIndex++)
                 {
-                    float distanceAlong=.20+stepIndex*stepIndex*.27;
+                    if(stepIndex>steps)break;float along=stepIndex*10.0/steps;float distanceAlong=.20+along*along*.27;
                     float3 ray=origin+direction*distanceAlong;if(ray.z>=-.05)break;
                     float4 clip=mul(UNITY_MATRIX_P,float4(ray,1));float4 projected=ComputeScreenPos(clip);
                     float2 uv=projected.xy/projected.w;

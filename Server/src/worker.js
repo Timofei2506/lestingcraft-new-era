@@ -64,7 +64,7 @@ export class GameRoom {
     if(!this.room)return error('Room not found',404);
     if(this.ctx.getWebSockets().length>=MAX_PLAYERS)return error('Room full',409);
     const url=new URL(request.url),key=url.searchParams.get('key');
-    if(this.room.config.rulesVersion===RULES_VERSION&&(!validCode(key)||this.ctx.getWebSockets().some(s=>s.deserializeAttachment()?.playerKey===key)))return error('Valid unique player key required',409);
+    if(this.room.config.rulesVersion>=2&&(!validCode(key)||this.ctx.getWebSockets().some(s=>s.deserializeAttachment()?.playerKey===key)))return error('Valid unique player key required',409);
     const pair=new WebSocketPair(),[client,server]=Object.values(pair),peer=newPeer(crypto.randomUUID(),url.searchParams.get('name'),key);
     server.serializeAttachment(peer);this.ctx.acceptWebSocket(server);
     server.send(JSON.stringify(this.room.welcome(peer,this.ctx.getWebSockets().map(s=>s.deserializeAttachment()))));

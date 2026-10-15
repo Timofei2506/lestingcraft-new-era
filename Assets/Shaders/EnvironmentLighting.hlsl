@@ -27,9 +27,10 @@ float3 LC_SkyRadiance(float3 direction)
     sky+=star*night*night*saturate(ray.y*3)*float3(.65,.76,1)*1.2;
     return sky;
 }
+float _LCGrassRange;
 float3 LC_BladePosition(float3 positionWS,float rootHeight,float weight)
 {
-    float distanceFade=1-smoothstep(24,42,distance(positionWS.xz,_WorldSpaceCameraPos.xz));
+    float distanceFade=1-smoothstep(max(20,_LCGrassRange*.65),max(42,_LCGrassRange),distance(positionWS.xz,_WorldSpaceCameraPos.xz));
     positionWS.y=rootHeight+(positionWS.y-rootHeight)*distanceFade;
     float gust=sin(dot(positionWS.xz,float2(.34,.19))-_EnvironmentTime*1.8);
     float flutter=sin(positionWS.x*2.1+positionWS.z*1.3+_EnvironmentTime*3.4)*.22;

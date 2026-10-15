@@ -46,7 +46,7 @@ Shader "LestingCraft/AtmosphericSky"
                 float stepLength=(end-start)/max(1,_CloudSteps),transmittance=1;half3 clouds=0;
                 float jitter=frac(sin(dot(i.vertex.xy,float2(12.9898,78.233)))*43758.5453);
                 half3 direct=lerp(half3(.055,.075,.13),_EnvironmentSunColor.rgb,_EnvironmentDaylight);
-                for(int n=0;n<32;n++)
+                for(int n=0;n<48;n++)
                 {
                     if(n>=(int)_CloudSteps||transmittance<.015)break;
                     float3 samplePosition=_WorldSpaceCameraPos+ray*(start+(n+jitter)*stepLength);float d=density(samplePosition);

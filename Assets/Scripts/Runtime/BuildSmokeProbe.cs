@@ -62,7 +62,10 @@ namespace LestingCraft.Runtime
             if(RenderSettings.fog){Fail("Duplicate linear fog must be disabled.");yield break;}
             var player=game.Session.Player;player.enabled=false;
             Camera.main.transform.localRotation=Quaternion.Euler(10,35,0);
-            yield return null;yield return new WaitForEndOfFrame();
+            var fireCell=Vector3Int.FloorToInt(player.transform.position+new Vector3(1,0,2));game.Session.World.Edit(fireCell.x,fireCell.y,fireCell.z,15);
+            yield return null;yield return null;yield return new WaitForEndOfFrame();
+            var placed=GameObject.Find("Placed voxel model 15");if(!placed||placed.GetComponent<MeshFilter>().sharedMesh!=VoxelItemModels.MeshFor(15)){Fail("Placed campfire must use authored icon geometry");yield break;}
+            Debug.Log("[Smoke] CAMPFIRE_PARITY: same shared mesh as icon/held model, no opaque cube");
             var hands=player.GetComponent<FirstPersonHands>();
             if(!hands||!hands.ViewCamera||!hands.ViewCamera.enabled){Fail("First-person hand camera not active.");yield break;}
             var body=ui.GetComponentInChildren<HealthSilhouette>();
@@ -73,6 +76,9 @@ namespace LestingCraft.Runtime
             if(!ScreenshotHasDetail(worldshot)){Fail("World screenshot has no detail.");yield break;}
             Debug.Log("[Smoke] WORLD_SCREENSHOT: "+worldshot);
             game.ToggleInventory();yield return null;
+            foreach(int gear in new[]{104,105,106,107,108,130,131,132})
+            {var bag=game.Session.Inventory;bag.Add(gear,1);int index=Array.FindIndex(bag.slots,s=>s.item==gear&&s.count>0);ui.InventoryClick(index,false,true);if(bag.equipment[Equipment.Slot(gear)].item!=gear){Fail("Native shift-equip failed: "+gear);yield break;}}
+            yield return null;Debug.Log("[Smoke] EQUIPMENT: eight independent clothing/armor slots equipped through actual inventory clicks");
             ItemHover item=null;foreach(var hover in ui.GetComponentsInChildren<ItemHover>())if(hover.Item>0){item=hover;break;}
             if(!item){Fail("Inventory hover target missing.");yield break;}
             var point=RectTransformUtility.WorldToScreenPoint(null,item.transform.position)+new Vector2(30,-30);
@@ -129,6 +135,10 @@ namespace LestingCraft.Runtime
             string furnaceShot=Path.GetFullPath(Path.Combine(folder,"furnace-cooking.png"));ScreenCapture.CaptureScreenshot(furnaceShot);yield return WaitForScreenshot(furnaceShot);
             if(!ScreenshotReady(furnaceShot)||!ScreenshotHasDetail(furnaceShot)||failure!=null){Fail("Furnace screenshot/runtime errors: "+failure);yield break;}
             Debug.Log("[Smoke] CRAFTING_SCREENSHOTS: "+craftShot+" / "+furnaceShot);
+            game.Resume();VisualSettings.Current.Ultra();yield return null;yield return null;yield return new WaitForEndOfFrame();
+            string ultraShot=Path.GetFullPath(Path.Combine(folder,"world-ultra.png"));ScreenCapture.CaptureScreenshot(ultraShot);yield return WaitForScreenshot(ultraShot);
+            if(!ScreenshotReady(ultraShot)||!ScreenshotHasDetail(ultraShot)||failure!=null){Fail("Ultra graphics frame/runtime errors: "+failure);yield break;}
+            Debug.Log("[Smoke] ULTRA: 4096 shadows / 40 cloud steps / 32 volume steps / no hardware RT claim");
             finishing=true;
             Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking and five executable screenshots. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);

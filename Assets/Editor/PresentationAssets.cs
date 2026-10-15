@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -85,8 +86,8 @@ public static class PresentationAssets
     static void EnsureCharacterAtlas()
     {
         const string path=Folder+"/BlockCharacter.asset";
-        if(AssetDatabase.LoadAssetAtPath<Texture2D>(path))return;
-        var texture=new Texture2D(2,2,TextureFormat.RGBA32,false){name="Block character detailed atlas",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Point};
+        string version="BlockCharacter-"+AssetDatabase.GetAssetDependencyHash("Assets/Art/Characters/BlockCharacter.png").ToString();var existing=AssetDatabase.LoadAssetAtPath<Texture2D>(path);if(existing&&existing.name==version)return;if(existing)AssetDatabase.DeleteAsset(path);
+        var texture=new Texture2D(2,2,TextureFormat.RGBA32,false){name=version,wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Point};
         if(!texture.LoadImage(File.ReadAllBytes("Assets/Art/Characters/BlockCharacter.png"),false))throw new InvalidOperationException("Character atlas decode failed");
         AssetDatabase.CreateAsset(texture,path);
     }
@@ -96,9 +97,9 @@ public static class PresentationAssets
         foreach(int id in LestingCraft.Presentation.ItemArtwork.AllIds)
         {
             string path=Folder+"/Icons/Item"+id+".asset";
-            if(AssetDatabase.LoadAssetAtPath<Texture2D>(path))continue;
             string source="Assets/Resources/VoxelIcons/Item"+id+".png";
-            var texture=new Texture2D(2,2,TextureFormat.RGBA32,false){name="Item"+id,wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+            string version="Item"+id+"-"+AssetDatabase.GetAssetDependencyHash(source).ToString();var existing=AssetDatabase.LoadAssetAtPath<Texture2D>(path);if(existing&&existing.name==version)continue;if(existing)AssetDatabase.DeleteAsset(path);
+            var texture=new Texture2D(2,2,TextureFormat.RGBA32,false){name=version,wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
             if(!texture.LoadImage(File.ReadAllBytes(source),false))throw new InvalidOperationException("Cannot decode item icon: "+source);
             AssetDatabase.CreateAsset(texture,path);
         }
@@ -128,9 +129,11 @@ public static class PresentationAssets
     static Texture2DArray Array(string assetName,string kind,bool linear)
     {
         var path=Folder+"/"+assetName+".asset";
-        var existing=AssetDatabase.LoadAssetAtPath<Texture2DArray>(path);if(existing&&existing.depth==Names.Length)return existing;if(existing)AssetDatabase.DeleteAsset(path);
+        string fingerprint;using(var hash=SHA256.Create()){using(var stream=new MemoryStream()){foreach(var name in Names){var bytes=File.ReadAllBytes("Assets/Art/PBR/"+name+"_"+kind+".png");stream.Write(bytes,0,bytes.Length);}fingerprint=BitConverter.ToString(hash.ComputeHash(stream.ToArray())).Replace("-","").Substring(0,16);}}
+        string version=assetName+"-v4-"+fingerprint;
+        var existing=AssetDatabase.LoadAssetAtPath<Texture2DArray>(path);if(existing&&existing.depth==Names.Length&&existing.name==version)return existing;if(existing)AssetDatabase.DeleteAsset(path);
         const int size=512;
-        var result=new Texture2DArray(size,size,Names.Length,TextureFormat.RGBA32,true,linear){name=assetName,wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear,anisoLevel=8};
+        var result=new Texture2DArray(size,size,Names.Length,TextureFormat.RGBA32,true,linear){name=version,wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear,anisoLevel=8};
         for(int i=0;i<Names.Length;i++)
         {
             // Load raw PNG bytes to preserve RGB normals/packed masks without importer repacking.

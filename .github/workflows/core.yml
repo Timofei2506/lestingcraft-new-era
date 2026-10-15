@@ -13,5 +13,5 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq mono-mcs
       - name: Compile real gameplay core and fuzz inventory transfers
         run: |
-          mcs -langversion:7.2 -out:/tmp/crafting-check.exe Assets/Scripts/Gameplay/Inventory.cs Assets/Scripts/Gameplay/CraftingTable.cs Assets/Scripts/Gameplay/FurnaceState.cs Tools/check_crafting_core.cs
+          mcs -langversion:7.2 -out:/tmp/crafting-check.exe Assets/Scripts/Gameplay/Equipment.cs Assets/Scripts/Gameplay/Inventory.cs Assets/Scripts/Gameplay/CraftingTable.cs Assets/Scripts/Gameplay/FurnaceState.cs Tools/check_crafting_core.cs
           mono /tmp/crafting-check.exe

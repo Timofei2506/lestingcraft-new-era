@@ -78,6 +78,8 @@ namespace LestingCraft.World
             return Blocks.TryGetValue(id, out var definition) ? definition : Blocks[AirId];
         }
 
+        public static bool Occludes(ushort id)=>id!=CampfireId&&IsSolid(id);
+
         public static bool IsSolid(ushort id)
         {
             return Get(id).IsSolid;

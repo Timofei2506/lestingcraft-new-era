@@ -9,11 +9,11 @@ namespace LestingCraft.Runtime
 {
     public sealed class VoxelWorld : MonoBehaviour
     {
-        sealed class View { public ChunkData Data; public GameObject Object; public Mesh Visual, Collision; }
+        sealed class View { public ChunkData Data; public GameObject Object,Specials; public Mesh Visual, Collision; }
         readonly Dictionary<Vector2Int,View> chunks = new Dictionary<Vector2Int,View>();
         readonly Dictionary<Vector3Int,ushort> edits = new Dictionary<Vector3Int,ushort>();
         readonly HashSet<Vector2Int> dirty = new HashSet<Vector2Int>();
-        Material material,waterMaterial,grassMaterial;
+        Material material,waterMaterial,grassMaterial,objectMaterial;
         NativeArray<ushort> pendingBuffer;
         JobHandle pendingJob;
         public int Seed { get; private set; }
@@ -26,6 +26,7 @@ namespace LestingCraft.Runtime
         public void Initialize(int seed, Dimension dimension, bool online)
         {
             Seed=seed;Dimension=dimension;Online=online;
+            objectMaterial=new Material(Resources.Load<Material>("Generated/VoxelObjects"));
             material=new Material(Resources.Load<Material>("Generated/VoxelPBR"));
             waterMaterial=new Material(Resources.Load<Material>("Generated/Water"));
             grassMaterial=new Material(Resources.Load<Material>("Generated/Grass"));
@@ -115,9 +116,13 @@ namespace LestingCraft.Runtime
         public bool NearCampfire(Vector3 point,float radius=6)
         {foreach(var edit in edits)if(edit.Value==15&&Vector3.Distance(point,(Vector3)edit.Key+Vector3.one*.5f)<radius)return true;return false;}
         public List<Vector3> NearbyFires(Vector3 point)
-        {var found=new List<Vector3>();foreach(var edit in edits)if(edit.Value==15&&Vector3.Distance(point,(Vector3)edit.Key)<24)found.Add((Vector3)edit.Key+new Vector3(.5f,1,.5f));return found;}
+        {var found=new List<Vector3>();foreach(var edit in edits)if(edit.Value==15&&Vector3.Distance(point,(Vector3)edit.Key)<24)found.Add((Vector3)edit.Key+new Vector3(.5f,.42f,.5f));return found;}
         void Rebuild(Vector2Int key,View v)
         {
+            if(v.Specials)Destroy(v.Specials);
+            v.Specials=new GameObject("Authored placed objects");v.Specials.transform.SetParent(v.Object.transform,false);
+            for(int y=0;y<ChunkData.SizeY;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++)
+                if(v.Data.GetBlock(x,y,z)==15)LestingCraft.Presentation.PlacedVoxelModel.Create(15,v.Specials.transform,new Vector3(x,y,z),objectMaterial);
             var data=ChunkMesher.Build(v.Data,key.x*16,key.y*16,GetBlock,Seed,Dimension==LestingCraft.World.Dimension.Lestingia);
             var mesh=data.CreateMesh();var collider=data.CreateMesh(true);
             v.Object.GetComponent<MeshFilter>().sharedMesh=mesh;
@@ -125,6 +130,6 @@ namespace LestingCraft.Runtime
             if(v.Visual)Destroy(v.Visual);if(v.Collision)Destroy(v.Collision);v.Visual=mesh;v.Collision=collider;
         }
         void DisposeView(View v){if(v.Visual)Destroy(v.Visual);if(v.Collision)Destroy(v.Collision);if(v.Object)Destroy(v.Object);}
-        void OnDestroy(){StopAllCoroutines();pendingJob.Complete();if(pendingBuffer.IsCreated){pendingBuffer.Dispose();pendingBuffer=default;}foreach(var v in chunks.Values)DisposeView(v);if(material)Destroy(material);if(waterMaterial)Destroy(waterMaterial);if(grassMaterial)Destroy(grassMaterial);}
+        void OnDestroy(){StopAllCoroutines();pendingJob.Complete();if(pendingBuffer.IsCreated){pendingBuffer.Dispose();pendingBuffer=default;}foreach(var v in chunks.Values)DisposeView(v);if(material)Destroy(material);if(waterMaterial)Destroy(waterMaterial);if(grassMaterial)Destroy(grassMaterial);if(objectMaterial)Destroy(objectMaterial);}
     }
 }

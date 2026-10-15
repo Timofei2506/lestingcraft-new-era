@@ -19,7 +19,9 @@ namespace LestingCraft.Gameplay
             new GridRecipe(15,1,3,0,121,0,121,1,121,4,4,4),
             new GridRecipe(104,1,3,122,0,122,122,120,122,122,122,122),
             new GridRecipe(16,1,2,120,120,120,120),new GridRecipe(17,1,3,1,1,1,1,0,1,1,1,1),
-            new GridRecipe(114,1,3,113,113,113)
+            new GridRecipe(114,1,3,113,113,113),
+            new GridRecipe(130,1,3,122,122,122,122,0,122),new GridRecipe(131,1,3,122,122,122,122,0,122,122,0,122),new GridRecipe(132,1,3,122,0,122,122,0,122),
+            new GridRecipe(105,1,3,13,13,13,13,0,13),new GridRecipe(106,1,3,13,0,13,13,13,13,13,13,13),new GridRecipe(107,1,3,13,13,13,13,0,13,13,0,13),new GridRecipe(108,1,3,13,0,13,13,0,13)
         };
         public static GridRecipe Match(ItemStack[] grid,int size)
         {
@@ -74,16 +76,17 @@ namespace LestingCraft.Gameplay
     public static class InventoryInteraction
     {
         // 0..44 bag; 45..53 crafting; 54 input, 55 fuel, 56 output.
-        public static ItemStack Get(Inventory inv,int slot)=>slot<45?inv.slots[slot]:slot<54?inv.grid[slot-45]:slot==54?inv.furnace.input:slot==55?inv.furnace.fuel:inv.furnace.output;
+        public static ItemStack Get(Inventory inv,int slot)=>slot>=58&&slot<66?inv.equipment[slot-58]:slot<45?inv.slots[slot]:slot<54?inv.grid[slot-45]:slot==54?inv.furnace.input:slot==55?inv.furnace.fuel:inv.furnace.output;
         static void Set(Inventory inv,int slot,ItemStack s)
-        {if(slot<45)inv.slots[slot]=s;else if(slot<54)inv.grid[slot-45]=s;else if(slot==54)inv.furnace.input=s;else if(slot==55)inv.furnace.fuel=s;else inv.furnace.output=s;}
-        static bool Accept(int slot,int item)=>slot!=56&&(slot!=54||FurnaceState.Result(item)>0)&&(slot!=55||FurnaceState.FuelSeconds(item)>0);
+        {if(slot>=58&&slot<66)inv.equipment[slot-58]=s;else if(slot<45)inv.slots[slot]=s;else if(slot<54)inv.grid[slot-45]=s;else if(slot==54)inv.furnace.input=s;else if(slot==55)inv.furnace.fuel=s;else inv.furnace.output=s;}
+        static bool Accept(int slot,int item)=>slot>=58?Equipment.Accept(slot-58,item):slot!=56&&(slot!=54||FurnaceState.Result(item)>0)&&(slot!=55||FurnaceState.FuelSeconds(item)>0);
         public static void Click(Inventory inv,int slot,bool right,bool shift)
         {
-            if(slot<0||slot>56)return;var a=Get(inv,slot);var held=inv.cursor;
+            if(slot<0||slot==57||slot>65)return;var a=Get(inv,slot);var held=inv.cursor;
             if(shift)
             {
                 if(a.count==0)return;
+                if(slot<45&&Equipment.Slot(a.item)>=0){Equipment.Equip(inv,slot);return;}
                 if(slot>=45){if(inv.AddStack(a)){Set(inv,slot,new ItemStack());inv.revision++;}return;}
                 int first=slot<9?9:0,last=slot<9?45:9;
                 for(int pass=0;pass<2;pass++)for(int i=first;i<last&&a.count>0;i++)

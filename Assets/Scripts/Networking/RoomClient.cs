@@ -13,11 +13,11 @@ using System.Text;
 namespace LestingCraft.Networking
 {
     [Serializable] public class NetBlock {public int x,y,z,block;public long rev;}
-    [Serializable] public class NetPlayer {public string id,name;public float x,y,z,yaw;}
+    [Serializable] public class NetPlayer {public string id,name;public float x,y,z,yaw;public int[] equipment;}
     [Serializable] public class NetPacket
     {
         public string type,id,name,message,code;public int seed,dimension,version,block,maxPlayers,mode,rulesVersion;public bool runEnded,force;public CampaignProgress campaign;public PlayerSave save;public long rev;
-        public double clock;public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
+        public int[] equipment;public double clock;public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
     }
     public sealed class RoomClient : MonoBehaviour
     {

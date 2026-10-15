@@ -26,6 +26,8 @@ namespace LestingCraft.Gameplay
             all[Axe]=new ItemDefinition(Axe,"Каменный топор",1,120);
             all[Sword]=new ItemDefinition(Sword,"Каменный меч",1,160);
             all[Coat]=new ItemDefinition(Coat,"Тёплая накидка",1,0,insulation:10);
+            all[105]=new ItemDefinition(105,"Рудный шлем",1,180);all[106]=new ItemDefinition(106,"Рудный нагрудник",1,260);all[107]=new ItemDefinition(107,"Рудные поножи",1,220);all[108]=new ItemDefinition(108,"Рудные сапоги",1,180);
+            all[130]=new ItemDefinition(130,"Тканевый капюшон",1,insulation:3);all[131]=new ItemDefinition(131,"Походные штаны",1,insulation:4);all[132]=new ItemDefinition(132,"Кожаные ботинки",1,insulation:3);
             all[Berries]=new ItemDefinition(Berries,"Лесные ягоды",32,food:16);
             all[Bread]=new ItemDefinition(Bread,"Походный хлеб",32,food:30);
             all[Workbench]=new ItemDefinition(Workbench,"Верстак",block:16);all[Furnace]=new ItemDefinition(Furnace,"Печь",block:17);
@@ -40,9 +42,10 @@ namespace LestingCraft.Gameplay
     [Serializable] public sealed class Inventory
     {
         public const int SlotCount=45,HotbarCount=9;
+        public ItemStack[] equipment=new ItemStack[Equipment.Count];
         public ItemStack[] grid=new ItemStack[9];public ItemStack cursor=new ItemStack();public FurnaceState furnace=new FurnaceState();
         public ItemStack[] slots=new ItemStack[SlotCount];public int selected;public int revision;
-        public Inventory(){for(int i=0;i<slots.Length;i++)slots[i]=new ItemStack();for(int i=0;i<9;i++)grid[i]=new ItemStack();}
+        public Inventory(){for(int i=0;i<equipment.Length;i++)equipment[i]=new ItemStack();for(int i=0;i<slots.Length;i++)slots[i]=new ItemStack();for(int i=0;i<9;i++)grid[i]=new ItemStack();}
         public ItemStack Active=>slots[Math.Max(0,Math.Min(HotbarCount-1,selected))];
         public int Count(int item){int n=0;foreach(var s in slots)if(s.item==item)n+=s.count;return n;}
         public bool CanAdd(int item,int count)
@@ -72,7 +75,7 @@ namespace LestingCraft.Gameplay
             {int amount=Math.Min(a.count,Items.Get(a.item).MaxStack-b.count);a.count-=amount;b.count+=amount;if(a.count==0){a.item=0;a.durability=0;}}
             else {slots[from]=b;slots[to]=a;}revision++;
         }
-        public Inventory Clone(){var n=new Inventory();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();for(int i=0;i<9;i++)n.grid[i]=grid[i].Clone();n.cursor=cursor.Clone();n.furnace=furnace.Clone();n.selected=selected;n.revision=revision;return n;}
+        public Inventory Clone(){var n=new Inventory();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();for(int i=0;i<9;i++)n.grid[i]=grid[i].Clone();for(int i=0;i<Equipment.Count;i++)n.equipment[i]=equipment[i].Clone();n.cursor=cursor.Clone();n.furnace=furnace.Clone();n.selected=selected;n.revision=revision;return n;}
         public static ItemStack Clean(ItemStack s)
         {
             if(s==null||!Items.Exists(s.item)||s.count<=0)return new ItemStack();
@@ -93,7 +96,7 @@ namespace LestingCraft.Gameplay
             return recovered;
         }
         public ItemStack[] ExtraStacks()
-        {var all=new ItemStack[13];for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
+        {var all=new ItemStack[13+Equipment.Count];for(int i=0;i<Equipment.Count;i++)all[13+i]=equipment[i].Clone();for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
         public void WearTool()
         {if(Active.count>0&&Items.Get(Active.item).Durability>0){Active.durability--;if(Active.durability<=0){Active.count=0;Active.item=0;Active.durability=0;}revision++;}}
         public void Normalize()
@@ -101,6 +104,8 @@ namespace LestingCraft.Gameplay
             if(slots==null||slots.Length!=SlotCount)slots=new ItemStack[SlotCount];
             for(int i=0;i<SlotCount;i++)
             {if(slots[i]==null)slots[i]=new ItemStack();var s=slots[i];if(!Items.Exists(s.item)||s.count<=0){s.item=0;s.count=0;s.durability=0;}else{s.count=Math.Min(s.count,Items.Get(s.item).MaxStack);s.durability=Math.Max(0,Math.Min(Items.Get(s.item).Durability,s.durability));}}
+            if(equipment==null||equipment.Length!=Equipment.Count)equipment=new ItemStack[Equipment.Count];
+            for(int i=0;i<Equipment.Count;i++){equipment[i]=Clean(equipment[i]);if(equipment[i].count>0&&!Equipment.Accept(i,equipment[i].item)){if(!AddStack(equipment[i]))throw new InvalidOperationException("Неверный слот экипировки: нет места для восстановления предмета");equipment[i]=new ItemStack();}}
             if(grid==null||grid.Length!=9)grid=new ItemStack[9];for(int i=0;i<9;i++)grid[i]=Clean(grid[i]);cursor=Clean(cursor);if(furnace==null)furnace=new FurnaceState();furnace.Normalize();
             selected=Math.Max(0,Math.Min(8,selected));
         }

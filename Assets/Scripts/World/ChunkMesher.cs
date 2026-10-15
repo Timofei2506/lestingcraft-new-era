@@ -70,7 +70,7 @@ namespace LestingCraft.World
                 {
                     var dir=Directions[face]; int nx=x+dir.x,ny=y+dir.y,nz=z+dir.z;
                     ushort other=ChunkData.InBounds(nx,ny,nz)?chunk.GetBlock(nx,ny,nz):neighbor(ox+nx,ny,oz+nz);
-                    if(BlockRegistry.IsSolid(other)||(!solid&&other==id))continue;
+                    if(BlockRegistry.Occludes(other)||(!solid&&other==id))continue;
                     int start=data.Vertices.Count;
                     Vector3 u=Corners[face][3]-Corners[face][0],v=Corners[face][1]-Corners[face][0];
                     int layer=SurfaceLayers.ForFace(id,face);
@@ -83,12 +83,13 @@ namespace LestingCraft.World
                         int corner=Solid(chunk,ox,oz,nx+su.x+sv.x,ny+su.y+sv.y,nz+su.z+sv.z,neighbor);
                         int ao=sideA==1&&sideB==1?3:sideA+sideB+corner;
                         byte shade=(byte)(255-ao*30);
-                        data.Vertices.Add(new Vector3(x,y,z)+Corners[face][c]);data.Normals.Add(dir);
+                        var cornerPosition=Corners[face][c];if(id==15)cornerPosition.y*=.34f;
+                        data.Vertices.Add(new Vector3(x,y,z)+cornerPosition);data.Normals.Add(dir);
                         data.Colors.Add(new Color32(shade,shade,shade,255));data.UVs.Add(new Vector3(ux,vy,layer));
                         data.Tangents.Add(new Vector4(u.x,u.y,u.z,-1));
                     }
                     AddFace(data.Triangles,start);
-                    AddFace(id==BlockRegistry.WaterId?data.WaterTriangles:data.OpaqueTriangles,start);
+                    if(id!=15)AddFace(id==BlockRegistry.WaterId?data.WaterTriangles:data.OpaqueTriangles,start);
                     if(solid)AddFace(data.ColliderTriangles,start);
                     if(decorate&&id==BlockRegistry.GrassId&&face==2&&other==0)
                         grassCells.Add(new Vector3Int(x,y,z));
@@ -98,7 +99,7 @@ namespace LestingCraft.World
             return data;
         }
         static int Solid(ChunkData chunk,int ox,int oz,int x,int y,int z,Func<int,int,int,ushort> neighbor)
-        {return BlockRegistry.IsSolid(ChunkData.InBounds(x,y,z)?chunk.GetBlock(x,y,z):neighbor(ox+x,y,oz+z))?1:0;}
+        {return BlockRegistry.Occludes(ChunkData.InBounds(x,y,z)?chunk.GetBlock(x,y,z):neighbor(ox+x,y,oz+z))?1:0;}
         static void AddFace(List<int> t,int s) {t.Add(s);t.Add(s+1);t.Add(s+2);t.Add(s);t.Add(s+2);t.Add(s+3);}
     }
 }

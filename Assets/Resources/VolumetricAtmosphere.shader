@@ -35,7 +35,7 @@ Shader "LestingCraft/VolumetricAtmosphere"
                 Light sun=GetMainLight();float mu=dot(direction,sun.direction),g=.45;
                 float phase=(1-g*g)/(12.56637*pow(max(.01,1+g*g-2*g*mu),1.5));
                 float jitter=frac(sin(dot(i.p.xy,float2(12.9898,78.233)))*43758.5453);float transmittance=1;half3 scattering=0;
-                for(int n=0;n<24;n++)
+                for(int n=0;n<32;n++)
                 {
                     if(n>=(int)_Steps)break;
                     float3 samplePosition=_WorldSpaceCameraPos+direction*(nearClear+(n+jitter)*stepLength);

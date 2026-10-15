@@ -25,6 +25,12 @@ for i in range(16):
   d.rectangle((37,93,93,113),fill=(91,58,41));d.rectangle((49,93,80,99),fill=(128,73,49))
  if i%8==5:
   d.rectangle((12,12,116,116),outline=(86,63,29),width=8);d.rectangle((26,27,99,99),outline=(230,188,94),width=4)
+ if i in [8,9]:
+  arr=np.uint8(np.clip(np.array([113,121,126])+rng.normal(0,3,(size,size,1))+(x[:,:,None]/size)*9,0,255));im=Image.fromarray(arr);d=ImageDraw.Draw(im)
+  d.rectangle((4,4,123,123),outline=(48,54,58),width=4);d.rectangle((9,9,118,118),outline=(171,179,182),width=2)
+  for a,b in [(15,15),(112,15),(15,112),(112,112)]:d.rectangle((a-3,b-3,a+3,b+3),fill=(188,194,192));d.point((a+1,b+2),fill=(53,59,63))
+  for j in range(24):
+   px,py=map(int,rng.integers(19,111,2));d.line((px,py,px+int(rng.integers(3,11)),py+1),fill=(84,90,95),width=1)
  atlas.paste(im,((i%4)*128,(i//4)*128))
 atlas.save(O/'BlockCharacter.png',optimize=True)
 print('Character atlas: 512x512, 128px face/skin/fabric/leather/buckle tiles')

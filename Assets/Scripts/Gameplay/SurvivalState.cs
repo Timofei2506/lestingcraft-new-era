@@ -52,7 +52,7 @@ namespace LestingCraft.Gameplay
     [Serializable] public sealed class PlayerSave
     {
         public Inventory inventory=new Inventory();public SurvivalState survival=new SurvivalState();public bool equippedCoat;public int milestones;public ItemStack[] graveExtras=Array.Empty<ItemStack>();public ItemStack[] grave=Array.Empty<ItemStack>();public float graveX,graveY,graveZ;
-        public void Normalize(){if(graveExtras==null)graveExtras=Array.Empty<ItemStack>();if(graveExtras.Length!=0&&graveExtras.Length!=13)graveExtras=Array.Empty<ItemStack>();for(int i=0;i<graveExtras.Length;i++)graveExtras[i]=Inventory.Clean(graveExtras[i]);if(grave==null)grave=Array.Empty<ItemStack>();if(grave.Length>0){var graveInventory=new Inventory{slots=grave};graveInventory.Normalize();grave=graveInventory.slots;}if(inventory==null)inventory=new Inventory();inventory.Normalize();if(survival==null)survival=new SurvivalState();survival.Normalize();}
+        public void Normalize(){if(graveExtras==null)graveExtras=Array.Empty<ItemStack>();if(graveExtras.Length!=0&&graveExtras.Length!=13&&graveExtras.Length!=21)graveExtras=Array.Empty<ItemStack>();for(int i=0;i<graveExtras.Length;i++)graveExtras[i]=Inventory.Clean(graveExtras[i]);if(grave==null)grave=Array.Empty<ItemStack>();if(grave.Length>0){var graveInventory=new Inventory{slots=grave};graveInventory.Normalize();grave=graveInventory.slots;}if(inventory==null)inventory=new Inventory();inventory.Normalize();if(equippedCoat&&inventory.equipment[1].count==0){int coat=Array.FindIndex(inventory.slots,s=>s.item==104&&s.count>0);if(coat>=0)Equipment.Equip(inventory,coat);}equippedCoat=false;if(survival==null)survival=new SurvivalState();survival.Normalize();}
     }
     [Serializable] public sealed class SessionSave
     {
