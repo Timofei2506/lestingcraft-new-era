@@ -6,12 +6,12 @@ using LestingCraft.Runtime;
 
 namespace LestingCraft.Presentation
 {
-    /// <summary>Articulated procedural first-person hand; a viewmodel, not a final skinned character asset.</summary>
+    /// <summary>Block-only first-person arm and held voxel objects; no rounded hand or finger primitives.</summary>
     public sealed class FirstPersonHands : MonoBehaviour
     {
         const int Layer=30;
         Camera view,main;Transform hand;FirstPersonController player;UniversalAdditionalCameraData mainData;
-        Material skin,cloth;float phase,strike;int previousMask;bool initialized;
+        Material character,objects;MeshFilter held;int shownItem=-1;float phase,strike;int previousMask;bool initialized;
         public Camera ViewCamera=>view;
         public void Initialize(FirstPersonController owner,Camera camera)
         {
@@ -20,35 +20,30 @@ namespace LestingCraft.Presentation
             var obj=new GameObject("First-person viewmodel camera");obj.transform.SetParent(camera.transform,false);
             view=obj.AddComponent<Camera>();view.cullingMask=1<<Layer;view.nearClipPlane=.01f;view.farClipPlane=3;view.fieldOfView=60;view.allowHDR=true;
             mainData=main.GetUniversalAdditionalCameraData();var data=view.GetUniversalAdditionalCameraData();data.renderType=CameraRenderType.Overlay;data.renderPostProcessing=false;data.renderShadows=false;mainData.cameraStack.Add(view);
-            var baseMaterial=Resources.Load<Material>("Generated/Avatar");
-            skin=new Material(baseMaterial);skin.SetColor("_BaseColor",new Color(.63f,.43f,.30f));skin.SetFloat("_Smoothness",.23f);
-            cloth=new Material(baseMaterial);cloth.SetColor("_BaseColor",new Color(.15f,.22f,.18f));cloth.SetFloat("_Smoothness",.12f);
-            hand=new GameObject("Right hand and sleeve").transform;hand.SetParent(view.transform,false);
-            Part("Sleeve",PrimitiveType.Capsule,new Vector3(0,-.25f,-.01f),new Vector3(.13f,.24f,.13f),cloth);
-            Part("Cuff",PrimitiveType.Cylinder,new Vector3(0,-.055f,0),new Vector3(.135f,.026f,.135f),cloth);
-            Part("Wrist",PrimitiveType.Capsule,new Vector3(0,.005f,0),new Vector3(.085f,.09f,.074f),skin);
-            Part("Palm",PrimitiveType.Sphere,new Vector3(0,.095f,.012f),new Vector3(.133f,.173f,.083f),skin);
-            for(int i=0;i<4;i++)
-            {
-                float x=(i-1.5f)*.030f,y=.162f-Mathf.Abs(i-1.5f)*.009f;
-                var finger=Part("Finger "+i,PrimitiveType.Capsule,new Vector3(x,y,.039f),new Vector3(.030f,.047f,.031f),skin);
-                finger.localRotation=Quaternion.Euler(55,0,(i-1.5f)*-6);
-                Part("Knuckle "+i,PrimitiveType.Sphere,new Vector3(x,y-.008f,.017f),Vector3.one*.037f,skin);
-            }
-            var thumb=Part("Thumb",PrimitiveType.Capsule,new Vector3(-.078f,.080f,.045f),new Vector3(.043f,.063f,.041f),skin);thumb.localRotation=Quaternion.Euler(25,0,-37);
+            character=BlockGeometry.CharacterMaterial();objects=new Material(Resources.Load<Material>("Generated/VoxelObjects"));
+            hand=new GameObject("Block right arm and held object").transform;hand.SetParent(view.transform,false);
+            Part("Cuboid sleeve",new Vector3(0,-.23f,0),new Vector3(.14f,.35f,.16f),1);
+            Part("Square cuff",new Vector3(0,-.045f,0),new Vector3(.15f,.055f,.17f),6);
+            Part("Cuboid fist",new Vector3(0,.055f,0),new Vector3(.138f,.15f,.16f),0);
+            Part("Sleeve stitched panel",new Vector3(.072f,-.18f,0),new Vector3(.008f,.15f,.11f),7);
+            var item=new GameObject("Held voxel object",typeof(MeshFilter),typeof(MeshRenderer));item.layer=Layer;item.transform.SetParent(hand,false);
+            item.transform.localPosition=new Vector3(-.025f,.24f,.04f);item.transform.localRotation=Quaternion.Euler(-12,-25,-12);item.transform.localScale=Vector3.one*.32f;
+            held=item.GetComponent<MeshFilter>();item.GetComponent<MeshRenderer>().sharedMaterial=objects;item.GetComponent<MeshRenderer>().shadowCastingMode=ShadowCastingMode.Off;
             Pose(0);view.enabled=false;
         }
-        Transform Part(string name,PrimitiveType kind,Vector3 position,Vector3 scale,Material material)
+        Transform Part(string name,Vector3 position,Vector3 scale,int tile)
         {
-            var obj=GameObject.CreatePrimitive(kind);obj.name=name;obj.layer=Layer;obj.transform.SetParent(hand,false);obj.transform.localPosition=position;obj.transform.localScale=scale;
-            var collider=obj.GetComponent<Collider>();collider.enabled=false;if(Application.isPlaying)Destroy(collider);else DestroyImmediate(collider);
-            var renderer=obj.GetComponent<Renderer>();renderer.sharedMaterial=material;renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;return obj.transform;
+            var part=BlockGeometry.Part(name,hand,position,scale,character,tile,-1,Layer);
+            var renderer=part.GetComponent<MeshRenderer>();renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;return part;
         }
         void LateUpdate()
         {
             if(!view||!player)return;
             view.enabled=player.Active&&player.World&&player.World.Ready;
             if(!view.enabled)return;
+            int item=player.Game&&player.Game.Session&&player.Game.Session.Inventory.Active.count>0?player.Game.Session.Inventory.Active.item:0;
+            if(item!=shownItem){shownItem=item;held.sharedMesh=item>0?VoxelItemModels.MeshFor(item):null;held.transform.localScale=Vector3.one*(item>=100&&item<=103?.45f:.28f);held.gameObject.SetActive(held.sharedMesh);}
+
             var keyboard=Keyboard.current;bool walking=keyboard!=null&&(keyboard.wKey.isPressed||keyboard.aKey.isPressed||keyboard.sKey.isPressed||keyboard.dKey.isPressed);
             phase+=Time.deltaTime*(walking?(player.Sprinting?12:8):1.8f);
             var mouse=Mouse.current;if(mouse!=null&&(mouse.leftButton.wasPressedThisFrame||mouse.rightButton.wasPressedThisFrame))strike=1;
@@ -67,8 +62,8 @@ namespace LestingCraft.Presentation
             if(!initialized)return;initialized=false;
             if(mainData&&view)mainData.cameraStack.Remove(view);if(main)main.cullingMask=previousMask;
             if(view){view.enabled=false;if(Application.isPlaying)Destroy(view.gameObject);else DestroyImmediate(view.gameObject);}
-            if(skin){if(Application.isPlaying)Destroy(skin);else DestroyImmediate(skin);}if(cloth){if(Application.isPlaying)Destroy(cloth);else DestroyImmediate(cloth);}
-            view=null;hand=null;skin=null;cloth=null;mainData=null;main=null;
+            if(character){if(Application.isPlaying)Destroy(character);else DestroyImmediate(character);}if(objects){if(Application.isPlaying)Destroy(objects);else DestroyImmediate(objects);}
+            view=null;hand=null;character=null;objects=null;held=null;shownItem=-1;mainData=null;main=null;
         }
         void OnDestroy(){Release();}
     }

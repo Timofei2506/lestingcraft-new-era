@@ -17,6 +17,7 @@ public static class PresentationAssets
         if(!AssetDatabase.IsValidFolder(Folder))AssetDatabase.CreateFolder("Assets/Resources","Generated");
         EnsureMenuBackdrop();
         EnsureItemIcons();
+        EnsureCharacterAtlas();
         var albedo=Array("Albedo","albedo",false);var normal=Array("Normal","normal",true);var mask=Array("Mask","mask",true);
         Material material=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/VoxelPBR.mat");
         if(!material){material=new Material(Shader.Find("LestingCraft/VoxelPBR"));AssetDatabase.CreateAsset(material,Folder+"/VoxelPBR.mat");}
@@ -28,6 +29,9 @@ public static class PresentationAssets
         var grass=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Grass.mat");
         if(!grass){grass=new Material(Shader.Find("LestingCraft/Grass"));AssetDatabase.CreateAsset(grass,Folder+"/Grass.mat");}
         grass.SetTexture("_AlbedoArray",albedo);EditorUtility.SetDirty(grass);
+        var objectMaterial=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/VoxelObjects.mat");
+        if(!objectMaterial){objectMaterial=new Material(Shader.Find("LestingCraft/VoxelObjects"));AssetDatabase.CreateAsset(objectMaterial,Folder+"/VoxelObjects.mat");}
+        objectMaterial.SetTexture("_AlbedoArray",albedo);objectMaterial.SetTexture("_NormalArray",normal);objectMaterial.SetTexture("_MaskArray",mask);EditorUtility.SetDirty(objectMaterial);
         var avatar=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Avatar.mat");
         if(!avatar){avatar=new Material(Shader.Find("Universal Render Pipeline/Lit"));avatar.SetColor("_BaseColor",new Color(.3f,.65f,.6f));avatar.SetFloat("_Smoothness",.4f);AssetDatabase.CreateAsset(avatar,Folder+"/Avatar.mat");}
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/AtmosphericSky")),Folder+"/Sky.mat");
@@ -77,6 +81,14 @@ public static class PresentationAssets
         foreach(var component in profile.components)EditorUtility.SetDirty(component);
         EditorUtility.SetDirty(material);EditorUtility.SetDirty(water);EditorUtility.SetDirty(profile);AssetDatabase.SaveAssets();
     }
+    static void EnsureCharacterAtlas()
+    {
+        const string path=Folder+"/BlockCharacter.asset";
+        if(AssetDatabase.LoadAssetAtPath<Texture2D>(path))return;
+        var texture=new Texture2D(2,2,TextureFormat.RGBA32,false){name="Block character detailed atlas",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Point};
+        if(!texture.LoadImage(File.ReadAllBytes("Assets/Art/Characters/BlockCharacter.png"),false))throw new InvalidOperationException("Character atlas decode failed");
+        AssetDatabase.CreateAsset(texture,path);
+    }
     static void EnsureItemIcons()
     {
         if(!AssetDatabase.IsValidFolder(Folder+"/Icons"))AssetDatabase.CreateFolder(Folder,"Icons");
@@ -84,7 +96,7 @@ public static class PresentationAssets
         {
             string path=Folder+"/Icons/Item"+id+".asset";
             if(AssetDatabase.LoadAssetAtPath<Texture2D>(path))continue;
-            string source="Assets/Resources/Icons/"+(id<=15?LestingCraft.Presentation.SurfaceLayers.Icon((ushort)id):"Item"+id)+".png";
+            string source="Assets/Resources/VoxelIcons/Item"+id+".png";
             var texture=new Texture2D(2,2,TextureFormat.RGBA32,false){name="Item"+id,wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
             if(!texture.LoadImage(File.ReadAllBytes(source),false))throw new InvalidOperationException("Cannot decode item icon: "+source);
             AssetDatabase.CreateAsset(texture,path);

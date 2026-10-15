@@ -12,12 +12,12 @@ namespace LestingCraft.Presentation
         {
             Zones=new Image[6];
             string[] names={"Head","Torso","Left arm","Right arm","Left leg","Right leg"};
-            Vector4[] rects={new Vector4(32,0,27,29),new Vector4(23,35,45,57),new Vector4(5,37,13,66),new Vector4(73,37,13,66),new Vector4(24,98,18,59),new Vector4(49,98,18,59)};
+            Vector4[] rects={new Vector4(29,0,32,32),new Vector4(25,37,40,55),new Vector4(6,37,14,58),new Vector4(70,37,14,58),new Vector4(25,97,17,60),new Vector4(48,97,17,60)};
             for(int i=0;i<6;i++)
             {
                 var obj=new GameObject(names[i],typeof(RectTransform),typeof(Image));obj.transform.SetParent(transform,false);
                 var rt=obj.GetComponent<RectTransform>();rt.anchorMin=rt.anchorMax=new Vector2(0,1);rt.pivot=new Vector2(0,1);rt.anchoredPosition=new Vector2(rects[i].x,-rects[i].y);rt.sizeDelta=new Vector2(rects[i].z,rects[i].w);
-                Zones[i]=obj.GetComponent<Image>();Zones[i].sprite=MenuArtwork.Rounded;Zones[i].type=Image.Type.Sliced;Zones[i].raycastTarget=false;
+                Zones[i]=obj.GetComponent<Image>();Zones[i].sprite=null;Zones[i].type=Image.Type.Simple;Zones[i].raycastTarget=false;
             }
             SetHealth(100);
         }

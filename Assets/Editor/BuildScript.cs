@@ -56,7 +56,7 @@ public static class BuildScript
                   $"errors={summary.totalErrors}, warnings={summary.totalWarnings}");
 
         bool shaderErrors=false;
-        foreach(var name in new[]{"VoxelPBR","Water","Grass","AtmosphericSky","VolumetricAtmosphere"})
+        foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","AtmosphericSky","VolumetricAtmosphere"})
         {
             var shader=Shader.Find("LestingCraft/"+name);
             if(!shader||ShaderUtil.ShaderHasError(shader)){Debug.LogError("BuildScript: invalid shader "+name);shaderErrors=true;}

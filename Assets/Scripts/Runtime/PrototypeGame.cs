@@ -185,10 +185,10 @@ namespace LestingCraft.Runtime
             if(!avatars.TryGetValue(peer.id,out var avatar))
             {
                 avatar=new GameObject("Peer "+peer.name);avatar.AddComponent<CharacterVisual>().Build();
-                avatars.Add(peer.id,avatar);avatar.transform.position=new Vector3(peer.x,peer.y-1.62f,peer.z);
+                avatars.Add(peer.id,avatar);avatar.transform.position=new Vector3(peer.x,peer.y-PlayerCapsule.EyeHeight,peer.z);
                 var text=new GameObject("Name").AddComponent<TextMesh>();text.transform.SetParent(avatar.transform,false);text.transform.localPosition=new Vector3(0,2.1f,0);text.text=peer.name;text.characterSize=.13f;text.anchor=TextAnchor.MiddleCenter;
             }
-            targets[peer.id]=new Vector3(peer.x,peer.y-1.62f,peer.z);avatar.transform.rotation=Quaternion.Euler(0,peer.yaw,0);
+            targets[peer.id]=new Vector3(peer.x,peer.y-PlayerCapsule.EyeHeight,peer.z);avatar.transform.rotation=Quaternion.Euler(0,peer.yaw,0);
         }
         void Update()
         {

@@ -13,7 +13,7 @@ namespace LestingCraft.Presentation
             if(id<=0)return null;
             if(icons.TryGetValue(id,out var cached)&&cached)return cached;
             var icon=Resources.Load<Texture2D>("Generated/Icons/Item"+id);
-            if(!icon)icon=Resources.Load<Texture2D>("Icons/"+(id<=15?SurfaceLayers.Icon((ushort)id):"Item"+id));
+            if(!icon)icon=Resources.Load<Texture2D>("VoxelIcons/Item"+id);
             icons[id]=icon;return icon;
         }
     }

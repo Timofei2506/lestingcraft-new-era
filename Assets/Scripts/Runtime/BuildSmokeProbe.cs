@@ -31,7 +31,7 @@ namespace LestingCraft.Runtime
             var game=FindFirstObjectByType<PrototypeGame>();var ui=FindFirstObjectByType<GameUI>();
             if(!game||!Camera.main||!ui||!ui.IsReady||failure!=null){Fail("Bootstrap/menu initialization: "+failure);yield break;}
             if(!MenuArtwork.Backdrop){Fail("Menu backdrop is missing.");yield break;}
-            foreach(var name in new[]{"VoxelPBR","Water","Grass","Sky","Atmosphere","Precipitation","Fire"})
+            foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","Sky","Atmosphere","Precipitation","Fire"})
             {
                 var material=Resources.Load<Material>("Generated/"+name);
                 if(!material||!material.shader||!material.shader.isSupported){Fail("Missing/unsupported material: "+name);yield break;}

@@ -86,7 +86,9 @@ namespace LestingCraft.Tests
                 var hands=playerObject.AddComponent<FirstPersonHands>();hands.Initialize(controller,camera);
                 Assert.IsNotNull(hands.ViewCamera);Assert.AreEqual(1<<30,hands.ViewCamera.cullingMask);
                 Assert.AreEqual(0,camera.cullingMask&(1<<30));
-                Assert.GreaterOrEqual(cameraObject.GetComponentsInChildren<Renderer>().Length,12);
+                Assert.AreEqual(5,cameraObject.GetComponentsInChildren<Renderer>().Length);
+                foreach(var filter in cameraObject.GetComponentsInChildren<MeshFilter>())
+                    if(filter.sharedMesh)Assert.AreEqual(24,filter.sharedMesh.vertexCount,"Arm pieces must be cuboids, not curved primitives");
                 Assert.AreEqual(0,cameraObject.GetComponentsInChildren<Collider>().Length);
                 hands.Release();Assert.AreEqual(mask,camera.cullingMask);
                 Assert.AreEqual(1,cameraObject.GetComponentsInChildren<Camera>().Length);

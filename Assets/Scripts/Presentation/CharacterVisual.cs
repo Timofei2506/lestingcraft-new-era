@@ -1,36 +1,54 @@
 using UnityEngine;
 namespace LestingCraft.Presentation
 {
-    /// <summary>Original procedural adventurer stand-in with articulated walk; not a final sculpted/skinned character.</summary>
+    /// <summary>Original block adventurer: cuboid head, torso, arms and legs, textured cloth and equipment.</summary>
     public sealed class CharacterVisual : MonoBehaviour
     {
-        Transform leftLeg,rightLeg,leftArm,rightArm,head;Vector3 previous;float phase;Material cloth,skin,dark;
+        Transform leftLeg,rightLeg,leftArm,rightArm;Vector3 previous;float phase;Material material;
         public void Build()
         {
-            var baseMaterial=Resources.Load<Material>("Generated/Avatar");cloth=new Material(baseMaterial);cloth.SetColor("_BaseColor",new Color(.25f,.32f,.22f));
-            skin=new Material(baseMaterial);skin.SetColor("_BaseColor",new Color(.60f,.40f,.27f));skin.SetFloat("_Smoothness",.2f);
-            dark=new Material(baseMaterial);dark.SetColor("_BaseColor",new Color(.10f,.085f,.065f));dark.SetFloat("_Smoothness",.18f);
-            Part("Coat",PrimitiveType.Capsule,new Vector3(0,1.12f,0),new Vector3(.60f,.42f,.34f),cloth,transform);
-            Part("Belt",PrimitiveType.Cube,new Vector3(0,.89f,0),new Vector3(.55f,.06f,.35f),dark,transform);
-            Part("Backpack",PrimitiveType.Cube,new Vector3(0,1.16f,-.21f),new Vector3(.36f,.45f,.19f),dark,transform);
-            head=Part("Head",PrimitiveType.Sphere,new Vector3(0,1.68f,0),new Vector3(.27f,.34f,.26f),skin,transform);
-            Part("Hood",PrimitiveType.Sphere,new Vector3(0,1.78f,-.03f),new Vector3(.31f,.22f,.29f),cloth,transform);
-            for(int i=-1;i<=1;i+=2)Part("Eye",PrimitiveType.Sphere,new Vector3(i*.06f,1.71f,.124f),Vector3.one*.025f,dark,transform);
-            leftLeg=Limb("Left leg",new Vector3(-.17f,.87f,0),new Vector3(.19f,.37f,.21f),dark);
-            rightLeg=Limb("Right leg",new Vector3(.17f,.87f,0),new Vector3(.19f,.37f,.21f),dark);
-            leftArm=Limb("Left sleeve",new Vector3(-.37f,1.42f,0),new Vector3(.18f,.30f,.20f),cloth);
-            rightArm=Limb("Right sleeve",new Vector3(.37f,1.42f,0),new Vector3(.18f,.30f,.20f),cloth);previous=transform.position;
+            material=BlockGeometry.CharacterMaterial();
+            Part("Block torso",new Vector3(0,1.04f,0),new Vector3(.48f,.56f,.27f),1,transform);
+            Part("Belt",new Vector3(0,.80f,.012f),new Vector3(.50f,.085f,.30f),6,transform);
+            Part("Square buckle",new Vector3(0,.80f,.174f),new Vector3(.095f,.07f,.018f),5,transform);
+            Part("Backpack",new Vector3(0,1.04f,-.23f),new Vector3(.36f,.43f,.23f),6,transform);
+            Part("Backpack flap",new Vector3(0,1.24f,-.25f),new Vector3(.39f,.10f,.25f),7,transform);
+            Part("Cubical head",new Vector3(0,1.53f,0),Vector3.one*.40f,0,transform,3);
+            Part("Block hood top",new Vector3(0,1.742f,-.015f),new Vector3(.43f,.045f,.43f),1,transform);
+            Part("Block hood back",new Vector3(0,1.53f,-.21f),new Vector3(.43f,.40f,.04f),1,transform);
+            for(int i=-1;i<=1;i+=2)
+            {
+                Part("Pack strap",new Vector3(i*.16f,1.07f,.145f),new Vector3(.046f,.51f,.022f),6,transform);
+                Part("Square coat clasp",new Vector3(i*.16f,1.20f,.164f),new Vector3(.06f,.043f,.018f),5,transform);
+            }
+            leftLeg=Leg("Left block leg",-.125f);rightLeg=Leg("Right block leg",.125f);
+            leftArm=Arm("Left block arm",-.35f);rightArm=Arm("Right block arm",.35f);previous=transform.position;
         }
-        Transform Limb(string name,Vector3 anchor,Vector3 scale,Material material)
-        {var pivot=new GameObject(name).transform;pivot.SetParent(transform,false);pivot.localPosition=anchor;Part(name+" mesh",PrimitiveType.Capsule,new Vector3(0,-scale.y,0),scale,material,pivot);return pivot;}
-        static Transform Part(string name,PrimitiveType kind,Vector3 position,Vector3 scale,Material material,Transform parent)
-        {var obj=GameObject.CreatePrimitive(kind);obj.name=name;obj.transform.SetParent(parent,false);obj.transform.localPosition=position;obj.transform.localScale=scale;Destroy(obj.GetComponent<Collider>());obj.GetComponent<Renderer>().sharedMaterial=material;return obj.transform;}
+        Transform Pivot(string name,Vector3 position)
+        {var pivot=new GameObject(name).transform;pivot.SetParent(transform,false);pivot.localPosition=position;return pivot;}
+        Transform Leg(string name,float x)
+        {
+            var pivot=Pivot(name,new Vector3(x,.76f,0));
+            Part("Cuboid trousers",new Vector3(0,-.19f,0),new Vector3(.225f,.38f,.25f),2,pivot);
+            Part("Cuboid boot",new Vector3(0,-.56f,.018f),new Vector3(.23f,.36f,.29f),4,pivot);
+            Part("Boot sole",new Vector3(0,-.733f,.022f),new Vector3(.237f,.028f,.30f),7,pivot);return pivot;
+        }
+        Transform Arm(string name,float x)
+        {
+            var pivot=Pivot(name,new Vector3(x,1.30f,0));
+            Part("Cuboid sleeve",new Vector3(0,-.20f,0),new Vector3(.20f,.40f,.25f),1,pivot);
+            Part("Square cuff",new Vector3(0,-.40f,0),new Vector3(.212f,.065f,.262f),6,pivot);
+            Part("Block hand",new Vector3(0,-.51f,0),new Vector3(.195f,.17f,.24f),0,pivot);return pivot;
+        }
+        Transform Part(string name,Vector3 position,Vector3 scale,int tile,Transform parent,int front=-1)
+            =>BlockGeometry.Part(name,parent,position,scale,material,tile,front);
         void LateUpdate()
         {
             if(!leftLeg)return;float speed=(transform.position-previous).magnitude/Mathf.Max(.001f,Time.deltaTime);previous=transform.position;
             phase+=Time.deltaTime*Mathf.Clamp(speed*2,0,12);float swing=Mathf.Sin(phase)*Mathf.Clamp(speed*7,0,32);
             leftLeg.localRotation=Quaternion.Euler(swing,0,0);rightLeg.localRotation=Quaternion.Euler(-swing,0,0);leftArm.localRotation=Quaternion.Euler(-swing*.7f,0,0);rightArm.localRotation=Quaternion.Euler(swing*.7f,0,0);
         }
-        void OnDestroy(){if(cloth)Destroy(cloth);if(skin)Destroy(skin);if(dark)Destroy(dark);}
+        public void Release(){if(material){if(Application.isPlaying)Destroy(material);else DestroyImmediate(material);material=null;}}
+        void OnDestroy(){Release();}
     }
 }
