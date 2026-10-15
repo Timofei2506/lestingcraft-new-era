@@ -16,7 +16,7 @@ namespace LestingCraft.Networking
     [Serializable] public class NetPlayer {public string id,name;public float x,y,z,yaw;public int[] equipment;}
     [Serializable] public class NetPacket
     {
-        public string type,id,name,message,code;public int seed,dimension,version,block,maxPlayers,mode,rulesVersion;public bool runEnded,force;public CampaignProgress campaign;public PlayerSave save;public long rev;
+        public string type,id,name,message,code;public int seed,dimension,version,block,maxPlayers,mode,rulesVersion,serverRulesVersion;public bool runEnded,force;public CampaignProgress campaign;public PlayerSave save;public long rev;
         public int[] equipment;public double clock;public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
     }
     public sealed class RoomClient : MonoBehaviour

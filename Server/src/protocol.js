@@ -46,7 +46,7 @@ export function validateEdit(p,peer,edits,now) {
 }
 export class RoomState {
   constructor(config,edits=[],savedPlayers=[]) {this.config=config;this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));}
-  welcome(peer,peers) {return {type:'welcome',clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...this.config,id:peer.id,edits:[...this.edits.values()],save:this.savedPlayers.get(peer.playerKey)||null,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer)};}
+  welcome(peer,peers) {return {type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...this.config,id:peer.id,edits:[...this.edits.values()],save:this.savedPlayers.get(peer.playerKey)||null,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer)};}
   handle(peer,raw,now,persistEdit,persistPlayer=()=>{}) {
     if(!consumeRate(peer,now))throw new Error('Rate limit');
     const p=parseMessage(raw);

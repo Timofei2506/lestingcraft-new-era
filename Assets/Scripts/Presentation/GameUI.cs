@@ -332,7 +332,7 @@ namespace LestingCraft.Presentation
             Button("←  Готово",64,798,210,54,()=>{settings.Save();if(settingsBack==Page.Pause)ShowPause();else ShowHome();},true);
             Button("Средние · PBR",296,798,240,54,()=>{settings.HighDefault();ShowSettings(settingsBack);});
             Button("Ultra · без RT",551,798,230,54,()=>{settings.Ultra();ShowSettings(settingsBack);});
-            Label(content.transform,"Аппаратные лучи: URP не поддерживает. GPU RT: "+(VisualSettings.HardwareRayTracing?"да":"нет"),810,792,726,69,15,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"Аппаратные лучи: URP не поддерживает. Текущий API/GPU RT: "+(VisualSettings.HardwareRayTracing?"да":"нет"),810,792,726,69,15,Muted,false,TextAnchor.MiddleRight);
         }
         void Slider(string title,float x,float y,float w,float value,float min,float max,bool integer,Action<float> changed,Func<float,string> format)
         {

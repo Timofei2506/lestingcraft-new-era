@@ -7,6 +7,7 @@ namespace LestingCraft.Gameplay
         public const int Version=4;
         public static readonly string[] ModeNames={"Выживание","Хардкор","Творческий","Сюжет"};
         public static readonly string[] ModeDescriptions={"Добыча, крафт, голод и холод.\nОбщий мир и возрождение.","Одна жизнь на команду.\nЛюбая смерть завершает забег.","Свободное строительство.\nБез голода, холода и урона.","Путь через пять измерений.\nЦели, открытия и общий прогресс."};
+        public static bool AcceptsRoom(int roomRules,int serverRules)=>roomRules==Version||roomRules==3&&serverRules>=Version;
         public static bool IsValid(int mode)=>mode>=0&&mode<4;
         public static bool CanDie(GameMode mode)=>mode!=GameMode.Creative;
         public static readonly string[] ChapterNames={"Первый огонь","Под пеплом","Выше облаков","Память камня","Сердце разлома"};

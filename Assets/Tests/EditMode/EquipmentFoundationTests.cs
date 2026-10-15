@@ -31,6 +31,10 @@ namespace LestingCraft.Tests
   {var inv=new Inventory();ChatCommands.Execute("/give 105",false,true,inv,1,Vector3.zero,1);ChatCommands.Execute("/give 105",true,false,inv,1,Vector3.zero,2);Assert.AreEqual(0,inv.Count(105));ChatCommands.Execute("/give 105",true,true,inv,1,Vector3.zero,1);Assert.AreEqual(1,inv.Count(105));Assert.AreEqual("",ChatCommands.Execute("/time night",true,false,inv,1,Vector3.zero,1).Action);}
   [Test] public void CommandsRejectInvalidAmountsAndUnknownItems()
   {var inv=new Inventory();foreach(string text in new[]{"/give 99999","/give 105 -1","/give 105 99999999999999","/give 105 0"})ChatCommands.Execute(text,true,true,inv,0,Vector3.zero,1);Assert.AreEqual(0,inv.Count(105));Assert.AreEqual("time",ChatCommands.Execute("/time day",true,true,inv,0,Vector3.zero,1).Action);}
+  [Test] public void CoopSaveCommandDoesNotSendRateLimitedStatePackets()
+  {var inv=new Inventory();Assert.AreEqual("",ChatCommands.Execute("/save",false,false,inv,0,Vector3.zero,2).Action);Assert.AreEqual("save",ChatCommands.Execute("/save",false,true,inv,0,Vector3.zero,1).Action);}
+  [Test] public void OldRoomsRequireAnEquipmentCapableServerBeforeMigration()
+  {Assert.IsTrue(GameRules.AcceptsRoom(4,4));Assert.IsTrue(GameRules.AcceptsRoom(3,4));Assert.IsFalse(GameRules.AcceptsRoom(3,3));Assert.IsFalse(GameRules.AcceptsRoom(3,0));Assert.IsFalse(GameRules.AcceptsRoom(2,4));}
   [Test] public void MediumAndUltraAreExplicitAndNeverClaimUrpRayTracing()
   {var s=new VisualSettings();Assert.AreEqual(0,s.Preset);s.ShadowResolution=4096;s.VolumetricQuality=2;s.RenderScale=1.5f;s.Clamp();Assert.AreEqual(4096,s.ShadowResolution);Assert.AreEqual(2,s.VolumetricQuality);Assert.AreEqual(1.5f,s.RenderScale);Assert.IsFalse(VisualSettings.PipelineRayTracing);}
  }

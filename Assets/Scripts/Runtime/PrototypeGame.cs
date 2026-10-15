@@ -205,7 +205,7 @@ namespace LestingCraft.Runtime
             {
                 case "welcome":
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
-                    if(packet.rulesVersion!=GameRules.Version){Fail("Версия комнаты отличается. Для новой версии создайте новую комнату");Destroy(client.gameObject);return;}
+                    if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Версия комнаты отличается. Для новой версии создайте новую комнату");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock);revision=packet.rev;
                     if(packet.campaign!=null)Session.Data.campaign=packet.campaign;
                     if(packet.runEnded){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;OpenDeathScreen();}
