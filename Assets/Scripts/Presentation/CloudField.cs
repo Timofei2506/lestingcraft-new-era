@@ -17,6 +17,6 @@ namespace LestingCraft.Presentation
         }
         public static float Shape(float x,float y,float z)=>Noise(x*4,y*4,z*4,4)*.55f+Noise(x*8+7,y*8+3,z*8+11,8)*.30f+Noise(x*16,y*16,z*16,16)*.15f;
         public static Vector4 Offset(double clock,int seed,float wind)
-        {float t=(float)(clock%86400),phase=(seed%997)*.17f,speed=.9f+Mathf.Clamp01(wind)*1.5f;return new Vector4(t*speed+phase,0,t*speed*.37f-phase,0);}
+        {float t=(float)(clock%86400),phase=(seed%997)*.17f,speed=1.2f+((seed%311+311)%311)/311f*.8f;return new Vector4(t*speed+phase,0,t*speed*.37f-phase,0);}
     }
 }

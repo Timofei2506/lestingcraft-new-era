@@ -37,8 +37,8 @@ namespace LestingCraft.Runtime
             if(swimming)vertical=keyboard.spaceKey.isPressed?3:keyboard.leftCtrlKey.isPressed?-3:Mathf.MoveTowards(vertical,-.35f,Time.deltaTime*8);
             else {if(controller.isGrounded&&keyboard.spaceKey.wasPressedThisFrame)vertical=8;vertical=Mathf.Max(vertical-22*Time.deltaTime,-40);}
             Vector3 velocity=(transform.right*move.x+transform.forward*move.y)*speed;
-            Vector3 target=transform.position+velocity*Time.deltaTime;
-            if(!World.Loaded(target)||!World.Contains(Mathf.FloorToInt(target.x),1,Mathf.FloorToInt(target.z)))velocity=Vector3.zero;
+            Vector3 movementTarget=transform.position+velocity*Time.deltaTime;
+            if(!World.Loaded(movementTarget)||!World.Contains(Mathf.FloorToInt(movementTarget.x),1,Mathf.FloorToInt(movementTarget.z)))velocity=Vector3.zero;
             float impact=vertical;bool groundedBefore=controller.isGrounded;
             PlayerCapsule.UpdateStep(controller,velocity);
             controller.Move((velocity+Vector3.up*vertical)*Time.deltaTime);
