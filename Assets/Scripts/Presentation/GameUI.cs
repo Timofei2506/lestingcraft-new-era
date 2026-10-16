@@ -13,7 +13,7 @@ namespace LestingCraft.Presentation
     /// <summary>Native scalable uGUI, no IMGUI or embedded webpage. All fonts/art are local.</summary>
     public sealed class GameUI : MonoBehaviour
     {
-        enum Page{Home,World,Rooms,Settings,Pause,Inventory,Death,HUD}
+        enum Page{Account,Achievements,Home,World,Rooms,Settings,Pause,Inventory,Death,HUD,Lobby}
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
@@ -114,6 +114,7 @@ namespace LestingCraft.Presentation
         public void ShowHome()
         {
             Clear(Page.Home);
+            Button("Аккаунт и достижения",1247,103,267,48,ShowAccount);
             Label(content.transform,"L / C",86,46,220,40,27,Accent,true);
             Label(content.transform,"A NEW ERA OF ADVENTURE",87,99,580,22,12,Muted);
             var version=Box(content.transform,1247,48,267,40,new Color(.035f,.055f,.065f,.72f));
@@ -160,8 +161,11 @@ namespace LestingCraft.Presentation
             Label(content.transform,"Локальная экспедиция",542,626,640,34,20,White);
             Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nНовый мир заменяет предыдущее локальное сохранение.",542,675,650,72,16,Muted);
             Button("Начать  →",1227,668,309,64,game.PlayOffline,true);
-            status=Label(content.transform,"Полная кампания и боссы ещё разрабатываются.",542,784,940,66,14,Muted);
+            status=Label(content.transform,"Сюжет: глава I в Лестингии. Остальные главы ещё разрабатываются.",542,784,940,66,14,Muted);
         }
+        int lobbyRevision=-1;
+        public void ShowLobby()
+        {Clear(Page.Lobby);lobbyRevision=game.LobbyRevision;Header("Лобби · "+game.ModeName);Label(content.transform,"Код: "+game.RoomCode,90,220,1400,70,26,White);string names="";foreach(var peer in game.LobbyPlayers)names+=peer.name+(peer.id==game.HostId?" · хозяин":"")+"\n";Label(content.transform,names,90,320,1100,350,25,White);Button("Скопировать код",1120,230,360,62,()=>GUIUtility.systemCopyBuffer=game.RoomCode);if(game.IsHost)Button("Начать игру →",1120,660,360,68,game.StartLobby,true);else Label(content.transform,"Ждём, когда хозяин нажмёт «Старт»",90,690,1000,70,24,Accent);Button("Выйти",90,790,300,58,game.ReturnToMenu);}
         public void ShowRooms()
         {
             Clear(Page.Rooms);Header("Кооператив · до 8 игроков");
@@ -186,6 +190,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,"МИР ПОДОЖДЁТ",64,248,1000,86,44,White,true);
             Label(content.transform,game.WorldLabel+"\n"+(game.Online?"Комната "+game.RoomCode+" · сетевой мир не останавливается":"Локальная экспедиция"),67,373,1050,90,22,Muted);
             Button("Продолжить  →",64,534,395,64,game.Resume,true);
+            Button("Аккаунт / достижения",505,698,420,58,ShowAccount);
             Button("Настройки",64,619,395,58,()=>ShowSettings(Page.Pause));
             Button("В главное меню",64,698,395,58,game.ReturnToMenu);
             Label(content.transform,"ESC — продолжить · E — инвентарь · Enter / T — чат\nЛКМ — добывать · ПКМ — использовать · F1 — интерфейс · F2 — снимок",505,535,950,68,15,Muted);
@@ -224,6 +229,7 @@ namespace LestingCraft.Presentation
             for(int i=0;i<Equipment.Count;i++)
             {float x=64+i*145;Label(content.transform,Equipment.Names[i],x,165,176,23,12,Muted);CreateCell(58+i,x,191,62,55);}
             var portrait=Rect("3D equipped character",content.transform,1260,145,100,150).gameObject.AddComponent<RawImage>();portrait.raycastTarget=false;portrait.gameObject.AddComponent<CharacterPreview>().Initialize(game);
+            Label(content.transform,"Левая рука · G",1230,165,130,23,12,Muted);CreateCell(66,1230,191,62,55);
             equipmentStatus=Label(content.transform,"",1370,157,168,141,12,Muted);equipmentStatus.name="Equipment summary";
             BuildRecipeBook();
             status=Label(content.transform,game.Session.Notice,340,812,1180,56,15,Accent);
@@ -390,6 +396,8 @@ namespace LestingCraft.Presentation
         }
         void Update()
         {
+            if(page==Page.Account&&status&&game.Accounts)status.text=game.Accounts.Message;
+            if(game.InLobby){if(page!=Page.Lobby||lobbyRevision!=game.LobbyRevision)ShowLobby();return;}
             if(!ready)return;
             if(game.InWorld&&game.Paused&&page==Page.HUD)ShowPause();
             else if(game.InWorld&&!game.Paused&&page!=Page.HUD)ShowHUD();
@@ -419,7 +427,7 @@ namespace LestingCraft.Presentation
                 if(game.Session)
                 {
                     var session=game.Session;var v=session.Vitals;
-                    healthBody.SetHealth(v.health);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
+                    healthBody.SetBody(v);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
                     vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}"+(v.air<100?$"\nВоздух  {v.air:0}%":"");
 
                     if(lastNotice!=session.Notice){lastNotice=session.Notice;noticeAt=Time.unscaledTime;}
@@ -451,5 +459,49 @@ namespace LestingCraft.Presentation
             }
         }
         void OnDestroy(){if(rounded)Destroy(rounded);}
+        int achievementPage;bool achievementOnlyEarned;
+        void RefreshAccountIfOpen(){if(page==Page.Account)ShowAccount();}
+        void ShowAccount()
+        {
+            Clear(Page.Account);Header("Игровой аккаунт",false);var a=game.Accounts;
+            Button("← Назад",64,806,205,52,()=>{if(game.InWorld)ShowPause();else ShowHome();});
+            if(!a.Logged)
+            {
+                string username="",password="",recovery="";
+                Label(content.transform,"Аккаунт необязателен для игры. Войдите до экспедиции, чтобы сохранять прогресс между устройствами.",64,214,1450,52,20,White);
+                Input("ЛОГИН · 3–24 латинских символа",username,"Explorer_01",64,285,590,v=>username=v);
+                var pw=Input("ПАРОЛЬ · минимум 12 символов",password,"Не отправляйте пароль в чат",64,398,590,v=>password=v);pw.contentType=InputField.ContentType.Password;pw.characterLimit=128;
+                var rc=Input("КОД ВОССТАНОВЛЕНИЯ · только для восстановления",recovery,"Получается один раз при регистрации",64,510,590,v=>recovery=v);rc.contentType=InputField.ContentType.Password;
+                Action<string> submit=action=>{string capturedPassword=password,r=recovery;pw.text="";rc.text="";a.Authenticate(action,username,capturedPassword,r,RefreshAccountIfOpen);};
+                Button("Войти",64,636,280,58,()=>submit("login"),true);Button("Регистрация",364,636,290,58,()=>submit("register"));Button("Восстановить доступ",64,711,590,52,()=>submit("recover"));
+                Label(content.transform,"Без электронной почты\n\nПри регистрации вы получите личный код восстановления. Сохраните его вне игры и никому не показывайте. При восстановлении старый код заменяется.\n\nПароль и токен входа не записываются в PlayerPrefs. Вход действует в памяти текущего запуска игры. Без сервиса аккаунтов локальное выживание остаётся доступным.",800,285,650,390,20,Muted);
+                status=Label(content.transform,a.Message,800,705,650,90,18,Accent);return;
+            }
+            var p=a.Profile;Label(content.transform,p.username+" · уровень "+p.level+" · "+p.xp+" XP",64,205,1450,46,27,White,true);
+            Label(content.transform,p.titleName+" · "+p.achievements.Length+" / 200 достижений",64,260,1450,36,21,Accent);
+            if(!string.IsNullOrEmpty(a.RecoveryCode))
+            {
+                Label(content.transform,"СОХРАНИТЕ КОД ВОССТАНОВЛЕНИЯ. Он не будет храниться в игре. Не отправляйте его в чат.",64,340,1410,90,23,White);
+                Label(content.transform,a.RecoveryCode,64,465,1400,100,23,Accent);
+                Button("Скопировать код",64,620,450,64,()=>GUIUtility.systemCopyBuffer=a.RecoveryCode);Button("Код сохранён →",550,620,450,64,()=>{a.DismissRecovery();ShowAccount();},true);return;
+            }
+            Label(content.transform,"Охота: "+a.Counter("kills")+" · Страж: "+a.Counter("bosses")+" · Добыто: "+a.Counter("mined")+" · Построено: "+a.Counter("placed")+" · Создано: "+a.Counter("crafted")+" · Смертей: "+a.Counter("deaths")+" · В игре: "+(a.Counter("alive_s")/60)+" мин",64,310,1460,64,19,White);
+            Button("200 достижений →",64,405,440,62,()=>{achievementPage=0;ShowAchievements();},true);
+            Button("Синхронизировать",530,405,440,62,()=>a.Sync(RefreshAccountIfOpen));
+            Button("Сменить титул",996,405,440,62,()=>{var titles=new List<string>{""};foreach(var d in a.Achievements)if(!string.IsNullOrEmpty(d.title)&&Array.IndexOf(p.achievements,d.id)>=0)titles.Add(d.id);a.ChangeTitle(titles[(titles.IndexOf(p.title)+1)%titles.Count],RefreshAccountIfOpen);});
+            string current="",next="";var old=Input("ТЕКУЩИЙ ПАРОЛЬ",current,"Для смены пароля / удаления",64,510,660,v=>current=v);old.contentType=InputField.ContentType.Password;old.characterLimit=128;
+            var fresh=Input("НОВЫЙ ПАРОЛЬ",next,"Минимум 12 символов",780,510,660,v=>next=v);fresh.contentType=InputField.ContentType.Password;fresh.characterLimit=128;
+            Button("Изменить пароль",64,625,440,55,()=>{string c=current,n=next;old.text="";fresh.text="";a.ChangePassword(c,n,RefreshAccountIfOpen);});
+            bool confirm=false;Button("Удалить аккаунт (двойное подтверждение)",530,625,660,55,()=>{if(!confirm){confirm=true;a.Message="Повторное нажатие удалит профиль, достижения и статистику. Нужен текущий пароль.";if(status)status.text=a.Message;return;}string c=current;old.text="";a.Delete(c,RefreshAccountIfOpen);});
+            Button("Выйти из аккаунта",64,715,440,55,()=>a.Logout(RefreshAccountIfOpen));status=Label(content.transform,a.Message,530,715,900,70,18,Accent);
+        }
+        void ShowAchievements()
+        {
+            Clear(Page.Achievements);Header("Достижения · 200",false);var a=game.Accounts;if(!a.Logged){ShowAccount();return;}
+            var list=new List<AchievementDefinition>();foreach(var d in a.Achievements)if(!achievementOnlyEarned||Array.IndexOf(a.Profile.achievements,d.id)>=0)list.Add(d);
+            int pages=Math.Max(1,(list.Count+7)/8);achievementPage=Math.Max(0,Math.Min(pages-1,achievementPage));
+            for(int i=0;i<8;i++){int index=achievementPage*8+i;if(index>=list.Count)break;var d=list[index];bool earned=Array.IndexOf(a.Profile.achievements,d.id)>=0;float x=64+i%2*746,y=230+i/2*133;var card=Box(content.transform,x,y,718,118,Panel);Label(card.transform,(earned?"✓ ":"")+d.name,16,10,680,30,19,earned?Accent:White);Label(card.transform,d.description,16,44,680,42,14,Muted);Label(card.transform,d.category+" · "+Math.Min(d.target,a.Counter(d.counter))+" / "+d.target+" · "+d.xp+" XP",16,90,680,22,13,Muted);}
+            Button("← Профиль",64,807,230,52,ShowAccount);Button("←",600,807,90,52,()=>{achievementPage--;ShowAchievements();});Label(content.transform,(achievementPage+1)+" / "+pages,715,821,150,35,21,White);Button("→",865,807,90,52,()=>{achievementPage++;ShowAchievements();});Button(achievementOnlyEarned?"Только полученные":"Все достижения",1110,807,375,52,()=>{achievementOnlyEarned=!achievementOnlyEarned;achievementPage=0;ShowAchievements();});
+        }
     }
 }

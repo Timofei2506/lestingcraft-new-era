@@ -31,12 +31,13 @@ namespace LestingCraft.Runtime
             var game=FindFirstObjectByType<PrototypeGame>();var ui=FindFirstObjectByType<GameUI>();
             if(!game||!Camera.main||!ui||!ui.IsReady||failure!=null){Fail("Bootstrap/menu initialization: "+failure);yield break;}
             if(!MenuArtwork.Backdrop){Fail("Menu backdrop is missing.");yield break;}
-            foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","Sky","Atmosphere","Precipitation","Fire","Smoke"})
+            foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","Sky","Atmosphere","Precipitation","Fire","Smoke","Crystal","Glass"})
             {
                 var material=Resources.Load<Material>("Generated/"+name);
                 if(!material||!material.shader||!material.shader.isSupported){Fail("Missing/unsupported material: "+name);yield break;}
             }
-            if(!Resources.Load<Texture2DArray>("Generated/Albedo")){Fail("Missing texture arrays");yield break;}
+            foreach(var arrayName in new[]{"Albedo","Normal","Mask"})
+            {var array=Resources.Load<Texture2DArray>("Generated/"+arrayName);if(!array||array.depth!=SurfaceLayers.Names.Length||array.width!=512){Fail("Incomplete current PBR array: "+arrayName);yield break;}}
             foreach(var name in new[]{"Home.Play","Home.Coop","Home.Settings","Home.Quit"})
                 if(!FindButton(ui,name)){Fail("Home control missing: "+name);yield break;}
             // Capture the real menu from the executable, after the splash, not a mock image.
@@ -60,6 +61,21 @@ namespace LestingCraft.Runtime
             {if(game.Session)game.Session.Data.clock=420;yield return null;}
             if(failure!=null||!game.Session||!game.WorldReady||game.ChunkCount<5||!game.Session.Weather){Fail("World/meshes/weather initialization: "+failure);yield break;}
             if(RenderSettings.fog){Fail("Duplicate linear fog must be disabled.");yield break;}
+            // The compulsory ruined-house opening remains in the game AND in this native test.
+            // Older probes assumed an immediately unlocked survival world and failed after chapter one.
+            deadline=Time.realtimeSinceStartup+45;
+            while(game.StoryLocked&&failure==null&&Time.realtimeSinceStartup<deadline)yield return null;
+            if(game.StoryLocked||failure!=null){Fail("Mandatory opening did not finish its initial cinematic: "+failure);yield break;}
+            if(game.Session.World.ContentVersion!=6||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp.Length!=6)
+            {Fail("Current living-world runtime systems missing");yield break;}
+            var modelProbe=new GameObject("Smoke-only native villager and cat mesh checks");
+            modelProbe.transform.position=game.Session.Player.transform.position+Vector3.down*20;
+            for(int kind=0;kind<2;kind++)
+            {var actor=new GameObject(kind==0?"Native villager probe":"Native cat probe");actor.transform.SetParent(modelProbe.transform,false);actor.AddComponent<SettlerVisual>().Build(kind,1);
+             var renderers=actor.GetComponentsInChildren<MeshRenderer>();if(renderers.Length<5){Fail("Incomplete native settler mesh: "+kind);yield break;}
+             foreach(var renderer in renderers)if(!renderer.sharedMaterial||!renderer.sharedMaterial.shader.isSupported){Fail("Unsupported settler material");yield break;}}
+            Destroy(modelProbe);
+            Debug.Log("[Smoke] LIVING6: rules9, content6, complete PBR arrays="+SurfaceLayers.Names.Length+", mandatory opening, six saved body zones, native villager/cat meshes and materials loaded");
             var player=game.Session.Player;player.enabled=false;
             Camera.main.transform.localRotation=Quaternion.Euler(10,35,0);
             var fireCell=Vector3Int.FloorToInt(player.transform.position+new Vector3(1,0,2));game.Session.World.Edit(fireCell.x,fireCell.y,fireCell.z,15);
@@ -75,6 +91,11 @@ namespace LestingCraft.Runtime
             game.Session.World.Edit(crystalCell.x,crystalCell.y,crystalCell.z-1,0);
             var crystalOrigin=(Vector3)crystalCell+new Vector3(.5f,.5f,-1);
             if(!VoxelRaycast.Trace(crystalOrigin,Vector3.forward,3,game.Session.World.GetBlock,out var crystalHit)||crystalHit.Cell!=crystalCell){Fail("Native crystal voxel targeting mismatch");yield break;}
+            if(!game.Session.Animals||game.Session.Animals.Save().animals.Length==0){Fail("Runtime wildlife did not spawn");yield break;}
+            var wildlifeKinds=new System.Collections.Generic.HashSet<int>();foreach(var animal in game.Session.Animals.Save().animals)if(!animal.dead)wildlifeKinds.Add(animal.species);
+            if(wildlifeKinds.Count!=3||FindObjectsByType<AnimalVisual>(FindObjectsSortMode.None).Length<3){Fail("Deer / hare / boar runtime visuals missing");yield break;}
+            if(crystal.GetComponent<MeshRenderer>().sharedMaterial.shader.name!="LestingCraft/CrystalGlass"){Fail("Crystal must use transmitting sparkle shader");yield break;}
+            Debug.Log("[Smoke] FOUNDATION11: real deer/hare/boar runtime meshes; transmitting crystal; PBR layers="+SurfaceLayers.Names.Length+"; content version="+game.Session.World.ContentVersion);
             deadline=Time.realtimeSinceStartup+25;CampfireEffects effects=null;
             while(!effects&&Time.realtimeSinceStartup<deadline){effects=FindFirstObjectByType<CampfireEffects>();yield return null;}
             if(!effects||!effects.Smoke||!effects.Sparks){Fail("Campfire smoke/spark emitters missing");yield break;}

@@ -6,6 +6,8 @@ namespace LestingCraft.Presentation
     public sealed class CharacterVisual : MonoBehaviour
     {
         Transform leftLeg,rightLeg,leftArm,rightArm;Vector3 previous;float phase;Material material,metal;readonly List<GameObject> extras=new List<GameObject>();string gearKey="";
+        GameObject carried;int carriedId=-1;
+        public void SetOffhand(int id,bool lighting=true){if(carriedId==id)return;carriedId=id;if(carried)Destroy(carried);if(id!=148||!leftArm)return;carried=new GameObject("Visible left-hand torch");carried.transform.SetParent(leftArm,false);carried.transform.localPosition=new Vector3(0,-.38f,.22f);carried.transform.localRotation=Quaternion.Euler(-20,0,0);carried.transform.localScale=Vector3.one*.75f;carried.AddComponent<TorchVisual>().Build(lighting);}
         public void Build()
         {
             if(material)return;material=BlockGeometry.CharacterMaterial();metal=new Material(material);metal.SetFloat("_Metallic",.65f);metal.SetFloat("_Smoothness",.34f);

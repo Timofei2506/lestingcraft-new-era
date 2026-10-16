@@ -15,8 +15,8 @@ float3 LC_SkyRadiance(float3 direction)
     float daylight=saturate(_EnvironmentSunDirection.y*12+.5);
     // Soft solar disk and broad atmospheric aureole, not a hard flat sprite.
     float disk=smoothstep(.99996,.999985,sun);
-    float aureole=pow(sun,32)*.022+pow(sun,256)*.028;
-    sky+=_EnvironmentSunColor.rgb*(disk*2.7+aureole)*daylight;
+    float aureole=pow(sun,32)*.035+pow(sun,256)*.12+pow(sun,4096)*.65;
+    sky+=_EnvironmentSunColor.rgb*(disk*18+aureole)*daylight;
     float moon=saturate(dot(ray,_EnvironmentMoonDirection.xyz));
     float night=1-_EnvironmentDaylight;
     sky+=float3(.44,.57,.80)*smoothstep(.99988,.99993,moon)*night*1.2;

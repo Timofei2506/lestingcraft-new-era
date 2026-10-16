@@ -5,6 +5,7 @@ namespace LestingCraft.Gameplay
     public enum WeatherKind { Clear,Cloudy,Rain,Snow,Storm }
     [Serializable] public sealed class SurvivalState
     {
+        public BodyHealth body=new BodyHealth();
         public float health=100,hunger=100,stamina=100,temperature=37,wetness,air=100;public bool dead;
         public void Step(float seconds,GameMode mode,float air,float precipitation,bool sheltered,bool nearFire,bool sprinting,float insulation)
         {
@@ -18,7 +19,8 @@ namespace LestingCraft.Gameplay
             if(hunger<=0)Damage(seconds*.35f,mode);
             if(temperature<34)Damage(seconds*(34-temperature)*.18f,mode);
             if(temperature>39)Damage(seconds*(temperature-39)*.15f,mode);
-            if(hunger>75&&temperature>35&&temperature<38.5f)health=Mathf.Min(100,health+seconds*.2f);
+            body.Recover(seconds,hunger>75&&temperature>35&&temperature<38.5f);
+            if(body.trauma<=0&&hunger>75&&temperature>35&&temperature<38.5f)health=Mathf.Min(100,health+seconds*.2f);
         }
         public void StepWater(float seconds,GameMode mode,bool underwater,bool immersed)
         {
@@ -26,10 +28,11 @@ namespace LestingCraft.Gameplay
             if(immersed)wetness=1;air=Mathf.Clamp(air+seconds*(underwater?-8:25),0,100);
             if(underwater&&air<=0)Damage(seconds*5,mode);
         }
-        public void Damage(float amount,GameMode mode){if(mode==GameMode.Creative||dead)return;health=Mathf.Max(0,health-Mathf.Max(0,amount));dead=health<=0;}
+        public void Damage(float amount,GameMode mode){if(mode==GameMode.Creative||dead)return;body.Systemic(Mathf.Max(0,amount));health=Mathf.Max(0,health-Mathf.Max(0,amount));dead=health<=0||body.VitalFailure;if(dead)health=0;}
+        public void DamagePart(float amount,GameMode mode,BodyPart part){if(mode==GameMode.Creative||dead||amount<=0)return;body.Hit(part,amount);health=Mathf.Max(0,health-amount);dead=health<=0||body.VitalFailure;if(dead)health=0;}
         public void Eat(float amount){if(!dead)hunger=Mathf.Min(100,hunger+amount);}
-        public void Respawn(){health=100;hunger=70;temperature=37;wetness=0;stamina=100;air=100;dead=false;}
-        public void Normalize(){air=Mathf.Clamp(air,0,100);health=Mathf.Clamp(health,0,100);hunger=Mathf.Clamp(hunger,0,100);stamina=Mathf.Clamp(stamina,0,100);temperature=Mathf.Clamp(temperature,25,43);wetness=Mathf.Clamp01(wetness);dead=health<=0;}
+        public void Respawn(){body=new BodyHealth();body.Normalize(100);health=100;hunger=70;temperature=37;wetness=0;stamina=100;air=100;dead=false;}
+        public void Normalize(){if(body==null)body=new BodyHealth();body.Normalize(health);if(body.VitalFailure)health=0;air=Mathf.Clamp(air,0,100);health=Mathf.Clamp(health,0,100);hunger=Mathf.Clamp(hunger,0,100);stamina=Mathf.Clamp(stamina,0,100);temperature=Mathf.Clamp(temperature,25,43);wetness=Mathf.Clamp01(wetness);dead=health<=0;}
     }
     public readonly struct WeatherSample
     {
@@ -51,23 +54,24 @@ namespace LestingCraft.Gameplay
     }
     [Serializable] public sealed class PlayerSave
     {
-        public Inventory inventory=new Inventory();public SurvivalState survival=new SurvivalState();public bool equippedCoat;public int milestones;public ItemStack[] graveExtras=Array.Empty<ItemStack>();public ItemStack[] grave=Array.Empty<ItemStack>();public float graveX,graveY,graveZ;
-        public void Normalize(){if(graveExtras==null)graveExtras=Array.Empty<ItemStack>();if(graveExtras.Length!=0&&graveExtras.Length!=13&&graveExtras.Length!=21)graveExtras=Array.Empty<ItemStack>();for(int i=0;i<graveExtras.Length;i++)graveExtras[i]=Inventory.Clean(graveExtras[i]);if(grave==null)grave=Array.Empty<ItemStack>();if(grave.Length>0){var graveInventory=new Inventory{slots=grave};graveInventory.Normalize();grave=graveInventory.slots;}if(inventory==null)inventory=new Inventory();inventory.Normalize();if(equippedCoat&&inventory.equipment[1].count==0){int coat=Array.FindIndex(inventory.slots,s=>s.item==104&&s.count>0);if(coat>=0)Equipment.Equip(inventory,coat);}equippedCoat=false;if(survival==null)survival=new SurvivalState();survival.Normalize();}
+        public int claimedStoryRewards;public string[] claimedAnimalLoot=Array.Empty<string>();public Inventory inventory=new Inventory();public SurvivalState survival=new SurvivalState();public bool equippedCoat;public int milestones;public ItemStack[] graveExtras=Array.Empty<ItemStack>();public ItemStack[] grave=Array.Empty<ItemStack>();public float graveX,graveY,graveZ;
+        public void Normalize(){if(claimedAnimalLoot==null)claimedAnimalLoot=Array.Empty<string>();if(claimedAnimalLoot.Length>256)Array.Resize(ref claimedAnimalLoot,256);if(graveExtras==null)graveExtras=Array.Empty<ItemStack>();if(graveExtras.Length!=0&&graveExtras.Length!=13&&graveExtras.Length!=21&&graveExtras.Length!=22)graveExtras=Array.Empty<ItemStack>();for(int i=0;i<graveExtras.Length;i++)graveExtras[i]=Inventory.Clean(graveExtras[i]);if(grave==null)grave=Array.Empty<ItemStack>();if(grave.Length>0){var graveInventory=new Inventory{slots=grave};graveInventory.Normalize();grave=graveInventory.slots;}if(inventory==null)inventory=new Inventory();inventory.Normalize();if(equippedCoat&&inventory.equipment[1].count==0){int coat=Array.FindIndex(inventory.slots,s=>s.item==104&&s.count>0);if(coat>=0)Equipment.Equip(inventory,coat);}equippedCoat=false;if(survival==null)survival=new SurvivalState();survival.Normalize();}
     }
     [Serializable] public sealed class SessionSave
     {
-        public int schema=2,seed,mode;public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
+        public LivingSave living=new LivingSave();
+        public int schema=3,contentVersion=6,seed,mode;public LestingCraft.Story.StoryState story;public WildlifeSave wildlife=new WildlifeSave();public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
         public SavedBlock[] blocks=Array.Empty<SavedBlock>();
     }
     [Serializable] public sealed class SavedBlock {public int realm,x,y,z,block;}
     public static class LocalSave
     {
-        const string Key="LC.Session.V2";
+        const string Key="LC.Session.V3",LegacyKey="LC.Session.V2";
         public static void Store(SessionSave save){PlayerPrefs.SetString(Key,JsonUtility.ToJson(save));PlayerPrefs.Save();}
         public static SessionSave Load()
         {
-            try{var data=JsonUtility.FromJson<SessionSave>(PlayerPrefs.GetString(Key,""));if(data==null||data.schema!=2||!GameRules.IsValid(data.mode))return null;data.player.Normalize();if(data.campaign==null)data.campaign=new CampaignProgress();if(data.blocks==null)data.blocks=Array.Empty<SavedBlock>();return data;}catch{return null;}
+            try{string raw=PlayerPrefs.GetString(PlayerPrefs.HasKey(Key)?Key:LegacyKey,"");var data=JsonUtility.FromJson<SessionSave>(raw);if(data==null||(data.schema!=2&&data.schema!=3)||!GameRules.IsValid(data.mode))return null;if(data.schema==3&&!raw.Contains("\"contentVersion\""))return null;if(data.schema==2){data.contentVersion=1;data.schema=3;}if(data.contentVersion!=1&&data.contentVersion!=2&&data.contentVersion!=3&&data.contentVersion!=4&&data.contentVersion!=5&&data.contentVersion!=6)return null;if(data.player==null)return null;data.player.Normalize();if(data.campaign==null)data.campaign=new CampaignProgress();if(data.blocks==null)data.blocks=Array.Empty<SavedBlock>();if(data.blocks.Length>8192)return null;foreach(var b in data.blocks)if(b==null||b.realm<0||b.realm>4||b.y<=0||b.y>=256||Math.Abs((long)b.x)>=32000||Math.Abs((long)b.z)>=32000||b.block<0||b.block>(data.contentVersion>=5?48:46)||b.block==9)return null;return data;}catch{return null;}
         }
-        public static bool Exists=>PlayerPrefs.HasKey(Key);
+        public static bool Exists=>PlayerPrefs.HasKey(Key)||PlayerPrefs.HasKey(LegacyKey);
     }
 }

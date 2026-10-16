@@ -23,7 +23,15 @@ public static class PresentationAssets
         Material material=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/VoxelPBR.mat");
         if(!material){material=new Material(Shader.Find("LestingCraft/VoxelPBR"));AssetDatabase.CreateAsset(material,Folder+"/VoxelPBR.mat");}
         material.SetFloat("_NormalStrength",1.15f);
+        var leafImporter=AssetImporter.GetAtPath("Assets/Resources/GeneratedLeafOpacity.png") as TextureImporter;
+        if(leafImporter&&(!leafImporter.mipMapsPreserveCoverage||!leafImporter.mipmapEnabled||leafImporter.sRGBTexture||leafImporter.wrapMode!=TextureWrapMode.Repeat||leafImporter.textureCompression!=TextureImporterCompression.Uncompressed)){leafImporter.textureCompression=TextureImporterCompression.Uncompressed;leafImporter.alphaSource=TextureImporterAlphaSource.FromInput;leafImporter.sRGBTexture=false;leafImporter.mipmapEnabled=true;leafImporter.mipMapsPreserveCoverage=true;leafImporter.alphaTestReferenceValue=.5f;leafImporter.wrapMode=TextureWrapMode.Repeat;leafImporter.filterMode=FilterMode.Bilinear;leafImporter.SaveAndReimport();}
+        material.SetTexture("_LeafOpacity",AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Resources/GeneratedLeafOpacity.png"));
         material.SetTexture("_AlbedoArray",albedo);material.SetTexture("_NormalArray",normal);material.SetTexture("_MaskArray",mask);
+        foreach(string clearName in new[]{"Crystal","Glass"})
+        {
+            var clear=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/"+clearName+".mat");if(!clear){clear=new Material(Shader.Find("LestingCraft/CrystalGlass"));AssetDatabase.CreateAsset(clear,Folder+"/"+clearName+".mat");}
+            clear.SetTexture("_NormalArray",normal);clear.SetColor("_Tint",clearName=="Crystal"?new Color(.78f,.68f,.98f,1):new Color(.96f,.99f,1,1));clear.SetFloat("_Density",clearName=="Crystal"?.09f:.025f);clear.SetFloat("_Sparkle",clearName=="Crystal"?3:0);EditorUtility.SetDirty(clear);
+        }
         Material water=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Water.mat");
         if(!water){water=new Material(Shader.Find("LestingCraft/Water"));AssetDatabase.CreateAsset(water,Folder+"/Water.mat");}
         water.SetTexture("_NormalArray",normal);
@@ -32,9 +40,10 @@ public static class PresentationAssets
         grass.SetTexture("_AlbedoArray",albedo);EditorUtility.SetDirty(grass);
         var objectMaterial=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/VoxelObjects.mat");
         if(!objectMaterial){objectMaterial=new Material(Shader.Find("LestingCraft/VoxelObjects"));AssetDatabase.CreateAsset(objectMaterial,Folder+"/VoxelObjects.mat");}
-        objectMaterial.SetTexture("_AlbedoArray",albedo);objectMaterial.SetTexture("_NormalArray",normal);objectMaterial.SetTexture("_MaskArray",mask);EditorUtility.SetDirty(objectMaterial);
+        objectMaterial.SetTexture("_LeafOpacity",AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Resources/GeneratedLeafOpacity.png"));objectMaterial.SetTexture("_AlbedoArray",albedo);objectMaterial.SetTexture("_NormalArray",normal);objectMaterial.SetTexture("_MaskArray",mask);EditorUtility.SetDirty(objectMaterial);
         var avatar=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Avatar.mat");
         if(!avatar){avatar=new Material(Shader.Find("Universal Render Pipeline/Lit"));avatar.SetColor("_BaseColor",new Color(.3f,.65f,.6f));avatar.SetFloat("_Smoothness",.4f);AssetDatabase.CreateAsset(avatar,Folder+"/Avatar.mat");}
+        avatar.shader=Shader.Find("LestingCraft/AvatarLit");EditorUtility.SetDirty(avatar);
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Sky.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/AtmosphericSky")),Folder+"/Sky.mat");
         if(!AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Atmosphere.mat"))AssetDatabase.CreateAsset(new Material(Shader.Find("LestingCraft/VolumetricAtmosphere")),Folder+"/Atmosphere.mat");
         var cloud=AssetDatabase.LoadAssetAtPath<Texture3D>(Folder+"/CloudNoise.asset");
@@ -69,6 +78,8 @@ public static class PresentationAssets
         var serialized=new SerializedObject(pipeline);
         serialized.FindProperty("m_MainLightShadowsSupported").boolValue=true;
         serialized.FindProperty("m_SoftShadowsSupported").boolValue=true;
+        serialized.FindProperty("m_AdditionalLightShadowsSupported").boolValue=true;
+        serialized.FindProperty("m_AdditionalLightsShadowmapResolution").intValue=2048;
         serialized.FindProperty("m_AdditionalLightsRenderingMode").intValue=(int)LightRenderingMode.PerPixel;
         serialized.ApplyModifiedPropertiesWithoutUndo();EditorUtility.SetDirty(pipeline);
         GraphicsSettings.defaultRenderPipeline=pipeline;QualitySettings.renderPipeline=pipeline;
@@ -77,7 +88,7 @@ public static class PresentationAssets
         {
             profile=ScriptableObject.CreateInstance<VolumeProfile>();AssetDatabase.CreateAsset(profile,Folder+"/WorldVolume.asset");
         }
-        var bloom=Component<Bloom>(profile);bloom.threshold.value=1.6f;bloom.intensity.value=.055f;bloom.scatter.value=.45f;
+        var bloom=Component<Bloom>(profile);bloom.threshold.value=1.5f;bloom.intensity.value=.12f;bloom.scatter.value=.62f;
         var tone=Component<Tonemapping>(profile);tone.mode.value=TonemappingMode.ACES;
         var colors=Component<ColorAdjustments>(profile);colors.contrast.value=5;colors.saturation.value=-3;
         var vignette=Component<Vignette>(profile);vignette.intensity.value=.09f;vignette.smoothness.value=.65f;
@@ -154,10 +165,11 @@ public static class PresentationAssets
         var material=new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));material.SetTexture("_BaseMap",texture);material.SetFloat("_Surface",1);material.SetFloat("_SrcBlend",5);material.SetFloat("_DstBlend",additive?1:10);material.SetFloat("_ZWrite",0);material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");material.renderQueue=3000;
         AssetDatabase.CreateAsset(material,path);
     }
+    static string MapPath(string name,string kind){string root="Assets/Art/PBR/"+name+"_"+kind;return File.Exists(root+".jpg")?root+".jpg":root+".png";}
     static Texture2DArray Array(string assetName,string kind,bool linear)
     {
         var path=Folder+"/"+assetName+".asset";
-        string fingerprint;using(var hash=SHA256.Create()){using(var stream=new MemoryStream()){foreach(var name in Names){var bytes=File.ReadAllBytes("Assets/Art/PBR/"+name+"_"+kind+".png");stream.Write(bytes,0,bytes.Length);}fingerprint=BitConverter.ToString(hash.ComputeHash(stream.ToArray())).Replace("-","").Substring(0,16);}}
+        string fingerprint;using(var hash=SHA256.Create()){using(var stream=new MemoryStream()){foreach(var name in Names){var bytes=File.ReadAllBytes(MapPath(name,kind));stream.Write(bytes,0,bytes.Length);}fingerprint=BitConverter.ToString(hash.ComputeHash(stream.ToArray())).Replace("-","").Substring(0,16);}}
         string version=assetName+"-v4-"+fingerprint;
         var existing=AssetDatabase.LoadAssetAtPath<Texture2DArray>(path);if(existing&&existing.depth==Names.Length&&existing.name==version)return existing;if(existing)AssetDatabase.DeleteAsset(path);
         const int size=512;
@@ -166,7 +178,7 @@ public static class PresentationAssets
         {
             // Load raw PNG bytes to preserve RGB normals/packed masks without importer repacking.
             var texture=new Texture2D(2,2,TextureFormat.RGBA32,false,linear);
-            if(!texture.LoadImage(File.ReadAllBytes("Assets/Art/PBR/"+Names[i]+"_"+kind+".png")))throw new InvalidOperationException("Invalid material image");
+            if(!texture.LoadImage(File.ReadAllBytes(MapPath(Names[i],kind))))throw new InvalidOperationException("Invalid material image");
             result.SetPixels32(texture.GetPixels32(),i,0);UnityEngine.Object.DestroyImmediate(texture);
         }
         result.Apply(true,true);AssetDatabase.CreateAsset(result,path);return result;

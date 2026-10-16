@@ -25,14 +25,14 @@ namespace LestingCraft.Tests
             Assert.Greater(AtmosphereProfile.Density(1),AtmosphereProfile.Density(0));
             Assert.Greater(AtmosphereProfile.Density(0,1),AtmosphereProfile.Density(1));
         }
-        [Test] public void SixBodyZonesVisualizeTheSameExistingHealth()
+        [Test] public void SixBodyZonesVisualizeIndependentInjuries()
         {
             var obj=new GameObject("Health test",typeof(RectTransform));
             try
             {
                 var body=obj.AddComponent<HealthSilhouette>();body.Build();Assert.AreEqual(6,body.Zones.Length);
-                body.SetHealth(25);Assert.AreEqual(25,body.Health);
-                foreach(var image in body.Zones)Assert.AreEqual(body.Zones[0].color,image.color);
+                var state=new LestingCraft.Gameplay.SurvivalState();state.Respawn();state.DamagePart(50,LestingCraft.Gameplay.GameMode.Survival,LestingCraft.Gameplay.BodyPart.LeftLeg);body.SetBody(state);Assert.AreEqual(state.health,body.Health);
+                Assert.AreNotEqual(body.Zones[4].color,body.Zones[5].color);
                 body.SetHealth(-5);Assert.AreEqual(0,body.Health);
             }
             finally{Object.DestroyImmediate(obj);}

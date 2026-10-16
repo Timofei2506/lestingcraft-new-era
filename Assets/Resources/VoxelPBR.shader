@@ -6,7 +6,13 @@ Shader "LestingCraft/VoxelPBR"
         _NormalArray("Normals",2DArray)=""{}
         _MaskArray("Metallic AO Height Smoothness",2DArray)=""{}
         _NormalStrength("Normal strength",Range(0,2))=1
+        _LeafOpacity("Foliage cutout",2D)="white"{}
     }
+    HLSLINCLUDE
+    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+    TEXTURE2D(_LeafOpacity);SAMPLER(sampler_LeafOpacity);
+    void LeafClip(float3 uv){if(abs(uv.z-6)<.25)clip(SAMPLE_TEXTURE2D(_LeafOpacity,sampler_LeafOpacity,uv.xy).a-.5);}
+    ENDHLSL
     SubShader
     {
         Tags {"RenderPipeline"="UniversalPipeline" "RenderType"="Opaque" "Queue"="Geometry"}
@@ -25,7 +31,8 @@ Shader "LestingCraft/VoxelPBR"
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "../Shaders/VoxelLighting.hlsl"
+            #include "../Shaders/EnvironmentLighting.hlsl"
             float _LCAmbientOcclusionProbe;
             TEXTURE2D_ARRAY(_AlbedoArray);SAMPLER(sampler_AlbedoArray);
             TEXTURE2D_ARRAY(_NormalArray);SAMPLER(sampler_NormalArray);
@@ -46,19 +53,22 @@ Shader "LestingCraft/VoxelPBR"
             }
             half4 Frag(Varyings i):SV_Target
             {
+                LeafClip(i.uv);
                 // Bounded parallax occlusion: shader relief only, never changes voxel collision.
                 half3 geometricN=normalize(i.normalWS),geometricT=normalize(i.tangentWS.xyz),geometricB=cross(geometricN,geometricT)*i.tangentWS.w;
                 half3 viewWS=GetWorldSpaceNormalizeViewDir(i.positionWS);
                 half3 viewTS=half3(dot(viewWS,geometricT),dot(viewWS,geometricB),dot(viewWS,geometricN));
                 float2 dx=ddx(i.uv.xy),dy=ddy(i.uv.xy);int steps=clamp((int)_LCParallaxSteps,4,16);
-                float fade=1-smoothstep(12,26,distance(_WorldSpaceCameraPos,i.positionWS));float2 offset=-viewTS.xy/max(.45,abs(viewTS.z))*.024*fade;
+                float fade=1-smoothstep(12,26,distance(_WorldSpaceCameraPos,i.positionWS));float2 offset=-viewTS.xy/max(.45,abs(viewTS.z))*.024*fade*(abs(i.uv.z-6)>.25?1:0);
                 float2 surfaceUV=i.uv.xy-offset*.5;float depth=0,stepDepth=1.0/steps;float2 delta=offset/steps;
                 [loop] for(int k=0;k<16;k++)
                 {
-                    if(k>=steps)break;
+                    if(k>=steps||abs(i.uv.z-6)<.25)break;
                     float h=1-SAMPLE_TEXTURE2D_ARRAY_GRAD(_MaskArray,sampler_MaskArray,surfaceUV,i.uv.z,dx,dy).b;
                     if(depth>=h)break;surfaceUV+=delta;depth+=stepDepth;
                 }
+                // Advect the generated lava crust slowly, with genuinely emissive hot fissures only.
+                if(abs(i.uv.z-9)<.25)surfaceUV+=_EnvironmentTime*float2(.006,.0035);
                 half4 albedo=SAMPLE_TEXTURE2D_ARRAY_GRAD(_AlbedoArray,sampler_AlbedoArray,surfaceUV,i.uv.z,dx,dy);
                 half3 normalTS=SAMPLE_TEXTURE2D_ARRAY_GRAD(_NormalArray,sampler_NormalArray,surfaceUV,i.uv.z,dx,dy).xyz*2-1;
                 normalTS.xy*=_NormalStrength;normalTS=normalize(normalTS);
@@ -77,7 +87,7 @@ Shader "LestingCraft/VoxelPBR"
                 surface.albedo=lerp(albedo.rgb*macro*(1-wet*.18),half3(.73,.79,.84),snow);surface.metallic=mask.r;surface.specular=half3(.04,.04,.04);
                 surface.smoothness=saturate(lerp(mask.a+wet*.32,.16,snow));surface.normalTS=normalTS;surface.occlusion=mask.g*i.color.r;
                 surface.alpha=1;
-                if(i.uv.z>8.5&&i.uv.z<9.5)surface.emission=albedo.rgb*2.8;
+                if(i.uv.z>8.5&&i.uv.z<9.5){half heat=saturate((albedo.r-max(albedo.g,albedo.b)*1.10)*3.8);half pulse=.9+.1*sin(_EnvironmentTime*.65+i.positionWS.x*.35+i.positionWS.z*.29);surface.emission=albedo.rgb*heat*6*pulse;surface.smoothness=lerp(mask.a,.87,heat);surface.albedo*=lerp(1,.45,heat);}
                 if(i.uv.z>11.5&&i.uv.z<12.5)surface.emission=albedo.rgb*.16;
                 // Native evidence mode: sample the REAL GPU-bound SSAO during opaque rendering.
                 // RenderGraph textures are transient; Shader.GetGlobalTexture after the frame is not a valid proof.
@@ -90,7 +100,7 @@ Shader "LestingCraft/VoxelPBR"
                         return half4(1,0,1,1);
                     #endif
                 }
-                half4 c=UniversalFragmentPBR(lighting,surface);c.rgb=MixFog(c.rgb,i.fog);return c;
+                half4 c=LC_FragmentPBR(lighting,surface,LC_SurfaceSky(i.positionWS,normalize(i.normalWS),i.color.g));c.rgb=MixFog(c.rgb,i.fog);return c;
             }
             ENDHLSL
         }
@@ -107,8 +117,9 @@ Shader "LestingCraft/VoxelPBR"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
             float3 _LightDirection;float3 _LightPosition;
-            struct A {float4 vertex:POSITION;float3 normal:NORMAL;};
-            float4 ShadowVert(A i):SV_POSITION
+            struct A {float4 vertex:POSITION;float3 normal:NORMAL;float3 uv:TEXCOORD0;};
+            struct ShadowV {float4 p:SV_POSITION;float3 uv:TEXCOORD0;};
+            ShadowV ShadowVert(A i)
             {
                 float3 pos=TransformObjectToWorld(i.vertex.xyz),normal=TransformObjectToWorldNormal(i.normal);
                 #if defined(_CASTING_PUNCTUAL_LIGHT_SHADOW)
@@ -118,9 +129,9 @@ Shader "LestingCraft/VoxelPBR"
                 #endif
                 float4 clip=TransformWorldToHClip(ApplyShadowBias(pos,normal,direction));
                 clip=ApplyShadowClamping(clip);
-                return clip;
+                ShadowV o;o.p=clip;o.uv=i.uv;return o;
             }
-            half4 ShadowFrag():SV_Target{return 0;}
+            half4 ShadowFrag(ShadowV i):SV_Target{LeafClip(i.uv);return 0;}
             ENDHLSL
         }
         Pass
@@ -130,8 +141,29 @@ Shader "LestingCraft/VoxelPBR"
             #pragma vertex DepthVert
             #pragma fragment DepthFrag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            float4 DepthVert(float4 p:POSITION):SV_POSITION{return TransformObjectToHClip(p.xyz);}
-            half4 DepthFrag():SV_Target{return 0;}
+            struct DA{float4 p:POSITION;float3 uv:TEXCOORD0;};struct DV{float4 p:SV_POSITION;float3 uv:TEXCOORD0;};
+            DV DepthVert(DA i){DV o;o.p=TransformObjectToHClip(i.p.xyz);o.uv=i.uv;return o;}
+            half4 DepthFrag(DV i):SV_Target{LeafClip(i.uv);return 0;}
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "DepthNormals" Tags {"LightMode"="DepthNormals"} ZWrite On
+            HLSLPROGRAM
+            #pragma target 3.5
+            #pragma vertex NormVert
+            #pragma fragment NormFrag
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
+            struct NA{float4 p:POSITION;float3 n:NORMAL;float3 uv:TEXCOORD0;};struct NV{float4 p:SV_POSITION;float3 n:TEXCOORD0;float3 uv:TEXCOORD1;};
+            NV NormVert(NA i){NV o;o.p=TransformObjectToHClip(i.p.xyz);o.n=TransformObjectToWorldNormal(i.n);o.uv=i.uv;return o;}
+            half4 NormFrag(NV i):SV_Target{LeafClip(i.uv);float3 normal=normalize(i.n);
+            #if defined(_GBUFFER_NORMALS_OCT)
+             float2 oct=PackNormalOctQuadEncode(normal);return half4(PackFloat2To888(saturate(oct*.5+.5)),0);
+            #else
+             return half4(normal,0);
+            #endif
+            }
             ENDHLSL
         }
     }

@@ -2,7 +2,7 @@ namespace LestingCraft.Presentation
 {
     public static class SurfaceLayers
     {
-        public static readonly string[] Names={"stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava","bedrock","basalt","crystal","aether","ore","snow","planks","workbench-top","workbench-side","furnace-side","furnace-front","furnace-top","campfire-side","campfire-top","ore-copper","ore-coal"};
+        public static readonly string[] Names={"stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava","bedrock","basalt","crystal","aether","ore","snow","planks","workbench-top","workbench-side","furnace-side","furnace-front","furnace-top","campfire-side","campfire-top","ore-copper","ore-coal","ore-gold","ore-silver","ore-tin","ore-quartz","ore-sulfur","granite","limestone","slate","marble","obsidian","gravel","clay","mud","mossy-stone","cobblestone","stone-bricks","cracked-bricks","clay-bricks","polished-stone","sandstone","coal-block","copper-block","polished-granite","polished-marble","wildlife-fur","metal-ingot","deer-fur","hare-fur","boar-bristles","animal-underfur","animal-keratin","diamond-ore","diamond-facets","leather","raw-meat","cooked-meat","cat-fur"};
         public static int ForFace(ushort block,int face)
         {
             switch(block)
@@ -15,7 +15,7 @@ namespace LestingCraft.Presentation
                 case 16:return face==2?17:face==3?16:18;
                 case 17:return face==2||face==3?21:face==5?20:19;
                 case 18:return 16;
-                default:return 0;
+                default:return LestingCraft.Gameplay.ExpandedContent.Has(block)?LestingCraft.Gameplay.ExpandedContent.Blocks[block-19].Layer:0;
             }
         }
         // Appearance only: the existing ore ID, drops, save format and generator remain unchanged.
@@ -28,7 +28,7 @@ namespace LestingCraft.Presentation
         public static string DisplayName(ushort id)
         {
             string[] names={"Воздух","Камень","Земля","Дёрн","Древесина","Листва","Песок","Вода","Лава","Коренная порода","Базальт","Кристалл","Эфирный камень","Руда","Снег","Костёр","Верстак","Печь","Доски"};
-            return id<names.Length?names[id]:"Неизвестный блок";
+            return id<names.Length?names[id]:LestingCraft.Gameplay.ExpandedContent.Has(id)?LestingCraft.Gameplay.ExpandedContent.Blocks[id-19].Name:"Неизвестный блок";
         }
         public static string Icon(ushort id)=>id==15?"Item15":Names[ForFace(id,2)];
     }

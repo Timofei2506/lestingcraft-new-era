@@ -1,0 +1,7 @@
+import {height} from './terrain-legacy.js';import {boxes} from './story-plan.js';
+export const floor=seed=>Math.max(44,height(0,0,seed));
+const region=(x,z)=>Math.min(Math.max(Math.abs(x),Math.abs(z-8))-9,Math.max(Math.abs(x+32),Math.abs(z+32))-12,Math.max(Math.abs(x-96),Math.abs(z-48))-24,Math.max(Math.abs(x-48),Math.abs(z+96))-13,Math.max(Math.abs(x-176),Math.abs(z+112))-17);
+function segment(x,z,ax,az,bx,bz,r){let dx=bx-ax,dz=bz-az,px=x-ax,pz=z-az,len=dx*dx+dz*dz,t=px*dx+pz*dz;if(t<0)return px*px+pz*pz<=r*r;if(t>len){px=x-bx;pz=z-bz;return px*px+pz*pz<=r*r;}let cross=px*dz-pz*dx;return cross*cross<=r*r*len;}
+const road=(x,z,r)=>segment(x,z,-32,-32,0,8,r)||segment(x,z,0,8,96,48,r)||segment(x,z,96,48,48,-96,r)||segment(x,z,48,-96,176,-112,r)||segment(x,z,176,-112,96,48,r);
+export const protectedSite=(x,z)=>region(x,z)<=0;
+export function site(x,y,z,seed){if(y<=0||y>=256)return null;let d=region(x,z),r=road(x,z,2);if(d>6&&!road(x,z,5))return null;let base=floor(seed),natural=height(x,z,seed),top=base;if(d>0&&!r){let blend=Math.min(6,d);top=Math.trunc((base*(6-blend)+natural*blend)/6);}if(y<top-3&&y<=natural)return null;if(y<=top){let id=y===top?(r?32:d<=0?3:2):y<top-2?1:2;if(y===base&&d<=0)for(let i=0;i<boxes.length;i+=7)if(x>=boxes[i]&&x<=boxes[i+1]&&boxes[i+2]<=0&&boxes[i+3]>=0&&z>=boxes[i+4]&&z<=boxes[i+5])id=boxes[i+6];return id;}if(d>0||y>base+18)return 0;let ry=y-base,id=0;for(let i=0;i<boxes.length;i+=7)if(x>=boxes[i]&&x<=boxes[i+1]&&ry>=boxes[i+2]&&ry<=boxes[i+3]&&z>=boxes[i+4]&&z<=boxes[i+5])id=boxes[i+6];return id;}

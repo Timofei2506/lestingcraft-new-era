@@ -25,3 +25,36 @@ jobs:
           trap 'kill "$SERVER_PID" || true' EXIT
           node -e 'const go=async()=>{for(let i=0;i<30;i++){try{if((await fetch("http://127.0.0.1:8787/health")).ok)return}catch{};await new Promise(r=>setTimeout(r,250))}process.exit(1)};go()'
           npm run test:integration
+      - name: Wildlife websocket, pending loot and full process restart
+        working-directory: Server
+        run: |
+          for TEST_RULES in 5 6; do
+            export TEST_RULES PORT=8798 DATA_DIR=$(mktemp -d) TEST_ENDPOINT=http://127.0.0.1:8798 TEST_RECEIPT=/tmp/lc-fauna-receipt-$TEST_RULES.json
+            node src/node.js > /tmp/lc-fauna-$TEST_RULES.log 2>&1 &
+            SERVER_PID=$!
+            trap 'kill "$SERVER_PID" || true' EXIT
+            node test/fauna-integration.js
+            kill "$SERVER_PID"
+            wait "$SERVER_PID" || true
+            node src/node.js >> /tmp/lc-fauna-$TEST_RULES.log 2>&1 &
+            SERVER_PID=$!
+            node test/fauna-integration.js --reconnect
+            kill "$SERVER_PID"
+            wait "$SERVER_PID" || true
+          done
+
+      - name: Shared chapter, lobby and durable private rewards
+        working-directory: Server
+        run: |
+          export PORT=8797 DATA_DIR=$(mktemp -d) TEST_ENDPOINT=http://127.0.0.1:8797 TEST_RECEIPT=/tmp/lc-story-receipt.json
+          node src/node.js > /tmp/lc-story.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          node -e 'const go=async()=>{for(let i=0;i<30;i++){try{if((await fetch(process.env.TEST_ENDPOINT+"/health")).ok)return}catch{};await new Promise(r=>setTimeout(r,250))}process.exit(1)};go()'
+          node test/story-integration.js
+          kill "$SERVER_PID"
+          wait "$SERVER_PID" || true
+          node src/node.js >> /tmp/lc-story.log 2>&1 &
+          SERVER_PID=$!
+          node -e 'const go=async()=>{for(let i=0;i<30;i++){try{if((await fetch(process.env.TEST_ENDPOINT+"/health")).ok)return}catch{};await new Promise(r=>setTimeout(r,250))}process.exit(1)};go()'
+          node test/story-integration.js --reconnect

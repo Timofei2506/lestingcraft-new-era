@@ -1,0 +1,2 @@
+PASS: 8 selected managed NUnit methods against current runtime, actual Unity managed DLLs and actual NUnit. No engine, GPU, native allocator or Burst execution. Other EditMode tests compiled only.
+PASS 2 selected managed NUnit geometry tests. Resource/native Unity test compiled only.

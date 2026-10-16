@@ -1,0 +1,2 @@
+PASS rules 6: actual two-client WebSocket fauna sync including sender, older-client rejection, authoritative single kill, contested hit rejection, pending loot replay before save, private committed loot/inventory reconnect; receipt ready for process-restart check
+PASS: full server process restart restores dead animal, private inventory and committed loot claim without respawn or duplicate reward

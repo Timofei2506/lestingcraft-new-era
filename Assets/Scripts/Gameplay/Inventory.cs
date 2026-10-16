@@ -15,12 +15,14 @@ namespace LestingCraft.Gameplay
     }
     public static class Items
     {
-        public const int WoodPick=100,StonePick=101,Axe=102,Sword=103,Coat=104,Berries=110,Bread=111,Planks=120,Stick=121,Fiber=122,Charcoal=123,RoastedBerries=112,Grain=113,Dough=114,Workbench=16,Furnace=17;
+        public const int Torch=148,WoodPick=100,StonePick=101,Axe=102,Sword=103,Coat=104,Berries=110,Bread=111,Planks=120,Stick=121,Fiber=122,Charcoal=123,RoastedBerries=112,Grain=113,Dough=114,Workbench=16,Furnace=17;
         static readonly Dictionary<int,ItemDefinition> all=new Dictionary<int,ItemDefinition>();
         static Items()
         {
             string[] names={"","Камень","Земля","Дёрн","Древесина","Листва","Песок","Вода","Лава","Коренная порода","Базальт","Кристалл","Эфирный камень","Руда","Снег","Костёр"};
             for(ushort i=1;i<=15;i++)all[i]=new ItemDefinition(i,names[i],block:i);
+            all[149]=new ItemDefinition(149,"Алмаз");all[150]=new ItemDefinition(150,"Железная кирка",1,450);all[151]=new ItemDefinition(151,"Алмазная кирка",1,1500);all[165]=new ItemDefinition(165,"Стрелы");foreach(var w in Weapons.All)all[w.Id]=new ItemDefinition(w.Id,w.Name,1,w.Durability);
+            all[Torch]=new ItemDefinition(Torch,"Факел");
             all[WoodPick]=new ItemDefinition(WoodPick,"Деревянная кирка",1,60);
             all[StonePick]=new ItemDefinition(StonePick,"Каменная кирка",1,140);
             all[Axe]=new ItemDefinition(Axe,"Каменный топор",1,120);
@@ -32,16 +34,20 @@ namespace LestingCraft.Gameplay
             all[Bread]=new ItemDefinition(Bread,"Походный хлеб",32,food:30);
             all[Workbench]=new ItemDefinition(Workbench,"Верстак",block:16);all[Furnace]=new ItemDefinition(Furnace,"Печь",block:17);
             all[RoastedBerries]=new ItemDefinition(RoastedBerries,"Печёные ягоды",32,food:24);all[Grain]=new ItemDefinition(Grain,"Дикое зерно");all[Dough]=new ItemDefinition(Dough,"Тесто");all[Charcoal]=new ItemDefinition(Charcoal,"Древесный уголь");
+            foreach(var b in ExpandedContent.Blocks)all[b.Id]=new ItemDefinition(b.Id,b.Name,block:(ushort)b.Id);
+            all[135]=new ItemDefinition(135,"Сырое мясо",32,food:4);all[136]=new ItemDefinition(136,"Сырая шкура");all[138]=new ItemDefinition(138,"Жареное мясо",32,food:28);all[139]=new ItemDefinition(139,"Кожа");
+            string[] minerals={"Железный слиток","Медный слиток","Золотой слиток","Серебряный слиток","Оловянный слиток","Кварц","Сера","Уголь"};for(int i=0;i<8;i++)all[140+i]=new ItemDefinition(140+i,minerals[i]);
             all[Planks]=new ItemDefinition(Planks,"Доски",block:18);all[Stick]=new ItemDefinition(Stick,"Палки");all[Fiber]=new ItemDefinition(Fiber,"Волокно");
         }
         public static bool Exists(int id)=>all.ContainsKey(id);
         public static ItemDefinition Get(int id)=>all.TryGetValue(id,out var item)?item:default;
-        public static bool IsPick(int id)=>id==WoodPick||id==StonePick;
-        public static int ToolDrop(int block)=>block==3?2:block==5?Fiber:block==18?Planks:block;
+        public static bool IsPick(int id)=>id==WoodPick||id==StonePick||id==150||id==151;
+        public static int ToolDrop(int block)=>block==47?149:block==3?2:block==5?Fiber:block==18?Planks:block==19?147:block;
     }
     [Serializable] public sealed class Inventory
     {
         public const int SlotCount=45,HotbarCount=9;
+        public ItemStack offhand=new ItemStack();
         public ItemStack[] equipment=new ItemStack[Equipment.Count];
         public ItemStack[] grid=new ItemStack[9];public ItemStack cursor=new ItemStack();public FurnaceState furnace=new FurnaceState();
         public ItemStack[] slots=new ItemStack[SlotCount];public int selected;public int revision;
@@ -75,7 +81,7 @@ namespace LestingCraft.Gameplay
             {int amount=Math.Min(a.count,Items.Get(a.item).MaxStack-b.count);a.count-=amount;b.count+=amount;if(a.count==0){a.item=0;a.durability=0;}}
             else {slots[from]=b;slots[to]=a;}revision++;
         }
-        public Inventory Clone(){var n=new Inventory();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();for(int i=0;i<9;i++)n.grid[i]=grid[i].Clone();for(int i=0;i<Equipment.Count;i++)n.equipment[i]=equipment[i].Clone();n.cursor=cursor.Clone();n.furnace=furnace.Clone();n.selected=selected;n.revision=revision;return n;}
+        public Inventory Clone(){var n=new Inventory();n.offhand=offhand.Clone();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();for(int i=0;i<9;i++)n.grid[i]=grid[i].Clone();for(int i=0;i<Equipment.Count;i++)n.equipment[i]=equipment[i].Clone();n.cursor=cursor.Clone();n.furnace=furnace.Clone();n.selected=selected;n.revision=revision;return n;}
         public static ItemStack Clean(ItemStack s)
         {
             if(s==null||!Items.Exists(s.item)||s.count<=0)return new ItemStack();
@@ -88,6 +94,8 @@ namespace LestingCraft.Gameplay
             if(Items.Get(stack.item).MaxStack==1){for(int n=0;n<stack.count;n++){int free=Array.FindIndex(slots,s=>s.count==0);slots[free]=new ItemStack{item=stack.item,count=1,durability=stack.durability};}revision++;return true;}
             return Add(stack.item,stack.count);
         }
+        public bool ToggleOffhand()
+        {if(offhand.count>0){if(!AddStack(offhand))return false;offhand=new ItemStack();revision++;return true;}if(Active.item!=Items.Torch||Active.count<1)return false;offhand=new ItemStack{item=Items.Torch,count=1};Active.count--;if(Active.count==0){Active.item=0;Active.durability=0;}revision++;return true;}
         public int RecoverStacks(ItemStack[] remaining)
         {
             int recovered=0;if(remaining==null)return 0;
@@ -96,7 +104,7 @@ namespace LestingCraft.Gameplay
             return recovered;
         }
         public ItemStack[] ExtraStacks()
-        {var all=new ItemStack[13+Equipment.Count];for(int i=0;i<Equipment.Count;i++)all[13+i]=equipment[i].Clone();for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
+        {var all=new ItemStack[13+Equipment.Count+(offhand.count>0?1:0)];if(offhand.count>0)all[21]=offhand.Clone();for(int i=0;i<Equipment.Count;i++)all[13+i]=equipment[i].Clone();for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
         public void WearTool()
         {if(Active.count>0&&Items.Get(Active.item).Durability>0){Active.durability--;if(Active.durability<=0){Active.count=0;Active.item=0;Active.durability=0;}revision++;}}
         public void Normalize()
@@ -107,6 +115,7 @@ namespace LestingCraft.Gameplay
             if(equipment==null||equipment.Length!=Equipment.Count)equipment=new ItemStack[Equipment.Count];
             for(int i=0;i<Equipment.Count;i++){equipment[i]=Clean(equipment[i]);if(equipment[i].count>0&&!Equipment.Accept(i,equipment[i].item)){if(!AddStack(equipment[i]))throw new InvalidOperationException("Неверный слот экипировки: нет места для восстановления предмета");equipment[i]=new ItemStack();}}
             if(grid==null||grid.Length!=9)grid=new ItemStack[9];for(int i=0;i<9;i++)grid[i]=Clean(grid[i]);cursor=Clean(cursor);if(furnace==null)furnace=new FurnaceState();furnace.Normalize();
+            offhand=Clean(offhand);if(offhand.count>0&&(offhand.item!=Items.Torch||offhand.count!=1)){if(!AddStack(offhand))throw new InvalidOperationException("Неверная левая рука: нет места для восстановления");offhand=new ItemStack();}
             selected=Math.Max(0,Math.Min(8,selected));
         }
     }

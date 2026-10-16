@@ -63,7 +63,7 @@ namespace LestingCraft.Presentation
             var old=GameObject.Find("WorldAtmosphere");if(old)UnityEngine.Object.Destroy(old);
             var root=new GameObject("WorldAtmosphere");
             var sunlight=new GameObject("Sun");sunlight.transform.SetParent(root.transform);sunlight.transform.rotation=Quaternion.Euler(38,-32,0);
-            var light=sunlight.AddComponent<Light>();light.type=LightType.Directional;light.shadows=LightShadows.Soft;light.shadowStrength=.82f;light.shadowBias=.04f;light.shadowNormalBias=.25f;
+            var light=sunlight.AddComponent<Light>();light.type=LightType.Directional;light.shadows=LightShadows.Soft;light.shadowStrength=1;light.shadowBias=.04f;light.shadowNormalBias=.25f;
             RenderSettings.sun=light;RenderSettings.ambientMode=AmbientMode.Trilight;
             var sky=new Material(Resources.Load<Material>("Generated/Sky"));
             RenderSettings.skybox=sky;camera.clearFlags=CameraClearFlags.Skybox;

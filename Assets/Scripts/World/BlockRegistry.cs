@@ -49,6 +49,7 @@ namespace LestingCraft.World
 
         static BlockRegistry()
         {
+            foreach(var b in LestingCraft.Gameplay.ExpandedContent.Blocks)Register(new BlockDefinition((ushort)b.Id,b.Name,b.Hardness,true));
             Register(new BlockDefinition(AirId, "Air", 0f, isSolid: false));
             Register(new BlockDefinition(StoneId, "Stone", 1.5f, isSolid: true));
             Register(new BlockDefinition(DirtId, "Dirt", 0.5f, isSolid: true));
@@ -78,7 +79,7 @@ namespace LestingCraft.World
             return Blocks.TryGetValue(id, out var definition) ? definition : Blocks[AirId];
         }
 
-        public static bool Occludes(ushort id)=>id!=CampfireId&&id!=CrystalId&&IsSolid(id);
+        public static bool Occludes(ushort id)=>id!=CampfireId&&id!=CrystalId&&id!=44&&IsSolid(id);
 
         public static bool IsSolid(ushort id)
         {

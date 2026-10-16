@@ -1,3 +1,4 @@
+using System.IO;using System.IO.Compression;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -15,7 +16,8 @@ namespace LestingCraft.Presentation
         {
             if(definitions!=null)return;
             var data=Resources.Load<TextAsset>("Models/VoxelItems");if(!data)throw new InvalidOperationException("Voxel object catalog missing");
-            catalog=JsonUtility.FromJson<Catalog>(data.text);definitions=new Dictionary<int,Definition>();foreach(var model in catalog.models)definitions.Add(model.id,model);
+            string json;using(var input=new MemoryStream(data.bytes))using(var gzip=new GZipStream(input,CompressionMode.Decompress))using(var reader=new StreamReader(gzip))json=reader.ReadToEnd();
+            catalog=JsonUtility.FromJson<Catalog>(json);definitions=new Dictionary<int,Definition>();foreach(var model in catalog.models)definitions.Add(model.id,model);
         }
         sealed class Occupancy
         {public readonly HashSet<Vector3Int> Cells=new HashSet<Vector3Int>();public Vector3 Center;public float Unit;}

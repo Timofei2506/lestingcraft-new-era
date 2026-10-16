@@ -1,9 +1,9 @@
 name: Crafting core
 on:
   push:
-    paths: ["Assets/Scripts/Gameplay/**", "Tools/check_crafting_core.cs", ".github/workflows/core.yml"]
+    paths: ["Assets/Scripts/Gameplay/**", "Tools/check_crafting_core.cs", "Tools/check_expanded_core.cs", "Tools/check_skylight_core.cs", "Tools/check_nature_render.py", "Assets/Scripts/World/**", "Assets/Shaders/**", "Assets/Resources/*.shader", "Assets/Resources/GeneratedLeafOpacity.png", "Tools/check_art.py", "Tools/build_animal_materials.py", "Tools/check_content.py", "Assets/Art/PBR/**", "Assets/Resources/Models/**", "Assets/Resources/VoxelIcons/**", ".github/workflows/core.yml"]
   pull_request:
-    paths: ["Assets/Scripts/Gameplay/**", "Tools/check_crafting_core.cs", ".github/workflows/core.yml"]
+    paths: ["Assets/Scripts/Gameplay/**", "Tools/check_crafting_core.cs", "Tools/check_expanded_core.cs", "Tools/check_skylight_core.cs", "Tools/check_nature_render.py", "Assets/Scripts/World/**", "Assets/Shaders/**", "Assets/Resources/*.shader", "Assets/Resources/GeneratedLeafOpacity.png", "Tools/check_art.py", "Tools/build_animal_materials.py", "Tools/check_content.py", "Assets/Art/PBR/**", "Assets/Resources/Models/**", "Assets/Resources/VoxelIcons/**", ".github/workflows/core.yml"]
 jobs:
   conservation:
     runs-on: ubuntu-22.04
@@ -13,5 +13,18 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq mono-mcs
       - name: Compile real gameplay core and fuzz inventory transfers
         run: |
-          mcs -langversion:7.2 -out:/tmp/crafting-check.exe Assets/Scripts/Gameplay/Equipment.cs Assets/Scripts/Gameplay/Inventory.cs Assets/Scripts/Gameplay/CraftingTable.cs Assets/Scripts/Gameplay/FurnaceState.cs Tools/check_crafting_core.cs
+          mcs -langversion:7.2 -out:/tmp/crafting-check.exe Assets/Scripts/Gameplay/ExpandedContent.cs Assets/Scripts/Gameplay/Equipment.cs Assets/Scripts/Gameplay/Inventory.cs Assets/Scripts/Gameplay/CraftingTable.cs Assets/Scripts/Gameplay/FurnaceState.cs Tools/check_crafting_core.cs
           mono /tmp/crafting-check.exe
+          mcs -langversion:7.2 -out:/tmp/expanded-check.exe Assets/Scripts/Gameplay/ExpandedContent.cs Assets/Scripts/Gameplay/Equipment.cs Assets/Scripts/Gameplay/Inventory.cs Assets/Scripts/Gameplay/CraftingTable.cs Assets/Scripts/Gameplay/FurnaceState.cs Assets/Scripts/Gameplay/WildlifeSimulation.cs Tools/check_expanded_core.cs
+          mono /tmp/expanded-check.exe
+          mcs -langversion:7.2 -out:/tmp/skylight-check.exe Assets/Scripts/Gameplay/ExpandedContent.cs Assets/Scripts/World/BlockRegistry.cs Assets/Scripts/World/ChunkData.cs Assets/Scripts/World/VoxelSkylight.cs Tools/check_skylight_core.cs
+          mono /tmp/skylight-check.exe
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate complete material / block / icon catalog
+        run: |
+          python -m pip install --quiet Pillow numpy
+          python Tools/check_art.py
+          python Tools/check_content.py
+          python Tools/check_nature_render.py

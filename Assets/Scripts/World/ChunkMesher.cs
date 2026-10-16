@@ -14,6 +14,7 @@ namespace LestingCraft.World
         public readonly List<Vector4> Tangents = new List<Vector4>();
         public readonly List<int> OpaqueTriangles = new List<int>();
         public readonly List<int> WaterTriangles = new List<int>();
+        public readonly List<int> TransparentTriangles=new List<int>();
         public readonly List<int> DetailTriangles = new List<int>();
         public readonly List<Color32> Colors = new List<Color32>();
         public readonly List<int> Triangles = new List<int>();
@@ -26,7 +27,7 @@ namespace LestingCraft.World
             if(collision)mesh.SetTriangles(ColliderTriangles,0);
             else
             {
-                mesh.subMeshCount=3;mesh.SetTriangles(OpaqueTriangles,0);mesh.SetTriangles(WaterTriangles,1);mesh.SetTriangles(DetailTriangles,2);
+                mesh.subMeshCount=4;mesh.SetTriangles(TransparentTriangles,3);mesh.SetTriangles(OpaqueTriangles,0);mesh.SetTriangles(WaterTriangles,1);mesh.SetTriangles(DetailTriangles,2);
                 mesh.SetNormals(Normals);mesh.SetColors(Colors);mesh.SetUVs(0,UVs);mesh.SetTangents(Tangents);
             }
             mesh.RecalculateBounds();if(!collision&&(DetailTriangles.Count>0||WaterTriangles.Count>0)){var bounds=mesh.bounds;bounds.Expand(.4f);mesh.bounds=bounds;}return mesh;
@@ -60,7 +61,7 @@ namespace LestingCraft.World
             }
         }
         // Visible unit faces, not greedy yet. Neighbor sampling prevents seams at chunk boundaries.
-        public static ChunkMeshData Build(ChunkData chunk, int ox, int oz, Func<int,int,int,ushort> neighbor,int seed=0,bool decorate=false,int detailQuality=0)
+        public static ChunkMeshData Build(ChunkData chunk, int ox, int oz, Func<int,int,int,ushort> neighbor,int seed=0,bool decorate=false,int detailQuality=0,Func<int,int,int,byte> skylight=null,Func<int,int,int,float> fluidHeight=null)
         {
             var data = new ChunkMeshData();
             var grassCells=decorate?new List<Vector3Int>():null;
@@ -72,7 +73,8 @@ namespace LestingCraft.World
                 {
                     var dir=Directions[face]; int nx=x+dir.x,ny=y+dir.y,nz=z+dir.z;
                     ushort other=ChunkData.InBounds(nx,ny,nz)?chunk.GetBlock(nx,ny,nz):neighbor(ox+nx,ny,oz+nz);
-                    if(BlockRegistry.Occludes(other)||(!solid&&other==id))continue;
+                    bool liquid=id==7||id==8;float ownHeight=liquid&&fluidHeight!=null?fluidHeight(ox+x,y,oz+z):1;float adjacentHeight=liquid&&other==id&&fluidHeight!=null?fluidHeight(ox+nx,ny,oz+nz):1;
+                    if((BlockRegistry.Occludes(other)&&other!=5)||((!solid||id==44||id==5)&&other==id&&(!liquid||face==2||face==3||ownHeight<=adjacentHeight)))continue;
                     int start=data.Vertices.Count;
                     Vector3 u=Corners[face][3]-Corners[face][0],v=Corners[face][1]-Corners[face][0];
                     int layer=SurfaceLayers.ForCellFace(id,face,ox+x,y,oz+z,seed);
@@ -85,13 +87,13 @@ namespace LestingCraft.World
                         int corner=Solid(chunk,ox,oz,nx+su.x+sv.x,ny+su.y+sv.y,nz+su.z+sv.z,neighbor);
                         int ao=sideA==1&&sideB==1?3:sideA+sideB+corner;
                         byte shade=(byte)(255-ao*30);
-                        var cornerPosition=Corners[face][c];if(id==15)cornerPosition.y*=.34f;
+                        var cornerPosition=Corners[face][c];if((id==7||id==8)&&fluidHeight!=null&&neighbor(ox+x,y+1,oz+z)!=id)cornerPosition.y=other==id&&face!=2&&face!=3?Mathf.Lerp(adjacentHeight,ownHeight,cornerPosition.y):cornerPosition.y*ownHeight;if(id==15)cornerPosition.y*=.34f;
                         data.Vertices.Add(new Vector3(x,y,z)+cornerPosition);data.Normals.Add(dir);
-                        data.Colors.Add(new Color32(shade,shade,shade,255));data.UVs.Add(new Vector3(ux,vy,layer));
+                        data.Colors.Add(new Color32(shade,(byte)((skylight!=null?skylight(ox+nx,ny,oz+nz):15)*17),shade,255));data.UVs.Add(new Vector3(ux,vy,layer));
                         data.Tangents.Add(new Vector4(u.x,u.y,u.z,-1));
                     }
                     AddFace(data.Triangles,start);
-                    if(id!=15)AddFace(id==BlockRegistry.WaterId?data.WaterTriangles:data.OpaqueTriangles,start);
+                    if(id!=15)AddFace(id==44?data.TransparentTriangles:id==BlockRegistry.WaterId?data.WaterTriangles:data.OpaqueTriangles,start);
                     if(solid)AddFace(data.ColliderTriangles,start);
                     if(decorate&&id==BlockRegistry.GrassId&&face==2&&other==0)
                         grassCells.Add(new Vector3Int(x,y,z));

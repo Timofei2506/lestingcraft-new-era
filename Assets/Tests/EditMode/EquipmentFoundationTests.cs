@@ -34,7 +34,7 @@ namespace LestingCraft.Tests
   [Test] public void CoopSaveCommandDoesNotSendRateLimitedStatePackets()
   {var inv=new Inventory();Assert.AreEqual("",ChatCommands.Execute("/save",false,false,inv,0,Vector3.zero,2).Action);Assert.AreEqual("save",ChatCommands.Execute("/save",false,true,inv,0,Vector3.zero,1).Action);}
   [Test] public void OldRoomsRequireAnEquipmentCapableServerBeforeMigration()
-  {Assert.IsTrue(GameRules.AcceptsRoom(4,4));Assert.IsTrue(GameRules.AcceptsRoom(3,4));Assert.IsFalse(GameRules.AcceptsRoom(3,3));Assert.IsFalse(GameRules.AcceptsRoom(3,0));Assert.IsFalse(GameRules.AcceptsRoom(2,4));}
+  {Assert.IsTrue(GameRules.AcceptsRoom(5,6));Assert.IsTrue(GameRules.AcceptsRoom(4,6));Assert.IsTrue(GameRules.AcceptsRoom(3,6));Assert.IsFalse(GameRules.AcceptsRoom(4,4));Assert.IsFalse(GameRules.AcceptsRoom(3,3));Assert.IsFalse(GameRules.AcceptsRoom(3,0));Assert.IsFalse(GameRules.AcceptsRoom(2,4));}
   [Test] public void MediumAndUltraAreExplicitAndNeverClaimUrpRayTracing()
   {var s=new VisualSettings();Assert.AreEqual(0,s.Preset);s.ShadowResolution=4096;s.VolumetricQuality=2;s.RenderScale=1.5f;s.Clamp();Assert.AreEqual(4096,s.ShadowResolution);Assert.AreEqual(2,s.VolumetricQuality);Assert.AreEqual(1.5f,s.RenderScale);Assert.IsFalse(VisualSettings.PipelineRayTracing);}
  }

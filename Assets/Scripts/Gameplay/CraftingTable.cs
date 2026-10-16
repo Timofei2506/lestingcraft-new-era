@@ -21,7 +21,24 @@ namespace LestingCraft.Gameplay
             new GridRecipe(16,1,2,120,120,120,120),new GridRecipe(17,1,3,1,1,1,1,0,1,1,1,1),
             new GridRecipe(114,1,3,113,113,113),
             new GridRecipe(130,1,3,122,122,122,122,0,122),new GridRecipe(131,1,3,122,122,122,122,0,122,122,0,122),new GridRecipe(132,1,3,122,0,122,122,0,122),
-            new GridRecipe(105,1,3,13,13,13,13,0,13),new GridRecipe(106,1,3,13,0,13,13,13,13,13,13,13),new GridRecipe(107,1,3,13,13,13,13,0,13,13,0,13),new GridRecipe(108,1,3,13,0,13,13,0,13)
+            new GridRecipe(105,1,3,13,13,13,13,0,13),new GridRecipe(106,1,3,13,0,13,13,13,13,13,13,13),new GridRecipe(107,1,3,13,13,13,13,0,13,13,0,13),new GridRecipe(108,1,3,13,0,13,13,0,13),
+new GridRecipe(36,1,1,1),
+new GridRecipe(37,4,2,36,36,36,36),
+new GridRecipe(38,1,1,37),
+new GridRecipe(35,1,2,1,122),
+new GridRecipe(40,4,2,1,1,1,1),
+new GridRecipe(41,4,2,27,27,27,27),
+new GridRecipe(42,4,2,30,30,30,30),
+new GridRecipe(43,4,2,6,6,6,6),
+new GridRecipe(45,1,3,147,147,147,147,147,147,147,147,147),
+new GridRecipe(147,9,1,45),
+new GridRecipe(46,1,3,141,141,141,141,141,141,141,141,141),
+new GridRecipe(141,9,1,46),
+new GridRecipe(139,2,2,136,4,136,4),
+new GridRecipe(132,1,3,139,0,139,139,0,139),
+            new GridRecipe(105,1,3,140,140,140,140,0,140),new GridRecipe(106,1,3,140,0,140,140,140,140,140,140,140),new GridRecipe(107,1,3,140,140,140,140,0,140,140,0,140),new GridRecipe(108,1,3,140,0,140,140,0,140),
+            new GridRecipe(11,1,3,0,145,0,145,143,145,0,145,0),new GridRecipe(15,1,3,0,146,0,147,4,147,4,4,4),new GridRecipe(148,4,1,123,121),
+new GridRecipe(150,1,3,140,140,140,0,121,0,0,121,0),new GridRecipe(151,1,3,149,149,149,0,121,0,0,121,0),new GridRecipe(48,1,3,149,149,149,149,149,149,149,149,149),new GridRecipe(149,9,1,48),new GridRecipe(164,1,3,0,121,122,121,0,122,0,121,122),new GridRecipe(165,4,1,1,121,122),new GridRecipe(152,1,1,140,140,121),new GridRecipe(153,1,1,149,149,121),new GridRecipe(154,1,2,140,0,121,122),new GridRecipe(155,1,2,149,0,121,122),new GridRecipe(156,1,3,0,0,140,0,121,0,121,0,0),new GridRecipe(157,1,3,0,0,149,0,121,0,121,0,0),new GridRecipe(158,1,2,140,140,140,121,0,121),new GridRecipe(159,1,2,149,149,149,121,0,121),new GridRecipe(160,1,3,140,140,140,140,121,140,0,121,0),new GridRecipe(161,1,3,149,149,149,149,121,149,0,121,0),new GridRecipe(162,1,3,0,140,0,140,140,140,0,121,0),new GridRecipe(163,1,3,0,149,0,149,149,149,0,121,0)
         };
         public static GridRecipe Match(ItemStack[] grid,int size)
         {
@@ -76,13 +93,13 @@ namespace LestingCraft.Gameplay
     public static class InventoryInteraction
     {
         // 0..44 bag; 45..53 crafting; 54 input, 55 fuel, 56 output.
-        public static ItemStack Get(Inventory inv,int slot)=>slot>=58&&slot<66?inv.equipment[slot-58]:slot<45?inv.slots[slot]:slot<54?inv.grid[slot-45]:slot==54?inv.furnace.input:slot==55?inv.furnace.fuel:inv.furnace.output;
+        public static ItemStack Get(Inventory inv,int slot)=>slot==66?inv.offhand:slot>=58&&slot<66?inv.equipment[slot-58]:slot<45?inv.slots[slot]:slot<54?inv.grid[slot-45]:slot==54?inv.furnace.input:slot==55?inv.furnace.fuel:inv.furnace.output;
         static void Set(Inventory inv,int slot,ItemStack s)
-        {if(slot>=58&&slot<66)inv.equipment[slot-58]=s;else if(slot<45)inv.slots[slot]=s;else if(slot<54)inv.grid[slot-45]=s;else if(slot==54)inv.furnace.input=s;else if(slot==55)inv.furnace.fuel=s;else inv.furnace.output=s;}
-        static bool Accept(int slot,int item)=>slot>=58?Equipment.Accept(slot-58,item):slot!=56&&(slot!=54||FurnaceState.Result(item)>0)&&(slot!=55||FurnaceState.FuelSeconds(item)>0);
+        {if(slot==66)inv.offhand=s;else if(slot>=58&&slot<66)inv.equipment[slot-58]=s;else if(slot<45)inv.slots[slot]=s;else if(slot<54)inv.grid[slot-45]=s;else if(slot==54)inv.furnace.input=s;else if(slot==55)inv.furnace.fuel=s;else inv.furnace.output=s;}
+        static bool Accept(int slot,int item)=>slot==66?item==Items.Torch:slot>=58?Equipment.Accept(slot-58,item):slot!=56&&(slot!=54||FurnaceState.Result(item)>0)&&(slot!=55||FurnaceState.FuelSeconds(item)>0);
         public static void Click(Inventory inv,int slot,bool right,bool shift)
         {
-            if(slot<0||slot==57||slot>65)return;var a=Get(inv,slot);var held=inv.cursor;
+            if(slot<0||slot==57||slot>66)return;var a=Get(inv,slot);var held=inv.cursor;
             if(shift)
             {
                 if(a.count==0)return;
@@ -113,7 +130,7 @@ namespace LestingCraft.Gameplay
                 if(!Accept(slot,held.item))return;
                 if(a.count==0||a.item==held.item&&Items.Get(a.item).MaxStack>1)
                 {
-                    int amount=Math.Min(right?1:held.count,Items.Get(held.item).MaxStack-a.count);if(amount<=0)return;
+                    int amount=Math.Min(right?1:held.count,(slot==66?1:Items.Get(held.item).MaxStack)-a.count);if(amount<=0)return;
                     if(a.count==0){a.item=held.item;a.durability=held.durability;}a.count+=amount;held.count-=amount;if(held.count==0)inv.cursor=new ItemStack();
                 }
                 else if(!right){Set(inv,slot,held);inv.cursor=a;}
