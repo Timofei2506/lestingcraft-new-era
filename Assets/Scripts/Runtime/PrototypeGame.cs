@@ -73,7 +73,7 @@ namespace LestingCraft.Runtime
         public bool InventoryOpen=>ui&&ui.InventoryOpen;
         public bool TradeOpen=>ui&&ui.TradeOpen;
         public bool EditingText=>ui&&ui.EditingText;
-        public void OpenTrade(string actor){if(!Session||StoryLocked||Session.Vitals.dead||!Session.Living.TryTrader(actor,out var trader))return;paused=true;SetCursor(false);ui.ShowTrade(actor);}
+        public void OpenTrade(string actor){if(!Session||StoryLocked||Session.Vitals.dead||!Session.Living.TryTrader(actor,out var trader))return;Session.Notice="";Session.Living.Hint="";paused=true;SetCursor(false);ui.ShowTrade(actor);}
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
         long revision; float lastPosition,previousYaw,lastHeartbeat;Vector3 previousPosition;bool sentPosition;int previousEquipment;
@@ -118,7 +118,7 @@ namespace LestingCraft.Runtime
         public void SendSave(PlayerSave save,bool force=false){if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save,force=force});}
         public void CreateRoom(){if(!busy)StartCoroutine(CreateRoomRoutine());}
         public void JoinRoom(){if(!busy)JoinRoomInternal();}
-        public void Resume(){if(!world||Session&&(Session.Vitals.dead||Session.Data.campaign.runEnded))return;paused=false;SetCursor(true);ui.ShowHUD();}
+        public void Resume(){if(!world||Session&&(Session.Vitals.dead||Session.Data.campaign.runEnded))return;if(Session&&Session.Living)Session.Living.Hint="";paused=false;SetCursor(true);ui.ShowHUD();}
         public void ReturnToMenu(){if(!leaving)StartCoroutine(LeaveAfterCheckpoint());}
         IEnumerator LeaveAfterCheckpoint()
         {

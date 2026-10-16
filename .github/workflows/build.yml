@@ -143,7 +143,7 @@ jobs:
           $args = @("-force-d3d11", "-force-driver-type-warp", "-screen-fullscreen", "0", "-screen-width", "1280", "-screen-height", "720", "-lc-smoke-test", "-logFile", $log)
           $process = Start-Process -FilePath $exe -ArgumentList $args -PassThru
           $null = $process.Handle
-          if (-not $process.WaitForExit(900000)) {
+          if (-not $process.WaitForExit(1200000)) {
             Stop-Process -Id $process.Id -Force
             if (Test-Path $log) { Get-Content $log -Tail 100 }
             throw "Windows smoke test timed out"

@@ -71,8 +71,9 @@ namespace LestingCraft.Presentation
    if(page!=Page.Trade||!tradeSummary||!game.Session)return;var living=game.Session.Living;
    if(!living.TryTrader(traderId,out var actor)){tradeSummary.text="Житель отошёл слишком далеко или недоступен";tradeButton.interactable=false;return;}
    var offer=TradeOffer.ForJob(actor.job);int have=game.Session.Inventory.Count(offer.Input);bool pending=living.Pending;
-   tradeButton.interactable=!pending&&TradeOffer.CanTrade(game.Session.Inventory,offer);
-   tradeSummary.text=pending?"Ожидаем подтверждение сервера…":"У вас: "+have+" / "+offer.InputCount+" · "+(string.IsNullOrEmpty(game.Session.Notice)?"Можно обменять несколько раз":game.Session.Notice);
+   bool available=TradeOffer.CanTrade(game.Session.Inventory,offer);tradeButton.interactable=!pending&&available;
+   string availability=available?"Обмен доступен":have<offer.InputCount?"Не хватает ресурсов":"Нет места для результата";
+   tradeSummary.text=pending?"Ожидаем подтверждение сервера…":"У вас: "+have+" / "+offer.InputCount+" · "+availability+(string.IsNullOrEmpty(game.Session.Notice)?"":"\n"+game.Session.Notice);
   }
   void UpdateUsability()
   {

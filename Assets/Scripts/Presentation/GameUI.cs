@@ -299,7 +299,7 @@ namespace LestingCraft.Presentation
                 int row=0;foreach(int id in ItemArtwork.AllIds)
                 {int output=FurnaceState.Result(id);if(output<=0)continue;
                  var entry=Box(list,0,row*67,298,62,Panel);Icon(entry.transform,id,3,6,46);Label(entry.transform,"→",50,15,30,40,20,Accent);Icon(entry.transform,output,78,6,46);
-                 Label(entry.transform,Items.Get(output).Name+"\n"+FurnaceState.CookSeconds+" с",135,7,158,54,17,White);row++;}
+                 Label(entry.transform,Items.Get(output).Name,135,4,158,32,16,White);Label(entry.transform,FurnaceState.CookSeconds+" с",135,34,158,24,15,Muted);row++;}
                 list.sizeDelta=new Vector2(304,row*67);
             }
             else

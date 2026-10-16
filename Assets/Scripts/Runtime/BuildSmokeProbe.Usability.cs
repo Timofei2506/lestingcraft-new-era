@@ -17,13 +17,16 @@ namespace LestingCraft.Runtime
    yield return null;yield return null;yield return new WaitForEndOfFrame();string path=Path.GetFullPath(Path.Combine(folder,name));ScreenCapture.CaptureScreenshot(path);yield return WaitForScreenshot(path);
    if(!ScreenshotReady(path)||!ScreenshotHasDetail(path)){Fail("Usability screenshot missing/empty: "+name);yield break;}
   }
+  static bool BiomeRingLoaded(VoxelWorld world,Vector3 point){int radius=VisualSettings.Current.ViewDistance;for(int z=-radius;z<=radius;z++)for(int x=-radius;x<=radius;x++)if(!world.Loaded(point+new Vector3(x*16,0,z*16)))return false;return true;}
   IEnumerator ProbeUsability(PrototypeGame game,GameUI ui,string folder)
   {
    var s=game.Session;var player=s.Player;var world=s.World;var camera=Camera.main;Vector3 originalPosition=camera.transform.position;Quaternion originalRotation=camera.transform.rotation;
    var glass=Resources.Load<Material>("Generated/Glass");if(glass.GetFloat("_Density")<.12f||glass.GetFloat("_GlassEdge")<.3f){Fail("Glass surface/edge visibility settings missing");yield break;}
    var oren=GameObject.Find("Орен");var marta=GameObject.Find("Марта");
    if(!oren||!marta||Quaternion.Angle(oren.transform.rotation,marta.transform.rotation)<30||Vector3.Distance(oren.transform.localScale,marta.transform.localScale)<.08f||!oren.transform.Find("Oren short angular beard")||!marta.transform.Find("Marta hair crown")){Fail("Opening witnesses still share an identical silhouette/pose");yield break;}
-   camera.transform.position=new Vector3(-32,LestingCraft.Story.StoryWorld.Floor(world.Seed)+3.5f,-29);camera.transform.LookAt((oren.transform.position+marta.transform.position)*.5f+Vector3.up*.15f);
+   camera.transform.position=new Vector3(-33,LestingCraft.Story.StoryWorld.Floor(world.Seed)+4.3f,-28.7f);camera.transform.LookAt((oren.transform.position+marta.transform.position)*.5f+new Vector3(-.1f,.1f,.1f));
+   yield return null;
+   foreach(var witness in new[]{oren,marta})foreach(string part in new[]{"Block torso","Cubical head"}){var mesh=witness.transform.Find(part).GetComponent<MeshRenderer>();Vector3 point=mesh.bounds.center,delta=point-camera.transform.position;Vector3 projected=camera.WorldToViewportPoint(point);Debug.Log("[Smoke] WITNESS_VISIBILITY "+witness.name+" / "+part+" center="+point+" viewport="+projected+" solid="+world.GetBlock(Mathf.FloorToInt(point.x),Mathf.FloorToInt(point.y),Mathf.FloorToInt(point.z)));if(!mesh.enabled||!mesh.gameObject.activeInHierarchy||projected.z<=0||projected.x<.06f||projected.x>.94f||projected.y<.08f||projected.y>.9f||VoxelRaycast.Trace(camera.transform.position,delta.normalized,delta.magnitude-.15f,world.GetBlock,out _)){Fail("Opening witness body/head hidden behind level geometry: "+witness.name+" / "+part);yield break;}}
    yield return CaptureGameplay(folder,"opening-witnesses.png");if(finishing)yield break;camera.transform.SetPositionAndRotation(originalPosition,originalRotation);
    Debug.Log("[Smoke] DISTINCT_WITNESSES: different builds, front/back resting poses, individual hair/beard/skin/costumes; original blood/dialogue retained");
    // Explicit smoke fixture: real simulation actor + the same ray/GUI/transaction path as gameplay.
@@ -59,12 +62,12 @@ namespace LestingCraft.Runtime
    // Visit one actual generated exterior; deterministic six-biome and legacy parity are also tested in managed/Node suites.
    Vector3 biomePoint=Vector3.zero;bool found=false;
    for(int radius=192;radius<=896&&!found;radius+=64)for(int z=-radius;z<=radius&&!found;z+=32)for(int side=-1;side<=1;side+=2)
-   {int x=side*radius,h=TerrainGenerator.Height(x,z,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x,z,world.Seed)!=BiomeKind.Dunes||h<44||h>60||ExpeditionGenerator.At(x,z,world.Seed).Surface||TerrainGenerator.SampleContent(x,h,z,world.Seed,Dimension.Lestingia,7)!=6)continue;biomePoint=new Vector3(x+.5f,h+4,z+.5f);found=true;break;}
+   {int x=side*radius,h=TerrainGenerator.Height(x,z,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x,z,world.Seed)!=BiomeKind.Dunes||h<44||h>60||ExpeditionGenerator.At(x,z,world.Seed).Surface||TerrainGenerator.SampleContent(x,h,z,world.Seed,Dimension.Lestingia,7)!=6)continue;int good=0;for(int dz=-24;dz<=24;dz+=24)for(int dx=-24;dx<=24;dx+=24){int nh=TerrainGenerator.Height(x+dx,z+dz,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x+dx,z+dz,world.Seed)==BiomeKind.Dunes&&nh>=44&&nh<=62)good++;}if(good<8)continue;biomePoint=new Vector3(x+.5f,h+4,z+.5f);found=true;break;}
    if(!found){Fail("No new dune biome found for native exterior validation");yield break;}
-   s.Data.mode=2;player.TeleportTo(biomePoint);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.transform.localRotation=Quaternion.Euler(22,15,0);
-   float deadline=Time.realtimeSinceStartup+180;
-   while((!world.Loaded(biomePoint)||!world.Loaded(biomePoint+new Vector3(32,0,32))||!world.Loaded(biomePoint-new Vector3(32,0,32)))&&Time.realtimeSinceStartup<deadline)yield return null;
-   if(!world.Loaded(biomePoint+new Vector3(32,0,32))||world.GetBlock(Mathf.FloorToInt(biomePoint.x),Mathf.FloorToInt(biomePoint.y)-4,Mathf.FloorToInt(biomePoint.z))!=6){Fail("New biome did not stream matching native terrain");yield break;}
+   s.Data.mode=2;player.TeleportTo(biomePoint);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.transform.localRotation=Quaternion.Euler(35,15,0);
+   float deadline=Time.realtimeSinceStartup+420;
+   while(!BiomeRingLoaded(world,biomePoint)&&Time.realtimeSinceStartup<deadline)yield return null;
+   if(!BiomeRingLoaded(world,biomePoint)||world.GetBlock(Mathf.FloorToInt(biomePoint.x),Mathf.FloorToInt(biomePoint.y)-4,Mathf.FloorToInt(biomePoint.z))!=6){Fail("New biome did not stream matching native terrain");yield break;}
    yield return CaptureGameplay(folder,"biome-dunes.png");if(finishing)yield break;s.Data.mode=previousMode;
    Debug.Log("[Smoke] BIOMES7: actual generated dune exterior streamed/rendered; six region types in content7 only; legacy1..6 samplers retained");
   }
