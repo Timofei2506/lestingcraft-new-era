@@ -235,7 +235,7 @@ namespace LestingCraft.Presentation
             inventoryViews.Clear();craftRevision=-1;
             if(!game.Session)return;
             for(int i=0;i<Equipment.Count;i++)
-            {float x=32+i*96;Label(content.transform,Equipment.Names[i],x,145,90,45,16,Muted);CreateCell(58+i,x,197,62,62);}
+            {float x=32+i*96;Label(content.transform,i==7?"Броне-\nсапоги":Equipment.Names[i],x,145,90,49,16,Muted);CreateCell(58+i,x,197,62,62);}
             Label(content.transform,"Левая рука · G",800,145,100,45,16,Muted);CreateCell(66,800,197,62,62);
             equipmentStatus=Label(content.transform,"",936,144,166,135,18,White);equipmentStatus.name="Equipment summary";
             var portrait=Rect("3D equipped character",content.transform,1124,130,120,180).gameObject.AddComponent<RawImage>();portrait.raycastTarget=false;portrait.gameObject.AddComponent<CharacterPreview>().Initialize(game);
@@ -260,7 +260,7 @@ namespace LestingCraft.Presentation
                 var result=Button("",843,429,73,73,()=>{});result.name="Craft.Result";
                 var click=result.gameObject.AddComponent<InventorySlot>();click.Owner=this;click.Index=57;
                 craftOutput=Rect("Recipe output icon",result.transform,7,3,59,53).gameObject.AddComponent<RawImage>();craftOutput.raycastTarget=false;
-                craftCount=Label(result.transform,"",7,52,59,21,15,White,false,TextAnchor.MiddleRight);AttachHover(result.gameObject,0);
+                craftCount=Label(result.transform,"",7,46,59,29,15,White,false,TextAnchor.MiddleRight);AttachHover(result.gameObject,0);
                 Button("Вернуть материалы",588,612,328,50,()=>{if(game.Session.CanInteract){game.Session.Notice=CraftingTable.ReturnGrid(game.Session.Inventory)?"Материалы возвращены":"Недостаточно места — сетка сохранена";RefreshCraftInventory();}});
                 Label(content.transform,"Книга выкладывает рецепт.\nРезультат забирается вручную.\nShift-клик — изготовить максимум.\nСетка и предмет на курсоре сохраняются.",588,689,328,110,17,Muted);
             }
@@ -269,7 +269,7 @@ namespace LestingCraft.Presentation
             Button("←  В мир",32,824,190,55,game.ToggleInventory,true);
             cursorRoot=Rect("Carried inventory stack",content.transform,0,0,64,77);
             cursorImage=cursorRoot.gameObject.AddComponent<RawImage>();cursorImage.raycastTarget=false;
-            cursorCount=Label(cursorRoot,"",0,57,62,20,15,White,false,TextAnchor.MiddleRight);
+            cursorCount=Label(cursorRoot,"",0,50,62,29,15,White,false,TextAnchor.MiddleRight);
             RefreshCraftInventory();
         }
         void CreateCell(int index,float x,float y,float w,float h)
@@ -277,7 +277,7 @@ namespace LestingCraft.Presentation
             var button=Button("",x,y,w,h,()=>{});button.name="Inventory.Slot."+index;
             var click=button.gameObject.AddComponent<InventorySlot>();click.Owner=this;click.Index=index;
             AttachHover(button.gameObject,0);var icon=Rect("Stack icon",button.transform,7,3,w-14,h-20).gameObject.AddComponent<RawImage>();icon.raycastTarget=false;
-            var count=Label(button.transform,"",5,h-23,w-10,21,15,White,false,TextAnchor.MiddleRight);
+            var count=Label(button.transform,"",3,h-30,w-6,29,15,White,false,TextAnchor.MiddleRight);
             var wear=Box(button.transform,4,h-5,w-8,3,Accent,false);wear.gameObject.name="Equipment durability "+index;
             inventoryViews.Add(new CellView{Index=index,Icon=icon,Count=count,Hover=button.GetComponent<ItemHover>(),Wear=wear,WearWidth=w-8});
             if(index<9)Label(button.transform,(index+1).ToString(),5,3,17,17,10,Accent);
@@ -354,7 +354,7 @@ namespace LestingCraft.Presentation
             if(item<=0||!frame)return;
             if(!tooltip)
             {
-                var panel=Box(frame,0,0,400,144,new Color(.025f,.045f,.05f,.98f));tooltip=panel.rectTransform;
+                var panel=Box(frame,0,0,400,144,new Color(.025f,.045f,.05f,1f),false);tooltip=panel.rectTransform;
                 tooltip.name="Item name tooltip";tooltipText=Label(tooltip,"",18,7,364,130,18,White,false,TextAnchor.MiddleLeft);
             }
             var definition=Items.Get(item);tooltipText.text=definition.Name;

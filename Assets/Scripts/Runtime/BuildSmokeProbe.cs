@@ -144,6 +144,7 @@ namespace LestingCraft.Runtime
             game.ToggleInventory();yield return null;yield return null;
             if(!ui.InventoryRectsDoNotOverlap(out var layoutReason)||ui.InventoryTextPixelSize<13.5f)
             {Fail("Unreadable/overlapping inventory: "+layoutReason+"; text="+ui.InventoryTextPixelSize);yield break;}
+            foreach(var label in ui.GetComponentsInChildren<Text>())if(label.transform.parent.name.StartsWith("Inventory.Slot.")&&!string.IsNullOrEmpty(label.text)&&label.fontSize>=15&&label.cachedTextGenerator.vertexCount<=0){Fail("Inventory stack/durability text was truncated: "+label.transform.parent.name);yield break;}
             Debug.Log("[Smoke] READABLE_UI: 1280 design, primary text="+ui.InventoryTextPixelSize+" real pixels; cells in-frame, no cell/portrait overlap");
             foreach(int gear in new[]{104,105,106,107,108,130,131,132})
             {var bag=game.Session.Inventory;bag.Add(gear,1);int index=Array.FindIndex(bag.slots,s=>s.item==gear&&s.count>0);ui.InventoryClick(index,false,true);if(bag.equipment[Equipment.Slot(gear)].item!=gear){Fail("Native shift-equip failed: "+gear);yield break;}}
@@ -160,6 +161,7 @@ namespace LestingCraft.Runtime
             ExecuteEvents.Execute(item.gameObject,new PointerEventData(EventSystem.current){position=point},ExecuteEvents.pointerEnterHandler);
             var tooltip=GameObject.Find("Item name tooltip");
             if(!tooltip||!tooltip.GetComponentInChildren<Text>().text.StartsWith(Items.Get(item.Item).Name)){Fail("Item tooltip did not show its name.");yield break;}
+            yield return null;yield return null;
             string inventoryshot=Path.GetFullPath(Path.Combine(folder,"inventory-tooltip.png"));
             yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(inventoryshot);
             yield return WaitForScreenshot(inventoryshot);
@@ -209,6 +211,7 @@ namespace LestingCraft.Runtime
             Debug.Log("[Smoke] FURNACE_COOKED: "+CookingState(game,ui,cookingStartSimulation,cookingStartWall));
             yield return new WaitForEndOfFrame();
             if(!ui.InventoryRectsDoNotOverlap(out var furnaceLayout)){Fail("Furnace layout: "+furnaceLayout);yield break;}
+            yield return null;yield return null;
             string furnaceShot=Path.GetFullPath(Path.Combine(folder,"furnace-cooking.png"));ScreenCapture.CaptureScreenshot(furnaceShot);yield return WaitForScreenshot(furnaceShot);
             if(!ScreenshotReady(furnaceShot)||!ScreenshotHasDetail(furnaceShot)||failure!=null){Fail("Furnace screenshot/runtime errors: "+failure);yield break;}
             Debug.Log("[Smoke] CRAFTING_SCREENSHOTS: "+craftShot+" / "+furnaceShot);
