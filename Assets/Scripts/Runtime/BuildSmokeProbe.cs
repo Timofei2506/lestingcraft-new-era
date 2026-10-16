@@ -54,6 +54,7 @@ namespace LestingCraft.Runtime
             while(!SplashScreen.isFinished&&Time.realtimeSinceStartup<deadline)yield return null;
             yield return new WaitForEndOfFrame();
             string folder=Path.Combine(Application.dataPath,"..","SmokeResults");Directory.CreateDirectory(folder);
+            string diagnostics=Path.GetFullPath(Path.Combine(Application.dataPath,"..","..","Logs","GraphicsDiagnostics"));Directory.CreateDirectory(diagnostics);
             string screenshot=Path.GetFullPath(Path.Combine(folder,"menu.png"));ScreenCapture.CaptureScreenshot(screenshot);
             yield return WaitForScreenshot(screenshot);
             if(!ScreenshotReady(screenshot)){Fail("Menu screenshot write timeout.");yield break;}
@@ -117,7 +118,7 @@ namespace LestingCraft.Runtime
             var fogEvidence=GameObject.Find("Volumetric light shafts / height fog").GetComponent<MeshRenderer>();
             fogEvidence.enabled=false;mainCameraData.renderPostProcessing=false;Shader.SetGlobalFloat("_LCAmbientOcclusionProbe",1);
             yield return null;yield return null;yield return new WaitForEndOfFrame();
-            string aoShot=Path.GetFullPath(Path.Combine(folder,"ssao-gpu-proof.png"));ScreenCapture.CaptureScreenshot(aoShot);yield return WaitForScreenshot(aoShot);
+            string aoShot=Path.GetFullPath(Path.Combine(diagnostics,"ssao-gpu-proof.png"));ScreenCapture.CaptureScreenshot(aoShot);yield return WaitForScreenshot(aoShot);
             Shader.SetGlobalFloat("_LCAmbientOcclusionProbe",0);mainCameraData.renderPostProcessing=true;fogEvidence.enabled=true;
             var aoReadback=new Texture2D(2,2,TextureFormat.RGBA32,false);aoReadback.LoadImage(File.ReadAllBytes(aoShot));int aoPixels=0,occludedPixels=0;
             foreach(var pixel in aoReadback.GetPixels32())if(pixel.r<30&&pixel.b<30&&pixel.g>20){aoPixels++;if(pixel.g<250)occludedPixels++;}Destroy(aoReadback);
@@ -128,12 +129,22 @@ namespace LestingCraft.Runtime
             if(!hands||!hands.ViewCamera||!hands.ViewCamera.enabled){Fail("First-person hand camera not active.");yield break;}
             var body=ui.GetComponentInChildren<HealthSilhouette>();
             if(!body||body.Zones.Length!=6){Fail("HUD silhouette missing.");yield break;}
+            game.Session.Inventory.Add(1,8);game.Session.Inventory.selected=Array.FindIndex(game.Session.Inventory.slots,stack=>stack.item==1&&stack.count>0);
+            yield return null;yield return new WaitForEndOfFrame();
+            Rect heldRect=hands.HeldViewportBounds();
+            if(heldRect.width<=0||heldRect.width>.28f||heldRect.height>.38f||heldRect.Contains(new Vector2(.5f,.5f)))
+            {Fail("Held block obscures gameplay: "+heldRect);yield break;}
+            Debug.Log("[Smoke] VISUAL_FIX: held block viewport="+heldRect+", no center obstruction; actual frame "+Screen.width+"x"+Screen.height);
             string worldshot=Path.GetFullPath(Path.Combine(folder,"world-hud.png"));ScreenCapture.CaptureScreenshot(worldshot);
             yield return WaitForScreenshot(worldshot);
             if(!ScreenshotReady(worldshot)){Fail("World screenshot write timeout.");yield break;}
             if(!ScreenshotHasDetail(worldshot)){Fail("World screenshot has no detail.");yield break;}
             Debug.Log("[Smoke] WORLD_SCREENSHOT: "+worldshot);
-            game.ToggleInventory();yield return null;
+            foreach(int sample in new[]{4,7,8,44,47,48,113,135,138,140,141,142,143,144,145,149,153,164})game.Session.Inventory.Add(sample,3);
+            game.ToggleInventory();yield return null;yield return null;
+            if(!ui.InventoryRectsDoNotOverlap(out var layoutReason)||ui.InventoryTextPixelSize<13.5f)
+            {Fail("Unreadable/overlapping inventory: "+layoutReason+"; text="+ui.InventoryTextPixelSize);yield break;}
+            Debug.Log("[Smoke] READABLE_UI: 1280 design, primary text="+ui.InventoryTextPixelSize+" real pixels; cells in-frame, no cell/portrait overlap");
             foreach(int gear in new[]{104,105,106,107,108,130,131,132})
             {var bag=game.Session.Inventory;bag.Add(gear,1);int index=Array.FindIndex(bag.slots,s=>s.item==gear&&s.count>0);ui.InventoryClick(index,false,true);if(bag.equipment[Equipment.Slot(gear)].item!=gear){Fail("Native shift-equip failed: "+gear);yield break;}}
             yield return null;
@@ -171,6 +182,7 @@ namespace LestingCraft.Runtime
             inventory.Add(1,12);inventory.Add(121,8);
             if(!game.Session.FillRecipe(3,3)){Fail("Workbench 3x3 recipe did not fill");yield break;}
             yield return null;yield return new WaitForEndOfFrame();
+            if(!ui.InventoryRectsDoNotOverlap(out var craftLayout)){Fail("Craft layout: "+craftLayout);yield break;}
             string craftShot=Path.GetFullPath(Path.Combine(folder,"workbench-3x3.png"));ScreenCapture.CaptureScreenshot(craftShot);yield return WaitForScreenshot(craftShot);
             if(!ScreenshotReady(craftShot)||!ScreenshotHasDetail(craftShot)){Fail("Workbench screenshot invalid");yield break;}
             ui.InventoryClick(57,false,true);
@@ -196,6 +208,7 @@ namespace LestingCraft.Runtime
             {Fail("Live furnace did not cook and consume ingredients correctly: "+CookingState(game,ui,cookingStartSimulation,cookingStartWall)+" / "+failure);yield break;}
             Debug.Log("[Smoke] FURNACE_COOKED: "+CookingState(game,ui,cookingStartSimulation,cookingStartWall));
             yield return new WaitForEndOfFrame();
+            if(!ui.InventoryRectsDoNotOverlap(out var furnaceLayout)){Fail("Furnace layout: "+furnaceLayout);yield break;}
             string furnaceShot=Path.GetFullPath(Path.Combine(folder,"furnace-cooking.png"));ScreenCapture.CaptureScreenshot(furnaceShot);yield return WaitForScreenshot(furnaceShot);
             if(!ScreenshotReady(furnaceShot)||!ScreenshotHasDetail(furnaceShot)||failure!=null){Fail("Furnace screenshot/runtime errors: "+failure);yield break;}
             Debug.Log("[Smoke] CRAFTING_SCREENSHOTS: "+craftShot+" / "+furnaceShot);
@@ -217,17 +230,17 @@ namespace LestingCraft.Runtime
             Camera.main.transform.position=(Vector3)pool+new Vector3(5.5f,1.9f,-.5f);
             Camera.main.transform.LookAt((Vector3)pool+new Vector3(5.5f,.15f,6));
             for(int frame=0;frame<5;frame++)yield return null;
-            yield return new WaitForEndOfFrame();string waterShot=Path.GetFullPath(Path.Combine(folder,"water-reflections.png"));ScreenCapture.CaptureScreenshot(waterShot);yield return WaitForScreenshot(waterShot);
+            yield return new WaitForEndOfFrame();string waterShot=Path.GetFullPath(Path.Combine(diagnostics,"water-fixture.png"));ScreenCapture.CaptureScreenshot(waterShot);yield return WaitForScreenshot(waterShot);
             var cameraData=Camera.main.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();cameraData.renderPostProcessing=false;
             fogEvidence.enabled=false;Shader.SetGlobalFloat("_LCWaterReflectionProbe",1);yield return null;yield return null;yield return new WaitForEndOfFrame();
-            string reflectionMask=Path.GetFullPath(Path.Combine(folder,"water-ssr-proof.png"));ScreenCapture.CaptureScreenshot(reflectionMask);yield return WaitForScreenshot(reflectionMask);
+            string reflectionMask=Path.GetFullPath(Path.Combine(diagnostics,"water-ssr-proof.png"));ScreenCapture.CaptureScreenshot(reflectionMask);yield return WaitForScreenshot(reflectionMask);
             Shader.SetGlobalFloat("_LCWaterReflectionProbe",0);fogEvidence.enabled=true;cameraData.renderPostProcessing=true;Camera.main.transform.SetPositionAndRotation(savedPosition,savedRotation);
             var readback=new Texture2D(2,2,TextureFormat.RGBA32,false);readback.LoadImage(File.ReadAllBytes(reflectionMask));int hits=0;
             foreach(var pixel in readback.GetPixels32())if(pixel.r>175&&pixel.b>175&&pixel.g<55)hits++;Destroy(readback);
             if(hits<32||failure!=null){Fail("SSR fixture did not reflect on-screen scene geometry: "+hits+" pixels / "+failure);yield break;}
             Debug.Log("[Smoke] WATER_SSR_READBACK: "+hits+" actual ray/depth hits in real EXE; magenta=scene reflection, blue=sky fallback; four-step crossing refinement; NOT hardware ray tracing");
             finishing=true;
-            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking live smoke/sparks, authored crystal collision/targeting, real GPU SSAO sampling/occlusion, SSR hit-mask readback and nine executable screenshots. WARP is not a user-GPU/FPS benchmark.");
+            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking live smoke/sparks, authored crystal collision/targeting, real GPU SSAO sampling/occlusion, SSR hit-mask readback and six gameplay screenshots, diagnostic masks/fixture kept separately in private build logs. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);
         }
         // A bounded simulation budget AND a wall-clock guard: a stalled/paused furnace must still fail.

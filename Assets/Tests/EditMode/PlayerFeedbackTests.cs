@@ -76,6 +76,13 @@ namespace LestingCraft.Tests
             }
             finally{Object.DestroyImmediate(root);if(mesh)Object.DestroyImmediate(mesh);Physics.SyncTransforms();}
         }
+        [Test] public void HeldBlocksUseCompactFirstPersonScaleInsteadOfRemoteWeaponScale()
+        {
+            Assert.LessOrEqual(FirstPersonHands.HeldScale(1),.18f);
+            Assert.LessOrEqual(FirstPersonHands.HeldScale(48),.18f);
+            Assert.LessOrEqual(FirstPersonHands.HeldScale(101),.30f);
+            Assert.Less(FirstPersonHands.HeldScale(153),RemoteWeaponVisual.Scale(153));
+        }
         [Test] public void HandUsesAnIsolatedCameraAndDoesNotAddPhysicsColliders()
         {
             var cameraObject=new GameObject("Viewmodel test camera");var playerObject=new GameObject("Active hand owner");

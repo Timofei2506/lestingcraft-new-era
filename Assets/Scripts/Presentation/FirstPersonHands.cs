@@ -13,6 +13,19 @@ namespace LestingCraft.Presentation
         Camera view,main;Transform left,torch;Transform hand;FirstPersonController player;UniversalAdditionalCameraData mainData;
         Material character,objects;MeshFilter held;int shownItem=-1;float phase,strike;int previousMask;bool initialized;
         public Camera ViewCamera=>view;
+        public static float HeldScale(int id)
+        {
+            if(LestingCraft.Gameplay.Weapons.Has(id))
+            {string kind=LestingCraft.Gameplay.Weapons.Get(id).Kind;return kind=="spear"?.40f:kind=="greatsword"?.37f:kind=="dagger"?.22f:kind=="bow"?.32f:.31f;}
+            return id>=100&&id<=103||id==150||id==151?.29f:.17f;
+        }
+        public Rect HeldViewportBounds()
+        {
+            if(!view||!held||!held.sharedMesh)return new Rect();
+            Bounds b=held.sharedMesh.bounds;Vector2 lo=Vector2.positiveInfinity,hi=Vector2.negativeInfinity;
+            for(int i=0;i<8;i++){var corner=b.center+Vector3.Scale(b.extents,new Vector3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1));var v=view.WorldToViewportPoint(held.transform.TransformPoint(corner));lo=Vector2.Min(lo,v);hi=Vector2.Max(hi,v);}
+            return Rect.MinMaxRect(lo.x,lo.y,hi.x,hi.y);
+        }
         public void Initialize(FirstPersonController owner,Camera camera)
         {
             if(initialized)Release();initialized=true;
@@ -33,7 +46,7 @@ namespace LestingCraft.Presentation
             BlockGeometry.Part("Left sleeve",left,new Vector3(0,-.20f,0),new Vector3(.14f,.35f,.16f),character,1,-1,Layer);
             BlockGeometry.Part("Left cuff",left,new Vector3(0,-.035f,0),new Vector3(.15f,.055f,.17f),character,6,-1,Layer);
             BlockGeometry.Part("Left block hand",left,new Vector3(0,.065f,0),new Vector3(.138f,.15f,.16f),character,0,-1,Layer);
-            var offhand=new GameObject("Left-hand torch");torch=offhand.transform;torch.SetParent(left,false);torch.localPosition=new Vector3(0,.27f,.04f);torch.localScale=Vector3.one*.73f;offhand.layer=Layer;var flame=offhand.AddComponent<TorchVisual>();flame.Owner=owner.transform;flame.Build();foreach(var renderer in left.GetComponentsInChildren<MeshRenderer>()){renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;}left.gameObject.SetActive(false);
+            var offhand=new GameObject("Left-hand torch");torch=offhand.transform;torch.SetParent(left,false);torch.localPosition=new Vector3(0,.27f,.04f);torch.localScale=Vector3.one*.52f;offhand.layer=Layer;var flame=offhand.AddComponent<TorchVisual>();flame.Owner=owner.transform;flame.Build();foreach(var renderer in left.GetComponentsInChildren<MeshRenderer>()){renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;}left.gameObject.SetActive(false);
             Pose(0);view.enabled=false;
         }
         Transform Part(string name,Vector3 position,Vector3 scale,int tile)
@@ -48,7 +61,7 @@ namespace LestingCraft.Presentation
             bool hasTorch=player.Game&&player.Game.Session&&player.Game.Session.Inventory.offhand.count>0;left.gameObject.SetActive(hasTorch);
             if(!view.enabled)return;
             int item=player.Game&&player.Game.Session&&player.Game.Session.Inventory.Active.count>0?player.Game.Session.Inventory.Active.item:0;
-            if(item!=shownItem){shownItem=item;held.GetComponent<MeshRenderer>().sharedMaterial=Resources.Load<Material>(item==7?"Generated/Water":item==11||item==145?"Generated/Crystal":item==44?"Generated/Glass":"Generated/VoxelObjects");held.sharedMesh=item>0?VoxelItemModels.MeshFor(item):null;held.transform.localScale=Vector3.one*(item>=100&&item<=103||item>=150&&item<=164?RemoteWeaponVisual.Scale(item):.28f);held.gameObject.SetActive(held.sharedMesh);}
+            if(item!=shownItem){shownItem=item;held.GetComponent<MeshRenderer>().sharedMaterial=Resources.Load<Material>(item==7?"Generated/Water":item==11||item==145?"Generated/Crystal":item==44?"Generated/Glass":"Generated/VoxelObjects");held.sharedMesh=item>0?VoxelItemModels.MeshFor(item):null;held.transform.localScale=Vector3.one*HeldScale(item);held.gameObject.SetActive(held.sharedMesh);}
 
             var keyboard=Keyboard.current;bool walking=keyboard!=null&&(keyboard.wKey.isPressed||keyboard.aKey.isPressed||keyboard.sKey.isPressed||keyboard.dKey.isPressed);
             phase+=Time.deltaTime*(walking?(player.Sprinting?12:8):1.8f);
@@ -59,8 +72,8 @@ namespace LestingCraft.Presentation
         void Pose(float bob)
         {
             float swing=Mathf.Sin(strike*Mathf.PI);
-            hand.localPosition=new Vector3(.30f+Mathf.Sin(phase)*bob,-.31f+Mathf.Cos(phase*2)*bob-swing*.045f,.51f+swing*.12f);
-            if(left){left.localPosition=new Vector3(-.30f+Mathf.Sin(phase)*bob,-.32f+Mathf.Cos(phase*2)*bob,.51f);left.localRotation=Quaternion.Euler(-15,12,12);}
+            hand.localPosition=new Vector3(.33f+Mathf.Sin(phase)*bob,-.36f+Mathf.Cos(phase*2)*bob-swing*.025f,.82f+swing*.07f);
+            if(left){left.localPosition=new Vector3(-.33f+Mathf.Sin(phase)*bob,-.36f+Mathf.Cos(phase*2)*bob,.82f);left.localRotation=Quaternion.Euler(-15,12,12);}
             hand.localRotation=Quaternion.Euler(-18-swing*24,-12,-12+Mathf.Sin(phase)*bob*150);
         }
         /// <summary>Explicit owner cleanup also works in EditMode and before deferred player destruction.</summary>
