@@ -1,0 +1,35 @@
+[Smoke] Graphics: Direct3D11 / Microsoft Basic Render Driver
+[Smoke] MENU_SCREENSHOT: D:\a\lestingcraft-new-era\lestingcraft-new-era\Builds\StandaloneWindows64\SmokeResults\menu.png
+[Smoke] LIVING6: rules10, content7, complete PBR arrays=63, mandatory opening, six saved body zones, native villager/cat meshes and materials loaded
+[Smoke] CAMPFIRE_PARITY: same shared mesh as icon/held model, no opaque cube
+[Smoke] FOUNDATION11: real deer/hare/boar runtime meshes; transmitting crystal; PBR layers=63; content version=7
+[Smoke] FOUNDATION10: live smoke=25 sparks=15; shared crystal shape/render/collision/targeting; GPU SSAO=661951 sampled pixels, 139173 occluded pixels
+[Smoke] VISUAL_FIX: held block viewport=(x:0.66, y:0.23, width:0.24, height:0.29), no center obstruction; actual frame 1024x720
+[Smoke] WORLD_SCREENSHOT: D:\a\lestingcraft-new-era\lestingcraft-new-era\Builds\StandaloneWindows64\SmokeResults\world-hud.png
+[Smoke] READABLE_UI: 1280 design, primary text=14.4 real pixels; cells in-frame, no cell/portrait overlap
+[Smoke] EQUIPMENT: eight independent clothing/armor slots equipped through actual inventory clicks
+[Smoke] INVENTORY_SCREENSHOT: D:\a\lestingcraft-new-era\lestingcraft-new-era\Builds\StandaloneWindows64\SmokeResults\inventory-tooltip.png
+[Smoke] FURNACE_WAIT: sim=0.00s wall=0.00s progress=0.00 burn=0.00 input=110x2 fuel=4x1 output=0x0 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] FURNACE_WAIT: sim=1.00s wall=7.44s progress=1.00 burn=17.00 input=110x2 fuel=0x0 output=0x0 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] FURNACE_WAIT: sim=2.00s wall=14.71s progress=2.00 burn=16.00 input=110x2 fuel=0x0 output=0x0 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] FURNACE_WAIT: sim=3.00s wall=22.16s progress=3.00 burn=15.00 input=110x2 fuel=0x0 output=0x0 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] FURNACE_WAIT: sim=4.00s wall=29.54s progress=4.00 burn=14.00 input=110x2 fuel=0x0 output=0x0 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] FURNACE_WAIT: sim=5.00s wall=36.93s progress=5.00 burn=13.00 input=110x2 fuel=0x0 output=0x0 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] FURNACE_WAIT: sim=6.00s wall=44.30s progress=6.00 burn=12.00 input=110x2 fuel=0x0 output=0x0 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] FURNACE_WAIT: sim=7.00s wall=51.55s progress=7.00 burn=11.00 input=110x2 fuel=0x0 output=0x0 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] FURNACE_COOKED: sim=8.00s wall=58.73s progress=0.00 burn=10.00 input=110x1 fuel=0x0 output=112x1 block=17 distance=2.47 ready=True paused=True ui=Inventory dead=False
+[Smoke] CRAFTING_SCREENSHOTS: D:\a\lestingcraft-new-era\lestingcraft-new-era\Builds\StandaloneWindows64\SmokeResults\workbench-3x3.png / D:\a\lestingcraft-new-era\lestingcraft-new-era\Builds\StandaloneWindows64\SmokeResults\furnace-cooking.png
+[Smoke] ULTRA: 4096 shadows / 40 cloud steps / 32 volume steps / no hardware RT claim
+[Smoke] WATER_SSR_READBACK: 61342 actual ray/depth hits in real EXE; magenta=scene reflection, blue=sky fallback; four-step crossing refinement; NOT hardware ray tracing
+[Smoke] WITNESS_VISIBILITY Орен / Block torso center=(-35.03, 45.20, -31.17) viewport=(0.70, 0.42, 4.06) solid=0
+[Smoke] WITNESS_VISIBILITY Орен / Cubical head center=(-35.19, 45.20, -30.69) viewport=(0.74, 0.35, 3.72) solid=0
+[Smoke] WITNESS_VISIBILITY Марта / Block torso center=(-32.41, 45.31, -34.41) viewport=(0.41, 0.66, 6.18) solid=0
+[Smoke] WITNESS_VISIBILITY Марта / Cubical head center=(-32.60, 45.31, -34.84) viewport=(0.42, 0.68, 6.51) solid=0
+[Smoke] DISTINCT_WITNESSES: different builds, front/back resting poses, individual hair/beard/skin/costumes; original blood/dialogue retained
+[Smoke] TRADE_UI: right-click opens window without spending; actual confirm button exchanges four leather for one ingot; bow does not suppress interaction
+[Smoke] CREATIVE_CATALOG: all 98 registry items, native Cyrillic search, real pointer click -> cursor -> hotbar, category/page UI; no packed survival bag required
+[Smoke] VISIBLE_GLASS: native transmitting glass material density=0.16, edge=0.42; actual placed window captured, not opaque replacement
+[Smoke] BIOME_PRELOAD: QA-only deferred presentation during full-radius streaming; exact graphics/cadence restored before capture
+[Smoke] BIOME_RING: complete=True, loaded=162, radius=4, cadence=1
+[Smoke] BIOMES7: actual generated dune exterior streamed/rendered; six region types in content7 only; legacy1..6 samplers retained
+[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking live smoke/sparks, authored crystal collision/targeting, real GPU SSAO sampling/occlusion, SSR hit-mask readback and eleven gameplay screenshots, diagnostic masks/fixture kept separately in private build logs. WARP is not a user-GPU/FPS benchmark.

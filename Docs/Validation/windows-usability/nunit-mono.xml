@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" name="UsabilityNUnit.exe" fullname="/home/user/.arena/UsabilityNUnit.exe" testcasecount="3" result="Passed" start-time="2026-10-16T09:50:00.7236870Z" end-time="2026-10-16T09:50:00.7657430Z" duration="0.041997" total="3" passed="3" failed="0" inconclusive="0" skipped="0" warnings="0" asserts="440" random-seed="1107654123">
+  <command-line><![CDATA[/home/user/.arena/UsabilityNUnit.exe --noheader --work=/home/user/.arena/nunit --result=/home/user/.arena/nunit/result.xml]]></command-line>
+  <filter />
+  <test-suite type="Assembly" id="1004" name="UsabilityNUnit.exe" fullname="/home/user/.arena/UsabilityNUnit.exe" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-16T09:50:00.7236870Z" end-time="2026-10-16T09:50:00.7657430Z" duration="0.041997" total="3" passed="3" failed="0" warnings="0" inconclusive="0" skipped="0" asserts="440">
+    <environment framework-version="3.14.0.0" clr-version="4.0.30319.42000" os-version="Unix 6.1.158.0" platform="Unix" cwd="/home/user/lestingcraft-new-era" machine-name="e2b" user="user" user-domain="e2b" culture="" uiculture="" os-architecture="x64" />
+    <settings>
+      <setting name="WorkDirectory" value="/home/user/.arena/nunit" />
+      <setting name="NumberOfTestWorkers" value="2" />
+    </settings>
+    <properties>
+      <property name="_PID" value="72607" />
+      <property name="_APPDOMAIN" value="UsabilityNUnit.exe" />
+    </properties>
+    <test-suite type="TestSuite" id="1005" name="LestingCraft" fullname="LestingCraft" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-16T09:50:00.7314750Z" end-time="2026-10-16T09:50:00.7657080Z" duration="0.034232" total="3" passed="3" failed="0" warnings="0" inconclusive="0" skipped="0" asserts="440">
+      <test-suite type="TestSuite" id="1006" name="Tests" fullname="LestingCraft.Tests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-16T09:50:00.7317970Z" end-time="2026-10-16T09:50:00.7656230Z" duration="0.033826" total="3" passed="3" failed="0" warnings="0" inconclusive="0" skipped="0" asserts="440">
+        <test-suite type="TestFixture" id="1000" name="UsabilityTests" fullname="LestingCraft.Tests.UsabilityTests" classname="LestingCraft.Tests.UsabilityTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-16T09:50:00.7327400Z" end-time="2026-10-16T09:50:00.7651720Z" duration="0.032432" total="3" passed="3" failed="0" warnings="0" inconclusive="0" skipped="0" asserts="440">
+          <test-case id="1001" name="CompleteCreativeCatalogHasSearchAndSafeStacks" fullname="LestingCraft.Tests.UsabilityTests.CompleteCreativeCatalogHasSearchAndSafeStacks" methodname="CompleteCreativeCatalogHasSearchAndSafeStacks" classname="LestingCraft.Tests.UsabilityTests" runstate="Runnable" seed="1014868897" result="Passed" start-time="2026-10-16T09:50:00.7347590Z" end-time="2026-10-16T09:50:00.7513740Z" duration="0.016751" asserts="6" />
+          <test-case id="1003" name="OldWorldsKeepTheirGenerationAndNewWorldsUseSeven" fullname="LestingCraft.Tests.UsabilityTests.OldWorldsKeepTheirGenerationAndNewWorldsUseSeven" methodname="OldWorldsKeepTheirGenerationAndNewWorldsUseSeven" classname="LestingCraft.Tests.UsabilityTests" runstate="Runnable" seed="937392992" result="Passed" start-time="2026-10-16T09:50:00.7530270Z" end-time="2026-10-16T09:50:00.7631540Z" duration="0.010128" asserts="427" />
+          <test-case id="1002" name="TradePreviewDoesNotConsumeAndConfirmIsAtomic" fullname="LestingCraft.Tests.UsabilityTests.TradePreviewDoesNotConsumeAndConfirmIsAtomic" methodname="TradePreviewDoesNotConsumeAndConfirmIsAtomic" classname="LestingCraft.Tests.UsabilityTests" runstate="Runnable" seed="547329124" result="Passed" start-time="2026-10-16T09:50:00.7632570Z" end-time="2026-10-16T09:50:00.7643920Z" duration="0.001135" asserts="7" />
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

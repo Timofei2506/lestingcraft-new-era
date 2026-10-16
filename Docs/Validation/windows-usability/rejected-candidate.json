@@ -1,0 +1,12 @@
+{
+  "source": "cbbec20b9162c2e864e16ca6d4773282e4953e56",
+  "run": 38871866372,
+  "runURL": "https://github.com/Timofei2506/lestingcraft-new-era/actions/runs/38871866372",
+  "manualReview": "REJECTED",
+  "reviewIssues": [
+    "Opening witness bodies occluded by authored furniture/wall; relocate visual actors without changing terrain generation and adjust dialogue camera.",
+    "Trade status shows stale crafting notice; explicit availability and notice reset required.",
+    "Glass/dunes show stale NPC prompt because disabled smoke controller; clear interaction hint on modal transitions.",
+    "Dune streaming incomplete; wait entire current render-distance ring without lowering graphics."
+  ]
+}

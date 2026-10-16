@@ -1,3 +1,11 @@
+## Актуальная публичная Windows-сборка — 0.3.2 usability
+
+[Скачать Windows x64](https://github.com/Timofei2506/lestingcraft-releases/releases/download/untagged-9e0316c358b623760b75/LestingCraft-Windows-x64-0.3.2-usability.zip) · [Релиз](https://github.com/Timofei2506/lestingcraft-releases/releases/tag/v0.3.2-usability) · [11 новых PNG](https://github.com/Timofei2506/lestingcraft-releases/tree/main/Screenshots/0.3.2-usability) · [Проверки и ограничения](Docs/Windows-0.3.2-usability.md).
+
+Тестовый prerelease: разные персонажи вступления, окно торговли с подтверждением, творческий каталог 98 предметов, видимое прозрачное стекло, шесть типов биомов в новых мирах. Старые миры/неисследованные чанки сохраняют прежнюю генерацию. EXE действительно запущен в облаке, все 11 игровых кадров просмотрены перед публикацией; WARP не является FPS-бенчмарком. Unity/Hub/SDK на ПК не нужны. Приватный лаунчер ниже не является публичным способом получения этой версии; четыре остальные главы и hardware RTX не готовы.
+
+---
+
 ## Windows-лаунчер (тестовая версия)
 
 Готов отдельный native WPF / .NET 8 self-contained лаунчер: [приватный Windows x64 artifact](https://github.com/Timofei2506/lestingcraft-new-era/actions/runs/38736871408/artifacts/11974517325), около 63 MiB. Распаковать **весь** архив, затем `LestingCraftLauncher.exe`; .NET/Unity устанавливать не нужно. «Уже есть игра?» использует файлы уже скачанной папки; обновляются только несовпадающие SHA-256 файлы плюс ZIP-метаданные. Сохранения LocalLow не затрагиваются, есть офлайн-запуск и откат.

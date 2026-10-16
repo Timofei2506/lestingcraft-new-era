@@ -1,0 +1,153 @@
+{
+  "repo": "Timofei2506/lestingcraft-releases",
+  "tag": "v0.3.2-usability",
+  "releaseId": 414791056,
+  "releaseUrl": "https://github.com/Timofei2506/lestingcraft-releases/releases/tag/v0.3.2-usability",
+  "publicCommit": "b859f7022abd8b9e1a6cb4a6225b246c3f1fdc4c",
+  "source": "23875aeeb711f60f8819c2a8b5e4feda2cf7119f",
+  "run": 38880205277,
+  "assets": {
+    "LestingCraft-Windows-x64-0.3.2-usability.zip": {
+      "id": 646884673,
+      "size": 159676178,
+      "sha256": "90ae5972cb385a6e9a6b8a39817819b252a0429bbd202136606bf6fff53bf598",
+      "url": "https://github.com/Timofei2506/lestingcraft-releases/releases/download/untagged-9e0316c358b623760b75/LestingCraft-Windows-x64-0.3.2-usability.zip"
+    },
+    "README-Windows.txt": {
+      "id": 646884978,
+      "size": 7267,
+      "sha256": "0a60c03f769c88efefeec1cc182b1fe8d2d033e86556446e562963fff779169f",
+      "url": "https://github.com/Timofei2506/lestingcraft-releases/releases/download/untagged-9e0316c358b623760b75/README-Windows.txt"
+    },
+    "CHANGELOG.md": {
+      "id": 646884995,
+      "size": 5685,
+      "sha256": "53603193a35698b94857ad2c685b40fedd596ff6c8fa48112c07486775ba9657",
+      "url": "https://github.com/Timofei2506/lestingcraft-releases/releases/download/untagged-9e0316c358b623760b75/CHANGELOG.md"
+    },
+    "THIRD-PARTY-NOTICES.txt": {
+      "id": 646885009,
+      "size": 1311,
+      "sha256": "2fcec574afb30805e618497ae0d3798f84972427f62b76b9f897a100ddf2a92a",
+      "url": "https://github.com/Timofei2506/lestingcraft-releases/releases/download/untagged-9e0316c358b623760b75/THIRD-PARTY-NOTICES.txt"
+    },
+    "game-manifest.json": {
+      "id": 646885029,
+      "size": 25191,
+      "sha256": "e0ac52d14ad4269dbb7c952f69672dc8861ea2f2870435aeaf0e6d73bc11e11c",
+      "url": "https://github.com/Timofei2506/lestingcraft-releases/releases/download/untagged-9e0316c358b623760b75/game-manifest.json"
+    },
+    "SHA256SUMS.txt": {
+      "id": 646885044,
+      "size": 450,
+      "sha256": "80ffd863ef9893060d66ca8219891d0d3525ad265620a884832a38b81dd6754f",
+      "url": "https://github.com/Timofei2506/lestingcraft-releases/releases/download/untagged-9e0316c358b623760b75/SHA256SUMS.txt"
+    }
+  },
+  "screenshots": [
+    {
+      "name": "biome-dunes.png",
+      "bytes": 1097733,
+      "sha256": "3b4c6f05fd50df918519f5475d73cab1a9f5e02d32e9e39964d4e4b617ab9015",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "creative-catalog.png",
+      "bytes": 309588,
+      "sha256": "09e1af283c9aab80bcb32812f95eee9b5f02241b85e33b03c49ae9155332fed5",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "furnace-cooking.png",
+      "bytes": 396150,
+      "sha256": "41ce9e67d22ffe2106d08cc703b9f5f68b4df530f6215174d45433d2e705504a",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "glass-window.png",
+      "bytes": 995693,
+      "sha256": "ec320c14155115feb9d615b6f58a18dd3b999a543a64698bea3338002a42d616",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "inventory-tooltip.png",
+      "bytes": 388881,
+      "sha256": "91c825f933e77a1f0337ef63a403af3b835efcf155623eed18e650ef2d5df2e5",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "menu.png",
+      "bytes": 902412,
+      "sha256": "95fc6fb9ee8c11bf6f92c084f1da8c5a0de06b58c635234885cf7a3798122c18",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "opening-witnesses.png",
+      "bytes": 928377,
+      "sha256": "72b242dfaf14b2d8353832bbad7f05d1508a3b0a62e4bff97ac076be25f756dc",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "villager-trade.png",
+      "bytes": 390564,
+      "sha256": "615f1b29c53ec9c609415e9c043938c41adc980394656084f96f336d6f8c2b2d",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "workbench-3x3.png",
+      "bytes": 396583,
+      "sha256": "db288acbb9c4de259fdf00f90fe5d8efdc7894a33390620bc2b0acedcb29184c",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "world-hud.png",
+      "bytes": 1062103,
+      "sha256": "e275b76269431437f2f9c15423ebf29eb3746c90baf4de7311fbce8e2139e876",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "world-ultra.png",
+      "bytes": 976592,
+      "sha256": "809b641ecc26de196240c4593029f9385b7cd3ce0675999b6536a9e7021b6519",
+      "dimensions": [
+        1024,
+        720
+      ]
+    }
+  ],
+  "anonymousVerification": {
+    "releaseHTML": 200,
+    "zipHeader": "PK",
+    "all11ScreenshotHashes": "PASS"
+  }
+}

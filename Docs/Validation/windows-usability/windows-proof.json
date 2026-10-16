@@ -1,0 +1,136 @@
+{
+  "source": "23875aeeb711f60f8819c2a8b5e4feda2cf7119f",
+  "run": 38880205277,
+  "runURL": "https://github.com/Timofei2506/lestingcraft-new-era/actions/runs/38880205277",
+  "screenshots": [
+    {
+      "name": "biome-dunes.png",
+      "bytes": 1097733,
+      "sha256": "3b4c6f05fd50df918519f5475d73cab1a9f5e02d32e9e39964d4e4b617ab9015",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "creative-catalog.png",
+      "bytes": 309588,
+      "sha256": "09e1af283c9aab80bcb32812f95eee9b5f02241b85e33b03c49ae9155332fed5",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "furnace-cooking.png",
+      "bytes": 396150,
+      "sha256": "41ce9e67d22ffe2106d08cc703b9f5f68b4df530f6215174d45433d2e705504a",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "glass-window.png",
+      "bytes": 995693,
+      "sha256": "ec320c14155115feb9d615b6f58a18dd3b999a543a64698bea3338002a42d616",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "inventory-tooltip.png",
+      "bytes": 388881,
+      "sha256": "91c825f933e77a1f0337ef63a403af3b835efcf155623eed18e650ef2d5df2e5",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "menu.png",
+      "bytes": 902412,
+      "sha256": "95fc6fb9ee8c11bf6f92c084f1da8c5a0de06b58c635234885cf7a3798122c18",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "opening-witnesses.png",
+      "bytes": 928377,
+      "sha256": "72b242dfaf14b2d8353832bbad7f05d1508a3b0a62e4bff97ac076be25f756dc",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "villager-trade.png",
+      "bytes": 390564,
+      "sha256": "615f1b29c53ec9c609415e9c043938c41adc980394656084f96f336d6f8c2b2d",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "workbench-3x3.png",
+      "bytes": 396583,
+      "sha256": "db288acbb9c4de259fdf00f90fe5d8efdc7894a33390620bc2b0acedcb29184c",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "world-hud.png",
+      "bytes": 1062103,
+      "sha256": "e275b76269431437f2f9c15423ebf29eb3746c90baf4de7311fbce8e2139e876",
+      "dimensions": [
+        1024,
+        720
+      ]
+    },
+    {
+      "name": "world-ultra.png",
+      "bytes": 976592,
+      "sha256": "809b641ecc26de196240c4593029f9385b7cd3ce0675999b6536a9e7021b6519",
+      "dimensions": [
+        1024,
+        720
+      ]
+    }
+  ],
+  "manualReview": "ACCEPTED",
+  "production2WS": {
+    "rules10content7": "PASS",
+    "rules9content6": "PASS"
+  },
+  "local": {
+    "managed": 87765,
+    "legacyPoints": 72000,
+    "node22Tests": 118,
+    "crossLanguagePoints": 12000,
+    "craftingChecks": 2750015,
+    "expandedChecks": 568,
+    "skylightChecks": 18,
+    "nunitMonoTests": 3
+  },
+  "sourceMatch": {
+    "fingerprint": "f39c4bbbb24bf138b79a0b1ba3d5769132e5f9111a0bf8e4aed17c766dd8c61b",
+    "exact": 367,
+    "lineEndingOnly": 658
+  },
+  "reviewNotes": {
+    "reviewedFrames": 11,
+    "opening": "Both witnesses visible; prone/supine, different limb poses/builds/hair; blood retained; no geometry hiding torso/head.",
+    "trade": "Profession/cost/result/available/confirm readable; no stale crafting notice.",
+    "catalog": "98 entries/page UI/categories/search/hotbar readable, no overlap.",
+    "glass": "Transparent background retained; surface tint and six-pane edges plainly visible; no stale NPC hint.",
+    "dunes": "Real generated sand landscape after complete current radius, no partial floating chunks or stale NPC hint; screenshot is a close-downhill QA view, not a panoramic six-biome art review.",
+    "legacyUI": "All six retained menu/HUD/inventory/workbench/furnace/Ultra frames reviewed; readable slots/names/counts and no SSAO/SSR diagnostic masks.",
+    "limitations": "WARP automation, not human-played Windows mouse test, GPU/FPS or 8-player load proof. Native fixture objects/camera/mode are explicit."
+  }
+}
