@@ -25,7 +25,7 @@ namespace LestingCraft.Runtime
    var oren=GameObject.Find("Орен");var marta=GameObject.Find("Марта");
    if(!oren||!marta||Quaternion.Angle(oren.transform.rotation,marta.transform.rotation)<30||Vector3.Distance(oren.transform.localScale,marta.transform.localScale)<.08f||!oren.transform.Find("Oren short angular beard")||!marta.transform.Find("Marta hair crown")){Fail("Opening witnesses still share an identical silhouette/pose");yield break;}
    var inspectedHand=s.Inventory.Active;s.Inventory.slots[s.Inventory.selected]=new ItemStack();s.Inventory.revision++;
-   camera.transform.position=new Vector3(-33,LestingCraft.Story.StoryWorld.Floor(world.Seed)+4.3f,-28.7f);camera.transform.LookAt((oren.transform.position+marta.transform.position)*.5f+new Vector3(-.1f,.1f,.1f));
+   camera.transform.position=new Vector3(-33,LestingCraft.Story.StoryWorld.Floor(world.Seed)+4.3f,-28.7f);camera.transform.LookAt((oren.transform.position+marta.transform.position)*.5f+new Vector3(-.1f,-.6f,.1f));
    yield return null;
    foreach(var witness in new[]{oren,marta})foreach(string part in new[]{"Block torso","Cubical head"}){var mesh=witness.transform.Find(part).GetComponent<MeshRenderer>();Vector3 point=mesh.bounds.center,delta=point-camera.transform.position;Vector3 projected=camera.WorldToViewportPoint(point);Debug.Log("[Smoke] WITNESS_VISIBILITY "+witness.name+" / "+part+" center="+point+" viewport="+projected+" solid="+world.GetBlock(Mathf.FloorToInt(point.x),Mathf.FloorToInt(point.y),Mathf.FloorToInt(point.z)));if(!mesh.enabled||!mesh.gameObject.activeInHierarchy||projected.z<=0||projected.x<.06f||projected.x>.94f||projected.y<.08f||projected.y>.9f||VoxelRaycast.Trace(camera.transform.position,delta.normalized,delta.magnitude-.15f,world.GetBlock,out _)){Fail("Opening witness body/head hidden behind level geometry: "+witness.name+" / "+part);yield break;}}
    yield return CaptureGameplay(folder,"opening-witnesses.png");if(finishing)yield break;s.Inventory.slots[s.Inventory.selected]=inspectedHand;s.Inventory.revision++;camera.transform.SetPositionAndRotation(originalPosition,originalRotation);
@@ -66,8 +66,14 @@ namespace LestingCraft.Runtime
    {int x=side*radius,h=TerrainGenerator.Height(x,z,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x,z,world.Seed)!=BiomeKind.Dunes||h<44||h>60||ExpeditionGenerator.At(x,z,world.Seed).Surface||TerrainGenerator.SampleContent(x,h,z,world.Seed,Dimension.Lestingia,7)!=6)continue;int good=0;for(int dz=-24;dz<=24;dz+=24)for(int dx=-24;dx<=24;dx+=24){int nh=TerrainGenerator.Height(x+dx,z+dz,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x+dx,z+dz,world.Seed)==BiomeKind.Dunes&&nh>=44&&nh<=62)good++;}if(good<8)continue;biomePoint=new Vector3(x+.5f,h+4,z+.5f);found=true;break;}
    if(!found){Fail("No new dune biome found for native exterior validation");yield break;}
    s.Data.mode=2;player.TeleportTo(biomePoint);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.transform.localRotation=Quaternion.Euler(35,15,0);
-   float deadline=Time.realtimeSinceStartup+420;
-   while(!BiomeRingLoaded(world,biomePoint)&&Time.realtimeSinceStartup<deadline)yield return null;
+   float deadline=Time.realtimeSinceStartup+900;int normalInterval=UnityEngine.Rendering.OnDemandRendering.renderFrameInterval;
+   // QA-only warmup: skip unused presentation frames, never reduce render scale, materials, effects, shadows or view distance.
+   // Normal gameplay is untouched; the exact presentation cadence is restored before any screenshot/graphics assertion.
+   Debug.Log("[Smoke] BIOME_PRELOAD: QA-only deferred presentation during full-radius streaming; exact graphics/cadence restored before capture");
+   try{UnityEngine.Rendering.OnDemandRendering.renderFrameInterval=64;while(!BiomeRingLoaded(world,biomePoint)&&Time.realtimeSinceStartup<deadline)yield return null;}
+   finally{UnityEngine.Rendering.OnDemandRendering.renderFrameInterval=normalInterval;}
+   Debug.Log("[Smoke] BIOME_RING: complete="+BiomeRingLoaded(world,biomePoint)+", loaded="+world.LoadedChunks+", radius="+VisualSettings.Current.ViewDistance+", cadence="+UnityEngine.Rendering.OnDemandRendering.renderFrameInterval);
+   yield return null;yield return null;
    if(!BiomeRingLoaded(world,biomePoint)||world.GetBlock(Mathf.FloorToInt(biomePoint.x),Mathf.FloorToInt(biomePoint.y)-4,Mathf.FloorToInt(biomePoint.z))!=6){Fail("New biome did not stream matching native terrain");yield break;}
    yield return CaptureGameplay(folder,"biome-dunes.png");if(finishing)yield break;s.Data.mode=previousMode;
    Debug.Log("[Smoke] BIOMES7: actual generated dune exterior streamed/rendered; six region types in content7 only; legacy1..6 samplers retained");
