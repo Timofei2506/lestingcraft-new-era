@@ -26,7 +26,7 @@ namespace LestingCraft.Runtime
         public VoxelSkylight Skylight {get;}=new VoxelSkylight();
         LestingCraft.Presentation.VoxelSkyVolume skyVolume;
         int Radius => LestingCraft.Presentation.VisualSettings.Current.ViewDistance;
-        public void Initialize(int seed, Dimension dimension, bool online,int contentVersion=6)
+        public void Initialize(int seed, Dimension dimension, bool online,int contentVersion=7)
         {
             Seed=seed;ContentVersion=contentVersion;Dimension=dimension;Online=online;detailQuality=LestingCraft.Presentation.VisualSettings.Current.Preset;
             crystalMaterial=new Material(Resources.Load<Material>("Generated/Crystal"));glassMaterial=new Material(Resources.Load<Material>("Generated/Glass"));

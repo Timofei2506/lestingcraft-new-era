@@ -24,11 +24,12 @@ namespace LestingCraft.Runtime
         void Start(){controller=GetComponent<CharacterController>();spawn=transform.position;gameObject.AddComponent<LestingCraft.Presentation.BlockFeedback>().Initialize(this);}
         void Update()
         {
-            TargetingAnimal=false;var keyboard=Keyboard.current;var mouse=Mouse.current;if(keyboard==null||mouse==null||World==null)return;
+            TargetingAnimal=false;if(Game&&Game.Session&&Game.Session.Living)Game.Session.Living.Hint="";var keyboard=Keyboard.current;var mouse=Mouse.current;if(keyboard==null||mouse==null||World==null)return;
             if(Game.StoryLocked){if(keyboard.escapeKey.wasPressedThisFrame)Game.TogglePause();Sprinting=false;HasTarget=false;return;}
             if(Game.ChatOpen){Sprinting=false;HasTarget=false;if(keyboard.escapeKey.wasPressedThisFrame)Game.CloseChat();else if(keyboard.enterKey.wasPressedThisFrame)Game.SubmitChat();return;}
             if(!Game.Paused&&World.Ready&&(keyboard.enterKey.wasPressedThisFrame||keyboard.tKey.wasPressedThisFrame)){Game.OpenChat();Game.Session.ResetMining();HasTarget=false;return;}
             if(keyboard.escapeKey.wasPressedThisFrame){if(Game.InventoryOpen)Game.ToggleInventory();else Game.TogglePause();return;}
+            if(Game.Paused&&Game.EditingText)return;
             if(keyboard.eKey.wasPressedThisFrame){Game.ToggleInventory();return;}
             if(!Active||!World.Ready){Sprinting=false;HasTarget=false;if(Game.Session)Game.Session.ResetMining();return;}
             var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
@@ -56,13 +57,13 @@ namespace LestingCraft.Runtime
             if(keyboard.gKey.wasPressedThisFrame&&!Game.Session.Inventory.ToggleOffhand())Game.Session.Notice="G · выберите факел на хотбаре; для снятия нужно место в сумке";
             if(keyboard.qKey.wasPressedThisFrame)Game.Session.Living.DropActive();
             if(Game.Session.Living.Pending){Game.Session.ResetMining();return;}
-            if(Game.Session.Inventory.Active.item==164){HasTarget=false;Game.Session.ResetMining();if(mouse.leftButton.wasPressedThisFrame)Game.Session.Bow.Fire();return;}
             if(Game.Story&&mouse.leftButton.isPressed&&Game.Story.Attack(new Ray(Camera.transform.position,Camera.transform.forward),6)){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
             Selected=Items.Get(Game.Session.Inventory.Active.item).Block;
             HasTarget=VoxelRaycast.Trace(Camera.transform.position,Camera.transform.forward,6,World.GetBlock,out var target);
             Target=target;
             if(Game.Session.Creative&&HasTarget&&mouse.middleButton.wasPressedThisFrame){int id=World.GetBlock(target.Cell.x,target.Cell.y,target.Cell.z);Game.Session.Inventory.slots[Game.Session.Inventory.selected]=new ItemStack{item=id==18?120:id,count=64};Game.Session.Inventory.revision++;}
-            if(Game.Session.Living.Interact(new Ray(Camera.transform.position,Camera.transform.forward),HasTarget?target.Distance:6,mouse.rightButton.wasPressedThisFrame,mouse.leftButton.wasPressedThisFrame)){HasTarget=false;Game.Session.ResetMining();return;}
+            if(Game.Session.Living.Interact(new Ray(Camera.transform.position,Camera.transform.forward),HasTarget?target.Distance:6,mouse.rightButton.wasPressedThisFrame,mouse.leftButton.wasPressedThisFrame)){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
+            if(Game.Session.Inventory.Active.item==164&&!mouse.rightButton.wasPressedThisFrame){HasTarget=false;Game.Session.ResetMining();if(mouse.leftButton.wasPressedThisFrame)Game.Session.Bow.Fire();return;}
             if(Game.Session.Animals&&Game.Session.Animals.Intersect(new Ray(Camera.transform.position,Camera.transform.forward),HasTarget?target.Distance:6,out var animalId))
             {TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();if(mouse.leftButton.isPressed)Game.Session.Animals.Attack(animalId);return;}
             bool place=mouse.rightButton.wasPressedThisFrame;

@@ -24,7 +24,7 @@ namespace LestingCraft.Gameplay
             if(restored!=null)Data.player=restored;Data.player.Normalize();
             if(local==null&&restored==null)
             {
-                if(Creative){foreach(int id in new[]{1,2,3,4,5,6,7,8,11,12,14,15,16,17,120})Inventory.Add(id,64);foreach(int id in new[]{100,101,102,103})Inventory.Add(id,1);if(!world.Online||world.ContentVersion>=4)Inventory.Add(148,4);if(!world.Online||world.ContentVersion>=2)foreach(var b in ExpandedContent.Blocks)Inventory.Add(b.Id,64);}
+                if(Creative){foreach(int id in new[]{1,3,4,5,6,44,15,16,17})Inventory.Add(id,Items.Get(id).MaxStack);}
                 else if((mode!=3||world.ContentVersion<4)&&!(world.ContentVersion>=5&&mode!=2)){Inventory.Add(110,6);Inventory.Add(111,2);}
             }
             if(local!=null)foreach(var e in Data.blocks)if(e.realm==(int)World.Dimension)World.Edit(e.x,e.y,e.z,(ushort)e.block);
@@ -122,7 +122,7 @@ namespace LestingCraft.Gameplay
                 bool warm=World.NearCampfire(Player.transform.position);if(warm&&Sheltered)Data.player.milestones|=2;
                 
                 var sample=WeatherSample.At(Data.seed,(int)World.Dimension,Data.clock);
-                Vitals.Step(elapsed,Mode,sample.Air,sample.Precipitation,Sheltered,warm,Player.Sprinting,Equipment.Insulation(Inventory));
+                Vitals.Step(elapsed,Mode,sample.Air+(World.ContentVersion>=7&&World.Dimension==Dimension.Lestingia?BiomeGenerator.TemperatureOffset(BiomeGenerator.At(Mathf.FloorToInt(Player.transform.position.x),Mathf.FloorToInt(Player.transform.position.z),Data.seed)):0),sample.Precipitation,Sheltered,warm,Player.Sprinting,Equipment.Insulation(Inventory));
                 var feet=Vector3Int.FloorToInt(Player.transform.position+Vector3.up*.1f);
                 if(World.GetBlock(feet.x,feet.y,feet.z)==8){DamagePart(elapsed*12,BodyPart.LeftLeg);DamagePart(elapsed*12,BodyPart.RightLeg);}
                 if(!Game.Online)Data.campaign.milestones|=Data.player.milestones;

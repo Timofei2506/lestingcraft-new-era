@@ -39,6 +39,7 @@ namespace LestingCraft.Gameplay
             string[] minerals={"Железный слиток","Медный слиток","Золотой слиток","Серебряный слиток","Оловянный слиток","Кварц","Сера","Уголь"};for(int i=0;i<8;i++)all[140+i]=new ItemDefinition(140+i,minerals[i]);
             all[Planks]=new ItemDefinition(Planks,"Доски",block:18);all[Stick]=new ItemDefinition(Stick,"Палки");all[Fiber]=new ItemDefinition(Fiber,"Волокно");
         }
+        public static int[] CatalogIds{get{var ids=new List<int>(all.Keys);ids.Sort();return ids.ToArray();}}
         public static bool Exists(int id)=>all.ContainsKey(id);
         public static ItemDefinition Get(int id)=>all.TryGetValue(id,out var item)?item:default;
         public static bool IsPick(int id)=>id==WoodPick||id==StonePick||id==150||id==151;

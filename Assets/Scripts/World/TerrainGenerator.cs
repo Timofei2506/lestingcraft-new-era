@@ -104,7 +104,7 @@ namespace LestingCraft.World
             return original;
         }
         public static ushort SampleContent(int x,int y,int z,int seed,Dimension d,int contentVersion)
-        {if(contentVersion>=4&&d==Dimension.Lestingia&&LestingCraft.Story.StoryWorld.TrySample(x,y,z,seed,out ushort placed))return placed;if(contentVersion>=3&&d==Dimension.Lestingia){ushort raw=NatureGenerator.Sample(x,y,z,seed);return contentVersion>=5?ExpeditionGenerator.Sample(x,y,z,seed,raw):raw;}return Expanded(Sample(x,y,z,seed,d),x,y,z,seed,d,Height(x,z,seed,d),contentVersion);}
+        {if(contentVersion>=4&&d==Dimension.Lestingia&&LestingCraft.Story.StoryWorld.TrySample(x,y,z,seed,out ushort placed))return placed;if(contentVersion>=3&&d==Dimension.Lestingia){ushort raw=contentVersion>=7?BiomeGenerator.Sample(x,y,z,seed):NatureGenerator.Sample(x,y,z,seed);return contentVersion>=5?ExpeditionGenerator.Sample(x,y,z,seed,raw):raw;}return Expanded(Sample(x,y,z,seed,d),x,y,z,seed,d,Height(x,z,seed,d),contentVersion);}
         private static ushort Tree(int x, int y, int z, int seed)
         {
             int cellX = (int)math.floor(x / 8f), cellZ = (int)math.floor(z / 8f);
@@ -137,7 +137,7 @@ namespace LestingCraft.World
             int h = TerrainGenerator.Height(wx, wz, Seed, Dimension);
             bool island = TerrainGenerator.Island(wx, wz, Seed, Dimension);
             if(ContentVersion>=3&&Dimension==Dimension.Lestingia)
-            {var trees=NatureGenerator.Trees(wx,wz,Seed,h);var extra=ContentVersion>=5?ExpeditionGenerator.At(wx,wz,Seed):default(ExpeditionGenerator.Column);for(int y=0;y<ChunkData.SizeY;y++)Blocks[ChunkData.IndexOf(x,y,z)]=ContentVersion>=4&&LestingCraft.Story.StoryWorld.TrySample(wx,y,wz,Seed,out ushort placed)?placed:ContentVersion>=5?extra.Apply(NatureGenerator.Column(wx,y,wz,Seed,h,trees),y,Seed):NatureGenerator.Column(wx,y,wz,Seed,h,trees);return;}
+            {var trees=ContentVersion>=7?BiomeGenerator.Trees(wx,wz,Seed,h):NatureGenerator.Trees(wx,wz,Seed,h);var biome=ContentVersion>=7?BiomeGenerator.At(wx,wz,Seed):BiomeKind.MixedForest;var extra=ContentVersion>=5?ExpeditionGenerator.At(wx,wz,Seed):default(ExpeditionGenerator.Column);for(int y=0;y<ChunkData.SizeY;y++)Blocks[ChunkData.IndexOf(x,y,z)]=ContentVersion>=4&&LestingCraft.Story.StoryWorld.TrySample(wx,y,wz,Seed,out ushort placed)?placed:ContentVersion>=5?extra.Apply(ContentVersion>=7?BiomeGenerator.Column(wx,y,wz,Seed,h,trees,biome):NatureGenerator.Column(wx,y,wz,Seed,h,trees),y,Seed):NatureGenerator.Column(wx,y,wz,Seed,h,trees);return;}
             for (int y = 0; y < ChunkData.SizeY; y++)
                 Blocks[ChunkData.IndexOf(x, y, z)] = TerrainGenerator.Expanded(TerrainGenerator.SampleColumn(wx, y, wz, Seed, Dimension, h, island),wx,y,wz,Seed,Dimension,h,ContentVersion);
         }

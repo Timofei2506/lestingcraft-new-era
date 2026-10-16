@@ -11,9 +11,9 @@ using LestingCraft.Gameplay;
 namespace LestingCraft.Presentation
 {
     /// <summary>Native scalable uGUI, no IMGUI or embedded webpage. All fonts/art are local.</summary>
-    public sealed class GameUI : MonoBehaviour
+    public sealed partial class GameUI : MonoBehaviour
     {
-        enum Page{Account,Achievements,Home,World,Rooms,Settings,Pause,Inventory,Death,HUD,Lobby}
+        enum Page{Account,Achievements,Home,World,Rooms,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby}
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
@@ -30,7 +30,9 @@ namespace LestingCraft.Presentation
         sealed class CellView {public int Index;public RawImage Icon;public Text Count;public ItemHover Hover;public Image Wear;public float WearWidth;}
         readonly List<CellView> inventoryViews=new List<CellView>();int stationKind,craftWidth=2;Vector3Int stationCell;
         RawImage craftOutput,cursorImage;Text craftCount,cursorCount,stoveStatus,equipmentStatus;RectTransform cursorRoot;int craftRevision=-1;
-        public bool InventoryOpen=>page==Page.Inventory;
+        public bool InventoryOpen=>page==Page.Inventory||page==Page.Creative||page==Page.Trade;
+        public bool TradeOpen=>page==Page.Trade;
+        public bool EditingText=>EventSystem.current&&EventSystem.current.currentSelectedGameObject&&EventSystem.current.currentSelectedGameObject.GetComponent<InputField>()&&EventSystem.current.currentSelectedGameObject.GetComponent<InputField>().isFocused;
         public bool IsReady=>ready;
         public float InventoryTextPixelSize=>18*canvas.scaleFactor;
         void LayoutWidth(float width)
@@ -40,7 +42,7 @@ namespace LestingCraft.Presentation
         }
         public bool InventoryRectsDoNotOverlap(out string reason)
         {
-            reason="";if(!InventoryOpen){reason="Not inventory";return false;}
+            reason="";if(page!=Page.Inventory){reason="Not bag inventory";return false;}
             var all=new List<UnityEngine.Rect>();var corners=new Vector3[4];
             foreach(var cell in inventoryViews)
             {
@@ -126,7 +128,7 @@ namespace LestingCraft.Presentation
         }
         void Header(string section,bool back=true)
         {
-            if(page==Page.Inventory)
+            if(InventoryOpen)
             {
                 Label(content.transform,"LESTINGCRAFT",32,24,560,34,22,White,true);
                 Label(content.transform,"NEW ERA",34,64,280,25,15,Accent);
@@ -139,7 +141,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,section.ToUpperInvariant(),1060,48,470,40,14,Muted,false,TextAnchor.MiddleRight);
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            Label(content.transform,"0.3.1 visual fix  /  интерфейс 05",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"0.3.2 usability  /  интерфейс 06",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
         }
         public void ShowHome()
         {
@@ -228,11 +230,13 @@ namespace LestingCraft.Presentation
         }
         public void ShowInventory(int station=0,Vector3Int cell=default)
         {
+            if(station==0&&game.Session&&game.Session.Creative&&!creativeBag){ShowCreativeCatalog();return;}
             stationKind=station;stationCell=cell;craftWidth=station==16?3:2;
             Clear(Page.Inventory);LayoutWidth(1280);
             Box(content.transform,16,119,1248,688,new Color(.025f,.043f,.05f,.97f));
             Header(station==16?"Верстак · 3×3":station==17?"Печь · личная готовка":"Инвентарь · 2×2",false);
             inventoryViews.Clear();craftRevision=-1;
+            if(game.Session&&game.Session.Creative)Button("Каталог предметов",424,28,244,52,ShowCreativeCatalog);
             if(!game.Session)return;
             for(int i=0;i<Equipment.Count;i++)
             {float x=32+i*96;Label(content.transform,i==7?"Броне-\nсапоги":Equipment.Names[i],x,145,90,49,16,Muted);CreateCell(58+i,x,197,62,62);}
@@ -437,7 +441,7 @@ namespace LestingCraft.Presentation
             chatInput.textComponent=Label(chatBox.transform,"",12,0,538,49,15,White,false,TextAnchor.MiddleLeft);
             chatInput.placeholder=Label(chatBox.transform,"Сообщение…",12,0,538,49,15,Muted,false,TextAnchor.MiddleLeft);
             chatInput.gameObject.SetActive(false);chatRoot.SetActive(false);chatRevision=-1;
-            noticeHUD=Label(content.transform,"",320,620,640,51,18,Accent,false,TextAnchor.MiddleCenter);
+            noticeHUD=Label(content.transform,"",320,620,640,51,18,Accent,false,TextAnchor.MiddleCenter);BuildUsabilityHUD();
 
         }
         void Update()
@@ -454,7 +458,7 @@ namespace LestingCraft.Presentation
                 if(status)status.text=game.IsConnecting?"Подключаемся к комнате…":game.LastError;
                 foreach(var action in actions)if(action)action.interactable=!game.IsConnecting;
             }
-            if(page==Page.Inventory&&game.Session)
+            if((page==Page.Inventory||page==Page.Creative)&&game.Session)
             {
                 if(craftRevision!=game.Session.Inventory.revision)RefreshCraftInventory();
                 if(cursorRoot&&UnityEngine.InputSystem.Mouse.current!=null)
@@ -462,8 +466,9 @@ namespace LestingCraft.Presentation
                     RectTransformUtility.ScreenPointToLocalPointInRectangle(frame,UnityEngine.InputSystem.Mouse.current.position.ReadValue(),null,out var local);
                     cursorRoot.anchoredPosition=new Vector2(local.x-frame.rect.xMin+12,local.y-frame.rect.yMax+12);cursorRoot.SetAsLastSibling();
                 }
-                if(stationKind==17&&stoveStatus){var f=game.Session.Inventory.furnace;stoveStatus.text=$"Готовка: {Mathf.Clamp01(f.progress/FurnaceState.CookSeconds)*100:0}%\nТопливо: {f.burn:0.0} с\nПауза, если отошёл от печи";}
+                if(page==Page.Inventory&&stationKind==17&&stoveStatus){var f=game.Session.Inventory.furnace;stoveStatus.text=$"Готовка: {Mathf.Clamp01(f.progress/FurnaceState.CookSeconds)*100:0}%\nТопливо: {f.burn:0.0} с\nПауза, если отошёл от печи";}
             }
+            UpdateUsability();
             if(page!=Page.HUD)return;
             if(UnityEngine.InputSystem.Keyboard.current!=null&&UnityEngine.InputSystem.Keyboard.current.f1Key.wasPressedThisFrame)content.gameObject.SetActive(!content.gameObject.activeSelf);
             averageFrame=Mathf.Lerp(averageFrame,Mathf.Min(Time.unscaledDeltaTime,.5f),.04f);timer+=Time.unscaledDeltaTime;

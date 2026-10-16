@@ -8,10 +8,10 @@ export const ownerTag=key=>createHash('sha256').update('lc-pet-owner:'+key).dige
 export const floats=id=>[4,5,18,120,121,122,136,139,135,138].includes(id)||id>=110&&id<=114;
 export const toolDrop=id=>id===47?149:id===3?2:id===5?122:id===18?120:id===19?147:id;
 export class Living {
- constructor(seed,saved={},edits=new Map()){this.seed=seed;this.edits=edits;this.actors=structuredClone(saved.actors||[]).slice(0,96);this.drops=structuredClone(saved.drops||[]).slice(0,128);this.cells=new Map((saved.cells||[]).slice(0,768).map(c=>[key(c.x,c.y,c.z),{...c}]));this.sites=new Set(saved.sites||[]);this.serial=saved.serial||0;this.queue=[];this.queued=new Set();this.last=0;this.flow=0;this.fluidPass=0;this.paths=new Map();this.impacts=[];for(const c of this.cells.values())this.wake(c);}
+ constructor(seed,saved={},edits=new Map(),contentVersion=6){this.contentVersion=contentVersion;this.seed=seed;this.edits=edits;this.actors=structuredClone(saved.actors||[]).slice(0,96);this.drops=structuredClone(saved.drops||[]).slice(0,128);this.cells=new Map((saved.cells||[]).slice(0,768).map(c=>[key(c.x,c.y,c.z),{...c}]));this.sites=new Set(saved.sites||[]);this.serial=saved.serial||0;this.queue=[];this.queued=new Set();this.last=0;this.flow=0;this.fluidPass=0;this.paths=new Map();this.impacts=[];for(const c of this.cells.values())this.wake(c);}
  restorePending(){for(const p of [...this.edits.values()].reverse())for(const [dx,dy,dz] of [[0,0,0],...dirs]){let x=p.x+dx,y=p.y+dy,z=p.z+dz;if([6,7,8,32].includes(this.block(x,y,z)))this.wake({x,y,z});}}
  save(){return {actors:structuredClone(this.actors),drops:structuredClone(this.drops),cells:[...this.cells.values()].map(c=>({...c})),sites:[...this.sites],serial:this.serial};}
- block(x,y,z){return this.cells.get(key(x,y,z))?.block??sample(x,y,z,this.seed,this.edits,6);}
+ block(x,y,z){return this.cells.get(key(x,y,z))?.block??sample(x,y,z,this.seed,this.edits,this.contentVersion);}
  enqueue(x,y,z){let k=key(x,y,z);if(y<1||y>254||x < -384||x>=384||z < -384||z>=384||this.queued.has(k)||this.queue.length>=4096)return;this.queued.add(k);this.queue.push({x,y,z});}
  wake(p){this.enqueue(p.x,p.y,p.z);for(const [x,y,z] of dirs)this.enqueue(p.x+x,p.y+y,p.z+z);}
  edited(p){this.cells.delete(key(p.x,p.y,p.z));this.wake(p);}

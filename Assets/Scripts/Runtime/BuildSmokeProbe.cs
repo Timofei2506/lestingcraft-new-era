@@ -11,7 +11,7 @@ using LestingCraft.Presentation;
 namespace LestingCraft.Runtime
 {
     /// <summary>Actual graphics-device UI startup test. WARP in CI is not a performance benchmark.</summary>
-    public sealed class BuildSmokeProbe : MonoBehaviour
+    public sealed partial class BuildSmokeProbe : MonoBehaviour
     {
         string failure;bool finishing;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -76,7 +76,7 @@ namespace LestingCraft.Runtime
             deadline=Time.realtimeSinceStartup+45;
             while(game.StoryLocked&&failure==null&&Time.realtimeSinceStartup<deadline)yield return null;
             if(game.StoryLocked||failure!=null){Fail("Mandatory opening did not finish its initial cinematic: "+failure);yield break;}
-            if(game.Session.World.ContentVersion!=6||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp.Length!=6)
+            if(game.Session.World.ContentVersion!=7||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp.Length!=6)
             {Fail("Current living-world runtime systems missing");yield break;}
             var modelProbe=new GameObject("Smoke-only native villager and cat mesh checks");
             modelProbe.transform.position=game.Session.Player.transform.position+Vector3.down*20;
@@ -85,7 +85,7 @@ namespace LestingCraft.Runtime
              var renderers=actor.GetComponentsInChildren<MeshRenderer>();if(renderers.Length<5){Fail("Incomplete native settler mesh: "+kind);yield break;}
              foreach(var renderer in renderers)if(!renderer.sharedMaterial||!renderer.sharedMaterial.shader.isSupported){Fail("Unsupported settler material");yield break;}}
             Destroy(modelProbe);
-            Debug.Log("[Smoke] LIVING6: rules9, content6, complete PBR arrays="+SurfaceLayers.Names.Length+", mandatory opening, six saved body zones, native villager/cat meshes and materials loaded");
+            Debug.Log("[Smoke] LIVING6: rules10, content7, complete PBR arrays="+SurfaceLayers.Names.Length+", mandatory opening, six saved body zones, native villager/cat meshes and materials loaded");
             var player=game.Session.Player;player.enabled=false;
             Camera.main.transform.localRotation=Quaternion.Euler(10,35,0);
             var fireCell=Vector3Int.FloorToInt(player.transform.position+new Vector3(1,0,2));game.Session.World.Edit(fireCell.x,fireCell.y,fireCell.z,15);
@@ -242,8 +242,9 @@ namespace LestingCraft.Runtime
             foreach(var pixel in readback.GetPixels32())if(pixel.r>175&&pixel.b>175&&pixel.g<55)hits++;Destroy(readback);
             if(hits<32||failure!=null){Fail("SSR fixture did not reflect on-screen scene geometry: "+hits+" pixels / "+failure);yield break;}
             Debug.Log("[Smoke] WATER_SSR_READBACK: "+hits+" actual ray/depth hits in real EXE; magenta=scene reflection, blue=sky fallback; four-step crossing refinement; NOT hardware ray tracing");
+            yield return ProbeUsability(game,ui,folder);if(finishing)yield break;
             finishing=true;
-            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking live smoke/sparks, authored crystal collision/targeting, real GPU SSAO sampling/occlusion, SSR hit-mask readback and six gameplay screenshots, diagnostic masks/fixture kept separately in private build logs. WARP is not a user-GPU/FPS benchmark.");
+            Debug.Log("[Smoke] PASS: graphics device, menu navigation, all item icons, full world streaming, single fog pass, six health zones, active hand viewmodel, inventory hover tooltip, real 2x2/3x3 crafting, timed furnace cooking live smoke/sparks, authored crystal collision/targeting, real GPU SSAO sampling/occlusion, SSR hit-mask readback and eleven gameplay screenshots, diagnostic masks/fixture kept separately in private build logs. WARP is not a user-GPU/FPS benchmark.");
             Application.Quit(0);
         }
         // A bounded simulation budget AND a wall-clock guard: a stalled/paused furnace must still fail.

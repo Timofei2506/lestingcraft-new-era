@@ -37,10 +37,10 @@ public static class BuildScript
             if(!array||array.depth!=LestingCraft.Presentation.SurfaceLayers.Names.Length||array.width!=512||array.height!=512)
                 throw new InvalidOperationException("Incomplete current PBR array: "+layer);
         }
-        if(LestingCraft.Gameplay.GameRules.Version!=9)throw new InvalidOperationException("Expected current rules9 build");
+        if(LestingCraft.Gameplay.GameRules.Version!=10)throw new InvalidOperationException("Expected current rules10 build");
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
-        PlayerSettings.bundleVersion = "0.3.1-visual-fix";
+        PlayerSettings.bundleVersion = "0.3.2-usability";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");

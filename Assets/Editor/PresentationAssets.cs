@@ -35,7 +35,7 @@ public static class PresentationAssets
         foreach(string clearName in new[]{"Crystal","Glass"})
         {
             var clear=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/"+clearName+".mat");if(!clear){clear=new Material(Shader.Find("LestingCraft/CrystalGlass"));AssetDatabase.CreateAsset(clear,Folder+"/"+clearName+".mat");}
-            clear.SetTexture("_NormalArray",normal);clear.SetColor("_Tint",clearName=="Crystal"?new Color(.78f,.68f,.98f,1):new Color(.96f,.99f,1,1));clear.SetFloat("_Density",clearName=="Crystal"?.09f:.025f);clear.SetFloat("_Sparkle",clearName=="Crystal"?3:0);EditorUtility.SetDirty(clear);
+            clear.SetTexture("_NormalArray",normal);clear.SetColor("_Tint",clearName=="Crystal"?new Color(.78f,.68f,.98f,1):new Color(.76f,.90f,.95f,1));clear.SetFloat("_Density",clearName=="Crystal"?.09f:.16f);clear.SetFloat("_Sparkle",clearName=="Crystal"?3:0);clear.SetFloat("_GlassEdge",clearName=="Glass"?.42f:0);EditorUtility.SetDirty(clear);
         }
         Material water=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Water.mat");
         if(!water){water=new Material(Shader.Find("LestingCraft/Water"));AssetDatabase.CreateAsset(water,Folder+"/Water.mat");}

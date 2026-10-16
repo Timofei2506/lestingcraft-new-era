@@ -17,5 +17,5 @@ assert 'lightingData.additionalLightsColor +=' in pbr and 'CreateLightingData(in
 fog=read('Assets/Resources/VolumetricAtmosphere.shader');assert 'SolarOpen' in fog and 'SampleSceneDepth(uv)' in fog and '*LC_SkyEnergy(sky)' in fog and '*step(.001,sky)' in fog
 fire=read('Assets/Scripts/Presentation/DynamicWeather.cs');assert 'source.shadows=LightShadows.Soft' in fire
 assert 'VolumetricQuality==2?48:32' in fire
-assert 'int contentVersion=4' in read('Assets/Scripts/Runtime/VoxelWorld.cs')
+assert 'int contentVersion=7' in read('Assets/Scripts/Runtime/VoxelWorld.cs')
 print(f'PASS render source contracts: four cutout passes, {np.mean(leaf<128):.1%} leaf holes, spatial sky PBR, additional lights preserved, depth-tested glare, 32/48 shaft samples. NOT shader/GPU validation.')

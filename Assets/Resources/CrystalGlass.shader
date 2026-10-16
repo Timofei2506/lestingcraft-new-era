@@ -6,6 +6,7 @@ Shader "LestingCraft/CrystalGlass"
   _Density("Absorption / opacity",Range(0.02,0.5))=0.09
   _NormalArray("Microfracture normals",2DArray)=""{}
   _Sparkle("View dependent glints",Range(0,6))=3
+  _GlassEdge("Readable glass edge",Range(0,1))=0
  }
  SubShader
  {
@@ -31,7 +32,7 @@ Shader "LestingCraft/CrystalGlass"
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
    TEXTURE2D_ARRAY(_NormalArray);SAMPLER(sampler_NormalArray);
    CBUFFER_START(UnityPerMaterial)
-    half4 _Tint;half _Density,_Sparkle;
+    half4 _Tint;half _Density,_Sparkle,_GlassEdge;
    CBUFFER_END
    struct A {float4 positionOS:POSITION;float3 normalOS:NORMAL;float4 tangentOS:TANGENT;float3 uv:TEXCOORD0;};
    struct V {float4 positionCS:SV_POSITION;float3 positionWS:TEXCOORD0;half3 normalWS:TEXCOORD1;half4 tangentWS:TEXCOORD2;float3 uv:TEXCOORD3;half fog:TEXCOORD4;};
@@ -50,9 +51,13 @@ Shader "LestingCraft/CrystalGlass"
     float2 screen=GetNormalizedScreenSpaceUV(i.positionCS);float eye=-TransformWorldToView(i.positionWS).z;
     float2 offset=TransformWorldToViewDir(n,true).xy*(_Sparkle>0?.006:.0015);float2 refractedUV=saturate(screen+offset);
     if(LinearEyeDepth(SampleSceneDepth(refractedUV),_ZBufferParams)<eye+.01)refractedUV=screen;
-    half3 transmitted=SampleSceneColor(refractedUV)*lerp(half3(1,1,1),_Tint.rgb,_Sparkle>0?.25:.06);
+    half3 transmitted=SampleSceneColor(refractedUV)*lerp(half3(1,1,1),_Tint.rgb,_Sparkle>0?.25:.35);
     half3 color=transmitted*(1-fresnel)+reflected*fresnel*sky+sun.color*(highlight*2.4+sparkle)*sky;
-    half alpha=saturate(_Density+fresnel*.62+highlight*.38+sparkle*.12);
+    // Thin frosted bevels make a transparent block identifiable even against a bright sky.
+    float2 faceUV=frac(i.uv.xy);float borderDistance=min(min(faceUV.x,1-faceUV.x),min(faceUV.y,1-faceUV.y));
+    half edge=(1-smoothstep(.012,.032,borderDistance))*_GlassEdge;
+    color=lerp(color,half3(.55,.73,.78)*(sky*.65+.35),edge*.65);
+    half alpha=saturate(_Density+fresnel*.62+highlight*.38+sparkle*.12+edge);
     return half4(MixFog(color,i.fog),alpha);
    }
    ENDHLSL

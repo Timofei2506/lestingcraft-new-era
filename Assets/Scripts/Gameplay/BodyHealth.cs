@@ -2,7 +2,6 @@ using System;
 using UnityEngine;
 namespace LestingCraft.Gameplay
 {
- public enum BodyPart {Head,Torso,LeftArm,RightArm,LeftLeg,RightLeg}
  [Serializable] public sealed class BodyHealth
  {
   public float[] hp;public float trauma;
