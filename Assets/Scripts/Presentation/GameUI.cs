@@ -408,28 +408,28 @@ namespace LestingCraft.Presentation
         }
         public void ShowHUD()
         {
-            Clear(Page.HUD);
+            Clear(Page.HUD);LayoutWidth(1280);
             loadingHUD=Label(content.transform,"",36,31,780,37,14,Accent);
             // Minimal reticle, not an IMGUI text '+'.
-            foreach(var r in new[]{new Vector4(799,439,2,7),new Vector4(799,454,2,7),new Vector4(789,449,7,2),new Vector4(804,449,7,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.82f),false);
+            foreach(var r in new[]{new Vector4(639,439,2,7),new Vector4(639,454,2,7),new Vector4(629,449,7,2),new Vector4(644,449,7,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.82f),false);
             slots=new Image[9];slotRects=new RectTransform[9];slotIcons=new RawImage[9];slotCounts=new Text[9];slotHovers=new ItemHover[9];lastInventoryRevision=-1;lastSlot=-1;
-            var backdrop=Box(content.transform,364,786,872,99,new Color(.025f,.05f,.055f,.88f));
+            var backdrop=Box(content.transform,271,797,738,92,new Color(.025f,.05f,.055f,.88f));
             for(int i=0;i<9;i++)
             {
-                var image=Box(backdrop.transform,10+i*95,10,91,79,new Color(.10f,.155f,.165f,.92f));slots[i]=image;slotRects[i]=image.rectTransform;
+                var image=Box(backdrop.transform,10+i*80,10,76,72,new Color(.10f,.155f,.165f,.92f));slots[i]=image;slotRects[i]=image.rectTransform;
                 image.raycastTarget=true;AttachHover(image.gameObject,0);slotHovers[i]=image.GetComponent<ItemHover>();
-                var raw=Rect("Item icon",image.transform,18,2,55,55).gameObject.AddComponent<RawImage>();raw.raycastTarget=false;slotIcons[i]=raw;
-                slotCounts[i]=Label(image.transform,"",51,57,32,18,11,White,false,TextAnchor.MiddleRight);
-                Label(image.transform,(i+1).ToString(),0,55,91,18,11,Muted,false,TextAnchor.MiddleCenter);
+                var raw=Rect("Item icon",image.transform,14,2,48,48).gameObject.AddComponent<RawImage>();raw.raycastTarget=false;slotIcons[i]=raw;
+                slotCounts[i]=Label(image.transform,"",45,50,27,22,15,White,false,TextAnchor.MiddleRight);
+                Label(image.transform,(i+1).ToString(),0,50,76,22,13,Muted,false,TextAnchor.MiddleCenter);
             }
             // Item names are hover/focus tooltips, never permanent slot text.
 
-            var healthPanel=Box(content.transform,26,546,310,226,new Color(.025f,.05f,.055f,.91f));
-            healthHUD=Label(healthPanel.transform,"СОСТОЯНИЕ · 100 / 100",16,12,280,30,13,White);
-            var body=Rect("Health silhouette",healthPanel.transform,17,52,91,157);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
-            vitalsHUD=Label(healthPanel.transform,"",124,61,175,146,13,White);
-            miningBar=Box(content.transform,725,484,0,4,Accent,false);miningBar.gameObject.name="Mining progress";
-            miningLabel=Label(content.transform,"",700,494,200,29,12,White,false,TextAnchor.MiddleCenter);
+            var healthPanel=Box(content.transform,16,590,244,210,new Color(.025f,.05f,.055f,.91f));
+            healthHUD=Label(healthPanel.transform,"СОСТОЯНИЕ · 100 / 100",12,10,222,30,17,White);
+            var body=Rect("Health silhouette",healthPanel.transform,10,47,91,157);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
+            vitalsHUD=Label(healthPanel.transform,"",112,49,124,151,16,White);
+            miningBar=Box(content.transform,565,484,0,4,Accent,false);miningBar.gameObject.name="Mining progress";
+            miningLabel=Label(content.transform,"",540,494,200,29,12,White,false,TextAnchor.MiddleCenter);
             chatRoot=Box(content.transform,26,265,590,260,new Color(.025f,.045f,.04f,.78f)).gameObject;
             chatText=Label(chatRoot.transform,"",18,13,554,168,15,White);chatText.verticalOverflow=VerticalWrapMode.Truncate;
             var chatBox=Box(chatRoot.transform,14,193,562,49,Panel);chatBox.raycastTarget=true;chatInput=chatBox.gameObject.AddComponent<InputField>();
@@ -437,7 +437,7 @@ namespace LestingCraft.Presentation
             chatInput.textComponent=Label(chatBox.transform,"",12,0,538,49,15,White,false,TextAnchor.MiddleLeft);
             chatInput.placeholder=Label(chatBox.transform,"Сообщение…",12,0,538,49,15,Muted,false,TextAnchor.MiddleLeft);
             chatInput.gameObject.SetActive(false);chatRoot.SetActive(false);chatRevision=-1;
-            noticeHUD=Label(content.transform,"",400,656,800,41,14,Accent,false,TextAnchor.MiddleCenter);
+            noticeHUD=Label(content.transform,"",320,692,640,51,18,Accent,false,TextAnchor.MiddleCenter);
 
         }
         void Update()
