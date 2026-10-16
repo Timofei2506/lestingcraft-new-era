@@ -11,6 +11,12 @@ namespace LestingCraft.Tests
 {
  public sealed class MaterialEffectsTests
  {
+  [Test] public void MandatoryOpeningBloodHasASerializedShaderReferenceForPlayerBuilds()
+  {
+   var blood=Resources.Load<Material>("Generated/StoryBlood");Assert.IsNotNull(blood);
+   Assert.IsNotNull(blood.shader);Assert.AreEqual("Universal Render Pipeline/Unlit",blood.shader.name);
+   Assert.IsFalse(ShaderUtil.ShaderHasError(blood.shader));
+  }
   [Test] public void UrpSsaoIsARealEnabledFeatureWithDepthReconstructedNormals()
   {
    var renderer=Resources.Load<UniversalRendererData>("Generated/Renderer");Assert.IsNotNull(renderer);

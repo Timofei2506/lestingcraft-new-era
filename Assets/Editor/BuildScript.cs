@@ -62,6 +62,9 @@ public static class BuildScript
                   $"size={summary.totalSize}, time={summary.totalTime}, " +
                   $"errors={summary.totalErrors}, warnings={summary.totalWarnings}");
 
+        var storyBlood=Resources.Load<Material>("Generated/StoryBlood");
+        if(!storyBlood||!storyBlood.shader||storyBlood.shader.name!="Universal Render Pipeline/Unlit")
+            throw new System.Exception("Story blood must have a serialized, included player shader");
         bool shaderErrors=false;
         foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","CrystalGlass","Grass","AtmosphericSky","VolumetricAtmosphere"})
         {

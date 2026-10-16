@@ -19,6 +19,11 @@ public static class PresentationAssets
         EnsureMenuBackdrop();
         EnsureItemIcons();
         EnsureCharacterAtlas();
+        // A serialized Resources material keeps URP/Unlit in actual players.
+        // Shader.Find alone worked in the Editor but the Windows build stripped it.
+        var storyBlood=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/StoryBlood.mat");
+        if(!storyBlood){storyBlood=new Material(Shader.Find("Universal Render Pipeline/Unlit"));AssetDatabase.CreateAsset(storyBlood,Folder+"/StoryBlood.mat");}
+        storyBlood.shader=Shader.Find("Universal Render Pipeline/Unlit");storyBlood.SetColor("_BaseColor",new Color(.21f,.027f,.024f));EditorUtility.SetDirty(storyBlood);
         var albedo=Array("Albedo","albedo",false);var normal=Array("Normal","normal",true);var mask=Array("Mask","mask",true);
         Material material=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/VoxelPBR.mat");
         if(!material){material=new Material(Shader.Find("LestingCraft/VoxelPBR"));AssetDatabase.CreateAsset(material,Folder+"/VoxelPBR.mat");}

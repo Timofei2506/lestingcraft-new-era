@@ -22,7 +22,16 @@ namespace LestingCraft.Runtime
         }
         void Awake(){Application.logMessageReceived+=OnLog;}
         void OnLog(string condition,string trace,LogType type)
-        {if(!finishing&&(type==LogType.Exception||type==LogType.Error||type==LogType.Assert))failure=condition;}
+        {
+            if(!finishing&&(type==LogType.Exception||type==LogType.Error||type==LogType.Assert))
+            {
+                // A thrown UI callback can terminate Start() itself; do not leave
+                // a broken game spamming exceptions for the entire CI timeout.
+                failure=condition;finishing=true;
+                Debug.LogError("[Smoke] FAIL runtime exception: "+condition);
+                Application.Quit(2);
+            }
+        }
         IEnumerator Start()
         {
             yield return null;
@@ -31,7 +40,7 @@ namespace LestingCraft.Runtime
             var game=FindFirstObjectByType<PrototypeGame>();var ui=FindFirstObjectByType<GameUI>();
             if(!game||!Camera.main||!ui||!ui.IsReady||failure!=null){Fail("Bootstrap/menu initialization: "+failure);yield break;}
             if(!MenuArtwork.Backdrop){Fail("Menu backdrop is missing.");yield break;}
-            foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","Sky","Atmosphere","Precipitation","Fire","Smoke","Crystal","Glass"})
+            foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","Sky","Atmosphere","Precipitation","Fire","Smoke","Crystal","Glass","StoryBlood"})
             {
                 var material=Resources.Load<Material>("Generated/"+name);
                 if(!material||!material.shader||!material.shader.isSupported){Fail("Missing/unsupported material: "+name);yield break;}
