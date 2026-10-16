@@ -1,7 +1,8 @@
 // Shared Node / Workers(nodejs_compat). Passwords and recovery codes are never logged or returned in profiles.
-import {randomBytes,pbkdf2,timingSafeEqual,createHash} from 'node:crypto';
+import {randomBytes,timingSafeEqual,createHash} from 'node:crypto';
+import {Buffer} from 'node:buffer';
+import {derivePassword as derive,PASSWORD_KDF} from './password-kdf.js';
 import {achievements,counterKeys,levelFor} from './achievements.js';
-const derive=(password,salt)=>new Promise((ok,no)=>pbkdf2(password,Buffer.from(salt,'hex'),600000,32,'sha256',(e,b)=>e?no(e):ok(b.toString('hex'))));
 const random=()=>randomBytes(32).toString('hex');export const digest=s=>createHash('sha256').update(s).digest('hex');
 const equal=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.length===64&&b.length===64&&timingSafeEqual(Buffer.from(a,'hex'),Buffer.from(b,'hex'));
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
@@ -21,27 +22,27 @@ export class AccountService {
    const username=nameOf(b.username),password=passwordOf(b.password);
    if(!s.limit('registration:'+digest(ip),now,3,3600000))fail('Лимит регистраций: попробуйте позже.',429);
    if(s.user(username))fail('Этот логин недоступен.',409);
-   const salt=random(),hash=await derive(password,salt),recoveryCode=random();
-   const u={username,uid:randomBytes(16).toString('hex'),salt,hash,recovery:digest(recoveryCode),stats:{},earned:[],xp:0,title:'',revision:0,batches:[],created:now};s.putUser(u);return issue(u,recoveryCode);
+   const salt=random(),hash=await derive(password,salt,PASSWORD_KDF),recoveryCode=random();
+   const u={username,uid:randomBytes(16).toString('hex'),salt,hash,kdf:PASSWORD_KDF,recovery:digest(recoveryCode),stats:{},earned:[],xp:0,title:'',revision:0,batches:[],created:now};s.putUser(u);return issue(u,recoveryCode);
   }
   if(path==='login'&&method==='POST'){
    const username=nameOf(b.username);passwordOf(b.password);
    if(!s.limit('login:'+username,now,8,900000)||!s.limit('loginip:'+digest(ip),now,30,900000))fail('Подождите перед следующей попыткой входа.',429);
-   const u=s.user(username),hash=await derive(b.password,u?.salt||'00'.repeat(32));if(!u||!equal(hash,u.hash))fail('Неверный логин или пароль.',401);return issue(u);
+   const u=s.user(username),hash=await derive(b.password,u?.salt||'00'.repeat(32),u?u.kdf:PASSWORD_KDF);if(!u||!equal(hash,u.hash))fail('Неверный логин или пароль.',401);return issue(u);
   }
   if(path==='recover'&&method==='POST'){
    const username=nameOf(b.username);passwordOf(b.password);
    if(!s.limit('recovery:'+username,now,5,3600000))fail('Слишком много попыток восстановления.',429);
    const u=s.user(username);if(!u||typeof b.recoveryCode!=='string'||!equal(digest(b.recoveryCode),u.recovery))fail('Неверный логин или код восстановления.',401);
-   u.salt=random();u.hash=await derive(b.password,u.salt);const code=random();u.recovery=digest(code);s.deleteSessions(u.uid);s.putUser(u);return issue(u,code);
+   u.salt=random();u.hash=await derive(b.password,u.salt,PASSWORD_KDF);u.kdf=PASSWORD_KDF;const code=random();u.recovery=digest(code);s.deleteSessions(u.uid);s.putUser(u);return issue(u,code);
   }
   const u=await auth();
   if(path==='me'&&method==='GET')return {ok:true,profile:publicProfile(u)};
   if(path==='logout'&&method==='POST'){s.deleteSession(digest(token));await s.flush();return {ok:true};}
   if(path==='password'&&method==='POST'){
-   passwordOf(b.password);passwordOf(b.newPassword);if(!equal(await derive(b.password,u.salt),u.hash))fail('Неверный пароль.',401);u.salt=random();u.hash=await derive(b.newPassword,u.salt);s.deleteSessions(u.uid);s.putUser(u);return issue(u);
+   passwordOf(b.password);passwordOf(b.newPassword);if(!equal(await derive(b.password,u.salt,u.kdf),u.hash))fail('Неверный пароль.',401);u.salt=random();u.hash=await derive(b.newPassword,u.salt,PASSWORD_KDF);u.kdf=PASSWORD_KDF;s.deleteSessions(u.uid);s.putUser(u);return issue(u);
   }
-  if(path==='delete'&&method==='POST'){passwordOf(b.password);if(!equal(await derive(b.password,u.salt),u.hash))fail('Неверный пароль.',401);s.deleteSessions(u.uid);s.deleteUser(u.username);await s.flush();return {ok:true};}
+  if(path==='delete'&&method==='POST'){passwordOf(b.password);if(!equal(await derive(b.password,u.salt,u.kdf),u.hash))fail('Неверный пароль.',401);s.deleteSessions(u.uid);s.deleteUser(u.username);await s.flush();return {ok:true};}
   if(path==='profile'&&method==='POST'){
    if(typeof b.title!=='string'||b.title!==''&&!u.earned.includes(b.title)||b.title!==''&&!achievements.find(a=>a.id===b.title)?.title)fail('Этот титул ещё не открыт.');u.title=b.title;u.revision++;s.putUser(u);await s.flush();return {ok:true,profile:publicProfile(u)};
   }
