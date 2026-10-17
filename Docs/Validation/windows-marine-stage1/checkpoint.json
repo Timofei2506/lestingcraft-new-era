@@ -1,0 +1,29 @@
+{
+  "status": "BLOCKED_BEFORE_CLOUD_RUNNER_NOT_NATIVE_VALIDATED",
+  "plannedVersion": "0.3.3-marine-stage1",
+  "nativeSourceAttempt": "bc8e6f117c6aa11622dba4490a57b1b43ffa2fa4",
+  "failedRuns": [
+    39006031981,
+    39006036461
+  ],
+  "failure": "GitHub billing / spending restriction before runner startup; no game code executed",
+  "nativeExeProduced": false,
+  "shaderCompiled": false,
+  "visualReviewAccepted": false,
+  "publicImagesUploaded": false,
+  "paidSettingsChanged": false,
+  "managedChecks": 129198,
+  "legacy1234567ExactComparisons": 84000,
+  "nodeTestsWithMarineParity": 121,
+  "marineCsharpJsParityRows": 12000,
+  "parityCsvSha256": "8b8d9017134453c058998cfac45e85ed4b1d5c86c02be28438bdbb4e1ea9a8a9",
+  "productionHealthUnchanged": {
+    "ok": true,
+    "game": "LestingCraft",
+    "version": 1,
+    "rulesVersion": 10,
+    "transport": "websocket",
+    "maxPlayers": 8,
+    "storage": "durable-object-sqlite"
+  }
+}

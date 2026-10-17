@@ -11,8 +11,9 @@ namespace LestingCraft.Runtime
  {
   IEnumerator MarineWarmup(VoxelWorld world,Vector3 point)
   {
+   var session=world.GetComponentInChildren<SurvivalSession>();double fixedClock=session.Data.clock;
    float deadline=Time.realtimeSinceStartup+900;int cadence=UnityEngine.Rendering.OnDemandRendering.renderFrameInterval;
-   try{UnityEngine.Rendering.OnDemandRendering.renderFrameInterval=64;while((!BiomeRingLoaded(world,point)||!world.GetComponent<FarLandscape>().Ready)&&Time.realtimeSinceStartup<deadline)yield return null;}
+   try{UnityEngine.Rendering.OnDemandRendering.renderFrameInterval=64;while((!BiomeRingLoaded(world,point)||!world.GetComponent<FarLandscape>().Ready)&&Time.realtimeSinceStartup<deadline){session.Data.clock=fixedClock;yield return null;}session.Data.clock=fixedClock;}
    finally{UnityEngine.Rendering.OnDemandRendering.renderFrameInterval=cadence;}
    if(!BiomeRingLoaded(world,point)||!world.GetComponent<FarLandscape>().Ready){Fail("Marine native full-quality chunk/landscape warmup timed out");yield break;}
    Debug.Log("[Smoke] MARINE_RING: complete=True radius="+VisualSettings.Current.ViewDistance+" cadence="+UnityEngine.Rendering.OnDemandRendering.renderFrameInterval+" distantVertices="+world.GetComponent<FarLandscape>().TerrainVertices);

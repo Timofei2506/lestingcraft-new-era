@@ -63,7 +63,7 @@ Shader "LestingCraft/VoxelPBR"
                 float2 surfaceUV=i.uv.xy-offset*.5;float depth=0,stepDepth=1.0/steps;float2 delta=offset/steps;
                 [loop] for(int k=0;k<16;k++)
                 {
-                    if(k>=steps||abs(i.uv.z-6)<.25)break;
+                    if(fade<=.001||k>=steps||abs(i.uv.z-6)<.25)break;
                     float h=1-SAMPLE_TEXTURE2D_ARRAY_GRAD(_MaskArray,sampler_MaskArray,surfaceUV,i.uv.z,dx,dy).b;
                     if(depth>=h)break;surfaceUV+=delta;depth+=stepDepth;
                 }

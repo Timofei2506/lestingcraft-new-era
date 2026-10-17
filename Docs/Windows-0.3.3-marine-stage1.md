@@ -16,8 +16,10 @@
 - 121 Node tests with 12,000 actual compiled C#/JS marine parity rows.
 - Existing art/content/render-source contracts pass. These are not shader compiler/GPU/FPS evidence.
 
-## Native acceptance — pending until actual build/visual review
-Real Windows EXE under Direct3D11 WARP, shader compilation/no runtime errors, prior usability suite plus generated sea, clock-advanced wave frame, dense purple crystal, night village lanterns, full-radius streaming/distant LOD and displaced swimming boundary. Private screenshots only; no mirroring into public distribution.
+## Cloud blocker and native acceptance — NOT completed
+Both cloud runs failed before any runner/build/deployment step: Windows 39006031981 and worker 39006036461. Actual GitHub check annotation: “The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the Billing & plans section in your settings”. No paid settings changed. No new Windows EXE produced, no new graphics frames captured/reviewed, no server11 deployed and no 0.3.3 publication. Existing public 0.3.2 remains unchanged. This is not a shader or game failure.
+
+Still required: real Windows EXE under Direct3D11 WARP, shader compilation/no runtime errors, prior usability suite plus generated sea, clock-advanced wave frame, dense purple crystal, night village lanterns, full-radius streaming/distant LOD and displaced swimming boundary. Private screenshots only; no mirroring into public distribution.
 
 ## Deliberately later phases
 House redesign, more placeable blocks/fences/torches/lanterns, proper mine rail/loot systems, starter balance, clearer story and epic cutscenes; broader physical simulation. No claim of photorealism, hardware RTX, hardware GPU performance, finished five-chapter story, or eight-native-player load testing.

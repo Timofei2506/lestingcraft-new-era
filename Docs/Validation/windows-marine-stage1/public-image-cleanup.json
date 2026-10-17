@@ -1,0 +1,39 @@
+{
+  "publicCommit": "84f2f9aac36d8ad24414217d9d2ab0a0228589ce",
+  "removedPaths": [
+    "Screenshots/0.3.1-visual-fix/menu.png",
+    "Screenshots/0.3.1-visual-fix/workbench-3x3.png",
+    "Screenshots/0.3.1-visual-fix/world-ultra.png",
+    "Screenshots/0.3.1-visual-fix/furnace-cooking.png",
+    "Screenshots/0.3.1-visual-fix/world-hud.png",
+    "Screenshots/0.3.1-visual-fix/inventory-tooltip.png",
+    "Screenshots/0.3.2-usability/glass-window.png",
+    "Screenshots/0.3.2-usability/menu.png",
+    "Screenshots/0.3.2-usability/biome-dunes.png",
+    "Screenshots/0.3.2-usability/workbench-3x3.png",
+    "Screenshots/0.3.2-usability/opening-witnesses.png",
+    "Screenshots/0.3.2-usability/world-ultra.png",
+    "Screenshots/0.3.2-usability/villager-trade.png",
+    "Screenshots/0.3.2-usability/creative-catalog.png",
+    "Screenshots/0.3.2-usability/furnace-cooking.png",
+    "Screenshots/0.3.2-usability/world-hud.png",
+    "Screenshots/0.3.2-usability/inventory-tooltip.png",
+    "Screenshots/0.3.0-living-test/menu.png",
+    "Screenshots/0.3.0-living-test/workbench-3x3.png",
+    "Screenshots/0.3.0-living-test/world-ultra.png",
+    "Screenshots/0.3.0-living-test/furnace-cooking.png",
+    "Screenshots/0.3.0-living-test/world-hud.png",
+    "Screenshots/0.3.0-living-test/inventory-tooltip.png",
+    "Diagnostics/0.3.0-living-test/water-reflections.png",
+    "Diagnostics/0.3.0-living-test/ssao-gpu-proof.png",
+    "Diagnostics/0.3.0-living-test/water-ssr-proof.png"
+  ],
+  "editedReleaseDescriptions": [
+    "v0.3.2-usability",
+    "v0.3.1-visual-fix",
+    "v0.3.0-living-test"
+  ],
+  "historyRewritten": false,
+  "gameAssetsKept": true,
+  "sourceBase": "bb2204358f10b8c5f693457b5dd5386384621219"
+}

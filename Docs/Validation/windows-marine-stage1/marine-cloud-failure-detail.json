@@ -1,0 +1,146 @@
+[
+  {
+    "run": 39006031981,
+    "status": "completed",
+    "conclusion": "failure",
+    "jobs": [
+      {
+        "name": "Check Unity secrets",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-10-17T05:22:38Z",
+        "steps": []
+      },
+      {
+        "name": "Build ${{ matrix.targetPlatform }}",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-17T05:22:41Z",
+        "steps": []
+      },
+      {
+        "name": "Publish GitHub Release",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-17T05:22:41Z",
+        "steps": []
+      }
+    ],
+    "checks": [
+      {
+        "name": "Check Unity secrets",
+        "conclusion": "failure",
+        "output": {
+          "title": null,
+          "summary": null,
+          "text": null,
+          "annotations_count": 2,
+          "annotations_url": "https://api.github.com/repos/Timofei2506/lestingcraft-new-era/check-runs/117318595005/annotations"
+        },
+        "annotations": [
+          {
+            "path": ".github",
+            "blob_href": "https://github.com/Timofei2506/lestingcraft-new-era/blob/bc8e6f117c6aa11622dba4490a57b1b43ffa2fa4/.github",
+            "start_line": 1,
+            "start_column": null,
+            "end_line": 1,
+            "end_column": null,
+            "annotation_level": "failure",
+            "title": "",
+            "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+            "raw_details": ""
+          },
+          {
+            "path": ".github",
+            "blob_href": "https://github.com/Timofei2506/lestingcraft-new-era/blob/bc8e6f117c6aa11622dba4490a57b1b43ffa2fa4/.github",
+            "start_line": 1,
+            "start_column": null,
+            "end_line": 1,
+            "end_column": null,
+            "annotation_level": "notice",
+            "title": "",
+            "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+            "raw_details": ""
+          }
+        ]
+      },
+      {
+        "name": "Build ${{ matrix.targetPlatform }}",
+        "conclusion": "skipped",
+        "output": {
+          "title": null,
+          "summary": null,
+          "text": null,
+          "annotations_count": 0,
+          "annotations_url": "https://api.github.com/repos/Timofei2506/lestingcraft-new-era/check-runs/117318601747/annotations"
+        },
+        "annotations": []
+      },
+      {
+        "name": "Publish GitHub Release",
+        "conclusion": "skipped",
+        "output": {
+          "title": null,
+          "summary": null,
+          "text": null,
+          "annotations_count": 0,
+          "annotations_url": "https://api.github.com/repos/Timofei2506/lestingcraft-new-era/check-runs/117318601926/annotations"
+        },
+        "annotations": []
+      }
+    ]
+  },
+  {
+    "run": 39006036461,
+    "status": "completed",
+    "conclusion": "failure",
+    "jobs": [
+      {
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-10-17T05:22:43Z",
+        "steps": []
+      }
+    ],
+    "checks": [
+      {
+        "name": "deploy",
+        "conclusion": "failure",
+        "output": {
+          "title": null,
+          "summary": null,
+          "text": null,
+          "annotations_count": 2,
+          "annotations_url": "https://api.github.com/repos/Timofei2506/lestingcraft-new-era/check-runs/117318609233/annotations"
+        },
+        "annotations": [
+          {
+            "path": ".github",
+            "blob_href": "https://github.com/Timofei2506/lestingcraft-new-era/blob/bc8e6f117c6aa11622dba4490a57b1b43ffa2fa4/.github",
+            "start_line": 1,
+            "start_column": null,
+            "end_line": 1,
+            "end_column": null,
+            "annotation_level": "failure",
+            "title": "",
+            "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+            "raw_details": ""
+          },
+          {
+            "path": ".github",
+            "blob_href": "https://github.com/Timofei2506/lestingcraft-new-era/blob/bc8e6f117c6aa11622dba4490a57b1b43ffa2fa4/.github",
+            "start_line": 1,
+            "start_column": null,
+            "end_line": 1,
+            "end_column": null,
+            "annotation_level": "notice",
+            "title": "",
+            "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+            "raw_details": ""
+          }
+        ]
+      }
+    ]
+  }
+]

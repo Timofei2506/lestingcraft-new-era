@@ -20,10 +20,10 @@ namespace LestingCraft.Presentation
   }
   IEnumerator Rebuild(Vector2Int c,int quality,int nearRadius)
   {
-   building=true;Ready=false;int extent=quality==1?640:256,step=8,originX=c.x*16,originZ=c.y*16,side=extent*2/step;
+   building=true;Ready=false;int extent=quality==1?640:256,step=8,originX=c.x*16,originZ=c.y*16,side=extent*2/step,storyFloor=LestingCraft.Story.StoryWorld.Floor(World.Seed);
    int[,] heights=new int[side+1,side+1];
    for(int z=0;z<=side;z++)
-   {for(int x=0;x<=side;x++){int wx=originX-extent+x*step,wz=originZ-extent+z*step,h=OceanGenerator.Height(wx,wz,World.Seed),floor=LestingCraft.Story.StoryWorld.Floor(World.Seed);if(LestingCraft.Story.StoryWorld.TrySample(wx,floor,wz,World.Seed,out ushort placed)&&BlockRegistry.IsSolid(placed))h=floor;heights[x,z]=h+1;}if(z%8==7)yield return null;}
+   {for(int x=0;x<=side;x++){int wx=originX-extent+x*step,wz=originZ-extent+z*step,h=OceanGenerator.Height(wx,wz,World.Seed),floor=storyFloor;if(LestingCraft.Story.StoryWorld.TrySample(wx,floor,wz,World.Seed,out ushort placed)&&BlockRegistry.IsSolid(placed))h=floor;heights[x,z]=h+1;}if(z%8==7)yield return null;}
    var ground=new ChunkMeshData();var sea=new ChunkMeshData();
    int minX=(c.x-nearRadius)*16,maxX=(c.x+nearRadius+1)*16,minZ=(c.y-nearRadius)*16,maxZ=(c.y+nearRadius+1)*16;
    for(int z=0;z<side;z++)
@@ -43,7 +43,7 @@ namespace LestingCraft.Presentation
      if(wz==maxZ&&wx>=minX&&wx<maxX)Skirt(ground,new Vector3(wx+step,b,wz),new Vector3(wx,a,wz),SurfaceLayers.ForFace(block,2));
     }if(z%8==7)yield return null;
    }
-   var newLand=ground.CreateMesh();var newWater=sea.CreateMesh();newLand.name="Far terrain PBR LOD";newWater.name="Far sea analytic waves LOD";
+   var newLand=ground.CreateMesh();var newWater=sea.CreateMesh();newLand.subMeshCount=1;newWater.subMeshCount=1;var waterBounds=newWater.bounds;waterBounds.Expand(.5f);newWater.bounds=waterBounds;newLand.name="Far terrain PBR LOD";newWater.name="Far sea analytic waves LOD";
    if(!landObject){landObject=new GameObject("Distant PBR land",typeof(MeshFilter),typeof(MeshRenderer));landObject.transform.SetParent(transform,false);landObject.GetComponent<MeshRenderer>().sharedMaterial=Resources.Load<Material>("Generated/VoxelPBR");waterObject=new GameObject("Distant blue sea",typeof(MeshFilter),typeof(MeshRenderer));waterObject.transform.SetParent(transform,false);waterObject.GetComponent<MeshRenderer>().sharedMaterial=Resources.Load<Material>("Generated/Water");waterObject.GetComponent<MeshRenderer>().shadowCastingMode=ShadowCastingMode.Off;}
    landObject.GetComponent<MeshFilter>().sharedMesh=newLand;waterObject.GetComponent<MeshFilter>().sharedMesh=newWater;if(land)Destroy(land);if(water)Destroy(water);land=newLand;water=newWater;building=false;Ready=true;
   }
