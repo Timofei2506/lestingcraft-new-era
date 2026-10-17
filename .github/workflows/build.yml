@@ -12,7 +12,7 @@ concurrency:
 jobs:
   build:
     name: Build ${{ matrix.targetPlatform }}
-    runs-on: [self-hosted, lc-native-ff367cd8ffc3]
+    runs-on: [self-hosted, lc-native-stage1]
     timeout-minutes: 90
     strategy:
       fail-fast: false
