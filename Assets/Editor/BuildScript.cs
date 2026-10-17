@@ -40,7 +40,7 @@ public static class BuildScript
         if(LestingCraft.Gameplay.GameRules.Version!=10)throw new InvalidOperationException("Expected current rules10 build");
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
-        PlayerSettings.bundleVersion = "0.3.2-usability";
+        PlayerSettings.bundleVersion = "0.3.3-marine-stage1";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");

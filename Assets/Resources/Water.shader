@@ -23,17 +23,21 @@ Shader "LestingCraft/Water"
             #include "../Shaders/EnvironmentLighting.hlsl"
             #include "../Shaders/VoxelSky.hlsl"
             TEXTURE2D_ARRAY(_NormalArray);SAMPLER(sampler_NormalArray);
-            float4 _EnvironmentShallowWater,_EnvironmentDeepWater;float _LCWaterSteps,_LCWaterReflectionProbe;
+            float4 _EnvironmentShallowWater,_EnvironmentDeepWater;float _LCWaterSteps,_LCWaterReflectionProbe,_LCUltra;
             struct A{float4 p:POSITION;float3 n:NORMAL;float4 t:TANGENT;};
             struct V{float4 p:SV_POSITION;float3 ws:TEXCOORD0;half3 n:TEXCOORD1;half4 t:TEXCOORD2;half fog:TEXCOORD3;};
             // Continuous world-space waves: adjacent chunks evaluate exactly the same phase.
             V Vert(A i)
             {
                 V o;float3 ws=TransformObjectToWorld(i.p.xyz);float time=_EnvironmentTime;
-                float p0=dot(ws.xz,float2(.72,.41))+time*.72;
-                float p1=dot(ws.xz,float2(-.39,1.07))-time*.91;
-                ws.y+=sin(p0)*.028+sin(p1)*.016;
-                float2 slope=cos(p0)*float2(.72,.41)*.028+cos(p1)*float2(-.39,1.07)*.016;
+                // Three physical-length wave bands, analytic derivatives (not just animated UVs).
+                // All use the synchronized world clock and identical shared-border positions.
+                float2 k0=float2(.23,.12),k1=float2(-.37,.51),k2=float2(.91,-.73);
+                float p0=dot(ws.xz,k0)-time*1.18,p1=dot(ws.xz,k1)-time*1.73,p2=dot(ws.xz,k2)+time*2.34;
+                float energy=.78+_GlobalWindStrength*.55;
+                float3 amplitude=float3(.115,.060,.021)*energy;
+                ws.y+=dot(sin(float3(p0,p1,p2)),amplitude);
+                float2 slope=cos(p0)*k0*amplitude.x+cos(p1)*k1*amplitude.y+cos(p2)*k2*amplitude.z;
                 VertexNormalInputs n=GetVertexNormalInputs(i.n,i.t);
                 o.p=TransformWorldToHClip(ws);o.ws=ws;
                 o.n=normalize(lerp(n.normalWS,normalize(float3(-slope.x,1,-slope.y)),saturate(n.normalWS.y)));
@@ -45,7 +49,7 @@ Shader "LestingCraft/Water"
                 float3 origin=TransformWorldToView(ws+normal*.07);
                 float3 direction=TransformWorldToViewDir(reflect(-view,normal),true);
                 confidence=0;float previousDiff=-1,previousAlong=0;
-                int steps=clamp((int)_LCWaterSteps,10,24);[loop] for(int stepIndex=1;stepIndex<=24;stepIndex++)
+                int steps=clamp((int)_LCWaterSteps,10,48);[loop] for(int stepIndex=1;stepIndex<=48;stepIndex++)
                 {
                     if(stepIndex>steps)break;float along=stepIndex*10.0/steps;float distanceAlong=.20+along*along*.27;
                     float3 ray=origin+direction*distanceAlong;if(ray.z>=-.05)break;
@@ -94,7 +98,7 @@ Shader "LestingCraft/Water"
                 float distortedDepth=LinearEyeDepth(SampleSceneDepth(refractedUV),_ZBufferParams);
                 if(distortedDepth<eyeDepth+.02)refractedUV=screen;
                 half3 behind=SampleSceneColor(refractedUV);
-                half3 transmission=exp(-half3(.25,.075,.043)*waterDepth);
+                half3 transmission=exp(-half3(.34,.13,.035)*waterDepth);
                 half3 body=lerp(_EnvironmentShallowWater.rgb,_EnvironmentDeepWater.rgb,saturate(waterDepth*.14));
                 body*=lerp(.12,1,_EnvironmentDaylight)*sky;
                 half3 refracted=behind*transmission+body*(1-transmission);
@@ -115,7 +119,10 @@ Shader "LestingCraft/Water"
                 color+=behind*caustic*.10*sky*exp(-waterDepth*.8)*nl*sun.shadowAttenuation;
                 half foamNoise=saturate(.5+na.x*.34+nb.y*.27+sin(dot(i.ws.xz,float2(3.7,2.3))-time*.55)*.12);
                 half foam=(1-smoothstep(.05,.65,waterDepth))*smoothstep(.25,.65,foamNoise);
-                color=lerp(color,half3(.68,.75,.70)*lerp(.16,1,_EnvironmentDaylight),foam*.30*sky);
+                // Whitecaps follow analytically evaluated crests, not a tiled painted stripe.
+                float crest=sin(dot(i.ws.xz,float2(.23,.12))-time*1.18)*.65+sin(dot(i.ws.xz,float2(-.37,.51))-time*1.73)*.35;
+                half whitecap=smoothstep(.88,.99,crest)*smoothstep(.15,.65,_GlobalWindStrength)*smoothstep(.35,.8,foamNoise);
+                color=lerp(color,half3(.79,.87,.96)*lerp(.16,1,_EnvironmentDaylight),saturate(foam*.52+whitecap*.4)*sky);
                 color=MixFog(color,i.fog);
                 // Scene color is already included above: a second alpha mix would wash out absorption.
                 return half4(color,1);

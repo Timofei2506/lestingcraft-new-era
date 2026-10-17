@@ -36,14 +36,14 @@ namespace LestingCraft.Presentation
         {
             var asset=GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
             if(asset){asset.renderScale=RenderScale;asset.mainLightShadowmapResolution=ShadowResolution;asset.shadowDistance=ViewDistance*(Preset==1?30:22);asset.shadowCascadeCount=Preset==1?4:2;}
-            var renderer=Resources.Load<UniversalRendererData>("Generated/Renderer");
-            if(renderer)foreach(var feature in renderer.rendererFeatures)if(feature is ScreenSpaceAmbientOcclusion)feature.SetActive(AmbientOcclusion);
-            Shader.SetGlobalFloat("_LCParallaxSteps",Preset==1?16:8);Shader.SetGlobalFloat("_LCWaterSteps",Preset==1?24:12);
+            foreach(string path in new[]{"Generated/Renderer","Generated/RendererUltra"})
+            {var renderer=Resources.Load<UniversalRendererData>(path);if(renderer)foreach(var feature in renderer.rendererFeatures)if(feature is ScreenSpaceAmbientOcclusion)feature.SetActive(AmbientOcclusion);}
+            Shader.SetGlobalFloat("_LCParallaxSteps",Preset==1?16:8);Shader.SetGlobalFloat("_LCWaterSteps",Preset==1?48:16);
             Shader.SetGlobalFloat("_LCGrassRange",Preset==1?64:42);Shader.SetGlobalFloat("_LCUltra",Preset);
             if(Camera.main)
             {
-                Camera.main.fieldOfView=FieldOfView;
-                var extra=Camera.main.GetComponent<UniversalAdditionalCameraData>();if(extra)extra.renderPostProcessing=PostEffects;
+                Camera.main.fieldOfView=FieldOfView;Camera.main.farClipPlane=Preset==1?1024:512;
+                var extra=Camera.main.GetComponent<UniversalAdditionalCameraData>();if(extra){extra.renderPostProcessing=PostEffects;extra.SetRenderer(Preset==1?1:0);extra.antialiasing=Preset==1?AntialiasingMode.SubpixelMorphologicalAntiAliasing:AntialiasingMode.FastApproximateAntialiasing;extra.antialiasingQuality=AntialiasingQuality.High;}
             }
         }
         public static bool HardwareRayTracing=>SystemInfo.supportsRayTracing;

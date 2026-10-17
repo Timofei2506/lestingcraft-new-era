@@ -4,10 +4,11 @@ import {site} from './story-world.js';
 import {sampleLegacy,height,hash} from './terrain-legacy.js';
 import {weapon,weapons} from './weapons.js';
 import {sampleExpedition} from './terrain-expedition.js';
+import {sampleOceans,streetLightBlock} from './terrain-oceans.js';
 import {sampleBiomes} from './terrain-biomes.js';
 import {sampleNature} from './terrain-nature.js';
 export {f,hash,height} from './terrain-legacy.js';
-export function sample(x,y,z,seed,edits,contentVersion=2){const edit=edits.get(`${x},${y},${z}`);if(edit)return edit.block;if(contentVersion>=4){const placed=site(x,y,z,seed);if(placed!==null)return placed;}const raw=contentVersion>=7?sampleBiomes(x,y,z,seed):contentVersion>=3?sampleNature(x,y,z,seed):sampleLegacy(x,y,z,seed,edits);return contentVersion>=5?sampleExpedition(x,y,z,seed,raw):raw;}
+export function sample(x,y,z,seed,edits,contentVersion=2){const edit=edits.get(`${x},${y},${z}`);if(edit)return edit.block;if(contentVersion>=4){const placed=site(x,y,z,seed);if(placed!==null)return contentVersion>=8?streetLightBlock(x,y,z,seed,placed):placed;}const raw=contentVersion>=8?sampleOceans(x,y,z,seed):contentVersion>=7?sampleBiomes(x,y,z,seed):contentVersion>=3?sampleNature(x,y,z,seed):sampleLegacy(x,y,z,seed,edits);return contentVersion>=5?sampleExpedition(x,y,z,seed,raw,contentVersion):raw;}
 const solid=id=>id>0&&id!==7&&id!==8;
 const health=s=>s===0?30:s===1?8:40;
 export const animalHeight=s=>s===0?2.2:s===1?.8:.95;

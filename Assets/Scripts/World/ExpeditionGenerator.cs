@@ -27,17 +27,17 @@ namespace LestingCraft.World
    }
    public int XWorld,ZWorld;
   }
-  public static Column At(int x,int z,int seed)
+  public static Column At(int x,int z,int seed,int contentVersion=5)
   {
-   var result=new Column{XWorld=x,ZWorld=z};int a=(int)math.floor(x/192f),b=(int)math.floor(z/192f);uint h=TerrainGenerator.Hash(a,0,b,seed^71839);int ax=a*192+64+(int)(h%64),az=b*192+64+(int)((h>>8)%64),kind=(int)((h>>18)%5),rx=x-ax,rz=z-az,rot=(int)((h>>26)%4);int top=TerrainGenerator.Height(ax,az,seed,Dimension.Lestingia);
+   var result=new Column{XWorld=x,ZWorld=z};int a=(int)math.floor(x/192f),b=(int)math.floor(z/192f);uint h=TerrainGenerator.Hash(a,0,b,seed^71839);int ax=a*192+64+(int)(h%64),az=b*192+64+(int)((h>>8)%64),kind=(int)((h>>18)%5),rx=x-ax,rz=z-az,rot=(int)((h>>26)%4);int top=(contentVersion>=8?OceanGenerator.Height(ax,az,seed):TerrainGenerator.Height(ax,az,seed,Dimension.Lestingia));
    if(!Reserved(ax,az)&&top>=44&&top<=62&&math.abs(rx)<=StructurePlan.Radius[kind]&&math.abs(rz)<=StructurePlan.Radius[kind])
    {result.Surface=true;result.Base=top;result.Kind=kind;result.X=rot==0?rx:rot==1?rz:rot==2?-rx:-rz;result.Z=rot==0?rz:rot==1?-rx:rot==2?-rz:rx;}
    // Mines start in the real entrance chambers of nature generation, not sealed random boxes.
    a=(int)math.floor(x/64f);b=(int)math.floor(z/64f);
    for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++)
-   {int cx=a+dx,cz=b+dz;h=TerrainGenerator.Hash(cx,0,cz,seed^33019);if((cx!=0||cz!=0)&&h%3!=0||h%2!=0)continue;ax=cx*64+20+(int)(h%24);az=cz*64+20+(int)((h>>8)%24);top=TerrainGenerator.Height(ax,az,seed,Dimension.Lestingia);if(top<44||top>64||Reserved(ax,az))continue;rx=x-ax-15;rz=z-az-8;if(math.abs(rx)>32||math.abs(rz)>24)continue;result.Mine=true;result.MX=rx;result.MZ=rz;result.MB=math.max(9,top-24)-2;break;}
+   {int cx=a+dx,cz=b+dz;h=TerrainGenerator.Hash(cx,0,cz,seed^33019);if((cx!=0||cz!=0)&&h%3!=0||h%2!=0)continue;ax=cx*64+20+(int)(h%24);az=cz*64+20+(int)((h>>8)%24);top=(contentVersion>=8?OceanGenerator.Height(ax,az,seed):TerrainGenerator.Height(ax,az,seed,Dimension.Lestingia));if(top<44||top>64||Reserved(ax,az))continue;rx=x-ax-15;rz=z-az-8;if(math.abs(rx)>32||math.abs(rz)>24)continue;result.Mine=true;result.MX=rx;result.MZ=rz;result.MB=math.max(9,top-24)-2;break;}
    return result;
   }
-  public static ushort Sample(int x,int y,int z,int seed,ushort original)=>At(x,z,seed).Apply(original,y,seed);
+  public static ushort Sample(int x,int y,int z,int seed,ushort original,int contentVersion=5)=>At(x,z,seed,contentVersion).Apply(original,y,seed);
  }
 }

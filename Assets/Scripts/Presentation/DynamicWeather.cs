@@ -48,7 +48,8 @@ namespace LestingCraft.Presentation
             snowAmount=Mathf.Lerp(snowAmount,Sample.Kind==WeatherKind.Snow?precipitation:0,blend);
             wetness=Mathf.MoveTowards(wetness,Sample.Kind==WeatherKind.Snow?0:precipitation,dt*(precipitation>wetness?.035f:.007f));
             var cell=Vector3Int.FloorToInt(cameraView.transform.position);
-            bool inWater=Session.World.GetBlock(cell.x,cell.y,cell.z)==BlockRegistry.WaterId;
+            Session.World.WaterClock=Session.Data.clock;Session.World.WaterWind=wind;
+            bool inWater=Session.World.InFluid(cameraView.transform.position,BlockRegistry.WaterId);
             submerged=Mathf.MoveTowards(submerged,inWater?1:0,dt*5);
             float windX=Mathf.Sin((float)(Session.Data.clock/90)+Session.Data.seed%1000)*wind;
             var rainWind=rain.velocityOverLifetime;rainWind.x=windX*3;rainWind.z=wind;

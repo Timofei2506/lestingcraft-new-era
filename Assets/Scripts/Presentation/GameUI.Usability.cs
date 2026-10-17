@@ -77,7 +77,7 @@ namespace LestingCraft.Presentation
   }
   void UpdateUsability()
   {
-   if(page==Page.HUD&&game.Session){if(interactionHUD)interactionHUD.text=game.Session.Living.Hint;if(biomeHUD)biomeHUD.text=game.Session.World.ContentVersion>=7&&game.Session.World.Dimension==LestingCraft.World.Dimension.Lestingia?LestingCraft.World.BiomeGenerator.Name(LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(game.Session.Player.transform.position.x),Mathf.FloorToInt(game.Session.Player.transform.position.z),game.Session.World.Seed)):"";return;}
+   if(page==Page.HUD&&game.Session){if(interactionHUD)interactionHUD.text=game.Session.Living.Hint;if(biomeHUD)biomeHUD.text=game.Session.World.ContentVersion>=7&&game.Session.World.Dimension==LestingCraft.World.Dimension.Lestingia?LestingCraft.World.BiomeGenerator.Name((game.Session.World.ContentVersion>=8?LestingCraft.World.OceanGenerator.Biome(Mathf.FloorToInt(game.Session.Player.transform.position.x),Mathf.FloorToInt(game.Session.Player.transform.position.z),game.Session.World.Seed):LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(game.Session.Player.transform.position.x),Mathf.FloorToInt(game.Session.Player.transform.position.z),game.Session.World.Seed))):"";return;}
    if(page==Page.Trade){RefreshTrade();return;}
    if(page!=Page.Creative)return;
    foreach(var cell in inventoryViews)if(cell.Index<9)cell.Icon.transform.parent.GetComponent<Image>().color=cell.Index==game.Session.Inventory.selected?new Color(.36f,.49f,.30f,.97f):Panel;

@@ -25,7 +25,7 @@ namespace LestingCraft.Presentation
             var daySky=new Color(.115f,.29f,.49f);var dayHorizon=new Color(.56f,.66f,.70f);
             var nightSky=new Color(.004f,.009f,.027f);var nightHorizon=new Color(.023f,.036f,.064f);
             var warm=new Color(1,.42f,.17f);var noon=new Color(1,.94f,.83f);
-            ShallowWater=new Color(.18f,.43f,.36f);DeepWater=new Color(.018f,.095f,.12f);
+            ShallowWater=new Color(.055f,.30f,.63f);DeepWater=new Color(.008f,.065f,.23f);
             switch(realm)
             {
                 case Dimension.Ashlands:daySky=new Color(.19f,.085f,.055f);dayHorizon=new Color(.49f,.26f,.15f);noon=new Color(1,.68f,.40f);ShallowWater=new Color(.31f,.25f,.16f);DeepWater=new Color(.09f,.065f,.035f);break;

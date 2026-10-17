@@ -162,7 +162,7 @@ namespace LestingCraft.Runtime
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
         }
-        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0)
+        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=8,StoryState story=null,long serverNow=0)
         {
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
             var camera=Camera.main;camera.backgroundColor=realm==1?new Color(.19f,.08f,.07f):realm==3||realm==4?new Color(.075f,.045f,.14f):new Color(.42f,.66f,.78f);
@@ -174,7 +174,7 @@ namespace LestingCraft.Runtime
             dimension=realm;seedText=seed.ToString();camera.farClipPlane=256;
             WorldAtmosphere.Configure(camera,realm,resumeSave?.clock??clock);
             obj.AddComponent<FirstPersonHands>().Initialize(player,camera);
-            world.Player=obj.transform;paused=false;SetCursor(true);busy=false;status="Генерируется мир…";lastError="";
+            world.Player=obj.transform;if(world.ContentVersion>=8&&realm==0)world.gameObject.AddComponent<VillageStreetLights>().Initialize(world.Seed);paused=false;SetCursor(true);busy=false;status="Генерируется мир…";lastError="";
             var sessionObject=new GameObject("Survival and weather");sessionObject.transform.SetParent(world.transform,false);
             Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;Story=sessionObject.AddComponent<StoryController>();Story.Initialize(this,story,serverNow);obj.AddComponent<LocalPlayerAppearance>().Initialize(this);
             if(Session.Vitals.dead||Session.Data.campaign.runEnded)OpenDeathScreen();else ui.ShowHUD();
@@ -222,7 +222,7 @@ namespace LestingCraft.Runtime
                 case "welcome":
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
                     if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Несовместимые правила комнаты. Обновите сервер; для нового содержимого нужна новая комната");Destroy(client.gameObject);return;}
-                    if(packet.contentVersion>7||packet.contentVersion<0||packet.rulesVersion>=10&&packet.contentVersion!=7||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
+                    if(packet.contentVersion>8||packet.contentVersion<0||packet.rulesVersion>=11&&packet.contentVersion!=8||packet.rulesVersion==10&&packet.contentVersion!=7||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;IsHost=packet.host;pendingWelcome=packet;
                     if(packet.lobby&&!packet.started){online=true;busy=false;InLobby=true;ui.ShowLobby();break;}BeginNetworkWorld(packet);break;
                 case "lobby":ApplyLobby(packet);break;

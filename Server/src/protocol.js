@@ -4,7 +4,7 @@ import {weapons} from './weapons.js';
 import {Fauna} from './wildlife.js';
 import {Living,ownerTag,transact,toolDrop} from './living.js';
 export const VERSION = 1;
-export const RULES_VERSION = 10;
+export const RULES_VERSION = 11;
 export const MAX_MESSAGE = 16384;
 export const MAX_PLAYERS = 8;
 export const MAX_EDITS = 4096;
@@ -17,10 +17,10 @@ const finite = v => typeof v === 'number' && Number.isFinite(v);
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
     throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
-  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
-  if([2,3,4,5,6,7,8,9,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
+  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
+  if([2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
-  return { lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
+  return { lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=11?8:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
 export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
 export function publicPeer(p) {return {id:p.id,name:p.name,x:p.x,y:p.y,z:p.z,yaw:p.yaw,weapon:p.weapon||0,offhand:p.offhand||0,equipment:p.equipment||Array(8).fill(0)};}
@@ -125,7 +125,7 @@ export class RoomState {
       return {type:'edit',...record,id:peer.id,living:candidate?candidate.save():undefined};
     }
     if(p.type==='state') {
-      if(![2,3,4,5,6,7,8,9,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
+      if(![2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
       const save=validatePlayerSave(p.save,this.config.contentVersion>=2,this.config.contentVersion>=4,this.config.contentVersion>=5);if((save.claimedStoryRewards&~(this.config.story?.rewards||0))!==0||((this.savedPlayers.get(peer.playerKey)?.claimedStoryRewards||0)&~save.claimedStoryRewards)!==0)throw Error("Invalid story rewards / rollback");const dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
       for(const id of save.claimedAnimalLoot){if(!this.fauna.loot.some(l=>l.id===id&&l.key===peer.playerKey))throw Error('Unknown animal loot claim');}
@@ -187,7 +187,7 @@ export function validateEquipmentIds(ids){
 }
 
 // New content must never reach a pre-expansion client (unknown IDs would become air).
-export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
+export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.contentVersion>=8?11:config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
 
 export function packetError(raw,error){let p={};try{if(typeof raw==='string'&&raw.length<=MAX_MESSAGE)p=JSON.parse(raw)||{};}catch{}return {type:'error',message:error.message,code:typeof p.type==='string'?p.type:'',requestId:Number.isInteger(p.requestId)?p.requestId:0};}
 

@@ -2,11 +2,11 @@ using Unity.Mathematics;
 namespace LestingCraft.World
 {
  // Content 7 only: old samplers and terrain heights remain immutable.
- public enum BiomeKind { Meadow, MixedForest, Taiga, Dunes, Marsh, RockyHighlands }
+ public enum BiomeKind { Meadow, MixedForest, Taiga, Dunes, Marsh, RockyHighlands, Sea, Coast }
  public static class BiomeGenerator
  {
   public const int Version=7;
-  public static string Name(BiomeKind kind){switch(kind){case BiomeKind.Meadow:return "Луга";case BiomeKind.Taiga:return "Хвойная тайга";case BiomeKind.Dunes:return "Песчаные дюны";case BiomeKind.Marsh:return "Заболоченный лес";case BiomeKind.RockyHighlands:return "Каменистые пустоши";default:return "Смешанный лес";}}
+  public static string Name(BiomeKind kind){switch(kind){case BiomeKind.Sea:return "Море";case BiomeKind.Coast:return "Морской берег";case BiomeKind.Meadow:return "Луга";case BiomeKind.Taiga:return "Хвойная тайга";case BiomeKind.Dunes:return "Песчаные дюны";case BiomeKind.Marsh:return "Заболоченный лес";case BiomeKind.RockyHighlands:return "Каменистые пустоши";default:return "Смешанный лес";}}
   static int Floor(int x,int size)=>x>=0?x/size:(x-size+1)/size;
   public static BiomeKind At(int x,int z,int seed)
   {
@@ -17,7 +17,7 @@ namespace LestingCraft.World
    return (BiomeKind)kind;
   }
   public static float TemperatureOffset(BiomeKind biome)=>biome==BiomeKind.Taiga?-9:biome==BiomeKind.Dunes?10:biome==BiomeKind.Marsh?3:biome==BiomeKind.RockyHighlands?-6:0;
-  public static NatureGenerator.TreeColumn Trees(int x,int z,int seed,int height)
+  public static NatureGenerator.TreeColumn Trees(int x,int z,int seed,int height,int contentVersion=7)
   {
    if(ExpeditionGenerator.Reserved(x,z))return NatureGenerator.Trees(x,z,seed,height);
    var result=new NatureGenerator.TreeColumn{Base=height-16};int cx=Floor(x,8),cz=Floor(z,8);
@@ -25,7 +25,7 @@ namespace LestingCraft.World
    {
     int a=cx+dx,b=cz+dz;uint h=TerrainGenerator.Hash(a,0,b,seed^62113);int ax=a*8+1+(int)(h%6),az=b*8+1+(int)((h>>8)%6);var kind=At(ax,az,seed);
     int density=kind==BiomeKind.MixedForest?680:kind==BiomeKind.Taiga?760:kind==BiomeKind.Marsh?390:kind==BiomeKind.Meadow?45:kind==BiomeKind.RockyHighlands?25:0;
-    if((h>>16)%1000>=density)continue;int top=TerrainGenerator.Height(ax,az,seed,Dimension.Lestingia);if(top<=42||top>=67||NatureGenerator.Entrance(ax,top,az,seed))continue;
+    if((h>>16)%1000>=density)continue;int top=contentVersion>=8?OceanGenerator.Height(ax,az,seed):TerrainGenerator.Height(ax,az,seed,Dimension.Lestingia);if(top<=42||top>=67||NatureGenerator.Entrance(ax,top,az,seed))continue;
     bool pine=kind==BiomeKind.Taiga;int tall=pine?12+(int)(h%6):kind==BiomeKind.Marsh?6+(int)(h%3):8+(int)(h%5);int rx=x-ax,rz=z-az,dist=rx*rx+rz*rz;
     for(int dy=1;dy<=tall+3;dy++)
     {

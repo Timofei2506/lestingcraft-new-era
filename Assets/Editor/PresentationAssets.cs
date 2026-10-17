@@ -35,7 +35,7 @@ public static class PresentationAssets
         foreach(string clearName in new[]{"Crystal","Glass"})
         {
             var clear=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/"+clearName+".mat");if(!clear){clear=new Material(Shader.Find("LestingCraft/CrystalGlass"));AssetDatabase.CreateAsset(clear,Folder+"/"+clearName+".mat");}
-            clear.SetTexture("_NormalArray",normal);clear.SetColor("_Tint",clearName=="Crystal"?new Color(.78f,.68f,.98f,1):new Color(.76f,.90f,.95f,1));clear.SetFloat("_Density",clearName=="Crystal"?.09f:.16f);clear.SetFloat("_Sparkle",clearName=="Crystal"?3:0);clear.SetFloat("_GlassEdge",clearName=="Glass"?.42f:0);EditorUtility.SetDirty(clear);
+            clear.SetTexture("_NormalArray",normal);clear.SetColor("_Tint",clearName=="Crystal"?new Color(.43f,.065f,.85f,1):new Color(.76f,.90f,.95f,1));clear.SetFloat("_Density",clearName=="Crystal"?.90f:.16f);clear.SetFloat("_Sparkle",clearName=="Crystal"?3:0);clear.SetFloat("_ZWrite",clearName=="Crystal"?1:0);clear.SetFloat("_GlassEdge",clearName=="Glass"?.42f:0);EditorUtility.SetDirty(clear);
         }
         Material water=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/Water.mat");
         if(!water){water=new Material(Shader.Find("LestingCraft/Water"));AssetDatabase.CreateAsset(water,Folder+"/Water.mat");}
@@ -75,12 +75,15 @@ public static class PresentationAssets
             pipeline=UniversalRenderPipelineAsset.Create(renderer);
             AssetDatabase.CreateAsset(pipeline,Folder+"/HighDefinition.asset");
         }
-        EnsureAmbientOcclusion();
+        EnsureAmbientOcclusion(false);EnsureAmbientOcclusion(true);
         // Reapply on every Ensure, including an existing Generated directory/cache.
         pipeline.supportsHDR=true;pipeline.msaaSampleCount=4;pipeline.renderScale=1f;
         pipeline.supportsCameraDepthTexture=true;pipeline.supportsCameraOpaqueTexture=true;
         pipeline.maxAdditionalLightsCount=8;pipeline.mainLightShadowmapResolution=2048;pipeline.shadowDistance=80;pipeline.shadowCascadeCount=2;
         var serialized=new SerializedObject(pipeline);
+        var renderers=serialized.FindProperty("m_RendererDataList");renderers.arraySize=2;
+        renderers.GetArrayElementAtIndex(0).objectReferenceValue=AssetDatabase.LoadAssetAtPath<UniversalRendererData>(Folder+"/Renderer.asset");
+        renderers.GetArrayElementAtIndex(1).objectReferenceValue=AssetDatabase.LoadAssetAtPath<UniversalRendererData>(Folder+"/RendererUltra.asset");
         serialized.FindProperty("m_MainLightShadowsSupported").boolValue=true;
         serialized.FindProperty("m_SoftShadowsSupported").boolValue=true;
         serialized.FindProperty("m_AdditionalLightShadowsSupported").boolValue=true;
@@ -100,9 +103,10 @@ public static class PresentationAssets
         foreach(var component in profile.components)EditorUtility.SetDirty(component);
         EditorUtility.SetDirty(material);EditorUtility.SetDirty(water);EditorUtility.SetDirty(profile);AssetDatabase.SaveAssets();
     }
-    static void EnsureAmbientOcclusion()
+    static void EnsureAmbientOcclusion(bool ultra)
     {
-        var renderer=AssetDatabase.LoadAssetAtPath<UniversalRendererData>(Folder+"/Renderer.asset");
+        var renderer=AssetDatabase.LoadAssetAtPath<UniversalRendererData>(Folder+(ultra?"/RendererUltra.asset":"/Renderer.asset"));
+        if(!renderer){renderer=ScriptableObject.CreateInstance<UniversalRendererData>();AssetDatabase.CreateAsset(renderer,Folder+(ultra?"/RendererUltra.asset":"/Renderer.asset"));}
         ScreenSpaceAmbientOcclusion feature=null;
         foreach(var candidate in renderer.rendererFeatures)if(candidate is ScreenSpaceAmbientOcclusion ao)feature=ao;
         if(!feature){feature=ScriptableObject.CreateInstance<ScreenSpaceAmbientOcclusion>();feature.name="Contact SSAO";AssetDatabase.AddObjectToAsset(feature,renderer);renderer.rendererFeatures.Add(feature);}
@@ -110,11 +114,11 @@ public static class PresentationAssets
         settings.FindPropertyRelative("Source").intValue=0; // Depth; normals reconstructed, not a missing DepthNormals pass.
         settings.FindPropertyRelative("NormalSamples").intValue=2;
         settings.FindPropertyRelative("AOMethod").intValue=1; // Interleaved gradient, no missing noise texture dependency.
-        settings.FindPropertyRelative("Downsample").boolValue=true;
+        settings.FindPropertyRelative("Downsample").boolValue=!ultra;
         settings.FindPropertyRelative("AfterOpaque").boolValue=false; // Correct direct/indirect lighting integration, not a black overlay.
-        settings.FindPropertyRelative("Intensity").floatValue=.85f;settings.FindPropertyRelative("Radius").floatValue=.23f;
+        settings.FindPropertyRelative("Intensity").floatValue=.85f;settings.FindPropertyRelative("Radius").floatValue=ultra?.48f:.23f;
         settings.FindPropertyRelative("DirectLightingStrength").floatValue=.18f;settings.FindPropertyRelative("Falloff").floatValue=65;
-        settings.FindPropertyRelative("Samples").intValue=1;settings.FindPropertyRelative("BlurQuality").intValue=0;
+        settings.FindPropertyRelative("Samples").intValue=ultra?0:1;settings.FindPropertyRelative("BlurQuality").intValue=0;
         data.ApplyModifiedPropertiesWithoutUndo();feature.SetActive(true);feature.Create();
         EditorUtility.SetDirty(feature);EditorUtility.SetDirty(renderer);
     }

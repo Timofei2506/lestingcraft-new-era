@@ -26,7 +26,7 @@ namespace LestingCraft.Runtime
         public VoxelSkylight Skylight {get;}=new VoxelSkylight();
         LestingCraft.Presentation.VoxelSkyVolume skyVolume;
         int Radius => LestingCraft.Presentation.VisualSettings.Current.ViewDistance;
-        public void Initialize(int seed, Dimension dimension, bool online,int contentVersion=7)
+        public void Initialize(int seed, Dimension dimension, bool online,int contentVersion=8)
         {
             Seed=seed;ContentVersion=contentVersion;Dimension=dimension;Online=online;detailQuality=LestingCraft.Presentation.VisualSettings.Current.Preset;
             crystalMaterial=new Material(Resources.Load<Material>("Generated/Crystal"));glassMaterial=new Material(Resources.Load<Material>("Generated/Glass"));
@@ -38,6 +38,7 @@ namespace LestingCraft.Runtime
             RenderSettings.fogStartDistance=Radius*10;RenderSettings.fogEndDistance=Radius*16;
             Skylight.Changed=(x,z)=>{dirty.Add(new Vector2Int(x,z));if(skyVolume)skyVolume.Invalidate();};
             skyVolume=gameObject.AddComponent<LestingCraft.Presentation.VoxelSkyVolume>();skyVolume.World=this;
+            if(ContentVersion>=8&&Dimension==Dimension.Lestingia)gameObject.AddComponent<LestingCraft.Presentation.FarLandscape>().World=this;
             StartCoroutine(Stream());
         }
         public static int ChunkCoordinate(int value) => Mathf.FloorToInt(value/16f);
@@ -51,7 +52,17 @@ namespace LestingCraft.Runtime
             if(chunks.TryGetValue(key,out var view))return view.Data.GetBlock(x-key.x*16,y,z-key.y*16);
             return TerrainGenerator.SampleContent(x,y,z,Seed,Dimension,ContentVersion);
         }
-        public bool InFluid(Vector3 point,int fluid){var p=Vector3Int.FloorToInt(point);if(GetBlock(p.x,p.y,p.z)!=fluid)return false;float h=FluidHeight!=null&&GetBlock(p.x,p.y+1,p.z)!=fluid?FluidHeight(p.x,p.y,p.z):1;return point.y-p.y<h;}
+        public double WaterClock=420;public float WaterWind=.15f;
+        public bool InFluid(Vector3 point,int fluid)
+        {
+            var p=Vector3Int.FloorToInt(point);int id=GetBlock(p.x,p.y,p.z);
+            if(fluid==7&&id==0&&GetBlock(p.x,p.y-1,p.z)==7)p.y--;
+            else if(id!=fluid)return false;
+            if(GetBlock(p.x,p.y+1,p.z)==fluid)return true;
+            float height=FluidHeight!=null?FluidHeight(p.x,p.y,p.z):1;
+            float wave=fluid==7?WaterSurface.Offset(point.x,point.z,WaterClock,WaterWind):0;
+            return point.y<p.y+height+wave;
+        }
         public System.Func<int,int,int,float> FluidHeight;
         public bool CanAcceptEdit(Vector3Int cell)=>edits.ContainsKey(cell)||edits.Count<(Online?4096:8192);
         public void Edit(int x,int y,int z,ushort block)
