@@ -1,51 +1,19 @@
-# Только Windows x64. WebGL и публикация GitHub Pages отложены.
-# Лицензия — онлайн-вход по Unity ID (Personal), без .ulf-файлов.
-# Запуск: тег v* или вручную (workflow_dispatch). Требует UNITY_USERNAME / UNITY_PASSWORD.
-name: Build Windows
-
+name: Private native verification on free Windows host
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
-
 env:
   PYTHONUTF8: '1'
   PYTHONIOENCODING: utf-8
-
 permissions:
   contents: write
-
-# Personal-лицензия имеет мало мест — не даём сборкам конкурировать за seat
 concurrency:
   group: unity-license
   cancel-in-progress: false
-
 jobs:
-  check-secrets:
-    name: Check Unity secrets
-    runs-on: ubuntu-latest
-    outputs:
-      has: ${{ steps.check.outputs.has }}
-    steps:
-      - id: check
-        env:
-          UNITY_USERNAME: ${{ secrets.UNITY_USERNAME }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        run: |
-          if [ -n "$UNITY_USERNAME" ] && [ -n "$UNITY_PASSWORD" ]; then
-            echo "has=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Секреты UNITY_USERNAME/UNITY_PASSWORD не заданы — Windows не собран. Инструкция: Docs/Сборка-в-облаке.md"
-            exit 1
-          fi
-
   build:
     name: Build ${{ matrix.targetPlatform }}
-    needs: check-secrets
-    if: needs.check-secrets.outputs.has == 'true'
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    runs-on: [self-hosted, lc-native-8cc00b27b7a3]
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -76,15 +44,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Content validation failed" }
           python Tools/build_source_receipt.py Builds/Logs/source-receipt.json
           if ($LASTEXITCODE -ne 0) { throw "Source receipt failed" }
-
-      - name: Cache Library
-        uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-build-${{ matrix.targetPlatform }}-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Art/PBR/**') }}
-          restore-keys: |
-            Library-build-${{ matrix.targetPlatform }}-
-            Library-
 
       - name: Set up Unity Hub for licensing only
         uses: buildalon/unity-setup@v2
@@ -160,57 +119,9 @@ jobs:
         shell: pwsh
         run: python Tools/build_launcher_manifest.py "${{ matrix.artifactPath }}" "${{ github.sha }}" Builds/LauncherFeed/game-manifest.json
 
-      - name: Upload launcher manifest
-        uses: actions/upload-artifact@v4
-        with:
-          name: launcher-manifest
-          path: Builds/LauncherFeed/game-manifest.json
-          retention-days: 14
-          if-no-files-found: error
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.targetPlatform }}
-          path: ${{ matrix.artifactPath }}
-          if-no-files-found: error
-
-      - name: Upload private executable screenshots (never mirror to public distribution)
-        uses: actions/upload-artifact@v4
+      - name: Preserve actual native evidence privately, never public screenshots
         if: always()
-        with:
-          name: Windows-visual-screenshots
-          path: Builds/StandaloneWindows64/SmokeResults
-          if-no-files-found: warn
-
-      - name: Upload Unity build logs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: BuildLogs-${{ matrix.targetPlatform }}
-          path: Builds/Logs
-          if-no-files-found: warn
-
-  release:
-    name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Pack zips
-        run: |
-          cd artifacts
-          for d in build-*; do (cd "$d" && zip -qr "../$d.zip" .); done
-          ls -la *.zip
-
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/*.zip
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/preserve-native-private.py
