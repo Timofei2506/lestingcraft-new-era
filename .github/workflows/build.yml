@@ -59,13 +59,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Keep test builds private
-        shell: pwsh
-        run: |
-          if ("${{ github.event.repository.private }}" -ne "true") {
-            throw "Private Windows artifact required: run this workflow from an authorized private repository."
-          }
-
       - name: Verify current source and generated material inputs
         shell: pwsh
         run: |
