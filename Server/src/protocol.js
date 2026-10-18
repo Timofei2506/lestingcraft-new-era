@@ -1,4 +1,4 @@
-export const VERSION = 2; // generator version: Lestingia v2 (biomes, oceans, rivers, mountains)
+export const VERSION = 1;
 export const RULES_VERSION = 4;
 export const MAX_MESSAGE = 16384;
 export const MAX_PLAYERS = 8;
@@ -11,7 +11,7 @@ const integer = v => typeof v === 'number' && Number.isInteger(v);
 const finite = v => typeof v === 'number' && Number.isFinite(v);
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
-    throw new Error('Expected version=2, signed 32-bit seed, dimension=0..4');
+    throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
   if(value.rulesVersion!==undefined&&![2,3,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
   if([2,3,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   return { version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };

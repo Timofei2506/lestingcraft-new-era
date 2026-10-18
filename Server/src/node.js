@@ -16,7 +16,7 @@ function broadcast(code,message,except) {const raw=JSON.stringify(message);for(c
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://server');
   if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'});res.end();return;}
-  if(url.pathname==='/health')return reply(res,200,{ok:true,game:'LestingCraft',version:2,rulesVersion:RULES_VERSION,transport:'websocket',storage:'local-json',maxPlayers:8});
+  if(url.pathname==='/health')return reply(res,200,{ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,transport:'websocket',storage:'local-json',maxPlayers:8});
   if(req.method==='POST'&&url.pathname==='/api/rooms') {
     try {
       let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>1024){reply(res,413,{type:'error',message:'Body too large'});return;}}

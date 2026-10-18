@@ -6,7 +6,7 @@ function connect(code,name,key){
  return {ws,next(type){let i=queue.findIndex(p=>p.type===type);if(i>=0)return Promise.resolve(queue.splice(i,1)[0]);return new Promise((resolve,reject)=>waiters.push({type,resolve,timer:setTimeout(()=>reject(Error('Timeout '+type)),10000)}));},close(){if(ws.readyState===WebSocket.CLOSED)return Promise.resolve();return new Promise(resolve=>{const timer=setTimeout(()=>ws.terminate(),3000);ws.once('close',()=>{clearTimeout(timer);resolve();});ws.close();});}};
 }
 const makeSave=()=>({milestones:1,inventory:{selected:0,revision:1,slots:Array.from({length:45},(_,i)=>({item:i===0?4:0,count:i===0?8:0,durability:0}))},survival:{health:100,hunger:61,stamina:85,temperature:36,wetness:.5},equippedCoat:false,grave:[]});
-async function create(mode){const r=await fetch(endpoint+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:2,rulesVersion:2,mode,seed:2506,dimension:0})});assert.equal(r.status,201);return (await r.json()).code;}
+async function create(mode){const r=await fetch(endpoint+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:1,rulesVersion:2,mode,seed:2506,dimension:0})});assert.equal(r.status,201);return (await r.json()).code;}
 const code=await create(1),key='a'.repeat(32),bkey='b'.repeat(32),b=connect(code,'Bob',bkey);let a=connect(code,'Alice',key);
 try{
  const wa=await a.next('welcome');await b.next('welcome');assert.equal(wa.mode,1);assert.equal(wa.dimension,0);

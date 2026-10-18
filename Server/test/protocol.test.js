@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {RoomState,createConfig,newPeer,validCode,MAX_EDITS,safeName} from '../src/protocol.js';
-const config=()=>createConfig({version:2,seed:2506,dimension:0});
+const config=()=>createConfig({version:1,seed:2506,dimension:0});
 const position=(r,p,t=10000)=>r.handle(p,JSON.stringify({type:'position',x:1,y:42,z:1,yaw:0}),t,()=>{});
 const edit=(r,p,override={},t=10100,save=()=>{})=>r.handle(p,JSON.stringify({type:'edit',x:1,y:41,z:1,block:4,...override}),t,save);
 test('validates seed,version,dimensions',()=>{assert.equal(config().seed,2506);for(const invalid of [{version:0},{dimension:5},{seed:1.5},{seed:NaN},{seed:2147483648}])assert.throws(()=>createConfig({...config(),...invalid}));});

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 const endpoint=process.env.TEST_ENDPOINT||'http://127.0.0.1:8787';
 const health=await(await fetch(endpoint+'/health')).json();assert.equal(health.version,1);
-const response=await fetch(endpoint+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:2,seed:2506,dimension:0})});
+const response=await fetch(endpoint+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:1,seed:2506,dimension:0})});
 assert.equal(response.status,201);const {code}=await response.json();assert.equal(code.length,32);
 const wsUrl=endpoint.replace(/^http/,'ws')+`/api/rooms/${code}/ws`;
 function connect(name) {

@@ -11,7 +11,7 @@ using LestingCraft.Gameplay;
 namespace LestingCraft.Runtime
 {
     [Serializable] class NetworkConfig {public string endpoint;}
-    [Serializable] class CreateRoomRequest {public int seed,dimension=0,version=TerrainGenerator.Version,rulesVersion=GameRules.Version,mode;}
+    [Serializable] class CreateRoomRequest {public int seed,dimension=0,version=1,rulesVersion=GameRules.Version,mode;}
     public sealed class PrototypeGame : MonoBehaviour
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
