@@ -24,5 +24,16 @@ namespace LestingCraft.Tests
             ensure.Invoke(null,null);
             Assert.IsNotNull(Resources.Load<Material>("Generated/VoxelPBR"),"Generated/VoxelPBR was not created");
         }
+
+        public static string Diagnostics()
+        {
+            foreach(var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var type=assembly.GetType("PresentationAssets",false);
+                var method=type?.GetMethod("LeafDiagnostics",BindingFlags.Public|BindingFlags.Static);
+                if(method!=null)return (string)method.Invoke(null,null);
+            }
+            return "PresentationAssets.LeafDiagnostics missing";
+        }
     }
 }

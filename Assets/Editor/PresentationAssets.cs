@@ -140,6 +140,15 @@ public static class PresentationAssets
         if(!texture.LoadImage(File.ReadAllBytes("Assets/Art/Characters/BlockCharacter.png"),false))throw new InvalidOperationException("Character atlas decode failed");
         AssetDatabase.CreateAsset(texture,path);
     }
+    /// <summary>Test diagnostics: why the leaf opacity texture may not be bound on Generated/VoxelPBR.</summary>
+    public static string LeafDiagnostics()
+    {
+        var material=AssetDatabase.LoadAssetAtPath<Material>(Folder+"/VoxelPBR.mat");
+        var png=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Resources/GeneratedLeafOpacity.png");
+        return "updating="+EditorApplication.isUpdating+" compiling="+EditorApplication.isCompiling
+            +" material="+(material?"ok":"null")+" materialLeaf="+(material&&material.GetTexture("_LeafOpacity")?"ok":"null")
+            +" png="+(png?"ok":"null")+" shader="+(material&&material.shader?material.shader.name:"null");
+    }
     static void EnsureItemIcons()
     {
         if(!AssetDatabase.IsValidFolder(Folder+"/Icons"))AssetDatabase.CreateFolder(Folder,"Icons");
