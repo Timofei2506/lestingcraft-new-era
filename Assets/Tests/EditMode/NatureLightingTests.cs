@@ -17,6 +17,6 @@ namespace LestingCraft.Tests
   [Test] public void OldSavedWorldKeepsGenerationAfterLoadStore()
   {const string key="LC.Session.V3";bool had=PlayerPrefs.HasKey(key);string previous=PlayerPrefs.GetString(key);try{PlayerPrefs.SetString(key,"{\"schema\":3,\"contentVersion\":2,\"seed\":2506,\"mode\":0,\"player\":{}}");var loaded=LocalSave.Load();Assert.IsNotNull(loaded);Assert.AreEqual(2,loaded.contentVersion);LocalSave.Store(loaded);Assert.AreEqual(2,LocalSave.Load().contentVersion);}finally{if(had)PlayerPrefs.SetString(key,previous);else PlayerPrefs.DeleteKey(key);PlayerPrefs.Save();}}
   [Test] public void LeafCutoutIsBoundAndHasForwardShadowDepthAndNormalPasses()
-  {var m=Resources.Load<Material>("Generated/VoxelPBR");Assert.IsNotNull(m.GetTexture("_LeafOpacity"));foreach(var pass in new[]{"ForwardLit","ShadowCaster","DepthOnly","DepthNormals"})Assert.GreaterOrEqual(m.FindPass(pass),0);}
+  {GeneratedPresentationAssets.EnsureLoaded();var m=Resources.Load<Material>("Generated/VoxelPBR");Assert.IsNotNull(m.GetTexture("_LeafOpacity"));foreach(var pass in new[]{"ForwardLit","ShadowCaster","DepthOnly","DepthNormals"})Assert.GreaterOrEqual(m.FindPass(pass),0);}
  }
 }
