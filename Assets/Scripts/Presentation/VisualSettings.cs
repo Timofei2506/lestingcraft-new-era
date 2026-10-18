@@ -48,7 +48,7 @@ namespace LestingCraft.Presentation
         }
         public static bool HardwareRayTracing=>SystemInfo.supportsRayTracing;
         public static bool PipelineRayTracing=>false; // URP 17 has no hardware RT renderer. Never mislabel SSR as RTX.
-        public void Ultra(){Preset=1;ViewDistance=4;RenderScale=1.15f;ShadowResolution=4096;PostEffects=true;AmbientOcclusion=true;VolumetricQuality=2;Save();}
+        public void Ultra(){Preset=1;ViewDistance=4;RenderScale=1.35f;ShadowResolution=4096;PostEffects=true;AmbientOcclusion=true;VolumetricQuality=2;Save();}
         public void HighDefault(){Preset=0;ViewDistance=3;RenderScale=1;ShadowResolution=2048;PostEffects=true;AmbientOcclusion=true;VolumetricQuality=1;Sensitivity=.1f;FieldOfView=75;Save();}
     }
     public sealed class AtmosphereLifetime : MonoBehaviour
@@ -73,7 +73,8 @@ namespace LestingCraft.Presentation
             var volume=root.AddComponent<Volume>();volume.isGlobal=true;volume.sharedProfile=Resources.Load<VolumeProfile>("Generated/WorldVolume");
             var data=camera.GetComponent<UniversalAdditionalCameraData>();if(!data)data=camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
             data.renderPostProcessing=true;data.requiresDepthTexture=true;data.requiresColorTexture=true;
-            data.antialiasing=AntialiasingMode.None;camera.allowHDR=true;VisualSettings.Current.Apply();
+            // Graphics v3: SMAA High instead of no anti-aliasing (edges of voxels and foliage were aliased).
+            data.antialiasing=AntialiasingMode.SubpixelMorphologicalAntiAliasing;data.antialiasingQuality=AntialiasingQuality.High;camera.allowHDR=true;VisualSettings.Current.Apply();
         }
         public static void Clear(){var obj=GameObject.Find("WorldAtmosphere");if(obj)UnityEngine.Object.Destroy(obj);}
     }

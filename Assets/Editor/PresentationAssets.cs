@@ -93,10 +93,15 @@ public static class PresentationAssets
         {
             profile=ScriptableObject.CreateInstance<VolumeProfile>();AssetDatabase.CreateAsset(profile,Folder+"/WorldVolume.asset");
         }
-        var bloom=Component<Bloom>(profile);bloom.threshold.value=1.5f;bloom.intensity.value=.12f;bloom.scatter.value=.62f;
+        // Graphics v3: stronger bloom for lava/crystal/campfire, warm-cool grading, subtle film texture.
+        var bloom=Component<Bloom>(profile);bloom.threshold.value=1.05f;bloom.intensity.value=.26f;bloom.scatter.value=.72f;
         var tone=Component<Tonemapping>(profile);tone.mode.value=TonemappingMode.ACES;
-        var colors=Component<ColorAdjustments>(profile);colors.contrast.value=5;colors.saturation.value=-3;
-        var vignette=Component<Vignette>(profile);vignette.intensity.value=.09f;vignette.smoothness.value=.65f;
+        var colors=Component<ColorAdjustments>(profile);colors.contrast.value=9;colors.saturation.value=7;colors.postExposure.value=.08f;
+        var split=Component<SplitToning>(profile);split.shadows.value=new Color(.36f,.48f,.56f);split.highlights.value=new Color(1f,.84f,.66f);split.balance.value=-8f;
+        var lift=Component<LiftGammaGain>(profile);lift.lift.value=new Vector4(-.012f,-.004f,.010f,0f);lift.gain.value=new Vector4(1.03f,1.0f,.97f,0f);
+        var grain=Component<FilmGrain>(profile);grain.type.value=FilmGrainLookup.Medium1;grain.intensity.value=.10f;grain.response.value=.8f;
+        var aberration=Component<ChromaticAberration>(profile);aberration.intensity.value=.05f;
+        var vignette=Component<Vignette>(profile);vignette.intensity.value=.14f;vignette.smoothness.value=.70f;
         foreach(var component in profile.components)EditorUtility.SetDirty(component);
         EditorUtility.SetDirty(material);EditorUtility.SetDirty(water);EditorUtility.SetDirty(profile);AssetDatabase.SaveAssets();
     }
