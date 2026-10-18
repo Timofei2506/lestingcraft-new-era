@@ -13,7 +13,7 @@ namespace LestingCraft.Tests
     {
         public static void EnsureLoaded()
         {
-            if(Resources.Load<Material>("Generated/VoxelPBR")&&Resources.Load<Texture2D>("Generated/Icons/Item148"))return;
+            // Always run Ensure: it is idempotent and re-binds textures that an earlier call could not yet import (e.g. _LeafOpacity).
             MethodInfo ensure=null;
             foreach(var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -22,6 +22,7 @@ namespace LestingCraft.Tests
             }
             Assert.IsNotNull(ensure,"PresentationAssets.Ensure is missing from the editor assembly");
             ensure.Invoke(null,null);
+            Assert.IsNotNull(Resources.Load<Material>("Generated/VoxelPBR"),"Generated/VoxelPBR was not created");
         }
     }
 }
