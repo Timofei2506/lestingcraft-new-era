@@ -1,0 +1,526 @@
+TAP version 13
+# Subtest: 200 achievable definitions, unique rules, existing keys, 10 titles
+ok 1 - 200 achievable definitions, unique rules, existing keys, 10 titles
+  ---
+  duration_ms: 0.667887
+  type: 'test'
+  ...
+# Subtest: register, hashed credentials, private profile, case-insensitive login, password and recovery rotation
+ok 2 - register, hashed credentials, private profile, case-insensitive login, password and recovery rotation
+  ---
+  duration_ms: 456.124124
+  type: 'test'
+  ...
+# Subtest: statistics durable roundtrip, replay-resistant device sequence, exactly-once achievements and server XP/title validation
+ok 3 - statistics durable roundtrip, replay-resistant device sequence, exactly-once achievements and server XP/title validation
+  ---
+  duration_ms: 75.340932
+  type: 'test'
+  ...
+# Subtest: login throttling, unsafe counters, user separation, deletion and prototype-safe usernames
+ok 4 - login throttling, unsafe counters, user separation, deletion and prototype-safe usernames
+  ---
+  duration_ms: 822.32367
+  type: 'test'
+  ...
+# Subtest: chat uses server name, not user supplied identity
+ok 5 - chat uses server name, not user supplied identity
+  ---
+  duration_ms: 1.677979
+  type: 'test'
+  ...
+# Subtest: chat strips markup and controls
+ok 6 - chat strips markup and controls
+  ---
+  duration_ms: 0.206905
+  type: 'test'
+  ...
+# Subtest: chat rejects empty, long and non-string messages
+ok 7 - chat rejects empty, long and non-string messages
+  ---
+  duration_ms: 0.291139
+  type: 'test'
+  ...
+# Subtest: chat cooldown allows next message after a second
+ok 8 - chat cooldown allows next message after a second
+  ---
+  duration_ms: 0.363843
+  type: 'test'
+  ...
+# Subtest: chat never changes room revisions or saves
+ok 9 - chat never changes room revisions or saves
+  ---
+  duration_ms: 0.150272
+  type: 'test'
+  ...
+# Subtest: rules 4 persist separate clothing and armor with actual wear
+ok 10 - rules 4 persist separate clothing and armor with actual wear
+  ---
+  duration_ms: 3.133259
+  type: 'test'
+  ...
+# Subtest: equipment rejects wrong slot, bad size and excessive armor durability
+ok 11 - equipment rejects wrong slot, bad size and excessive armor durability
+  ---
+  duration_ms: 0.647294
+  type: 'test'
+  ...
+# Subtest: legacy inventory gains empty slots and keeps grave format 13
+ok 12 - legacy inventory gains empty slots and keeps grave format 13
+  ---
+  duration_ms: 2.543105
+  type: 'test'
+  ...
+# Subtest: new grave has 21 extra stacks including equipment
+ok 13 - new grave has 21 extra stacks including equipment
+  ---
+  duration_ms: 3.146561
+  type: 'test'
+  ...
+# Subtest: public appearance has item IDs only, never private inventory
+ok 14 - public appearance has item IDs only, never private inventory
+  ---
+  duration_ms: 1.221362
+  type: 'test'
+  ...
+# Subtest: legacy rules3 room advertises equipment capable server without changing room rules
+ok 15 - legacy rules3 room advertises equipment capable server without changing room rules
+  ---
+  duration_ms: 0.36938
+  type: 'test'
+  ...
+# Subtest: rules 8 introduces content5 and optional untimed story in survival; old generation retained
+ok 16 - rules 8 introduces content5 and optional untimed story in survival; old generation retained
+  ---
+  duration_ms: 0.944261
+  type: 'test'
+  ...
+# Subtest: 13 distinct weapon definitions, spear reach and attack-speed differences
+ok 17 - 13 distinct weapon definitions, spear reach and attack-speed differences
+  ---
+  duration_ms: 0.156435
+  type: 'test'
+  ...
+# Subtest: five structure plans have interiors, doors and distinct architecture
+ok 18 - five structure plans have interiors, doors and distinct architecture
+  ---
+  duration_ms: 0.106822
+  type: 'test'
+  ...
+# Subtest: structures, cave-linked mines and rare deep diamonds are discoverable, without touching legacy samples
+ok 19 - structures, cave-linked mines and rare deep diamonds are discoverable, without touching legacy samples
+  ---
+  duration_ms: 70.927441
+  type: 'test'
+  ...
+# Subtest: bow launch has authoritative cooldown and consumes one valid hit token
+ok 20 - bow launch has authoritative cooldown and consumes one valid hit token
+  ---
+  duration_ms: 1.977324
+  type: 'test'
+  ...
+# Subtest: new gear is persisted only in content5 with correct stack limits and real durability
+ok 21 - new gear is persisted only in content5 with correct stack limits and real durability
+  ---
+  duration_ms: 1.588355
+  type: 'test'
+  ...
+# Subtest: 12000 actual managed C\# v3 samples match float32 JS terrain exactly
+ok 22 - 12000 actual managed C\# v3 samples match float32 JS terrain exactly
+  ---
+  duration_ms: 72.123281
+  type: 'test'
+  ...
+# Subtest: new worlds use v3; saved rules5 and earlier keep their own generation
+ok 23 - new worlds use v3; saved rules5 and earlier keep their own generation
+  ---
+  duration_ms: 0.880321
+  type: 'test'
+  ...
+# Subtest: rules6 client can continue v1/v2; older client cannot enter v3
+ok 24 - rules6 client can continue v1/v2; older client cannot enter v3
+  ---
+  duration_ms: 0.235704
+  type: 'test'
+  ...
+# Subtest: legacy samplers and explicit air edits remain stable
+ok 25 - legacy samplers and explicit air edits remain stable
+  ---
+  duration_ms: 1.493509
+  type: 'test'
+  ...
+# Subtest: forest density is a coherent field, with woodland masses and open clearings
+ok 26 - forest density is a coherent field, with woodland masses and open clearings
+  ---
+  duration_ms: 2.320183
+  type: 'test'
+  ...
+# Subtest: v3 authoritative wildlife uses v3 ground, survives serialization and has safe support
+ok 27 - v3 authoritative wildlife uses v3 ground, survives serialization and has safe support
+  ---
+  duration_ms: 13.967926
+  type: 'test'
+  ...
+# Subtest: validates seed,version,dimensions
+ok 28 - validates seed,version,dimensions
+  ---
+  duration_ms: 1.10078
+  type: 'test'
+  ...
+# Subtest: codes and names are safe
+ok 29 - codes and names are safe
+  ---
+  duration_ms: 0.349848
+  type: 'test'
+  ...
+# Subtest: welcome includes edits and hides unpositioned peers
+ok 30 - welcome includes edits and hides unpositioned peers
+  ---
+  duration_ms: 0.485845
+  type: 'test'
+  ...
+# Subtest: persists before ordered acknowledgements
+ok 31 - persists before ordered acknowledgements
+  ---
+  duration_ms: 0.765435
+  type: 'test'
+  ...
+# Subtest: failed persistence does not mutate memory
+ok 32 - failed persistence does not mutate memory
+  ---
+  duration_ms: 0.255848
+  type: 'test'
+  ...
+# Subtest: protects bedrock,bounds,reach and block IDs
+ok 33 - protects bedrock,bounds,reach and block IDs
+  ---
+  duration_ms: 1.284354
+  type: 'test'
+  ...
+# Subtest: requires position before editing
+ok 34 - requires position before editing
+  ---
+  duration_ms: 0.171338
+  type: 'test'
+  ...
+# Subtest: rejects malformed,binary,oversized messages
+ok 35 - rejects malformed,binary,oversized messages
+  ---
+  duration_ms: 0.238583
+  type: 'test'
+  ...
+# Subtest: rejects nonfinite positions and fast updates
+ok 36 - rejects nonfinite positions and fast updates
+  ---
+  duration_ms: 0.362171
+  type: 'test'
+  ...
+# Subtest: limits unique cells but allows updating existing edits
+ok 37 - limits unique cells but allows updating existing edits
+  ---
+  duration_ms: 1.060354
+  type: 'test'
+  ...
+# Subtest: rate bound includes rejected packets
+ok 38 - rate bound includes rejected packets
+  ---
+  duration_ms: 0.479086
+  type: 'test'
+  ...
+# Subtest: house, supplies, village, mill, smith and shrine have connected two-block-clear approaches
+ok 39 - house, supplies, village, mill, smith and shrine have connected two-block-clear approaches
+  ---
+  duration_ms: 230.548019
+  type: 'test'
+  ...
+# Subtest: rules7 creator ownership, private config, all multiplayer modes use waiting lobby
+ok 40 - rules7 creator ownership, private config, all multiplayer modes use waiting lobby
+  ---
+  duration_ms: 1.201659
+  type: 'test'
+  ...
+# Subtest: only host starts; roster has readable names but no identity secrets
+ok 41 - only host starts; roster has readable names but no identity secrets
+  ---
+  duration_ms: 1.21733
+  type: 'test'
+  ...
+# Subtest: host migration persists before start and after disconnect
+ok 42 - host migration persists before start and after disconnect
+  ---
+  duration_ms: 1.049269
+  type: 'test'
+  ...
+# Subtest: all worlds must be ready; malicious ready action cannot bypass gate
+ok 43 - all worlds must be ready; malicious ready action cannot bypass gate
+  ---
+  duration_ms: 0.685031
+  type: 'test'
+  ...
+# Subtest: failed persistence leaves shared state and runtime ready set unchanged
+ok 44 - failed persistence leaves shared state and runtime ready set unchanged
+  ---
+  duration_ms: 0.343304
+  type: 'test'
+  ...
+# Subtest: dialogue consensus, host branch, stale line and out-of-reach rejection
+ok 45 - dialogue consensus, host branch, stale line and out-of-reach rejection
+  ---
+  duration_ms: 0.47192
+  type: 'test'
+  ...
+# Subtest: disconnected peers lose readiness, no stale loaded-client gate on reconnect
+ok 46 - disconnected peers lose readiness, no stale loaded-client gate on reconnect
+  ---
+  duration_ms: 0.219408
+  type: 'test'
+  ...
+# Subtest: rendezvous prevents cutscenes in unloaded terrain for the other player
+ok 47 - rendezvous prevents cutscenes in unloaded terrain for the other player
+  ---
+  duration_ms: 0.441851
+  type: 'test'
+  ...
+# Subtest: counterweights and runes reject stale simultaneous toggles
+ok 48 - counterweights and runes reject stale simultaneous toggles
+  ---
+  duration_ms: 0.507585
+  type: 'test'
+  ...
+# Subtest: boss shields, cooldown, damage ordering, warning and radius are authoritative
+ok 49 - boss shields, cooldown, damage ordering, warning and radius are authoritative
+  ---
+  duration_ms: 5.379856
+  type: 'test'
+  ...
+# Subtest: complete first chapter for two peers, both puzzles, two boss phases, loss and aftermath
+ok 50 - complete first chapter for two peers, both puzzles, two boss phases, loss and aftermath
+  ---
+  duration_ms: 7.826736
+  type: 'test'
+  ...
+# Subtest: saved chapter resumes, private atomic reward claims cannot roll back or preclaim
+ok 51 - saved chapter resumes, private atomic reward claims cannot roll back or preclaim
+  ---
+  duration_ms: 3.356095
+  type: 'test'
+  ...
+# Subtest: offhand validated without changing eight armor slots; graves support22 old13/21
+ok 52 - offhand validated without changing eight armor slots; graves support22 old13/21
+  ---
+  duration_ms: 6.80773
+  type: 'test'
+  ...
+# Subtest: authored floors survive sampling and original legacy versions are not silently upgraded
+ok 53 - authored floors survive sampling and original legacy versions are not silently upgraded
+  ---
+  duration_ms: 0.221368
+  type: 'test'
+  ...
+# Subtest: loading disconnect cannot softlock readiness or last pending dialogue acknowledgement
+ok 54 - loading disconnect cannot softlock readiness or last pending dialogue acknowledgement
+  ---
+  duration_ms: 2.054808
+  type: 'test'
+  ...
+# Subtest: authoritative world clock remains shared through story locks and late joins
+ok 55 - authoritative world clock remains shared through story locks and late joins
+  ---
+  duration_ms: 1.910616
+  type: 'test'
+  ...
+# Subtest: all four modes start in Lestingia; no starting dimension choice
+ok 56 - all four modes start in Lestingia; no starting dimension choice
+  ---
+  duration_ms: 1.053396
+  type: 'test'
+  ...
+# Subtest: legacy clients retain creative world lab compatibility
+ok 57 - legacy clients retain creative world lab compatibility
+  ---
+  duration_ms: 0.140023
+  type: 'test'
+  ...
+# Subtest: state acknowledgement follows successful persistence
+ok 58 - state acknowledgement follows successful persistence
+  ---
+  duration_ms: 3.536894
+  type: 'test'
+  ...
+# Subtest: failed player storage leaves no state or end flag
+ok 59 - failed player storage leaves no state or end flag
+  ---
+  duration_ms: 1.577515
+  type: 'test'
+  ...
+# Subtest: hardcore death ends whole room and survives reconnect
+ok 60 - hardcore death ends whole room and survives reconnect
+  ---
+  duration_ms: 1.294785
+  type: 'test'
+  ...
+# Subtest: ordinary survival death does not end team run
+ok 61 - ordinary survival death does not end team run
+  ---
+  duration_ms: 1.227967
+  type: 'test'
+  ...
+# Subtest: state saves rate limited but death is immediate
+ok 62 - state saves rate limited but death is immediate
+  ---
+  duration_ms: 2.969337
+  type: 'test'
+  ...
+# Subtest: inventory bounds, unknown items, NaN and excessive stacks rejected
+ok 63 - inventory bounds, unknown items, NaN and excessive stacks rejected
+  ---
+  duration_ms: 1.694266
+  type: 'test'
+  ...
+# Subtest: private saves are included only for reconnecting identity
+ok 64 - private saves are included only for reconnecting identity
+  ---
+  duration_ms: 1.135393
+  type: 'test'
+  ...
+# Subtest: forced exit checkpoint is limited to once per minute
+ok 65 - forced exit checkpoint is limited to once per minute
+  ---
+  duration_ms: 2.337197
+  type: 'test'
+  ...
+# Subtest: repeated dead reports cannot bypass ordinary save cooldown
+ok 66 - repeated dead reports cannot bypass ordinary save cooldown
+  ---
+  duration_ms: 1.7256
+  type: 'test'
+  ...
+# Subtest: rules 3 preserve grid, cursor wear, personal furnace, grave extras and oxygen
+ok 67 - rules 3 preserve grid, cursor wear, personal furnace, grave extras and oxygen
+  ---
+  duration_ms: 1.822405
+  type: 'test'
+  ...
+# Subtest: extra crafting storage and furnace timers are bounded
+ok 68 - extra crafting storage and furnace timers are bounded
+  ---
+  duration_ms: 3.164649
+  type: 'test'
+  ...
+# Subtest: 300 real C\# terrain vectors match authoritative ground sampler
+ok 69 - 300 real C\# terrain vectors match authoritative ground sampler
+  ---
+  duration_ms: 5.015292
+  type: 'test'
+  ...
+# Subtest: new rules/content flags and explicit client compatibility
+ok 70 - new rules/content flags and explicit client compatibility
+  ---
+  duration_ms: 0.366387
+  type: 'test'
+  ...
+# Subtest: one-player position returns its OWN fauna snapshots and all three species
+ok 71 - one-player position returns its OWN fauna snapshots and all three species
+  ---
+  duration_ms: 2.441366
+  type: 'test'
+  ...
+# Subtest: AI walks without crossing liquid/unsupported terrain, state remains finite
+ok 72 - AI walks without crossing liquid/unsupported terrain, state remains finite
+  ---
+  duration_ms: 21.317241
+  type: 'test'
+  ...
+# Subtest: hit uses fixed weapon damage, server health and one death loot record
+ok 73 - hit uses fixed weapon damage, server health and one death loot record
+  ---
+  duration_ms: 1.138576
+  type: 'test'
+  ...
+# Subtest: failed animal persistence rolls back health, death, loot and cooldown
+ok 74 - failed animal persistence rolls back health, death, loot and cooldown
+  ---
+  duration_ms: 0.577729
+  type: 'test'
+  ...
+# Subtest: reject reach, wall, spoofed damage/weapon and cooldown
+ok 75 - reject reach, wall, spoofed damage/weapon and cooldown
+  ---
+  duration_ms: 0.808783
+  type: 'test'
+  ...
+# Subtest: death/tombstone and pending personal loot survive reconstruction
+ok 76 - death/tombstone and pending personal loot survive reconstruction
+  ---
+  duration_ms: 0.916362
+  type: 'test'
+  ...
+# Subtest: claimed loot commits with inventory; reconnect cannot claim twice or roll it back
+ok 77 - claimed loot commits with inventory; reconnect cannot claim twice or roll it back
+  ---
+  duration_ms: 4.605065
+  type: 'test'
+  ...
+# Subtest: all new block/resource stacks and furnace recipe IDs survive validation
+ok 78 - all new block/resource stacks and furnace recipe IDs survive validation
+  ---
+  duration_ms: 21.782381
+  type: 'test'
+  ...
+# Subtest: new edits accepted only by expanded rooms; old rooms keep ID ceiling
+ok 79 - new edits accepted only by expanded rooms; old rooms keep ID ceiling
+  ---
+  duration_ms: 0.680923
+  type: 'test'
+  ...
+# Subtest: boars defend on hit; damage uses fresh monotonic IDs, no initial hostility
+ok 80 - boars defend on hit; damage uses fresh monotonic IDs, no initial hostility
+  ---
+  duration_ms: 0.362533
+  type: 'test'
+  ...
+# Subtest: creative kills pay no resources and hardcore end disables wildlife actions
+ok 81 - creative kills pay no resources and hardcore end disables wildlife actions
+  ---
+  duration_ms: 0.844953
+  type: 'test'
+  ...
+# Subtest: dormant AI has no timers, honors tick throttle and stale observers expire
+ok 82 - dormant AI has no timers, honors tick throttle and stale observers expire
+  ---
+  duration_ms: 0.356817
+  type: 'test'
+  ...
+# Subtest: Worker sends fauna to lone sender and persists death/loot across hibernation reconstruction
+ok 83 - Worker sends fauna to lone sender and persists death/loot across hibernation reconstruction
+  ---
+  duration_ms: 6.543626
+  type: 'test'
+  ...
+# Subtest: Worker SQL error cannot acknowledge or commit an animal death
+ok 84 - Worker SQL error cannot acknowledge or commit an animal death
+  ---
+  duration_ms: 1.53649
+  type: 'test'
+  ...
+# Subtest: Worker refuses old client before websocket construction in expanded rooms
+ok 85 - Worker refuses old client before websocket construction in expanded rooms
+  ---
+  duration_ms: 13.442738
+  type: 'test'
+  ...
+# Subtest: Worker lobby/start/story commits survive reconstruction; tick echoes to sender
+ok 86 - Worker lobby/start/story commits survive reconstruction; tick echoes to sender
+  ---
+  duration_ms: 5.900173
+  type: 'test'
+  ...
+1..86
+# tests 86
+# suites 0
+# pass 86
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2431.090947

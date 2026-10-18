@@ -8,15 +8,19 @@
     "dev:cloudflare": "wrangler dev --ip 0.0.0.0",
     "deploy": "wrangler deploy",
     "test": "node --test test/*.test.js",
-    "test:integration": "node test/integration.js && node test/survival-integration.js"
+    "test:fauna": "node test/fauna-integration.js",
+    "test:integration": "node test/integration.js && node test/survival-integration.js",
+    "test:expedition": "node test/expedition-integration.js",
+    "test:living": "node test/living-integration.js"
   },
   "dependencies": {
-    "ws": "8.18.3"
+    "@noble/hashes": "2.4.0",
+    "ws": "8.22.0"
   },
   "devDependencies": {
-    "wrangler": "4.44.0"
+    "wrangler": "4.151.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

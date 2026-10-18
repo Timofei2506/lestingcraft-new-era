@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace LestingCraft.Presentation
 {
-    /// <summary>Six zones visualize ONE health value. No separate wounds or limb damage simulation.</summary>
+    /// <summary>Six independent saved body health zones.</summary>
     public sealed class HealthSilhouette : MonoBehaviour
     {
         public Image[] Zones {get;private set;}
@@ -21,6 +21,7 @@ namespace LestingCraft.Presentation
             }
             SetHealth(100);
         }
+        public void SetBody(LestingCraft.Gameplay.SurvivalState state){SetHealth(state.health);if(Zones==null)return;for(int i=0;i<6;i++){float h=state.body.hp[i]/100;Zones[i].color=Color.Lerp(new Color(.82f,.12f,.09f),new Color(.52f,.75f,.57f),h);}}
         public void SetHealth(float hp)
         {
             Health=Mathf.Clamp(hp,0,100);

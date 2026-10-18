@@ -13,10 +13,11 @@ using System.Text;
 namespace LestingCraft.Networking
 {
     [Serializable] public class NetBlock {public int x,y,z,block;public long rev;}
-    [Serializable] public class NetPlayer {public string id,name;public float x,y,z,yaw;public int[] equipment;}
+    [Serializable] public class NetPlayer {public int offhand,weapon;public string id,name;public float x,y,z,yaw;public int[] equipment;}
     [Serializable] public class NetPacket
     {
-        public string type,id,name,message,code;public int seed,dimension,version,block,maxPlayers,mode,rulesVersion,serverRulesVersion;public bool runEnded,force;public CampaignProgress campaign;public PlayerSave save;public long rev;
+        public LivingSave living;public string ownerTag;
+        public LestingCraft.Story.StoryState story;public bool lobby,started,host;public string hostId,action;public int arg,stage,line,offhand,expectedRevision;public long serverNow;public string type,id,name,message,code,animal;public int weapon,requestId,contentVersion;public AnimalState[] animals;public AnimalLoot[] loot;public AnimalDamage[] damageEvents;public int seed,dimension,version,block,maxPlayers,mode,rulesVersion,serverRulesVersion;public bool runEnded,force;public CampaignProgress campaign;public PlayerSave save;public long rev;
         public int[] equipment;public double clock;public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
     }
     public sealed class RoomClient : MonoBehaviour
@@ -38,7 +39,7 @@ namespace LestingCraft.Networking
         public void Connect(string endpoint,string code,string playerName,string playerKey="")
         {
             gameObject.name="LestingCraftNetwork";
-            string url=endpoint.TrimEnd('/').Replace("https://","wss://").Replace("http://","ws://")+"/api/rooms/"+Uri.EscapeDataString(code.Trim().ToLowerInvariant())+"/ws?name="+Uri.EscapeDataString(playerName)+"&key="+Uri.EscapeDataString(playerKey);
+            string url=endpoint.TrimEnd('/').Replace("https://","wss://").Replace("http://","ws://")+"/api/rooms/"+Uri.EscapeDataString(code.Trim().ToLowerInvariant())+"/ws?name="+Uri.EscapeDataString(playerName)+"&key="+Uri.EscapeDataString(playerKey)+"&clientRules="+GameRules.Version;
 #if UNITY_WEBGL && !UNITY_EDITOR
             LC_Connect(url,gameObject.name);
 #else

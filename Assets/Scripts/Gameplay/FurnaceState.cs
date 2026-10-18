@@ -7,8 +7,8 @@ namespace LestingCraft.Gameplay
         public ItemStack input=new ItemStack(),fuel=new ItemStack(),output=new ItemStack();
         public float burn,progress;public int recipe,x,y,z,realm;
         public const float CookSeconds=8;
-        public static int Result(int id)=>id==110?112:id==114?111:id==4?123:0;
-        public static float FuelSeconds(int id)=>id==4?18:id==120?6:id==121?3:id==123?40:0;
+        public static int Result(int id)=>id==110?112:id==114?111:id==4?123:ExpandedContent.Smelt(id);
+        public static float FuelSeconds(int id)=>id==4?18:id==120?6:id==121?3:id==123||id==147?40:0;
         public bool Step(float dt)
         {
             if(dt<=0)return false;dt=Math.Min(dt,2);bool changed=false;

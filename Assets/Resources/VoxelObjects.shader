@@ -6,7 +6,13 @@ Shader "LestingCraft/VoxelObjects"
         _NormalArray("Normals",2DArray)=""{}
         _MaskArray("Metallic AO Height Smoothness",2DArray)=""{}
         _NormalStrength("Normal strength",Range(0,2))=1
+        _LeafOpacity("Foliage cutout",2D)="white"{}
     }
+    HLSLINCLUDE
+    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+    TEXTURE2D(_LeafOpacity);SAMPLER(sampler_LeafOpacity);
+    void LeafClip(float3 uv){if(abs(uv.z-6)<.25)clip(SAMPLE_TEXTURE2D(_LeafOpacity,sampler_LeafOpacity,uv.xy).a-.5);}
+    ENDHLSL
     SubShader
     {
         Tags {"RenderPipeline"="UniversalPipeline" "RenderType"="Opaque" "Queue"="Geometry"}
@@ -25,7 +31,8 @@ Shader "LestingCraft/VoxelObjects"
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "../Shaders/VoxelLighting.hlsl"
+            #include "../Shaders/EnvironmentLighting.hlsl"
             float _LCAmbientOcclusionProbe;
             TEXTURE2D_ARRAY(_AlbedoArray);SAMPLER(sampler_AlbedoArray);
             TEXTURE2D_ARRAY(_NormalArray);SAMPLER(sampler_NormalArray);
@@ -46,6 +53,7 @@ Shader "LestingCraft/VoxelObjects"
             }
             half4 Frag(Varyings i):SV_Target
             {
+                LeafClip(i.uv);
                 half4 albedo=SAMPLE_TEXTURE2D_ARRAY(_AlbedoArray,sampler_AlbedoArray,i.uv.xy,i.uv.z);
                 half3 normalTS=SAMPLE_TEXTURE2D_ARRAY(_NormalArray,sampler_NormalArray,i.uv.xy,i.uv.z).xyz*2-1;
                 normalTS.xy*=_NormalStrength;normalTS=normalize(normalTS);
@@ -64,7 +72,7 @@ Shader "LestingCraft/VoxelObjects"
                 surface.albedo=albedo.rgb*i.color.rgb;surface.metallic=mask.r;surface.specular=half3(.04,.04,.04);
                 surface.smoothness=saturate(lerp(mask.a+wet*.32,.16,snow));surface.normalTS=normalTS;surface.occlusion=mask.g;
                 surface.alpha=1;
-                surface.emission=surface.albedo*i.color.a*1.5;
+                surface.emission=surface.albedo*i.color.a*1.5;if(abs(i.uv.z-9)<.25){half heat=saturate((surface.albedo.r-max(surface.albedo.g,surface.albedo.b)*1.1)*3.8);surface.emission=surface.albedo*heat*6*(.9+.1*sin(_EnvironmentTime*.65+i.positionWS.x));surface.smoothness=lerp(surface.smoothness,.87,heat);}
                 // Native evidence mode: sample the REAL GPU-bound SSAO during opaque rendering.
                 // RenderGraph textures are transient; Shader.GetGlobalTexture after the frame is not a valid proof.
                 if(_LCAmbientOcclusionProbe>.5)
@@ -76,7 +84,7 @@ Shader "LestingCraft/VoxelObjects"
                         return half4(1,0,1,1);
                     #endif
                 }
-                half4 c=UniversalFragmentPBR(lighting,surface);c.rgb=MixFog(c.rgb,i.fog);return c;
+                half4 c=LC_FragmentPBR(lighting,surface,LC_SurfaceSky(i.positionWS,normalize(i.normalWS),1));c.rgb=MixFog(c.rgb,i.fog);return c;
             }
             ENDHLSL
         }
@@ -93,8 +101,9 @@ Shader "LestingCraft/VoxelObjects"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
             float3 _LightDirection;float3 _LightPosition;
-            struct A {float4 vertex:POSITION;float3 normal:NORMAL;};
-            float4 ShadowVert(A i):SV_POSITION
+            struct A {float4 vertex:POSITION;float3 normal:NORMAL;float3 uv:TEXCOORD0;};
+            struct ShadowV {float4 p:SV_POSITION;float3 uv:TEXCOORD0;};
+            ShadowV ShadowVert(A i)
             {
                 float3 pos=TransformObjectToWorld(i.vertex.xyz),normal=TransformObjectToWorldNormal(i.normal);
                 #if defined(_CASTING_PUNCTUAL_LIGHT_SHADOW)
@@ -104,9 +113,9 @@ Shader "LestingCraft/VoxelObjects"
                 #endif
                 float4 clip=TransformWorldToHClip(ApplyShadowBias(pos,normal,direction));
                 clip=ApplyShadowClamping(clip);
-                return clip;
+                ShadowV o;o.p=clip;o.uv=i.uv;return o;
             }
-            half4 ShadowFrag():SV_Target{return 0;}
+            half4 ShadowFrag(ShadowV i):SV_Target{LeafClip(i.uv);return 0;}
             ENDHLSL
         }
         Pass
@@ -116,8 +125,29 @@ Shader "LestingCraft/VoxelObjects"
             #pragma vertex DepthVert
             #pragma fragment DepthFrag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            float4 DepthVert(float4 p:POSITION):SV_POSITION{return TransformObjectToHClip(p.xyz);}
-            half4 DepthFrag():SV_Target{return 0;}
+            struct DA{float4 p:POSITION;float3 uv:TEXCOORD0;};struct DV{float4 p:SV_POSITION;float3 uv:TEXCOORD0;};
+            DV DepthVert(DA i){DV o;o.p=TransformObjectToHClip(i.p.xyz);o.uv=i.uv;return o;}
+            half4 DepthFrag(DV i):SV_Target{LeafClip(i.uv);return 0;}
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "DepthNormals" Tags {"LightMode"="DepthNormals"} ZWrite On
+            HLSLPROGRAM
+            #pragma target 3.5
+            #pragma vertex NormVert
+            #pragma fragment NormFrag
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
+            struct NA{float4 p:POSITION;float3 n:NORMAL;float3 uv:TEXCOORD0;};struct NV{float4 p:SV_POSITION;float3 n:TEXCOORD0;float3 uv:TEXCOORD1;};
+            NV NormVert(NA i){NV o;o.p=TransformObjectToHClip(i.p.xyz);o.n=TransformObjectToWorldNormal(i.n);o.uv=i.uv;return o;}
+            half4 NormFrag(NV i):SV_Target{LeafClip(i.uv);float3 normal=normalize(i.n);
+            #if defined(_GBUFFER_NORMALS_OCT)
+             float2 oct=PackNormalOctQuadEncode(normal);return half4(PackFloat2To888(saturate(oct*.5+.5)),0);
+            #else
+             return half4(normal,0);
+            #endif
+            }
             ENDHLSL
         }
     }

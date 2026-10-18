@@ -7,11 +7,12 @@ using LestingCraft.World;
 using LestingCraft.Networking;
 using LestingCraft.Presentation;
 using LestingCraft.Gameplay;
+using LestingCraft.Story;
 
 namespace LestingCraft.Runtime
 {
     [Serializable] class NetworkConfig {public string endpoint;}
-    [Serializable] class CreateRoomRequest {public int seed,dimension=0,version=1,rulesVersion=GameRules.Version,mode;}
+    [Serializable] class CreateRoomRequest {public string ownerKey;public int seed,dimension=0,version=1,rulesVersion=GameRules.Version,mode;}
     public sealed class PrototypeGame : MonoBehaviour
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -21,6 +22,15 @@ namespace LestingCraft.Runtime
         readonly Dictionary<string,Vector3> targets=new Dictionary<string,Vector3>();
         string endpoint="",code="",playerName="Player",seedText="2506",status="",selfId="",lastError="";
         int dimension,selectedMode;SessionSave resumeSave;
+        public StoryController Story {get;private set;}public bool StoryLocked=>Story&&Story.Locked;
+        public bool InLobby {get;private set;}public bool IsHost {get;private set;}public string HostId {get;private set;}public int LobbyRevision {get;private set;}
+        public NetPlayer[] LobbyPlayers {get;private set;}=Array.Empty<NetPlayer>();NetPacket pendingWelcome;
+        public void SendStory(NetPacket p){if(client&&client.Connected)client.Send(p);}
+        public void StartLobby(){SendStory(new NetPacket{type="lobby_start"});}
+        public void RefreshStoryControl(){if(world&&!paused&&!ChatOpen)SetCursor(!StoryLocked);}
+        string PlayerKey(){string key=PlayerPrefs.GetString("LC.PlayerKey","");if(key.Length!=32){key=Guid.NewGuid().ToString("N");PlayerPrefs.SetString("LC.PlayerKey",key);PlayerPrefs.Save();}return key;}
+        void ApplyLobby(NetPacket p){HostId=p.hostId;IsHost=HostId==selfId;LobbyPlayers=p.players??Array.Empty<NetPlayer>();LobbyRevision++;}
+        public AccountClient Accounts {get;private set;}
         public SurvivalSession Session {get;private set;}
         public int SelectedMode {get=>selectedMode;set=>selectedMode=Mathf.Clamp(value,0,3);}
         public bool HasSave=>LocalSave.Exists;
@@ -41,7 +51,7 @@ namespace LestingCraft.Runtime
             if(text.Length>0&&online&&client&&client.Connected)
             {
                 if(Time.unscaledTime-chatSentAt<1.2f){Session.Notice="Подождите секунду перед следующим сообщением";return;}
-                chatSentAt=Time.unscaledTime;client.Send(new NetPacket{type="chat",message=text});
+                Session.Progress.Add("chat");chatSentAt=Time.unscaledTime;client.Send(new NetPacket{type="chat",message=text});
             }
             CloseChat();
         }
@@ -61,14 +71,18 @@ namespace LestingCraft.Runtime
             chatLog.Enqueue(name+": "+text);while(chatLog.Count>6)chatLog.Dequeue();ChatRevision++;ChatLastTime=Time.unscaledTime;
         }
         public bool InventoryOpen=>ui&&ui.InventoryOpen;
+        public bool TradeOpen=>ui&&ui.TradeOpen;
+        public bool EditingText=>ui&&ui.EditingText;
+        public void OpenTrade(string actor){if(!Session||StoryLocked||Session.Vitals.dead||!Session.Living.TryTrader(actor,out var trader))return;Session.Notice="";Session.Living.Hint="";paused=true;SetCursor(false);ui.ShowTrade(actor);}
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
-        long revision; float lastPosition,previousYaw;Vector3 previousPosition;bool sentPosition;int previousEquipment;
+        long revision; float lastPosition,previousYaw,lastHeartbeat;Vector3 previousPosition;bool sentPosition;int previousEquipment;
         Material avatarMaterial;
         GameUI ui;bool leaving,saveAcknowledged;
         public bool InWorld=>world;
         public bool Paused=>paused;
-        public bool Online=>online;
+        public bool Online=>online;public string LocalPeerId=>selfId;
+        public void SendAnimalHit(string animal,int weapon,int requestId){if(client&&client.Connected)client.Send(new NetPacket{type="animal_hit",animal=animal,weapon=weapon,requestId=requestId});}
         public bool IsConnecting=>busy;
         public string LastError=>lastError;
         public string ServerLabel=>endpoint.Replace("https://","").Replace("http://","");
@@ -91,7 +105,7 @@ namespace LestingCraft.Runtime
         }
         public void ToggleInventory()
         {
-            if(!Session||Session.Vitals.dead||Session.Data.campaign.runEnded)return;
+            if(!Session||StoryLocked||Session.Vitals.dead||Session.Data.campaign.runEnded)return;
             if(ui.InventoryOpen){Resume();return;}paused=true;SetCursor(false);ui.ShowInventory();
         }
         public void OpenStation(int id,Vector3Int cell)
@@ -104,7 +118,7 @@ namespace LestingCraft.Runtime
         public void SendSave(PlayerSave save,bool force=false){if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save,force=force});}
         public void CreateRoom(){if(!busy)StartCoroutine(CreateRoomRoutine());}
         public void JoinRoom(){if(!busy)JoinRoomInternal();}
-        public void Resume(){if(!world||Session&&(Session.Vitals.dead||Session.Data.campaign.runEnded))return;paused=false;SetCursor(true);ui.ShowHUD();}
+        public void Resume(){if(!world||Session&&(Session.Vitals.dead||Session.Data.campaign.runEnded))return;if(Session&&Session.Living)Session.Living.Hint="";paused=false;SetCursor(true);ui.ShowHUD();}
         public void ReturnToMenu(){if(!leaving)StartCoroutine(LeaveAfterCheckpoint());}
         IEnumerator LeaveAfterCheckpoint()
         {
@@ -122,6 +136,7 @@ namespace LestingCraft.Runtime
         {
             Debug.Log("[Presentation] Bootstrap started");
             var config=Resources.Load<TextAsset>("NetworkConfig");if(config)endpoint=JsonUtility.FromJson<NetworkConfig>(config.text).endpoint;
+            Accounts=gameObject.AddComponent<AccountClient>();Accounts.Initialize(endpoint);
             Application.targetFrameRate=60;
             VisualSettings.Load();
             gameObject.AddComponent<VisualCapture>();
@@ -137,21 +152,22 @@ namespace LestingCraft.Runtime
             VisualSettings.Current.Apply();
             Debug.Log("[Presentation] Interface ready");
         }
-        void SetCursor(bool locked){Cursor.lockState=locked?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!locked;if(player)player.Active=locked;}
+        void SetCursor(bool locked){if(StoryLocked)locked=false;Cursor.lockState=locked?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!locked;if(player)player.Active=locked;}
         public void TogglePause(){if(!world||Session&&(Session.Vitals.dead||Session.Data.campaign.runEnded))return;paused=!paused;SetCursor(!paused);}
         public void RequestEdit(Vector3Int cell,ushort block)
         {
+            if(Story&&Story.Enabled&&StoryWorld.Protected(cell.x,cell.z)){Session.RejectEdit("Сюжетная постройка защищена; стройте за её пределами");return;}
             if(!world||!world.CanAcceptEdit(cell)){Fail("Достигнут лимит изменений этого среза");if(Session)Session.RejectEdit(lastError);return;}
             if(online)
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
         }
-        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420)
+        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0)
         {
-            world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer);
+            world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
             var camera=Camera.main;camera.backgroundColor=realm==1?new Color(.19f,.08f,.07f):realm==3||realm==4?new Color(.075f,.045f,.14f):new Color(.42f,.66f,.78f);
             RenderSettings.fogColor=camera.backgroundColor;
-            var obj=new GameObject("Player");obj.transform.position=FindSpawn(seed,(Dimension)realm);
+            var obj=new GameObject("Player");obj.transform.position=FindSpawn(seed,(Dimension)realm,world.ContentVersion);
             var controller=obj.AddComponent<CharacterController>();PlayerCapsule.Configure(controller);
             player=obj.AddComponent<FirstPersonController>();player.World=world;player.Game=this;player.Camera=camera;
             camera.transform.SetParent(obj.transform,false);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.nearClipPlane=.05f;camera.farClipPlane=160;
@@ -160,7 +176,7 @@ namespace LestingCraft.Runtime
             obj.AddComponent<FirstPersonHands>().Initialize(player,camera);
             world.Player=obj.transform;paused=false;SetCursor(true);busy=false;status="Генерируется мир…";lastError="";
             var sessionObject=new GameObject("Survival and weather");sessionObject.transform.SetParent(world.transform,false);
-            Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;obj.AddComponent<LocalPlayerAppearance>().Initialize(this);
+            Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;Story=sessionObject.AddComponent<StoryController>();Story.Initialize(this,story,serverNow);obj.AddComponent<LocalPlayerAppearance>().Initialize(this);
             if(Session.Vitals.dead||Session.Data.campaign.runEnded)OpenDeathScreen();else ui.ShowHUD();
         }
         IEnumerator CreateRoomRoutine()
@@ -170,7 +186,7 @@ namespace LestingCraft.Runtime
             busy=true;lastError="";status="Создаю комнату…";
             using(var request=new UnityWebRequest(endpoint.TrimEnd('/')+"/api/rooms","POST"))
             {
-                var body=System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(new CreateRoomRequest {seed=seed,dimension=0,mode=selectedMode}));
+                var body=System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(new CreateRoomRequest {ownerKey=PlayerKey(),seed=seed,dimension=0,mode=selectedMode}));
                 request.uploadHandler=new UploadHandlerRaw(body);request.downloadHandler=new DownloadHandlerBuffer();request.SetRequestHeader("Content-Type","application/json");request.timeout=20;
                 yield return request.SendWebRequest();busy=false;
                 if(request.result!=UnityWebRequest.Result.Success){Fail("Комната не создана: "+request.responseCode+" "+request.error);yield break;}
@@ -195,61 +211,72 @@ namespace LestingCraft.Runtime
             client=new GameObject("LestingCraftNetwork").AddComponent<RoomClient>();
             client.Message+=HandleMessage;
             client.Status+=s=>{if(s=="@closed"||s!="@open"){if(s!="@open"){Fail(s=="@closed"?"Соединение закрыто — выйди в меню и подключись снова":s);}}};
-            string key=PlayerPrefs.GetString("LC.PlayerKey","");if(key.Length!=32){key=Guid.NewGuid().ToString("N");PlayerPrefs.SetString("LC.PlayerKey",key);PlayerPrefs.Save();}
+            string key=PlayerKey();
             client.Connect(endpoint,code,string.IsNullOrWhiteSpace(playerName)?"Player":playerName,key);
         }
         void HandleMessage(NetPacket packet)
         {
-            if(packet==null)return;
+            if(packet==null)return;if(Session&&packet.clock>0)Session.Data.clock=packet.clock;
             switch(packet.type)
             {
                 case "welcome":
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
-                    if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Версия комнаты отличается. Для новой версии создайте новую комнату");Destroy(client.gameObject);return;}
-                    selectedMode=packet.mode;selfId=packet.id;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock);revision=packet.rev;
-                    if(packet.campaign!=null)Session.Data.campaign=packet.campaign;
-                    if(packet.runEnded){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;OpenDeathScreen();}
-                    if(packet.edits!=null)foreach(var edit in packet.edits)world.Edit(edit.x,edit.y,edit.z,(ushort)edit.block);
-                    if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);
-                    status="Комната подключена • "+code;break;
+                    if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Несовместимые правила комнаты. Обновите сервер; для нового содержимого нужна новая комната");Destroy(client.gameObject);return;}
+                    if(packet.contentVersion>7||packet.contentVersion<0||packet.rulesVersion>=10&&packet.contentVersion!=7||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
+                    selectedMode=packet.mode;selfId=packet.id;IsHost=packet.host;pendingWelcome=packet;
+                    if(packet.lobby&&!packet.started){online=true;busy=false;InLobby=true;ui.ShowLobby();break;}BeginNetworkWorld(packet);break;
+                case "lobby":ApplyLobby(packet);break;
+                case "lobby_start":ApplyLobby(packet);if(InLobby&&pendingWelcome!=null){InLobby=false;pendingWelcome.story=packet.story;pendingWelcome.serverNow=packet.serverNow;pendingWelcome.clock=packet.clock>0?packet.clock:420;BeginNetworkWorld(pendingWelcome);}break;
+                case "story":if(Story){Story.Apply(packet.story,packet.serverNow);Session.Animals.Apply(packet);if(packet.campaign!=null)Session.Data.campaign=packet.campaign;}break;
                 case "edit":
-                    if(world&&packet.rev>revision){revision=packet.rev;world.Edit((int)packet.x,(int)packet.y,(int)packet.z,(ushort)packet.block);if(packet.id==selfId&&Session)Session.ConfirmEdit(new Vector3Int((int)packet.x,(int)packet.y,(int)packet.z));}break;
+                    if(world&&packet.rev>revision){revision=packet.rev;world.Edit((int)packet.x,(int)packet.y,(int)packet.z,(ushort)packet.block);if(Session)Session.Living.Apply(packet);if(packet.id==selfId&&Session)Session.ConfirmEdit(new Vector3Int((int)packet.x,(int)packet.y,(int)packet.z));}break;
+                case "living_saved":case "living":if(Session)Session.Living.Apply(packet);break;
+                case "animal_hit":if(Session){Session.Animals.Apply(packet);}break;
                 case "chat":AddChat(packet);break;
-                case "player":SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw,equipment=packet.equipment});break;
+                case "player":if(Session)Session.Living.Apply(packet);if(Story&&packet.story!=null)Story.Apply(packet.story,packet.serverNow);if(Session)Session.Animals.Apply(packet);SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw,offhand=packet.offhand,weapon=packet.weapon,equipment=packet.equipment});break;
                 case "leave":if(avatars.TryGetValue(packet.id,out var avatar))Destroy(avatar);avatars.Remove(packet.id);targets.Remove(packet.id);break;
                 case "state_saved":if(packet.id==selfId)saveAcknowledged=true;if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
                 case "run_ended":if(packet.id==selfId)saveAcknowledged=true;if(Session){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;Session.Notice="Хардкор завершён: погиб участник команды";OpenDeathScreen();}break;
-                case "error":Fail(packet.message);if(Session)Session.RejectEdit(packet.message);break;
+                case "error":if(Session)Session.Living.Apply(packet);Fail(packet.message);if(Session){if(string.IsNullOrEmpty(packet.code)||packet.code=="edit")Session.RejectEdit(packet.message);else{Session.Notice=packet.message;if(packet.code=="animal_hit")Session.Animals.Reject(packet.requestId);}}break;
             }
+        }
+        void BeginNetworkWorld(NetPacket packet)
+        {
+            InLobby=false;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock,packet.contentVersion<=0?1:packet.contentVersion,packet.story,packet.serverNow);revision=packet.rev;Session.Animals.Apply(packet);
+            if(packet.campaign!=null)Session.Data.campaign=packet.campaign;if(packet.runEnded){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;OpenDeathScreen();}
+            if(packet.edits!=null)foreach(var edit in packet.edits)world.Edit(edit.x,edit.y,edit.z,(ushort)edit.block);Session.Living.Apply(packet);if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);status="Комната подключена • "+code;
         }
         void SetAvatar(NetPlayer peer)
         {
             if(peer.id==selfId||!world)return;
             if(!avatars.TryGetValue(peer.id,out var avatar))
             {
-                avatar=new GameObject("Peer "+peer.name);avatar.AddComponent<CharacterVisual>().Build();
+                avatar=new GameObject("Peer "+peer.name);avatar.AddComponent<CharacterVisual>().Build();var body=avatar.AddComponent<CapsuleCollider>();body.height=PlayerCapsule.Height;body.radius=PlayerCapsule.Radius;body.center=Vector3.up*(PlayerCapsule.Height*.5f);
                 avatars.Add(peer.id,avatar);avatar.transform.position=new Vector3(peer.x,peer.y-PlayerCapsule.EyeHeight,peer.z);
-                var text=new GameObject("Name").AddComponent<TextMesh>();text.transform.SetParent(avatar.transform,false);text.transform.localPosition=new Vector3(0,2.1f,0);text.text=peer.name;text.characterSize=.13f;text.anchor=TextAnchor.MiddleCenter;
+                avatar.AddComponent<PlayerNameplate>().Initialize(peer.name,world);
             }
-            avatar.GetComponent<CharacterVisual>().SetEquipment(peer.equipment);
+            avatar.GetComponent<CharacterVisual>().SetEquipment(peer.equipment);avatar.GetComponent<CharacterVisual>().SetOffhand(peer.offhand);
+            var weaponView=avatar.GetComponent<RemoteWeaponVisual>();if(!weaponView)weaponView=avatar.AddComponent<RemoteWeaponVisual>();weaponView.Show(peer.weapon);
             targets[peer.id]=new Vector3(peer.x,peer.y-PlayerCapsule.EyeHeight,peer.z);avatar.transform.rotation=Quaternion.Euler(0,peer.yaw,0);
         }
         void Update()
         {
+            foreach(var peerAvatar in avatars.Values)if(peerAvatar)peerAvatar.SetActive(!StoryLocked);
             if(world&&world.Ready&&status=="Генерируется мир…")status="Мир готов — нажми «Продолжить»";
             foreach(var pair in avatars)if(pair.Value&&targets.TryGetValue(pair.Key,out var target))
-            {pair.Value.transform.position=Vector3.Lerp(pair.Value.transform.position,target,Time.deltaTime*12);var label=pair.Value.GetComponentInChildren<TextMesh>();if(label&&Camera.main)label.transform.rotation=Camera.main.transform.rotation;}
+            {pair.Value.transform.position=Vector3.Lerp(pair.Value.transform.position,target,Time.deltaTime*12);}
             if(online&&client&&client.Connected&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
             {
-                var pos=player.Camera.transform.position;var equipment=new int[8];int equipmentHash=17;
+                var pos=player.transform.position+Vector3.up*PlayerCapsule.EyeHeight;int activeItem=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;int weapon=Weapons.Has(activeItem)||Items.IsPick(activeItem)||activeItem==102||activeItem==103?activeItem:0;var equipment=new int[8];int equipmentHash=weapon*31+17+(Session.Inventory.offhand.count>0?148:0);
                 for(int i=0;i<8;i++){var slot=Session.Inventory.equipment[i];equipment[i]=slot.count>0?slot.item:0;equipmentHash=unchecked(equipmentHash*31+equipment[i]);}
-                if(!sentPosition||equipmentHash!=previousEquipment||(pos-previousPosition).sqrMagnitude>.0009f||Mathf.Abs(Mathf.DeltaAngle(previousYaw,player.transform.eulerAngles.y))>1f)
-                {client.Send(new NetPacket{type="position",x=pos.x,y=pos.y,z=pos.z,yaw=player.transform.eulerAngles.y,equipment=equipment});previousEquipment=equipmentHash;previousPosition=pos;previousYaw=player.transform.eulerAngles.y;sentPosition=true;}
+                if(!sentPosition||Time.unscaledTime-lastHeartbeat>=.5f||equipmentHash!=previousEquipment||(pos-previousPosition).sqrMagnitude>.0009f||Mathf.Abs(Mathf.DeltaAngle(previousYaw,player.transform.eulerAngles.y))>1f)
+                {client.Send(new NetPacket{type="position",x=pos.x,y=pos.y,z=pos.z,yaw=player.transform.eulerAngles.y,weapon=weapon,equipment=equipment,offhand=Session.Inventory.offhand.count>0?148:0});lastHeartbeat=Time.unscaledTime;previousEquipment=equipmentHash;previousPosition=pos;previousYaw=player.transform.eulerAngles.y;sentPosition=true;}
                 lastPosition=Time.unscaledTime;
             }
         }
         void Leave()
         {
+            Story=null;InLobby=false;IsHost=false;pendingWelcome=null;LobbyPlayers=Array.Empty<NetPlayer>();
             ChatOpen=false;chatLog.Clear();ChatRevision++;
             if(Session&&!online)Session.Checkpoint();Session=null;
             if(client)Destroy(client.gameObject);
@@ -258,12 +285,12 @@ namespace LestingCraft.Runtime
             if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
             client=null;world=null;player=null;online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }
-        static Vector3 FindSpawn(int seed,Dimension realm)
+        static Vector3 FindSpawn(int seed,Dimension realm,int contentVersion)
         {
             for(int r=0;r<8;r++)for(int z=-r;z<=r;z++)for(int x=-r;x<=r;x++)
             {
                 int h=TerrainGenerator.Height(x,z,seed,realm);
-                if(TerrainGenerator.Sample(x,h+1,z,seed,realm)==0&&TerrainGenerator.Sample(x,h+2,z,seed,realm)==0)return new Vector3(x+.5f,h+1.2f,z+.5f);
+                if(BlockRegistry.IsSolid(TerrainGenerator.SampleContent(x,h,z,seed,realm,contentVersion))&&TerrainGenerator.SampleContent(x,h+1,z,seed,realm,contentVersion)==0&&TerrainGenerator.SampleContent(x,h+2,z,seed,realm,contentVersion)==0)return new Vector3(x+.5f,h+1.2f,z+.5f);
             }
             return new Vector3(.5f,TerrainGenerator.Height(0,0,seed,realm)+10,.5f);
         }

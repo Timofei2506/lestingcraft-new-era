@@ -60,8 +60,9 @@ namespace LestingCraft.Presentation
             var se=snow.emission;se.rateOverTime=outside*snowAmount*80;
             var light=AtmosphereLighting.At(Session.Data.clock,Session.World.Dimension,clouds,precipitation);light.Apply(sunlight,Session.Data.clock);
             sky.SetVector("_CloudOffset",CloudField.Offset(Session.Data.clock,Session.Data.seed,wind));sky.SetFloat("_CloudCoverage",clouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:VisualSettings.Current.VolumetricQuality==2?40:24);
+            Shader.SetGlobalFloat("_LCSunGlareWeather",1-Mathf.SmoothStep(0,1,Mathf.InverseLerp(.3f,.9f,clouds))*.95f);
             fog.SetFloat("_Density",AtmosphereProfile.Density(precipitation,submerged));
-            fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:VisualSettings.Current.VolumetricQuality==2?32:16);
+            fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:VisualSettings.Current.VolumetricQuality==2?48:32);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);
             Shader.SetGlobalFloat("_FogHeight",Session.World.Dimension==Dimension.Skyreach?86:44);
             float height=Mathf.Tan(cameraView.fieldOfView*Mathf.Deg2Rad*.5f)*2;
@@ -84,7 +85,7 @@ namespace LestingCraft.Presentation
             {
                 if(fires.ContainsKey(point))continue;
                 var obj=new GameObject("Persistent campfire light");obj.transform.SetParent(transform);obj.transform.position=point;
-                var source=obj.AddComponent<Light>();source.type=LightType.Point;source.color=new Color(1,.39f,.075f);source.intensity=3.6f;source.range=9;source.shadows=LightShadows.None;
+                var source=obj.AddComponent<Light>();source.type=LightType.Point;source.color=new Color(1,.39f,.075f);source.intensity=3.6f;source.range=9;source.shadows=LightShadows.Soft;source.shadowResolution=UnityEngine.Rendering.LightShadowResolution.Medium;source.shadowBias=.035f;source.shadowNormalBias=.15f;
                 obj.AddComponent<CampfireEffects>().Build();fires.Add(point,obj);
             }
         }

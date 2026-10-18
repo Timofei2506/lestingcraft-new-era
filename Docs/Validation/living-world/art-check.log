@@ -1,0 +1,2 @@
+PASS: 63 material sets, dimensions, periodic albedo seams, normals/masks, no legacy IMGUI/pipeline shutdown
+PASS: 30 catalog/registry/layer definitions, 63 surface layers, 98 shared voxel models and 384px transparent icons, 9 base AI masters + 3 species-specific AI masters; no missing resource assets

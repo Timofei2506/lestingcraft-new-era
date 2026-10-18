@@ -84,6 +84,27 @@ namespace LestingCraft.World
             if (y > height - 4) return BlockRegistry.DirtId;
             return Hash(x, y, z, seed) % 143 == 0 ? BlockRegistry.OreId : BlockRegistry.StoneId;
         }
+        public static ushort Expanded(ushort original,int x,int y,int z,int seed,Dimension d,int height,int contentVersion)
+        {
+            if(contentVersion<2)return original;
+            uint region=Hash((int)math.floor(x/8f),(int)math.floor(y/6f),(int)math.floor(z/8f),seed^41011);
+            if(original==10&&d==Dimension.Ashlands){if(y<38&&region%19==0)return 31;if(region%43==0)return 26;return original;}
+            if(original==10&&d==Dimension.EchoCrypt&&region%11==0)return 30;
+            if(d!=Dimension.Lestingia)return original;
+            if(original==2){if(height<=44&&y>=height-2)return region%2==0?(ushort)33:(ushort)34;return original;}
+            if(original==6&&region%4==0)return 32;
+            if(original!=1&&original!=13)return original;
+            uint lode=Hash((int)math.floor(x/3f),(int)math.floor(y/3f),(int)math.floor(z/3f),seed^17711);
+            if(original==13||lode%47==0)
+            {
+                int roll=(int)((lode>>9)%100);if(roll<27)return 19;if(roll<51)return 20;if(roll<69)return 21;
+                if(roll<76&&y<24)return 22;if(roll<83&&y<34)return 23;if(roll<92)return 24;return 25;
+            }
+            if(y<height-5){switch(region%8){case 0:case 1:return 27;case 2:case 3:return 28;case 4:return 29;case 5:if(y<28)return 30;break;}}
+            return original;
+        }
+        public static ushort SampleContent(int x,int y,int z,int seed,Dimension d,int contentVersion)
+        {if(contentVersion>=4&&d==Dimension.Lestingia&&LestingCraft.Story.StoryWorld.TrySample(x,y,z,seed,out ushort placed))return placed;if(contentVersion>=3&&d==Dimension.Lestingia){ushort raw=contentVersion>=7?BiomeGenerator.Sample(x,y,z,seed):NatureGenerator.Sample(x,y,z,seed);return contentVersion>=5?ExpeditionGenerator.Sample(x,y,z,seed,raw):raw;}return Expanded(Sample(x,y,z,seed,d),x,y,z,seed,d,Height(x,z,seed,d),contentVersion);}
         private static ushort Tree(int x, int y, int z, int seed)
         {
             int cellX = (int)math.floor(x / 8f), cellZ = (int)math.floor(z / 8f);
@@ -106,7 +127,7 @@ namespace LestingCraft.World
     [BurstCompile]
     public struct GenerateChunkJob : IJobParallelFor
     {
-        public int OriginX, OriginZ, Seed;
+        public int OriginX, OriginZ, Seed,ContentVersion;
         public Dimension Dimension;
         [NativeDisableParallelForRestriction] public NativeArray<ushort> Blocks;
         public void Execute(int column)
@@ -115,8 +136,10 @@ namespace LestingCraft.World
             int wx = OriginX + x, wz = OriginZ + z;
             int h = TerrainGenerator.Height(wx, wz, Seed, Dimension);
             bool island = TerrainGenerator.Island(wx, wz, Seed, Dimension);
+            if(ContentVersion>=3&&Dimension==Dimension.Lestingia)
+            {var trees=ContentVersion>=7?BiomeGenerator.Trees(wx,wz,Seed,h):NatureGenerator.Trees(wx,wz,Seed,h);var biome=ContentVersion>=7?BiomeGenerator.At(wx,wz,Seed):BiomeKind.MixedForest;var extra=ContentVersion>=5?ExpeditionGenerator.At(wx,wz,Seed):default(ExpeditionGenerator.Column);for(int y=0;y<ChunkData.SizeY;y++)Blocks[ChunkData.IndexOf(x,y,z)]=ContentVersion>=4&&LestingCraft.Story.StoryWorld.TrySample(wx,y,wz,Seed,out ushort placed)?placed:ContentVersion>=5?extra.Apply(ContentVersion>=7?BiomeGenerator.Column(wx,y,wz,Seed,h,trees,biome):NatureGenerator.Column(wx,y,wz,Seed,h,trees),y,Seed):NatureGenerator.Column(wx,y,wz,Seed,h,trees);return;}
             for (int y = 0; y < ChunkData.SizeY; y++)
-                Blocks[ChunkData.IndexOf(x, y, z)] = TerrainGenerator.SampleColumn(wx, y, wz, Seed, Dimension, h, island);
+                Blocks[ChunkData.IndexOf(x, y, z)] = TerrainGenerator.Expanded(TerrainGenerator.SampleColumn(wx, y, wz, Seed, Dimension, h, island),wx,y,wz,Seed,Dimension,h,ContentVersion);
         }
     }
 }

@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 7,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -30,9 +30,178 @@
     "campfire-side",
     "campfire-top",
     "ore-copper",
-    "ore-coal"
+    "ore-coal",
+    "ore-gold",
+    "ore-silver",
+    "ore-tin",
+    "ore-quartz",
+    "ore-sulfur",
+    "granite",
+    "limestone",
+    "slate",
+    "marble",
+    "obsidian",
+    "gravel",
+    "clay",
+    "mud",
+    "mossy-stone",
+    "cobblestone",
+    "stone-bricks",
+    "cracked-bricks",
+    "clay-bricks",
+    "polished-stone",
+    "sandstone",
+    "coal-block",
+    "copper-block",
+    "polished-granite",
+    "polished-marble",
+    "wildlife-fur",
+    "metal-ingot",
+    "deer-fur",
+    "hare-fur",
+    "boar-bristles",
+    "animal-underfur",
+    "animal-keratin",
+    "diamond-ore",
+    "diamond-facets",
+    "leather",
+    "raw-meat",
+    "cooked-meat",
+    "cat-fur"
   ],
   "stationSource": "Original procedural joinery/masonry + derived PBR estimates",
   "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries",
-  "iteration10": "Original firebrick/soot/iron firebox, fractured bedrock, quartz inclusions/striations; iron/copper/coal-like visual lodes of the SAME existing ore block. Derived PBR, not scans."
+  "iteration10": "Original firebrick/soot/iron firebox, fractured bedrock, quartz inclusions/striations; iron/copper/coal-like visual lodes of the SAME existing ore block. Derived PBR, not scans.",
+  "iteration11": {
+    "masters": [
+      "ArtSource/Textures/Iteration11/wildlife-fur.jpg",
+      "ArtSource/Textures/Iteration11/gold-ore.jpg",
+      "ArtSource/Textures/Iteration11/clay-brick.jpg",
+      "ArtSource/Textures/Iteration11/copper-ore.jpg",
+      "ArtSource/Textures/Iteration11/obsidian.jpg",
+      "ArtSource/Textures/Iteration11/coal-ore.jpg",
+      "ArtSource/Textures/Iteration11/limestone-marble.jpg",
+      "ArtSource/Textures/Iteration11/bedrock.jpg",
+      "ArtSource/Textures/Iteration11/iron-ore.jpg"
+    ],
+    "derivatives": [
+      "ore",
+      "ore-copper",
+      "ore-gold",
+      "ore-coal",
+      "ore-silver",
+      "ore-tin",
+      "ore-quartz",
+      "ore-sulfur",
+      "bedrock",
+      "granite",
+      "limestone",
+      "slate",
+      "marble",
+      "obsidian",
+      "gravel",
+      "clay",
+      "mud",
+      "mossy-stone",
+      "cobblestone",
+      "stone-bricks",
+      "cracked-bricks",
+      "clay-bricks",
+      "polished-stone",
+      "sandstone",
+      "coal-block",
+      "copper-block",
+      "polished-granite",
+      "polished-marble",
+      "wildlife-fur",
+      "metal-ingot",
+      "crystal"
+    ],
+    "resolution": 512,
+    "maps": "AI-derived albedo, estimated normal / metallic-AO-height-smoothness; not scans",
+    "albedo": "JPEG q95 4:4:4, seam-corrected before encoding; lossy seam tolerance applies"
+  },
+  "animalTextures": {
+    "version": 1,
+    "masters": [
+      {
+        "path": "ArtSource/Textures/Animals/boar-bristles.jpg",
+        "sha256": "61ba49fc340058a53ae828260ba25601094d7259bae4e96f61099bd62ca682f5"
+      },
+      {
+        "path": "ArtSource/Textures/Animals/deer-fur.jpg",
+        "sha256": "faa814af7fc8421f97eea9821d01faee4d2f8e43a6ec15c2575d2b9038e8e902"
+      },
+      {
+        "path": "ArtSource/Textures/Animals/hare-fur.jpg",
+        "sha256": "f491bb38cb36bf9153e603e3b86b8ed86d5e2906a021c02226873d5ec468758c"
+      }
+    ],
+    "species": {
+      "deer": "deer-fur",
+      "hare": "hare-fur",
+      "boar": "boar-bristles"
+    },
+    "auxiliaries": [
+      "animal-underfur",
+      "animal-keratin"
+    ],
+    "resolution": 512,
+    "provenance": "3 separate AI-generated image masters; estimated normals/AO/height, not measured scans; pale underfur and dark keratin derived from these masters"
+  },
+  "expedition": {
+    "materials": [
+      "diamond-ore",
+      "diamond-facets"
+    ],
+    "maps": "AI-authored albedo with estimated periodic normal / metallic-AO-height-smoothness, not scans"
+  },
+  "livingMaterials": {
+    "materials": [
+      "metal-ingot",
+      "leather",
+      "copper-block",
+      "raw-meat",
+      "cooked-meat",
+      "water",
+      "lava",
+      "cat-fur"
+    ],
+    "masters": [
+      {
+        "path": "ArtSource/AI/living-cat-fur-master.jpg",
+        "sha256": "e6981826bd2bddfe4c615268e48fbf280e2111d3947f51ac2a20539877efbafb"
+      },
+      {
+        "path": "ArtSource/AI/living-cooked-meat-master.jpg",
+        "sha256": "2d87ce430da312693f427a4e081a57808f51ccdd3851b534dd5d6684bb948ef5"
+      },
+      {
+        "path": "ArtSource/AI/living-copper-master.jpg",
+        "sha256": "f10020a976bc6eb4f1088fdeac944c22dd7d51f6deed20f92fe59118c0a2f83d"
+      },
+      {
+        "path": "ArtSource/AI/living-lava-master.jpg",
+        "sha256": "14aae5311c0386b66133a6f976b34fd40a2f295e1396b088582864fc40686746"
+      },
+      {
+        "path": "ArtSource/AI/living-leather-master.jpg",
+        "sha256": "d485aacfe1bb8f8bb0b454b6ec887d7c0ec8e9a198fac26fd742fd259695aa67"
+      },
+      {
+        "path": "ArtSource/AI/living-metal-master.jpg",
+        "sha256": "f178e6b763e2f9ce0681b6b9242b6623db8c571bb979da9106e2812c3ee3e8ce"
+      },
+      {
+        "path": "ArtSource/AI/living-raw-meat-master.jpg",
+        "sha256": "7553fef05d5d5aee7ad4af0ee75102fa68afe98c5eb60606742ee546f3e604be"
+      },
+      {
+        "path": "ArtSource/AI/living-water-master.jpg",
+        "sha256": "a8091b0458503ed30423bb6ab35979d8e2a12081e1aabb7ac4710892dcf349fc"
+      }
+    ],
+    "resolution": 512,
+    "maps": "AI albedo; estimated periodic normals / metallic-AO-height-smoothness, not scans"
+  }
 }

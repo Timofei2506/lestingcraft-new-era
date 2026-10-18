@@ -1,0 +1,215 @@
+{
+  "version": 3,
+  "blocks": [
+    {
+      "id": 19,
+      "name": "Угольная руда",
+      "surface": "ore-coal",
+      "hardness": 2.5,
+      "pick": true
+    },
+    {
+      "id": 20,
+      "name": "Железная руда",
+      "surface": "ore",
+      "hardness": 3,
+      "pick": true
+    },
+    {
+      "id": 21,
+      "name": "Медная руда",
+      "surface": "ore-copper",
+      "hardness": 2.8,
+      "pick": true
+    },
+    {
+      "id": 22,
+      "name": "Золотая руда",
+      "surface": "ore-gold",
+      "hardness": 3.2,
+      "pick": true
+    },
+    {
+      "id": 23,
+      "name": "Серебряная руда",
+      "surface": "ore-silver",
+      "hardness": 3,
+      "pick": true
+    },
+    {
+      "id": 24,
+      "name": "Оловянная руда",
+      "surface": "ore-tin",
+      "hardness": 2.7,
+      "pick": true
+    },
+    {
+      "id": 25,
+      "name": "Кварцевая жила",
+      "surface": "ore-quartz",
+      "hardness": 2.6,
+      "pick": true
+    },
+    {
+      "id": 26,
+      "name": "Серная руда",
+      "surface": "ore-sulfur",
+      "hardness": 2.3,
+      "pick": true
+    },
+    {
+      "id": 27,
+      "name": "Гранит",
+      "surface": "granite",
+      "hardness": 2.5,
+      "pick": true
+    },
+    {
+      "id": 28,
+      "name": "Известняк",
+      "surface": "limestone",
+      "hardness": 1.6,
+      "pick": true
+    },
+    {
+      "id": 29,
+      "name": "Сланец",
+      "surface": "slate",
+      "hardness": 1.8,
+      "pick": true
+    },
+    {
+      "id": 30,
+      "name": "Мрамор",
+      "surface": "marble",
+      "hardness": 2.4,
+      "pick": true
+    },
+    {
+      "id": 31,
+      "name": "Обсидиан",
+      "surface": "obsidian",
+      "hardness": 6,
+      "pick": true
+    },
+    {
+      "id": 32,
+      "name": "Гравий",
+      "surface": "gravel",
+      "hardness": 0.7,
+      "pick": false
+    },
+    {
+      "id": 33,
+      "name": "Глина",
+      "surface": "clay",
+      "hardness": 0.6,
+      "pick": false
+    },
+    {
+      "id": 34,
+      "name": "Ил",
+      "surface": "mud",
+      "hardness": 0.5,
+      "pick": false
+    },
+    {
+      "id": 35,
+      "name": "Замшелый камень",
+      "surface": "mossy-stone",
+      "hardness": 1.5,
+      "pick": true
+    },
+    {
+      "id": 36,
+      "name": "Булыжник",
+      "surface": "cobblestone",
+      "hardness": 1.7,
+      "pick": true
+    },
+    {
+      "id": 37,
+      "name": "Каменные кирпичи",
+      "surface": "stone-bricks",
+      "hardness": 2,
+      "pick": true
+    },
+    {
+      "id": 38,
+      "name": "Треснувшие кирпичи",
+      "surface": "cracked-bricks",
+      "hardness": 1.8,
+      "pick": true
+    },
+    {
+      "id": 39,
+      "name": "Глиняные кирпичи",
+      "surface": "clay-bricks",
+      "hardness": 1.9,
+      "pick": true
+    },
+    {
+      "id": 40,
+      "name": "Полированный камень",
+      "surface": "polished-stone",
+      "hardness": 2.1,
+      "pick": true
+    },
+    {
+      "id": 41,
+      "name": "Полированный гранит",
+      "surface": "polished-granite",
+      "hardness": 2.6,
+      "pick": true
+    },
+    {
+      "id": 42,
+      "name": "Полированный мрамор",
+      "surface": "polished-marble",
+      "hardness": 2.5,
+      "pick": true
+    },
+    {
+      "id": 43,
+      "name": "Песчаник",
+      "surface": "sandstone",
+      "hardness": 1.2,
+      "pick": true
+    },
+    {
+      "id": 44,
+      "name": "Стекло",
+      "surface": "crystal",
+      "hardness": 0.4,
+      "pick": false
+    },
+    {
+      "id": 45,
+      "name": "Угольный блок",
+      "surface": "coal-block",
+      "hardness": 3,
+      "pick": true
+    },
+    {
+      "id": 46,
+      "name": "Медный блок",
+      "surface": "copper-block",
+      "hardness": 3.5,
+      "pick": true
+    },
+    {
+      "id": 47,
+      "name": "Алмазная руда",
+      "surface": "diamond-ore",
+      "hardness": 5.0,
+      "pick": true
+    },
+    {
+      "id": 48,
+      "name": "Алмазный блок",
+      "surface": "diamond-facets",
+      "hardness": 5.5,
+      "pick": true
+    }
+  ]
+}

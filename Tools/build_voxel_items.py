@@ -1,3 +1,4 @@
+from model_io import save_catalog
 """Original voxel objects + orthographic textured icons. JSON is the SAME geometry Unity uses in hand.
 No painted symbol placeholders: flat faces, square cross-sections, opaque cubic berries.
 """
@@ -7,11 +8,20 @@ import numpy as np
 from PIL import Image,ImageDraw,ImageFilter
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT/'Assets/Resources/VoxelIcons';OUT.mkdir(parents=True,exist_ok=True)
 MODELS=ROOT/'Assets/Resources/Models';MODELS.mkdir(parents=True,exist_ok=True)
-NAMES=['stone','dirt','grass','grass-side','bark','wood-end','leaves','sand','water','lava','bedrock','basalt','crystal','aether','ore','snow','planks','workbench-top','workbench-side','furnace-side','furnace-front','furnace-top','campfire-side','campfire-top']
-TEXTURES=[np.asarray(Image.open(ROOT/f'Assets/Art/PBR/{n}_albedo.png').convert('RGB').resize((256,256)),dtype=float)/255 for n in NAMES]
+NAMES=__import__('re').findall(r'"([a-z-]+)"',(ROOT/'Assets/Scripts/Presentation/SurfaceLayers.cs').read_text().split('Names={')[1].split('};')[0])
+def albedo_path(n):
+ p=ROOT/f'Assets/Art/PBR/{n}_albedo.jpg';return p if p.exists() else p.with_suffix('.png')
+TEXTURES=[np.asarray(Image.open(albedo_path(n)).convert('RGB').resize((256,256)),dtype=float)/255 for n in NAMES]
 # Palette (colour multiplies material texture); snow is a neutral textile/paint basis.
-PALETTE=[('#ffffff',0),('#ffffff',1),('#ffffff',2),('#ffffff',3),('#ffffff',4),('#ffffff',5),('#ffffff',6),('#ffffff',7),('#ffffff',8),('#ffffff',9),('#ffffff',10),('#ffffff',11),('#ffffff',12),('#ffffff',13),('#ffffff',14),('#ffffff',15),('#fff0ce',5),('#e6bb8c',4),('#68513e',4),('#ffffff',0),('#777e82',0),('#f0d294',15),('#54705a',15),('#263a30',15),('#c69a55',15),('#a21d38',15),('#d53951',15),('#5c102a',15),('#618535',15),('#34532b',15),('#c7b78e',15),('#867955',15),('#ff9f18',15),('#d6a258',15),('#92612f',15),('#edd29b',15),('#ffdc65',15)]
+PALETTE=[('#ffffff',0),('#ffffff',1),('#ffffff',2),('#ffffff',3),('#ffffff',4),('#ffffff',5),('#ffffff',6),('#ffffff',7),('#ffffff',8),('#ffffff',9),('#ffffff',10),('#ffffff',11),('#c7adfa',12),('#ffffff',13),('#ffffff',14),('#ffffff',15),('#fff0ce',5),('#e6bb8c',4),('#68513e',4),('#ffffff',0),('#777e82',0),('#f0d294',15),('#54705a',15),('#263a30',15),('#c69a55',15),('#a21d38',15),('#d53951',15),('#5c102a',15),('#618535',15),('#34532b',15),('#c7b78e',15),('#867955',15),('#ff9f18',15),('#d6a258',15),('#92612f',15),('#edd29b',15),('#ffdc65',15)]
 PALETTE += [('#ffffff',i) for i in range(16,24)]
+# New palette entries appended: old model cell indices remain stable.
+EXPANDED=json.loads((MODELS/'ExpandedBlocks.json').read_text())['blocks']
+new_pal={}
+def append_palette(key,color,layer):
+ new_pal[key]=len(PALETTE);PALETTE.append((color,layer));return new_pal[key]
+for block in EXPANDED:append_palette(block['id'],'#d9f1f5' if block['id']==44 else '#ffffff',NAMES.index(block['surface']))
+for id,color,layer in [(135,'#944638','snow'),(136,'#c9a274','wildlife-fur'),(138,'#71402b','snow'),(139,'#9a6b42','bark'),(140,'#c9cbd0','metal-ingot'),(141,'#d47842','metal-ingot'),(142,'#eac044','metal-ingot'),(143,'#edeff3','metal-ingot'),(144,'#aab4af','metal-ingot'),(145,'#e8e5f5','ore-quartz'),(146,'#dac843','ore-sulfur'),(147,'#ffffff','coal-block')]:append_palette(id,color,NAMES.index(layer))
 COLORS=[np.array([int(c[i:i+2],16)/255 for i in (1,3,5)]) for c,_ in PALETTE]
 models=[]
 def model(id,name):return {'id':id,'name':name,'voxels':{}}
@@ -30,7 +40,7 @@ for id in range(1,15):
   m['voxels']={};box(m,0,0,0,12,12,12,14)
  if id==11:
   m['voxels']={};box(m,2,0,2,10,10,10,12);box(m,3,10,3,9,14,9,12);box(m,4,14,4,8,17,8,12)
-  box(m,0,0,5,3,7,9,13);box(m,9,0,1,12,9,5,12)
+  box(m,0,0,5,3,7,9,12);box(m,9,0,1,12,9,5,12)
  models.append(m)
 m=model(15,'Костёр');box(m,0,0,2,14,3,5,4);box(m,0,0,9,14,3,12,4);box(m,3,2,0,6,5,14,4);box(m,9,2,0,12,5,14,4)
 for x,z,h in [(5,5,8),(7,6,14),(9,8,10),(5,9,11)]:
@@ -113,12 +123,28 @@ for id,name in [(105,'Рудный шлем'),(106,'Рудный нагрудн�
  else:
   for xx in [0,10]:box(m,xx,0,0,xx+8,4,13,edge);box(m,xx+1,4,0,xx+7,13,8,p);box(m,xx,1,1,xx+8,4,14,p)
  models.append(m)
+# New real block models; same cells and PBR layer IDs are used in the hand and icon.
+for block in EXPANDED:
+ m=model(block['id'],block['name']);box(m,0,0,0,12,12,12,new_pal[block['id']]);models.append(m)
+resource_names={135:'Сырое мясо',136:'Сырая шкура',138:'Жареное мясо',139:'Кожа',140:'Железный слиток',141:'Медный слиток',142:'Золотой слиток',143:'Серебряный слиток',144:'Оловянный слиток',145:'Кварц',146:'Сера',147:'Уголь'}
+for id,name in resource_names.items():
+ m=model(id,name);p=new_pal[id]
+ if 140<=id<=144:
+  box(m,0,0,0,16,2,9,p);box(m,1,2,1,15,5,8,p);box(m,2,5,2,14,6,7,p)
+ elif id in [136,139]:
+  box(m,1,0,0,13,2,16,p);box(m,0,0,3,15,2,13,p);box(m,3,0,-2,11,2,18,p)
+ elif id in [135,138]:
+  box(m,1,0,0,13,4,9,p);box(m,0,0,2,15,3,7,p);box(m,3,4,1,12,5,8,p);box(m,3,3,2,5,5,5,30)
+ else:
+  box(m,0,0,1,11,7,10,p);box(m,2,7,2,9,10,8,p);box(m,8,0,0,14,5,7,p)
+ models.append(m)
 def faces(m):
  cells=m['voxels']
  for (x,y,z),p in cells.items():
   for side,(dx,dy,dz) in enumerate(DIRECTIONS):
    if (x+dx,y+dy,z+dz) not in cells:
     yield np.array(CORNERS[side],float)+[x,y,z],side,p
+m=model(148,'Факел');box(m,0,0,0,3,17,3,4);box(m,-1,14,-1,4,19,4,18);box(m,0,18,0,3,23,3,32);box(m,1,23,1,2,26,2,36);models.append(m)
 # Orthographic z-buffer renderer, transparent output, actual textured cube faces (not flattened illustrations).
 def render(m,S=768):
  camera=np.array([1.4,1.05,-1.8 if m["id"]==17 else 1.8]);camera/=np.linalg.norm(camera);right=np.cross([0,1,0],camera);right/=np.linalg.norm(right);up=np.cross(camera,right)
@@ -151,26 +177,18 @@ def render(m,S=768):
  return Image.fromarray(rgba).resize((384,384),Image.Resampling.LANCZOS)
 serial=[]
 for m in models:
- render(m).save(OUT/f'Item{m["id"]}.png',optimize=True)
+ im=render(m)
+ if m['id'] in [11,44]:
+  alpha=np.asarray(im.getchannel('A'),dtype=float);im.putalpha(Image.fromarray(np.uint8(alpha*(.7 if m['id']==11 else .43))))
+ im.quantize(colors=256,method=Image.Quantize.FASTOCTREE,dither=Image.Dither.NONE).save(OUT/f'Item{m["id"]}.png',optimize=True)
  data=[]
  for (x,y,z),p in sorted(m['voxels'].items()):data.extend([x,y,z,p])
  serial.append({'id':m['id'],'name':m['name'],'cells':data})
  print(m['id'],m['name'],len(m['voxels']),flush=True)
-(MODELS/'VoxelItems.json').write_text(json.dumps({'version':1,'colors':[c for c,l in PALETTE],'layers':[l for c,l in PALETTE],'models':serial},ensure_ascii=False,separators=(',',':')))
-# A downloadable, engine-neutral representation of these exact models.
-path=ROOT.parent/'game-assets';path.mkdir(exist_ok=True)
-with zipfile.ZipFile(path/'LestingCraft-voxel-objects.zip','w',zipfile.ZIP_DEFLATED) as archive:
- for m in models:
-  lines=['# LestingCraft original voxel object, same source as Unity and icon.'];index=1
-  for verts,side,p in faces(m):
-   for v in verts:
-    lines.append('v '+' '.join(str(round(float(a)/16,5)) for a in v))
-    u,w=(v[2],v[1]) if side<2 else (v[0],v[2]) if side<4 else (v[0],v[1])
-    lines.append(f'vt {u/12:.6f} {w/12:.6f}')
-   lines.append(f'usemtl palette{p}');lines.append('f '+' '.join(f'{index+k}/{index+k}' for k in range(4)));index+=4
-  lines.insert(0,'mtllib palette.mtl');archive.writestr(f'{m["id"]}.obj','\n'.join(lines))
- archive.writestr('palette.mtl','\n'.join(f'newmtl palette{i}\nKd '+ ' '.join(str(round(float(v),4)) for v in COLORS[i])+'\nmap_Kd textures/'+NAMES[PALETTE[i][1]]+'.png\n' for i in range(len(PALETTE))))
- for i,name in enumerate(NAMES):
-  stream=io.BytesIO();Image.fromarray(np.uint8(TEXTURES[i]*255)).save(stream,format='PNG');archive.writestr('textures/'+name+'.png',stream.getvalue())
- archive.writestr('README.txt',str(len(models))+' original voxel objects. OBJ/MTL export includes UVs and 256px albedo textures. Unity uses the same voxel coordinates plus full PBR normal/mask layers. Icons are textured orthographic renders of these objects. No spherical geometry.\n')
-print('Generated',len(models),'textured voxel icons and shared model catalog')
+save_catalog(ROOT,{'version':1,'colors':[c for c,l in PALETTE],'layers':[l for c,l in PALETTE],'models':serial})
+print('Generated',len(models),'textured voxel icons and shared model catalog; no duplicate export archives')
+
+# Optional content-5 overlay; existing base authoring remains reproducible.
+if __name__=="__main__":
+ import subprocess,sys
+ subprocess.run([sys.executable,str(ROOT/"Tools/build_expedition_items.py")],check=True)

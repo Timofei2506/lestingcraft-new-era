@@ -31,9 +31,16 @@ public static class BuildScript
         }
 
         PresentationAssets.Ensure();
+        foreach(var layer in new[]{"Albedo","Normal","Mask"})
+        {
+            var array=Resources.Load<Texture2DArray>("Generated/"+layer);
+            if(!array||array.depth!=LestingCraft.Presentation.SurfaceLayers.Names.Length||array.width!=512||array.height!=512)
+                throw new InvalidOperationException("Incomplete current PBR array: "+layer);
+        }
+        if(LestingCraft.Gameplay.GameRules.Version!=10)throw new InvalidOperationException("Expected current rules10 build");
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
-        PlayerSettings.bundleVersion = "0.2.0-visual-test";
+        PlayerSettings.bundleVersion = "0.3.2-usability";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");
@@ -55,8 +62,11 @@ public static class BuildScript
                   $"size={summary.totalSize}, time={summary.totalTime}, " +
                   $"errors={summary.totalErrors}, warnings={summary.totalWarnings}");
 
+        var storyBlood=Resources.Load<Material>("Generated/StoryBlood");
+        if(!storyBlood||!storyBlood.shader||storyBlood.shader.name!="Universal Render Pipeline/Unlit")
+            throw new System.Exception("Story blood must have a serialized, included player shader");
         bool shaderErrors=false;
-        foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","AtmosphericSky","VolumetricAtmosphere"})
+        foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","CrystalGlass","Grass","AtmosphericSky","VolumetricAtmosphere"})
         {
             var shader=Shader.Find("LestingCraft/"+name);
             if(!shader||ShaderUtil.ShaderHasError(shader)){Debug.LogError("BuildScript: invalid shader "+name);shaderErrors=true;}

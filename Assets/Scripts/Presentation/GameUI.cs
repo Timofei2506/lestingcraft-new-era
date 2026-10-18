@@ -11,9 +11,9 @@ using LestingCraft.Gameplay;
 namespace LestingCraft.Presentation
 {
     /// <summary>Native scalable uGUI, no IMGUI or embedded webpage. All fonts/art are local.</summary>
-    public sealed class GameUI : MonoBehaviour
+    public sealed partial class GameUI : MonoBehaviour
     {
-        enum Page{Home,World,Rooms,Settings,Pause,Inventory,Death,HUD}
+        enum Page{Account,Achievements,Home,World,Rooms,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby}
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
@@ -30,8 +30,32 @@ namespace LestingCraft.Presentation
         sealed class CellView {public int Index;public RawImage Icon;public Text Count;public ItemHover Hover;public Image Wear;public float WearWidth;}
         readonly List<CellView> inventoryViews=new List<CellView>();int stationKind,craftWidth=2;Vector3Int stationCell;
         RawImage craftOutput,cursorImage;Text craftCount,cursorCount,stoveStatus,equipmentStatus;RectTransform cursorRoot;int craftRevision=-1;
-        public bool InventoryOpen=>page==Page.Inventory;
+        public bool InventoryOpen=>page==Page.Inventory||page==Page.Creative||page==Page.Trade;
+        public bool TradeOpen=>page==Page.Trade;
+        public bool EditingText=>EventSystem.current&&EventSystem.current.currentSelectedGameObject&&EventSystem.current.currentSelectedGameObject.GetComponent<InputField>()&&EventSystem.current.currentSelectedGameObject.GetComponent<InputField>().isFocused;
         public bool IsReady=>ready;
+        public float InventoryTextPixelSize=>18*canvas.scaleFactor;
+        void LayoutWidth(float width)
+        {
+            GetComponent<CanvasScaler>().referenceResolution=new Vector2(width,900);
+            frame.sizeDelta=new Vector2(width,900);content.GetComponent<RectTransform>().sizeDelta=new Vector2(width,900);
+        }
+        public bool InventoryRectsDoNotOverlap(out string reason)
+        {
+            reason="";if(page!=Page.Inventory){reason="Not bag inventory";return false;}
+            var all=new List<UnityEngine.Rect>();var corners=new Vector3[4];
+            foreach(var cell in inventoryViews)
+            {
+                var rt=cell.Icon.transform.parent.GetComponent<RectTransform>();rt.GetWorldCorners(corners);
+                Vector2 a=frame.InverseTransformPoint(corners[0]),b=frame.InverseTransformPoint(corners[2]);var box=UnityEngine.Rect.MinMaxRect(a.x,a.y,b.x,b.y);
+                if(box.xMin<frame.rect.xMin||box.xMax>frame.rect.xMax||box.yMin<frame.rect.yMin||box.yMax>frame.rect.yMax){reason="Cell outside frame: "+cell.Index;return false;}
+                foreach(var prev in all)if(box.Overlaps(prev)){reason="Overlapping cell: "+cell.Index;return false;}all.Add(box);
+            }
+            var preview=content.transform.Find("3D equipped character").GetComponent<RectTransform>();preview.GetWorldCorners(corners);
+            var pa=frame.InverseTransformPoint(corners[0]);var pb=frame.InverseTransformPoint(corners[2]);var portrait=UnityEngine.Rect.MinMaxRect(pa.x,pa.y,pb.x,pb.y);
+            foreach(var box in all)if(portrait.Overlaps(box)){reason="Portrait overlaps equipment";return false;}
+            return true;
+        }
         public string ScreenName=>page.ToString();
         float timer,averageFrame=.016f;ushort lastSelection;bool ready;
         public void Initialize(PrototypeGame owner)
@@ -62,7 +86,7 @@ namespace LestingCraft.Presentation
         static void Stretch(RectTransform rt){rt.anchorMin=Vector2.zero;rt.anchorMax=Vector2.one;rt.pivot=new Vector2(.5f,.5f);rt.offsetMin=rt.offsetMax=Vector2.zero;}
         void Clear(Page next)
         {
-            HideItemTooltip();page=next;content.SetActive(true);
+            HideItemTooltip();LayoutWidth(1600);page=next;content.SetActive(true);
             for(int i=content.transform.childCount-1;i>=0;i--){var child=content.transform.GetChild(i).gameObject;child.SetActive(false);if(Application.isPlaying)Destroy(child);else DestroyImmediate(child);}
             actions.Clear();transient.Clear();status=null;
             background.SetActive(next!=Page.HUD);lastSelection=0;
@@ -104,16 +128,25 @@ namespace LestingCraft.Presentation
         }
         void Header(string section,bool back=true)
         {
+            if(InventoryOpen)
+            {
+                Label(content.transform,"LESTINGCRAFT",32,24,560,34,22,White,true);
+                Label(content.transform,"NEW ERA",34,64,280,25,15,Accent);
+                Label(content.transform,section.ToUpperInvariant(),784,30,464,42,20,Muted,false,TextAnchor.MiddleRight);
+                Box(content.transform,32,108,1216,1,new Color(.8f,.9f,.8f,.16f),false);
+                return;
+            }
             Label(content.transform,"LESTINGCRAFT",64,42,400,32,19,White,true);
             Label(content.transform,"N E W  E R A",66,81,280,24,12,Accent);
             Label(content.transform,section.ToUpperInvariant(),1060,48,470,40,14,Muted,false,TextAnchor.MiddleRight);
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            Label(content.transform,"Тестовая Windows-версия  /  интерфейс 04",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"0.3.2 usability  /  интерфейс 06",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
         }
         public void ShowHome()
         {
             Clear(Page.Home);
+            Button("Аккаунт и достижения",1247,103,267,48,ShowAccount);
             Label(content.transform,"L / C",86,46,220,40,27,Accent,true);
             Label(content.transform,"A NEW ERA OF ADVENTURE",87,99,580,22,12,Muted);
             var version=Box(content.transform,1247,48,267,40,new Color(.035f,.055f,.065f,.72f));
@@ -160,8 +193,11 @@ namespace LestingCraft.Presentation
             Label(content.transform,"Локальная экспедиция",542,626,640,34,20,White);
             Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nНовый мир заменяет предыдущее локальное сохранение.",542,675,650,72,16,Muted);
             Button("Начать  →",1227,668,309,64,game.PlayOffline,true);
-            status=Label(content.transform,"Полная кампания и боссы ещё разрабатываются.",542,784,940,66,14,Muted);
+            status=Label(content.transform,"Сюжет: глава I в Лестингии. Остальные главы ещё разрабатываются.",542,784,940,66,14,Muted);
         }
+        int lobbyRevision=-1;
+        public void ShowLobby()
+        {Clear(Page.Lobby);lobbyRevision=game.LobbyRevision;Header("Лобби · "+game.ModeName);Label(content.transform,"Код: "+game.RoomCode,90,220,1400,70,26,White);string names="";foreach(var peer in game.LobbyPlayers)names+=peer.name+(peer.id==game.HostId?" · хозяин":"")+"\n";Label(content.transform,names,90,320,1100,350,25,White);Button("Скопировать код",1120,230,360,62,()=>GUIUtility.systemCopyBuffer=game.RoomCode);if(game.IsHost)Button("Начать игру →",1120,660,360,68,game.StartLobby,true);else Label(content.transform,"Ждём, когда хозяин нажмёт «Старт»",90,690,1000,70,24,Accent);Button("Выйти",90,790,300,58,game.ReturnToMenu);}
         public void ShowRooms()
         {
             Clear(Page.Rooms);Header("Кооператив · до 8 игроков");
@@ -186,6 +222,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,"МИР ПОДОЖДЁТ",64,248,1000,86,44,White,true);
             Label(content.transform,game.WorldLabel+"\n"+(game.Online?"Комната "+game.RoomCode+" · сетевой мир не останавливается":"Локальная экспедиция"),67,373,1050,90,22,Muted);
             Button("Продолжить  →",64,534,395,64,game.Resume,true);
+            Button("Аккаунт / достижения",505,698,420,58,ShowAccount);
             Button("Настройки",64,619,395,58,()=>ShowSettings(Page.Pause));
             Button("В главное меню",64,698,395,58,game.ReturnToMenu);
             Label(content.transform,"ESC — продолжить · E — инвентарь · Enter / T — чат\nЛКМ — добывать · ПКМ — использовать · F1 — интерфейс · F2 — снимок",505,535,950,68,15,Muted);
@@ -193,70 +230,89 @@ namespace LestingCraft.Presentation
         }
         public void ShowInventory(int station=0,Vector3Int cell=default)
         {
+            if(station==0&&game.Session&&game.Session.Creative&&!creativeBag){ShowCreativeCatalog();return;}
             stationKind=station;stationCell=cell;craftWidth=station==16?3:2;
-            Clear(Page.Inventory);Header(station==16?"Верстак · 3×3":station==17?"Печь · готовка":"Инвентарь · 2×2",false);
+            Clear(Page.Inventory);LayoutWidth(1280);
+            Box(content.transform,16,119,1248,688,new Color(.025f,.043f,.05f,.97f));
+            Header(station==16?"Верстак · 3×3":station==17?"Печь · личная готовка":"Инвентарь · 2×2",false);
             inventoryViews.Clear();craftRevision=-1;
-            Label(content.transform,"",64,165,1400,59,32,White,true);
-            Label(content.transform,"ЛКМ — взять / положить · ПКМ — половина / по одному · Shift-клик — быстро перенести · Можно перетаскивать мышью",66,248,1465,50,15,Muted);
+            if(game.Session&&game.Session.Creative)Button("Каталог предметов",424,28,244,52,ShowCreativeCatalog);
             if(!game.Session)return;
-            for(int i=0;i<45;i++)CreateCell(i,64+(i%9)*82,328+(i/9)*83,77,74);
-            Label(content.transform,"Shift-клик по одежде/броне — надеть; по экипировке — снять",64,759,740,25,14,Muted);
-            Label(content.transform,station==17?"ПЕРСОНАЛЬНАЯ ОЧЕРЕДЬ ГОТОВКИ":"СЕТКА "+craftWidth+"×"+craftWidth,852,307,380,32,16,Accent,true);
+            for(int i=0;i<Equipment.Count;i++)
+            {float x=32+i*96;Label(content.transform,i==7?"Броне-\nсапоги":Equipment.Names[i],x,145,90,49,16,Muted);CreateCell(58+i,x,197,62,62);}
+            Label(content.transform,"Левая рука · G",800,145,100,45,16,Muted);CreateCell(66,800,197,62,62);
+            equipmentStatus=Label(content.transform,"",936,144,166,135,18,White);equipmentStatus.name="Equipment summary";
+            var portrait=Rect("3D equipped character",content.transform,1124,130,120,180).gameObject.AddComponent<RawImage>();portrait.raycastTarget=false;portrait.gameObject.AddComponent<CharacterPreview>().Initialize(game);
+            Label(content.transform,"ЛКМ — взять / положить · ПКМ — разделить\nShift-клик — перенести или надеть",32,279,528,55,17,Muted);
+            Label(content.transform,"РЮКЗАК",32,334,528,30,20,Accent,true);
+            for(int i=0;i<45;i++)CreateCell(i,32+(i%9)*59,375+(i/9)*63,56,59);
+            Label(content.transform,"Наведи на предмет — название и прочность.\nЭкипировка: Shift-клик — надеть или снять.",32,720,528,62,17,Muted);
+            Label(content.transform,station==17?"ПЕЧЬ":"СЕТКА "+craftWidth+"×"+craftWidth,588,318,328,38,20,Accent,true);
             if(station==17)
             {
-                CreateCell(54,867,377,82,82);CreateCell(55,867,527,82,82);CreateCell(56,1103,431,86,86);
-                Label(content.transform,"Сырьё",867,349,145,26,14,Muted);Label(content.transform,"Топливо",867,498,145,26,14,Muted);
-                Label(content.transform,"→",1016,446,65,50,29,Accent);Label(content.transform,"Результат",1084,534,145,26,14,Muted);
-                stoveStatus=Label(content.transform,"",852,642,370,103,15,Muted);
-                Label(content.transform,"Ягоды → печёные ягоды\nТесто → хлеб · Древесина → уголь\nОчередь сохраняется у игрока; работает рядом с печью.",852,702,370,90,13,Muted);
+                Label(content.transform,"Сырьё",588,368,140,29,18,Muted);CreateCell(54,588,403,78,78);
+                Label(content.transform,"Топливо",588,512,145,29,18,Muted);CreateCell(55,588,547,78,78);
+                Label(content.transform,"→",686,448,50,48,30,Accent);CreateCell(56,768,432,82,82);
+                Label(content.transform,"Результат",768,527,145,29,18,Muted);
+                stoveStatus=Label(content.transform,"",588,648,328,91,18,White);stoveStatus.name="Cooking status";
+                Label(content.transform,"Личная очередь сохраняется.\nДля готовки оставайся рядом с печью.",588,747,328,51,16,Muted);
             }
             else
             {
-                for(int y=0;y<craftWidth;y++)for(int x=0;x<craftWidth;x++)CreateCell(45+y*3+x,852+x*77,365+y*77,70,70);
-                Label(content.transform,"→",1088,414,55,48,28,Accent);
-                var result=Button("",1141,407,83,83,()=>{});result.name="Craft.Result";
+                for(int y=0;y<craftWidth;y++)for(int x=0;x<craftWidth;x++)CreateCell(45+y*3+x,588+x*68,381+y*68,63,63);
+                Label(content.transform,"→",798,433,36,48,28,Accent);
+                var result=Button("",843,429,73,73,()=>{});result.name="Craft.Result";
                 var click=result.gameObject.AddComponent<InventorySlot>();click.Owner=this;click.Index=57;
-                craftOutput=Rect("Recipe output icon",result.transform,9,3,65,65).gameObject.AddComponent<RawImage>();craftOutput.raycastTarget=false;
-                craftCount=Label(result.transform,"",8,60,65,20,13,White,false,TextAnchor.MiddleRight);AttachHover(result.gameObject,0);
-                Button("Вернуть материалы",852,625,372,45,()=>{if(game.Session.CanInteract){game.Session.Notice=CraftingTable.ReturnGrid(game.Session.Inventory)?"Материалы возвращены":"Недостаточно места — сетка сохранена";RefreshCraftInventory();}});
-                Label(content.transform,"Книга справа выкладывает рецепт из ваших ресурсов. Результат забирается вручную.\nShift-клик по результату — изготовить максимум.\nМатериалы в сетке и на курсоре сохраняются.",852,690,370,112,14,Muted);
+                craftOutput=Rect("Recipe output icon",result.transform,7,3,59,53).gameObject.AddComponent<RawImage>();craftOutput.raycastTarget=false;
+                craftCount=Label(result.transform,"",7,46,59,29,15,White,false,TextAnchor.MiddleRight);AttachHover(result.gameObject,0);
+                Button("Вернуть материалы",588,612,328,50,()=>{if(game.Session.CanInteract){game.Session.Notice=CraftingTable.ReturnGrid(game.Session.Inventory)?"Материалы возвращены":"Недостаточно места — сетка сохранена";RefreshCraftInventory();}});
+                Label(content.transform,"Книга выкладывает рецепт.\nРезультат забирается вручную.\nShift-клик — изготовить максимум.\nСетка и предмет на курсоре сохраняются.",588,689,328,110,17,Muted);
             }
-            for(int i=0;i<Equipment.Count;i++)
-            {float x=64+i*145;Label(content.transform,Equipment.Names[i],x,165,176,23,12,Muted);CreateCell(58+i,x,191,62,55);}
-            var portrait=Rect("3D equipped character",content.transform,1260,145,100,150).gameObject.AddComponent<RawImage>();portrait.raycastTarget=false;portrait.gameObject.AddComponent<CharacterPreview>().Initialize(game);
-            equipmentStatus=Label(content.transform,"",1370,157,168,141,12,Muted);equipmentStatus.name="Equipment summary";
             BuildRecipeBook();
-            status=Label(content.transform,game.Session.Notice,340,812,1180,56,15,Accent);
-            Button("←  В мир",64,812,230,51,game.ToggleInventory,true);
+            status=Label(content.transform,game.Session.Notice,248,823,996,62,18,Accent);
+            Button("←  В мир",32,824,190,55,game.ToggleInventory,true);
             cursorRoot=Rect("Carried inventory stack",content.transform,0,0,64,77);
             cursorImage=cursorRoot.gameObject.AddComponent<RawImage>();cursorImage.raycastTarget=false;
-            cursorCount=Label(cursorRoot,"",0,57,62,20,13,White,false,TextAnchor.MiddleRight);
+            cursorCount=Label(cursorRoot,"",0,50,62,29,15,White,false,TextAnchor.MiddleRight);
             RefreshCraftInventory();
         }
         void CreateCell(int index,float x,float y,float w,float h)
         {
             var button=Button("",x,y,w,h,()=>{});button.name="Inventory.Slot."+index;
             var click=button.gameObject.AddComponent<InventorySlot>();click.Owner=this;click.Index=index;
-            AttachHover(button.gameObject,0);var icon=Rect("Stack icon",button.transform,10,2,w-20,h-15).gameObject.AddComponent<RawImage>();icon.raycastTarget=false;
-            var count=Label(button.transform,"",5,h-21,w-10,18,12,White,false,TextAnchor.MiddleRight);
+            AttachHover(button.gameObject,0);var icon=Rect("Stack icon",button.transform,7,3,w-14,h-20).gameObject.AddComponent<RawImage>();icon.raycastTarget=false;
+            var count=Label(button.transform,"",3,h-30,w-6,29,15,White,false,TextAnchor.MiddleRight);
             var wear=Box(button.transform,4,h-5,w-8,3,Accent,false);wear.gameObject.name="Equipment durability "+index;
             inventoryViews.Add(new CellView{Index=index,Icon=icon,Count=count,Hover=button.GetComponent<ItemHover>(),Wear=wear,WearWidth=w-8});
             if(index<9)Label(button.transform,(index+1).ToString(),5,3,17,17,10,Accent);
         }
         void BuildRecipeBook()
         {
-            Label(content.transform,"КНИГА РЕЦЕПТОВ",1250,307,285,32,16,Accent,true);
-            var viewport=Rect("Recipe viewport",content.transform,1250,350,285,407);viewport.gameObject.AddComponent<RectMask2D>();
-            var backing=viewport.gameObject.AddComponent<Image>();backing.color=new Color(.06f,.10f,.11f,.7f);
-            var list=Rect("Recipes",viewport,0,0,285,CraftingTable.All.Length*55);
-            var scroll=viewport.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.content=list;scroll.horizontal=false;scroll.movementType=ScrollRect.MovementType.Clamped;scroll.scrollSensitivity=30;
-            for(int i=0;i<CraftingTable.All.Length;i++)
+            bool cooking=stationKind==17;
+            Label(content.transform,cooking?"РЕЦЕПТЫ ПЕЧИ":"КНИГА РЕЦЕПТОВ",944,318,304,38,20,Accent,true);
+            var viewport=Rect("Recipe viewport",content.transform,944,366,304,395);viewport.gameObject.AddComponent<RectMask2D>();
+            var backing=viewport.gameObject.AddComponent<Image>();backing.color=new Color(.06f,.10f,.11f,.95f);
+            var list=Rect("Recipes",viewport,0,0,304,0);
+            var scroll=viewport.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.content=list;scroll.horizontal=false;scroll.movementType=ScrollRect.MovementType.Clamped;scroll.scrollSensitivity=35;
+            if(cooking)
             {
-                int index=i;var r=CraftingTable.All[i];
-                var button=Button("",0,i*55,280,50,()=>{if(stationKind==17){game.Session.Notice="Крафт — в инвентаре или на верстаке";}else game.Session.FillRecipe(index,craftWidth);RefreshCraftInventory();},false,list);
-                Icon(button.transform,r.Output,3,1,46);Label(button.transform,Items.Get(r.Output).Name+(r.Fits(craftWidth)?"":" · 3×3"),55,8,216,39,13,r.Fits(craftWidth)?White:Muted);
+                int row=0;foreach(int id in ItemArtwork.AllIds)
+                {int output=FurnaceState.Result(id);if(output<=0)continue;
+                 var entry=Box(list,0,row*67,298,62,Panel);Icon(entry.transform,id,3,6,46);Label(entry.transform,"→",50,15,30,40,20,Accent);Icon(entry.transform,output,78,6,46);
+                 Label(entry.transform,Items.Get(output).Name,135,4,158,32,16,White);Label(entry.transform,FurnaceState.CookSeconds+" с",135,34,158,24,15,Muted);row++;}
+                list.sizeDelta=new Vector2(304,row*67);
             }
-            Label(content.transform,"Колёсико мыши — прокрутка",1250,769,290,25,12,Muted);
+            else
+            {
+                list.sizeDelta=new Vector2(304,CraftingTable.All.Length*62);
+                for(int i=0;i<CraftingTable.All.Length;i++)
+                {
+                    int index=i;var r=CraftingTable.All[i];
+                    var button=Button("",0,i*62,298,57,()=>{game.Session.FillRecipe(index,craftWidth);RefreshCraftInventory();},false,list);
+                    Icon(button.transform,r.Output,3,3,49);Label(button.transform,Items.Get(r.Output).Name+(r.Fits(craftWidth)?"":" · 3×3"),58,6,234,49,17,r.Fits(craftWidth)?White:Muted);
+                }
+            }
+            Label(content.transform,"Колёсико — прокрутка",944,777,304,27,16,Muted);
         }
         public bool BeginInventoryDrag(int index)
         {
@@ -281,7 +337,7 @@ namespace LestingCraft.Presentation
                 int max=Items.Get(stack.item).Durability;bool worn=stack.count>0&&max>0;view.Wear.gameObject.SetActive(worn);
                 if(worn){float fraction=Mathf.Clamp01((float)stack.durability/max);view.Wear.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal,view.WearWidth*fraction);view.Wear.color=Color.Lerp(new Color(.95f,.25f,.12f),Accent,fraction);view.Count.text=Mathf.RoundToInt(fraction*100)+"%";}
             }
-            if(equipmentStatus)equipmentStatus.text="Защита от ударов: "+Mathf.RoundToInt(Equipment.Protection(inv)*100)+"%\nУтепление: +"+Equipment.Insulation(inv).ToString("0")+"°\n\nShift + клик — надеть\nили снять. Рецепты\nброни — на верстаке.";
+            if(equipmentStatus)equipmentStatus.text="Защита: "+Mathf.RoundToInt(Equipment.Protection(inv)*100)+"%\nТепло: +"+Equipment.Insulation(inv).ToString("0")+"°\n\nБроня: верстак";
             if(stationKind!=17&&craftOutput)
             {
                 var recipe=CraftingTable.Match(inv.grid,craftWidth);craftOutput.texture=recipe==null?null:ItemArtwork.Get(recipe.Output);craftOutput.enabled=craftOutput.texture;
@@ -302,8 +358,8 @@ namespace LestingCraft.Presentation
             if(item<=0||!frame)return;
             if(!tooltip)
             {
-                var panel=Box(frame,0,0,360,104,new Color(.025f,.045f,.05f,.98f));tooltip=panel.rectTransform;
-                tooltip.name="Item name tooltip";tooltipText=Label(tooltip,"",17,5,326,94,15,White,false,TextAnchor.MiddleLeft);
+                var panel=Box(frame,0,0,400,144,new Color(.025f,.045f,.05f,1f),false);tooltip=panel.rectTransform;
+                tooltip.name="Item name tooltip";tooltipText=Label(tooltip,"",18,7,364,130,18,White,false,TextAnchor.MiddleLeft);
             }
             var definition=Items.Get(item);tooltipText.text=definition.Name;
             if(definition.Durability>0&&durability>=0)tooltipText.text+="\nПрочность: "+durability+" / "+definition.Durability;
@@ -311,7 +367,7 @@ namespace LestingCraft.Presentation
             if(definition.Insulation>0)tooltipText.text+="\nУтепление: +"+definition.Insulation.ToString("0")+"°";
             if(Equipment.Slot(item)>=0)tooltipText.text+="\nShift + клик — надеть / снять";tooltip.gameObject.SetActive(true);tooltip.SetAsLastSibling();
             RectTransformUtility.ScreenPointToLocalPointInRectangle(frame,screenPosition,null,out var local);
-            tooltip.anchoredPosition=new Vector2(Mathf.Clamp(local.x+800+18,10,1230),-Mathf.Clamp(450-local.y+20,10,786));
+            tooltip.anchoredPosition=new Vector2(Mathf.Clamp(local.x-frame.rect.xMin+18,8,frame.rect.width-408),-Mathf.Clamp(frame.rect.yMax-local.y+20,8,frame.rect.height-152));
         }
         public void HideItemTooltip(){if(tooltip)tooltip.gameObject.SetActive(false);}
         public void ShowDeathScreen()
@@ -356,28 +412,28 @@ namespace LestingCraft.Presentation
         }
         public void ShowHUD()
         {
-            Clear(Page.HUD);
+            Clear(Page.HUD);LayoutWidth(1280);
             loadingHUD=Label(content.transform,"",36,31,780,37,14,Accent);
             // Minimal reticle, not an IMGUI text '+'.
-            foreach(var r in new[]{new Vector4(799,439,2,7),new Vector4(799,454,2,7),new Vector4(789,449,7,2),new Vector4(804,449,7,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.82f),false);
+            foreach(var r in new[]{new Vector4(639,439,2,7),new Vector4(639,454,2,7),new Vector4(629,449,7,2),new Vector4(644,449,7,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.82f),false);
             slots=new Image[9];slotRects=new RectTransform[9];slotIcons=new RawImage[9];slotCounts=new Text[9];slotHovers=new ItemHover[9];lastInventoryRevision=-1;lastSlot=-1;
-            var backdrop=Box(content.transform,364,786,872,99,new Color(.025f,.05f,.055f,.88f));
+            var backdrop=Box(content.transform,271,797,738,92,new Color(.025f,.05f,.055f,.88f));
             for(int i=0;i<9;i++)
             {
-                var image=Box(backdrop.transform,10+i*95,10,91,79,new Color(.10f,.155f,.165f,.92f));slots[i]=image;slotRects[i]=image.rectTransform;
+                var image=Box(backdrop.transform,10+i*80,10,76,72,new Color(.10f,.155f,.165f,.92f));slots[i]=image;slotRects[i]=image.rectTransform;
                 image.raycastTarget=true;AttachHover(image.gameObject,0);slotHovers[i]=image.GetComponent<ItemHover>();
-                var raw=Rect("Item icon",image.transform,18,2,55,55).gameObject.AddComponent<RawImage>();raw.raycastTarget=false;slotIcons[i]=raw;
-                slotCounts[i]=Label(image.transform,"",51,57,32,18,11,White,false,TextAnchor.MiddleRight);
-                Label(image.transform,(i+1).ToString(),0,55,91,18,11,Muted,false,TextAnchor.MiddleCenter);
+                var raw=Rect("Item icon",image.transform,14,2,48,48).gameObject.AddComponent<RawImage>();raw.raycastTarget=false;slotIcons[i]=raw;
+                slotCounts[i]=Label(image.transform,"",45,50,27,22,15,White,false,TextAnchor.MiddleRight);
+                Label(image.transform,(i+1).ToString(),0,50,76,22,13,Muted,false,TextAnchor.MiddleCenter);
             }
             // Item names are hover/focus tooltips, never permanent slot text.
 
-            var healthPanel=Box(content.transform,26,546,310,226,new Color(.025f,.05f,.055f,.91f));
-            healthHUD=Label(healthPanel.transform,"СОСТОЯНИЕ · 100 / 100",16,12,280,30,13,White);
-            var body=Rect("Health silhouette",healthPanel.transform,17,52,91,157);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
-            vitalsHUD=Label(healthPanel.transform,"",124,61,175,146,13,White);
-            miningBar=Box(content.transform,725,484,0,4,Accent,false);miningBar.gameObject.name="Mining progress";
-            miningLabel=Label(content.transform,"",700,494,200,29,12,White,false,TextAnchor.MiddleCenter);
+            var healthPanel=Box(content.transform,16,590,244,210,new Color(.025f,.05f,.055f,.91f));
+            healthHUD=Label(healthPanel.transform,"СОСТОЯНИЕ · 100 / 100",12,10,222,30,17,White);
+            var body=Rect("Health silhouette",healthPanel.transform,10,47,91,157);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
+            vitalsHUD=Label(healthPanel.transform,"",112,49,124,151,16,White);
+            miningBar=Box(content.transform,565,484,0,4,Accent,false);miningBar.gameObject.name="Mining progress";
+            miningLabel=Label(content.transform,"",540,494,200,29,12,White,false,TextAnchor.MiddleCenter);
             chatRoot=Box(content.transform,26,265,590,260,new Color(.025f,.045f,.04f,.78f)).gameObject;
             chatText=Label(chatRoot.transform,"",18,13,554,168,15,White);chatText.verticalOverflow=VerticalWrapMode.Truncate;
             var chatBox=Box(chatRoot.transform,14,193,562,49,Panel);chatBox.raycastTarget=true;chatInput=chatBox.gameObject.AddComponent<InputField>();
@@ -385,11 +441,13 @@ namespace LestingCraft.Presentation
             chatInput.textComponent=Label(chatBox.transform,"",12,0,538,49,15,White,false,TextAnchor.MiddleLeft);
             chatInput.placeholder=Label(chatBox.transform,"Сообщение…",12,0,538,49,15,Muted,false,TextAnchor.MiddleLeft);
             chatInput.gameObject.SetActive(false);chatRoot.SetActive(false);chatRevision=-1;
-            noticeHUD=Label(content.transform,"",400,656,800,41,14,Accent,false,TextAnchor.MiddleCenter);
+            noticeHUD=Label(content.transform,"",320,620,640,51,18,Accent,false,TextAnchor.MiddleCenter);BuildUsabilityHUD();
 
         }
         void Update()
         {
+            if(page==Page.Account&&status&&game.Accounts)status.text=game.Accounts.Message;
+            if(game.InLobby){if(page!=Page.Lobby||lobbyRevision!=game.LobbyRevision)ShowLobby();return;}
             if(!ready)return;
             if(game.InWorld&&game.Paused&&page==Page.HUD)ShowPause();
             else if(game.InWorld&&!game.Paused&&page!=Page.HUD)ShowHUD();
@@ -400,16 +458,17 @@ namespace LestingCraft.Presentation
                 if(status)status.text=game.IsConnecting?"Подключаемся к комнате…":game.LastError;
                 foreach(var action in actions)if(action)action.interactable=!game.IsConnecting;
             }
-            if(page==Page.Inventory&&game.Session)
+            if((page==Page.Inventory||page==Page.Creative)&&game.Session)
             {
                 if(craftRevision!=game.Session.Inventory.revision)RefreshCraftInventory();
                 if(cursorRoot&&UnityEngine.InputSystem.Mouse.current!=null)
                 {
                     RectTransformUtility.ScreenPointToLocalPointInRectangle(frame,UnityEngine.InputSystem.Mouse.current.position.ReadValue(),null,out var local);
-                    cursorRoot.anchoredPosition=new Vector2(local.x+812,local.y-438);cursorRoot.SetAsLastSibling();
+                    cursorRoot.anchoredPosition=new Vector2(local.x-frame.rect.xMin+12,local.y-frame.rect.yMax+12);cursorRoot.SetAsLastSibling();
                 }
-                if(stationKind==17&&stoveStatus){var f=game.Session.Inventory.furnace;stoveStatus.text=$"Готовка: {Mathf.Clamp01(f.progress/FurnaceState.CookSeconds)*100:0}%\nТопливо: {f.burn:0.0} с\nПауза вдали от печи / при полном выходе";}
+                if(page==Page.Inventory&&stationKind==17&&stoveStatus){var f=game.Session.Inventory.furnace;stoveStatus.text=$"Готовка: {Mathf.Clamp01(f.progress/FurnaceState.CookSeconds)*100:0}%\nТопливо: {f.burn:0.0} с\nПауза, если отошёл от печи";}
             }
+            UpdateUsability();
             if(page!=Page.HUD)return;
             if(UnityEngine.InputSystem.Keyboard.current!=null&&UnityEngine.InputSystem.Keyboard.current.f1Key.wasPressedThisFrame)content.gameObject.SetActive(!content.gameObject.activeSelf);
             averageFrame=Mathf.Lerp(averageFrame,Mathf.Min(Time.unscaledDeltaTime,.5f),.04f);timer+=Time.unscaledDeltaTime;
@@ -419,7 +478,7 @@ namespace LestingCraft.Presentation
                 if(game.Session)
                 {
                     var session=game.Session;var v=session.Vitals;
-                    healthBody.SetHealth(v.health);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
+                    healthBody.SetBody(v);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
                     vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}"+(v.air<100?$"\nВоздух  {v.air:0}%":"");
 
                     if(lastNotice!=session.Notice){lastNotice=session.Notice;noticeAt=Time.unscaledTime;}
@@ -451,5 +510,49 @@ namespace LestingCraft.Presentation
             }
         }
         void OnDestroy(){if(rounded)Destroy(rounded);}
+        int achievementPage;bool achievementOnlyEarned;
+        void RefreshAccountIfOpen(){if(page==Page.Account)ShowAccount();}
+        void ShowAccount()
+        {
+            Clear(Page.Account);Header("Игровой аккаунт",false);var a=game.Accounts;
+            Button("← Назад",64,806,205,52,()=>{if(game.InWorld)ShowPause();else ShowHome();});
+            if(!a.Logged)
+            {
+                string username="",password="",recovery="";
+                Label(content.transform,"Аккаунт необязателен для игры. Войдите до экспедиции, чтобы сохранять прогресс между устройствами.",64,214,1450,52,20,White);
+                Input("ЛОГИН · 3–24 латинских символа",username,"Explorer_01",64,285,590,v=>username=v);
+                var pw=Input("ПАРОЛЬ · минимум 12 символов",password,"Не отправляйте пароль в чат",64,398,590,v=>password=v);pw.contentType=InputField.ContentType.Password;pw.characterLimit=128;
+                var rc=Input("КОД ВОССТАНОВЛЕНИЯ · только для восстановления",recovery,"Получается один раз при регистрации",64,510,590,v=>recovery=v);rc.contentType=InputField.ContentType.Password;
+                Action<string> submit=action=>{string capturedPassword=password,r=recovery;pw.text="";rc.text="";a.Authenticate(action,username,capturedPassword,r,RefreshAccountIfOpen);};
+                Button("Войти",64,636,280,58,()=>submit("login"),true);Button("Регистрация",364,636,290,58,()=>submit("register"));Button("Восстановить доступ",64,711,590,52,()=>submit("recover"));
+                Label(content.transform,"Без электронной почты\n\nПри регистрации вы получите личный код восстановления. Сохраните его вне игры и никому не показывайте. При восстановлении старый код заменяется.\n\nПароль и токен входа не записываются в PlayerPrefs. Вход действует в памяти текущего запуска игры. Без сервиса аккаунтов локальное выживание остаётся доступным.",800,285,650,390,20,Muted);
+                status=Label(content.transform,a.Message,800,705,650,90,18,Accent);return;
+            }
+            var p=a.Profile;Label(content.transform,p.username+" · уровень "+p.level+" · "+p.xp+" XP",64,205,1450,46,27,White,true);
+            Label(content.transform,p.titleName+" · "+p.achievements.Length+" / 200 достижений",64,260,1450,36,21,Accent);
+            if(!string.IsNullOrEmpty(a.RecoveryCode))
+            {
+                Label(content.transform,"СОХРАНИТЕ КОД ВОССТАНОВЛЕНИЯ. Он не будет храниться в игре. Не отправляйте его в чат.",64,340,1410,90,23,White);
+                Label(content.transform,a.RecoveryCode,64,465,1400,100,23,Accent);
+                Button("Скопировать код",64,620,450,64,()=>GUIUtility.systemCopyBuffer=a.RecoveryCode);Button("Код сохранён →",550,620,450,64,()=>{a.DismissRecovery();ShowAccount();},true);return;
+            }
+            Label(content.transform,"Охота: "+a.Counter("kills")+" · Страж: "+a.Counter("bosses")+" · Добыто: "+a.Counter("mined")+" · Построено: "+a.Counter("placed")+" · Создано: "+a.Counter("crafted")+" · Смертей: "+a.Counter("deaths")+" · В игре: "+(a.Counter("alive_s")/60)+" мин",64,310,1460,64,19,White);
+            Button("200 достижений →",64,405,440,62,()=>{achievementPage=0;ShowAchievements();},true);
+            Button("Синхронизировать",530,405,440,62,()=>a.Sync(RefreshAccountIfOpen));
+            Button("Сменить титул",996,405,440,62,()=>{var titles=new List<string>{""};foreach(var d in a.Achievements)if(!string.IsNullOrEmpty(d.title)&&Array.IndexOf(p.achievements,d.id)>=0)titles.Add(d.id);a.ChangeTitle(titles[(titles.IndexOf(p.title)+1)%titles.Count],RefreshAccountIfOpen);});
+            string current="",next="";var old=Input("ТЕКУЩИЙ ПАРОЛЬ",current,"Для смены пароля / удаления",64,510,660,v=>current=v);old.contentType=InputField.ContentType.Password;old.characterLimit=128;
+            var fresh=Input("НОВЫЙ ПАРОЛЬ",next,"Минимум 12 символов",780,510,660,v=>next=v);fresh.contentType=InputField.ContentType.Password;fresh.characterLimit=128;
+            Button("Изменить пароль",64,625,440,55,()=>{string c=current,n=next;old.text="";fresh.text="";a.ChangePassword(c,n,RefreshAccountIfOpen);});
+            bool confirm=false;Button("Удалить аккаунт (двойное подтверждение)",530,625,660,55,()=>{if(!confirm){confirm=true;a.Message="Повторное нажатие удалит профиль, достижения и статистику. Нужен текущий пароль.";if(status)status.text=a.Message;return;}string c=current;old.text="";a.Delete(c,RefreshAccountIfOpen);});
+            Button("Выйти из аккаунта",64,715,440,55,()=>a.Logout(RefreshAccountIfOpen));status=Label(content.transform,a.Message,530,715,900,70,18,Accent);
+        }
+        void ShowAchievements()
+        {
+            Clear(Page.Achievements);Header("Достижения · 200",false);var a=game.Accounts;if(!a.Logged){ShowAccount();return;}
+            var list=new List<AchievementDefinition>();foreach(var d in a.Achievements)if(!achievementOnlyEarned||Array.IndexOf(a.Profile.achievements,d.id)>=0)list.Add(d);
+            int pages=Math.Max(1,(list.Count+7)/8);achievementPage=Math.Max(0,Math.Min(pages-1,achievementPage));
+            for(int i=0;i<8;i++){int index=achievementPage*8+i;if(index>=list.Count)break;var d=list[index];bool earned=Array.IndexOf(a.Profile.achievements,d.id)>=0;float x=64+i%2*746,y=230+i/2*133;var card=Box(content.transform,x,y,718,118,Panel);Label(card.transform,(earned?"✓ ":"")+d.name,16,10,680,30,19,earned?Accent:White);Label(card.transform,d.description,16,44,680,42,14,Muted);Label(card.transform,d.category+" · "+Math.Min(d.target,a.Counter(d.counter))+" / "+d.target+" · "+d.xp+" XP",16,90,680,22,13,Muted);}
+            Button("← Профиль",64,807,230,52,ShowAccount);Button("←",600,807,90,52,()=>{achievementPage--;ShowAchievements();});Label(content.transform,(achievementPage+1)+" / "+pages,715,821,150,35,21,White);Button("→",865,807,90,52,()=>{achievementPage++;ShowAchievements();});Button(achievementOnlyEarned?"Только полученные":"Все достижения",1110,807,375,52,()=>{achievementOnlyEarned=!achievementOnlyEarned;achievementPage=0;ShowAchievements();});
+        }
     }
 }

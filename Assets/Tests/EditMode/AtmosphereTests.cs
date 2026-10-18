@@ -64,7 +64,7 @@ namespace LestingCraft.Tests
             int a=mesh.DetailTriangles[0],b=mesh.DetailTriangles[1],c=mesh.DetailTriangles[2];
             Assert.Greater(Vector3.Dot(Vector3.Cross(mesh.Vertices[b]-mesh.Vertices[a],mesh.Vertices[c]-mesh.Vertices[a]).normalized,mesh.Normals[a]),.5f);
         }
-        [TestCase("VoxelPBR")] [TestCase("Grass")] [TestCase("Water")] [TestCase("AtmosphericSky")] [TestCase("VolumetricAtmosphere")]
+        [TestCase("AvatarLit")] [TestCase("VoxelObjects")] [TestCase("CrystalGlass")] [TestCase("VoxelPBR")] [TestCase("Grass")] [TestCase("Water")] [TestCase("AtmosphericSky")] [TestCase("VolumetricAtmosphere")]
         public void PresentationShadersImportWithoutReportedErrors(string name)
         {
             var shader=Shader.Find("LestingCraft/"+name);Assert.IsNotNull(shader);

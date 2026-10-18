@@ -11,6 +11,12 @@ namespace LestingCraft.Tests
 {
  public sealed class MaterialEffectsTests
  {
+  [Test] public void MandatoryOpeningBloodHasASerializedShaderReferenceForPlayerBuilds()
+  {
+   var blood=Resources.Load<Material>("Generated/StoryBlood");Assert.IsNotNull(blood);
+   Assert.IsNotNull(blood.shader);Assert.AreEqual("Universal Render Pipeline/Unlit",blood.shader.name);
+   Assert.IsFalse(ShaderUtil.ShaderHasError(blood.shader));
+  }
   [Test] public void UrpSsaoIsARealEnabledFeatureWithDepthReconstructedNormals()
   {
    var renderer=Resources.Load<UniversalRendererData>("Generated/Renderer");Assert.IsNotNull(renderer);
@@ -18,13 +24,13 @@ namespace LestingCraft.Tests
    Assert.IsNotNull(ao);Assert.IsTrue(ao.isActive);var s=new SerializedObject(ao).FindProperty("m_Settings");
    Assert.AreEqual(0,s.FindPropertyRelative("Source").intValue);Assert.IsFalse(s.FindPropertyRelative("AfterOpaque").boolValue);Assert.Greater(s.FindPropertyRelative("Intensity").floatValue,0);
   }
-  [Test] public void All26PbrLayersHaveDetailedNonPlaceholderAlbedoAndNormalMaskMaps()
+  [Test] public void AllPbrLayersHaveDetailedNonPlaceholderAlbedoAndNormalMaskMaps()
   {
    var a=Resources.Load<Texture2DArray>("Generated/Albedo");var n=Resources.Load<Texture2DArray>("Generated/Normal");var m=Resources.Load<Texture2DArray>("Generated/Mask");
-   Assert.AreEqual(26,a.depth);Assert.AreEqual(26,n.depth);Assert.AreEqual(26,m.depth);
-   for(int layer=0;layer<26;layer++)
+   Assert.AreEqual(SurfaceLayers.Names.Length,a.depth);Assert.AreEqual(SurfaceLayers.Names.Length,n.depth);Assert.AreEqual(SurfaceLayers.Names.Length,m.depth);
+   for(int layer=0;layer<SurfaceLayers.Names.Length;layer++)
    {
-    var image=new Texture2D(2,2,TextureFormat.RGBA32,false);Assert.IsTrue(image.LoadImage(System.IO.File.ReadAllBytes("Assets/Art/PBR/"+SurfaceLayers.Names[layer]+"_albedo.png")));
+    var image=new Texture2D(2,2,TextureFormat.RGBA32,false);Assert.IsTrue(image.LoadImage(System.IO.File.ReadAllBytes(System.IO.File.Exists("Assets/Art/PBR/"+SurfaceLayers.Names[layer]+"_albedo.jpg")?"Assets/Art/PBR/"+SurfaceLayers.Names[layer]+"_albedo.jpg":"Assets/Art/PBR/"+SurfaceLayers.Names[layer]+"_albedo.png")));
     var colors=image.GetPixels();Object.DestroyImmediate(image);float lo=1,hi=0;
     foreach(var c in colors){lo=Mathf.Min(lo,c.grayscale);hi=Mathf.Max(hi,c.grayscale);}
     Assert.Greater(hi-lo,.025f,SurfaceLayers.Names[layer]+" must not be a flat color");

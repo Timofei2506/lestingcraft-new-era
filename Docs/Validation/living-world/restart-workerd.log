@@ -1,0 +1,1 @@
+PASS actual workerd process stop/restart using same SQLite storage: pet ownership/sitting, spent trade/taming resources and worn-weapon pickup persisted. No IDs/keys written to public log.

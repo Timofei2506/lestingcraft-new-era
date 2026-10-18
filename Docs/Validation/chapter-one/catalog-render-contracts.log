@@ -1,0 +1,3 @@
+PASS: 57 material sets, dimensions, periodic albedo seams, normals/masks, no legacy IMGUI/pipeline shutdown
+PASS: 28 catalog/registry/layer definitions, 57 surface layers, 79 shared voxel models and 384px transparent icons, 9 base AI masters + 3 species-specific AI masters; no missing resource assets
+PASS render source contracts: four cutout passes, 24.3% leaf holes, spatial sky PBR, additional lights preserved, depth-tested glare, 32/48 shaft samples. NOT shader/GPU validation.

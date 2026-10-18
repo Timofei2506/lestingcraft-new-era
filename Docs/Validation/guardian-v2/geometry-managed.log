@@ -1,0 +1,1 @@
+PASS actual managed C# sculpture geometry: 9969 voxels, 9074 exposed quads, 36296 vertices, 18148 triangles; adjacent faces culled, valid indices/attributes/bounds. Native Mesh upload/URP not executed.
