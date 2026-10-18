@@ -1,10 +1,10 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import {createConfig,RoomState,newPeer,validatePlayerSave} from '../src/protocol.js';
-const config=mode=>createConfig({version:1,rulesVersion:2,mode,seed:2506,dimension:0});
+const config=mode=>createConfig({version:2,rulesVersion:2,mode,seed:2506,dimension:0});
 const save=()=>({inventory:{selected:0,revision:0,slots:Array.from({length:45},()=>({item:0,count:0,durability:0}))},survival:{health:100,hunger:80,stamina:100,temperature:37,wetness:.4},equippedCoat:false});
 const peer=()=>newPeer('player','Alice','a'.repeat(32));
 test('all four modes start in Lestingia; no starting dimension choice',()=>{for(let mode=0;mode<4;mode++){assert.equal(config(mode).dimension,0);assert.equal(config(mode).mode,mode);}assert.throws(()=>createConfig({...config(0),dimension:1}));assert.throws(()=>createConfig({...config(0),mode:4}));});
-test('legacy clients retain creative world lab compatibility',()=>{assert.equal(createConfig({version:1,seed:1,dimension:3}).mode,2);});
+test('legacy clients retain creative world lab compatibility',()=>{assert.equal(createConfig({version:2,seed:1,dimension:3}).mode,2);});
 test('state acknowledgement follows successful persistence',()=>{const r=new RoomState(config(0)),p=peer();let saved=false;const ack=r.handle(p,JSON.stringify({type:'state',save:save()}),10000,()=>{},()=>saved=true);assert.equal(saved,true);assert.equal(ack.type,'state_saved');assert.equal(r.welcome(p,[]).save.survival.hunger,80);});
 test('failed player storage leaves no state or end flag',()=>{const r=new RoomState(config(1)),p=peer(),state=save();state.survival.health=0;assert.throws(()=>r.handle(p,JSON.stringify({type:'state',save:state}),10000,()=>{},()=>{throw Error('disk full');}));assert.equal(r.config.runEnded,false);assert.equal(r.savedPlayers.size,0);});
 test('hardcore death ends whole room and survives reconnect',()=>{const r=new RoomState(config(1)),p=peer(),state=save();state.survival.health=0;assert.equal(r.handle(p,JSON.stringify({type:'state',save:state}),10000,()=>{}).type,'run_ended');assert.equal(r.welcome(newPeer('b','Bob','b'.repeat(32)),[]).runEnded,true);assert.throws(()=>r.handle(p,JSON.stringify({type:'edit',x:0,y:40,z:0,block:1}),11000,()=>{}),/ended/);});
@@ -20,7 +20,7 @@ test('rules 3 preserve grid, cursor wear, personal furnace, grave extras and oxy
  s.inventory.furnace={input:stack(114,2),fuel:stack(123,3),output:stack(111),progress:4,burn:8,recipe:114,x:1,y:42,z:1,realm:0};s.survival.air=51;
  s.grave=s.inventory.slots;s.graveExtras=Array.from({length:13},()=>stack(0,0));s.graveExtras[0]=stack(16);s.graveX=1;s.graveY=42;s.graveZ=1;
  const validated=validatePlayerSave(s);assert.equal(validated.inventory.grid[0].count,5);assert.equal(validated.inventory.cursor.durability,17);assert.equal(validated.inventory.furnace.progress,4);assert.equal(validated.graveExtras[0].item,16);assert.equal(validated.survival.air,51);
- const c=createConfig({version:1,rulesVersion:3,mode:0,seed:2506,dimension:0});assert.equal(c.rulesVersion,3);
+ const c=createConfig({version:2,rulesVersion:3,mode:0,seed:2506,dimension:0});assert.equal(c.rulesVersion,3);
 });
 test('extra crafting storage and furnace timers are bounded',()=>{
  for(const change of [s=>s.inventory.grid=[],s=>s.inventory.cursor={item:101,count:1,durability:141},s=>s.inventory.furnace={burn:NaN},s=>s.inventory.furnace={progress:99},s=>s.survival.air=-1]){const s=save();change(s);assert.throws(()=>validatePlayerSave(s));}

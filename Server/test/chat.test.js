@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {RoomState,newPeer,createConfig} from '../src/protocol.js';
-const room=()=>new RoomState(createConfig({seed:1,dimension:0,version:1,rulesVersion:3,mode:0}));
+const room=()=>new RoomState(createConfig({seed:1,dimension:0,version:2,rulesVersion:3,mode:0}));
 const send=(r,p,message,now=10000)=>r.handle(p,JSON.stringify({type:'chat',name:'spoof',message}),now,()=>{throw Error('Chat must not persist edits');});
 test('chat uses server name, not user supplied identity',()=>{const p=newPeer('id','Alice');assert.deepEqual(send(room(),p,'Привет 👋'),{type:'chat',id:'id',name:'Alice',message:'Привет 👋'});});
 test('chat strips markup and controls',()=>assert.equal(send(room(),newPeer('id','A'),'<hello>\nworld').message,'helloworld'));

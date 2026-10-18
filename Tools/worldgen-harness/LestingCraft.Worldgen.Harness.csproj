@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <NoWarn>CS8981</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Реальный код генерации из Unity-проекта, без копий. -->
+    <Compile Include="../../Assets/Scripts/World/TerrainGenerator.cs" />
+    <Compile Include="../../Assets/Scripts/World/BlockRegistry.cs" />
+    <Compile Include="../../Assets/Scripts/World/ChunkData.cs" />
+    <Compile Include="Shims.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>

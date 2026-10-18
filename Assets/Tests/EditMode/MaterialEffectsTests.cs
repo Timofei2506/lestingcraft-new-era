@@ -38,7 +38,7 @@ namespace LestingCraft.Tests
     for(int face=1;face<6;face++)Assert.AreEqual(layer,SurfaceLayers.ForCellFace(13,face,x,y,-11,2506));
     Assert.IsTrue(layer==14||layer==24||layer==25);
    }
-   Assert.AreEqual(3,layers.Count);Assert.AreEqual(1,TerrainGenerator.Version);Assert.AreEqual(13,BlockRegistry.OreId);
+   Assert.AreEqual(3,layers.Count);Assert.AreEqual(2,TerrainGenerator.Version);Assert.AreEqual(13,BlockRegistry.OreId);
   }
   [Test] public void EveryPlaceableBlockHasANonMagentaBreakTintAndExplicitMaterial()
   {for(ushort id=1;id<=18;id++){Assert.AreNotEqual(new Color32(255,0,255,255),ChunkMesher.Palette(id),"Block "+id);for(int face=0;face<6;face++)Assert.That(SurfaceLayers.ForCellFace(id,face,0,30,0,1),Is.InRange(0,25));}}

@@ -6,7 +6,7 @@ export default {
   async fetch(request,env) {
     const url=new URL(request.url);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
-    if(url.pathname==='/health')return json({ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,transport:'websocket',maxPlayers:8,storage:'durable-object-sqlite'});
+    if(url.pathname==='/health')return json({ok:true,game:'LestingCraft',version:2,rulesVersion:RULES_VERSION,transport:'websocket',maxPlayers:8,storage:'durable-object-sqlite'});
     if(url.pathname==='/api/rooms'&&request.method==='POST') {
       try {
         if(Number(request.headers.get('Content-Length'))>1024)return error('Body too large',413);
