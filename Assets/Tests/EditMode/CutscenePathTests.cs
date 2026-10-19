@@ -21,15 +21,19 @@ namespace LestingCraft.Tests
             Assert.AreEqual(b, CutscenePath.Sample(99f, (0f, a), (10f, b)));
         }
 
-        [Test] public void CollinearKeysStayOnTheLine()
+        [Test] public void CollinearKeysStayOnTheLineAndAreMonotone()
         {
+            // Catmull-Rom is parameterised per segment, not by arc length, so x(t) need not equal t between keys.
+            float previousX = float.NegativeInfinity;
             for (float t = 0; t <= 10f; t += .25f)
             {
                 var p = CutscenePath.Sample(t, (0f, Vector3.zero), (5f, new Vector3(5, 0, 0)), (10f, new Vector3(10, 0, 0)));
                 Assert.That(p.y, Is.EqualTo(0f).Within(1e-4f));
                 Assert.That(p.z, Is.EqualTo(0f).Within(1e-4f));
-                Assert.That(p.x, Is.EqualTo(t).Within(1e-3f));
+                Assert.That(p.x, Is.GreaterThanOrEqualTo(previousX - 1e-4f));
+                previousX = p.x;
             }
+            Assert.That(CutscenePath.Sample(5f, (0f, Vector3.zero), (5f, new Vector3(5, 0, 0)), (10f, new Vector3(10, 0, 0))).x, Is.EqualTo(5f).Within(1e-4f));
         }
 
         [Test] public void PathIsContinuousWithBoundedSteps()
