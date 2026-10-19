@@ -2,7 +2,7 @@
 
 Output (not loaded by the game yet, placement comes with the station build step):
   ArtSource/Space/station_voxels.json  palette + run-length encoded voxel grid, X*Y*Z flat in x-major order
-  /home/user/work/station-preview/station_iso.png  isometric preview for a visual check
+  <workspace>/work/station-preview/station_iso.png  isometric preview for a visual check
 
 Self-checks (the script exits non-zero on failure):
   - the pressurised volume is one connected air space through the hatches
@@ -21,7 +21,8 @@ from PIL import Image, ImageDraw
 
 R = Path(__file__).resolve().parents[1]
 OUT_JSON = R / 'ArtSource/Space/station_voxels.json'
-PREVIEW = Path('/home/user/work/station-preview/station_iso.png')
+# Workspace-relative; GitHub runners do not have /home/user. Keep previews outside the repo.
+PREVIEW = R.parent.parent / 'work/station-preview/station_iso.png'
 
 X, Y, Z = 64, 40, 34
 PALETTE = [
