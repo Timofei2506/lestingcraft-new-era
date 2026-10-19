@@ -1,0 +1,48 @@
+name: Boss models · Blender art QA
+
+# Not the Windows game build. Only author-approved .blend sculpts can be exported.
+# Drafts, legacy voxel JSON and AI concept pictures are deliberately excluded.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ArtSource/BossModels/Approved/**'
+
+permissions:
+  contents: read
+
+jobs:
+  boss-meshes:
+    name: Export & render authored boss models
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Check 3 approved model sources exist (fail rather than render fake placeholders)
+        run: |
+          for name in Mars Venus Mercury; do
+            if [ ! -s "ArtSource/BossModels/Approved/${name}.blend" ]; then
+              echo "::error::Missing approved real 3D sculpt: ArtSource/BossModels/Approved/${name}.blend"
+              exit 1
+            fi
+          done
+      - name: Install Blender and inspect version
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq blender
+          blender -b -noaudio --python-expr 'import bpy; print("Art build Blender", bpy.app.version_string)'
+      - name: Real mesh / UV / eye / anatomy / PBR / transparency checks + FBX and GLB exports
+        run: |
+          for name in Mars Venus Mercury; do
+            blender -b -t 4 -noaudio --python-exit-code 23 --python Tools/boss_art_ci.py -- "$name"
+          done
+      - name: Deliver review renders and actual 3D meshes (not integrated in Unity)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boss-models-art-review-${{ github.sha }}
+          path: BossModelReview/
+          if-no-files-found: warn
+          retention-days: 14
