@@ -11,6 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq mono-mcs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet Pillow numpy
       - name: Compile real gameplay core and fuzz inventory transfers
         run: |
           mcs -langversion:7.2 -out:/tmp/crafting-check.exe Assets/Scripts/Gameplay/Weapons.cs Assets/Scripts/Gameplay/BodyPart.cs Assets/Scripts/Gameplay/ExpandedContent.cs Assets/Scripts/Gameplay/Equipment.cs Assets/Scripts/Gameplay/Inventory.cs Assets/Scripts/Gameplay/CraftingTable.cs Assets/Scripts/Gameplay/FurnaceState.cs Assets/Scripts/Gameplay/FuelChain.cs Tools/check_crafting_core.cs
@@ -38,9 +42,6 @@ jobs:
           mono /tmp/expanded-check.exe
           mcs -langversion:7.2 -out:/tmp/skylight-check.exe Assets/Scripts/Gameplay/ExpandedContent.cs Assets/Scripts/World/BlockRegistry.cs Assets/Scripts/World/ChunkData.cs Assets/Scripts/World/VoxelSkylight.cs Tools/check_skylight_core.cs
           mono /tmp/skylight-check.exe
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
       - name: Validate complete material / block / icon catalog
         run: |
           python -m pip install --quiet Pillow numpy
