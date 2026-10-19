@@ -1,12 +1,12 @@
 name: Boss models · Blender art QA
 
-# Not the Windows game build. Only author-approved .blend sculpts can be exported.
-# Drafts, legacy voxel JSON and AI concept pictures are deliberately excluded.
+# Not the Windows game build. Art-source candidates are exported for user review;
+# they are NOT playable bosses, and user approval is required before game integration.
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'ArtSource/BossModels/Approved/**'
+      - 'ArtSource/BossModels/Candidates/**'
 
 permissions:
   contents: read
@@ -20,19 +20,24 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - name: Check 3 approved model sources exist (fail rather than render fake placeholders)
+      - name: Check 3 editable model candidates exist (fail rather than render fake placeholders)
         run: |
           for name in Mars Venus Mercury; do
-            if [ ! -s "ArtSource/BossModels/Approved/${name}.blend" ]; then
-              echo "::error::Missing approved real 3D sculpt: ArtSource/BossModels/Approved/${name}.blend"
+            if [ ! -s "ArtSource/BossModels/Candidates/${name}.blend" ]; then
+              echo "::error::Missing real editable 3D candidate: ArtSource/BossModels/Candidates/${name}.blend"
               exit 1
             fi
           done
-      - name: Install Blender and inspect version
+      - name: Install pinned Blender 4.3.2 (matching authored .blend source)
         run: |
-          sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq blender
-          blender -b -noaudio --python-expr 'import bpy; print("Art build Blender", bpy.app.version_string)'
+          curl -fsSL --retry 3 -A 'Mozilla/5.0' \
+            https://download.blender.org/release/Blender4.3/blender-4.3.2-linux-x64.tar.xz \
+            -o "$RUNNER_TEMP/blender.tar.xz"
+          echo "4da1c956673c0485e63054e563ee69198cc8f80d8157dd7592dffc8a6a5592e6  $RUNNER_TEMP/blender.tar.xz" | sha256sum --check --status
+          mkdir -p "$RUNNER_TEMP/blender"
+          tar -xf "$RUNNER_TEMP/blender.tar.xz" -C "$RUNNER_TEMP/blender" --strip-components=1
+          echo "$RUNNER_TEMP/blender" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/blender/blender" -b -noaudio --python-expr 'import bpy; print("Art build Blender", bpy.app.version_string)'
       - name: Real mesh / UV / eye / anatomy / PBR / transparency checks + FBX and GLB exports
         run: |
           for name in Mars Venus Mercury; do

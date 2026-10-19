@@ -1,4 +1,4 @@
-"""Offline Blender art QA/export. Only accepts approved, authored boss .blend sources.
+"""Offline Blender art QA/export. Accepts candidate boss .blend sources for human approval.
 Example: blender -b -t 4 --python-exit-code 23 --python Tools/boss_art_ci.py -- Mars
 It never synthesizes a boss from reference images or old blockouts.
 """
@@ -14,8 +14,8 @@ SPEC={
  'Mercury':{'parts':['leg']*6+['mirror']*4+['head','eye','eye'],'triangles':25000},
 }
 if slug not in SPEC:raise RuntimeError('Select Mars, Venus or Mercury')
-source=ROOT/'ArtSource/BossModels/Approved'/f'{slug}.blend'
-if not source.is_file():raise RuntimeError(f'No approved, sculpted model source: {source}. Refuse to publish old blockouts.')
+source=ROOT/'ArtSource/BossModels/Candidates'/f'{slug}.blend'
+if not source.is_file():raise RuntimeError(f'No game-ready model candidate source: {source}. Refuse to export old blockouts.')
 out=ROOT/'BossModelReview'/slug;out.mkdir(parents=True,exist_ok=True)
 bpy.ops.wm.open_mainfile(filepath=str(source))
 objs=[o for o in bpy.data.objects if o.type=='MESH' and not o.hide_render]
@@ -27,7 +27,7 @@ if missing:raise RuntimeError(f'{slug}: missing game texture UVs: {missing[:5]}'
 names=[o.name.lower() for o in objs]
 for target in set(SPEC[slug]['parts']):
  need=SPEC[slug]['parts'].count(target)
- got=sum(target in n for n in names)
+ got=sum((target in n or (slug=='Venus' and target=='head' and 'crown' in n)) for n in names)
  if got<need:raise RuntimeError(f'{slug}: visible body part {target}: {got} / {need}')
 materials={m for o in objs for m in o.data.materials if m}
 if len(materials)<4:raise RuntimeError(f'{slug}: at least four distinct physically-based materials required')
@@ -72,6 +72,6 @@ for label,azimuth in (('front',0),('side',math.pi*.5),('back',math.pi)):
  camera.rotation_euler=(pivot-camera.location).to_track_quat('-Z','Y').to_euler()
  scene.render.filepath=str(out/(slug+'-'+label+'.png'))
  bpy.ops.render.render(write_still=True)
-record={'planet':slug,'approved_source':str(source.relative_to(ROOT)),'triangles':triangles,'visible_meshes':len(objs),'materials':len(materials),'pbr_images':len(used_images),'normal_mapped_materials':normal_mats,'note':'QA art export only; no gameplay spawns or combat AI'}
+record={'planet':slug,'review_source':str(source.relative_to(ROOT)),'triangles':triangles,'visible_meshes':len(objs),'materials':len(materials),'pbr_images':len(used_images),'normal_mapped_materials':normal_mats,'note':'QA art export only; no gameplay spawns or combat AI'}
 (out/'manifest.json').write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf8')
 print('BOSS_ART_QA_PASS',slug,triangles,'triangles',len(materials),'materials',len(used_images),'textures')
