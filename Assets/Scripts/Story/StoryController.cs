@@ -4,6 +4,8 @@ namespace LestingCraft.Story
  public sealed class StoryController:MonoBehaviour
  {
   public PrototypeGame Game;public StoryState State {get;private set;}public bool Locked=>State!=null&&StoryRules.Locked(State);public bool Enabled=>State!=null;
+  // Scene-time impacts of the three knocks in the stage 1 witness scene (subtitle: "три удара" from t=9).
+  static readonly float[] KnockTimes={9f,9.9f,10.8f};
   StoryContent content;StoryActors actors;Camera cameraView;Canvas canvas;Text quest,speaker,subtitle,hint,boss;Image panel,topBar,bottomBar;Button next,choiceA,choiceB;bool journalHidden;bool arenaPlaced;bool wasCinematic;bool readySent;int shownRevision=-1,oldStage=-1;long pauseAt;long remoteTime;float received;float attackTime=-10;Vector3 cameraHome;Quaternion cameraRotation;
   long Now=>Game.Online&&remoteTime>0?remoteTime+(long)((Time.unscaledTime-received)*1000):DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
   public void Initialize(PrototypeGame game,StoryState network=null,long serverNow=0)
@@ -80,9 +82,9 @@ namespace LestingCraft.Story
    if(!cinematic){if(wasCinematic){cameraView.transform.localPosition=cameraHome;cameraView.transform.localRotation=cameraRotation;wasCinematic=false;}if(cameraView.transform.parent==Game.Session.Player.transform&&Locked){cameraView.transform.localPosition=cameraHome;cameraView.transform.localRotation=cameraRotation;}return;}
    if(!wasCinematic)cameraRotation=cameraView.transform.localRotation;wasCinematic=true;
    float t=(Now-State.sceneAt)/1000f,y=StoryWorld.Floor(Game.Session.World.Seed);Vector3 from,to,look;
-   if(State.stage==1){from=new Vector3(-32.3f,y+1.18f,-30.6f);to=new Vector3(-31.5f,y+2.62f,-29.5f);look=StoryActors.WitnessPosition(true,Game.Session.World.Seed)+new Vector3(-.3f,.15f,1);float a=Mathf.SmoothStep(0,1,Mathf.Clamp01((t-2)/9));cameraView.transform.position=Vector3.Lerp(from,to,a)+Vector3.up*Mathf.Sin(t*19)*.012f*(1-a);cameraView.transform.rotation=Quaternion.LookRotation(look-cameraView.transform.position)*Quaternion.Euler(0,0,Mathf.Lerp(-27,0,a));subtitle.text=t<3?"Сначала — пыль. Потом — чьё-то дыхание.":t<9?"Балка поддаётся. Вы выбираетесь из-под обломков.":"Где-то под полом раздаются три удара.";}
-   else if(State.stage==10){float a=Mathf.SmoothStep(0,1,Mathf.Clamp01(t/12));cameraView.transform.position=Vector3.Lerp(new Vector3(166,y+4,-100),new Vector3(172,y+7,-106),a);cameraView.transform.LookAt(new Vector3(176,y+5.5f,-112));subtitle.text=t<5?"Мира: Он держал дверь. Кто научил его открывать её?":"Страж корней · Тот, кто помнит чужие голоса";}
-   else {float a=Mathf.Clamp01(t/16);cameraView.transform.position=Vector3.Lerp(new Vector3(171,y+4,-106),new Vector3(174,y+2,-104),a);cameraView.transform.LookAt(new Vector3(176,y+1,-103));subtitle.text=t<5?"Мира: Не подходите! Я ещё держу...":t<10?"Звук колокола обрывается. Корни замирают.":"Илья: Мира? Мы же договорились.";}
+   if(State.stage==1){from=new Vector3(-32.3f,y+1.18f,-30.6f);to=new Vector3(-31.5f,y+2.62f,-29.5f);look=StoryActors.WitnessPosition(true,Game.Session.World.Seed)+new Vector3(-.3f,.15f,1);float a=Mathf.SmoothStep(0,1,Mathf.Clamp01((t-2)/9));cameraView.transform.position=Vector3.Lerp(from,to,a)+Vector3.up*Mathf.Sin(t*19)*.012f*(1-a)+CutscenePath.Shake(t,KnockTimes,.03f);cameraView.transform.rotation=Quaternion.LookRotation(look-cameraView.transform.position)*Quaternion.Euler(0,0,Mathf.Lerp(-27,0,a));subtitle.text=t<3?"Сначала — пыль. Потом — чьё-то дыхание.":t<9?"Балка поддаётся. Вы выбираетесь из-под обломков.":"Где-то под полом раздаются три удара.";}
+   else if(State.stage==10){cameraView.transform.position=CutscenePath.Sample(t,(0f,new Vector3(166,y+4,-100)),(6f,new Vector3(171,y+7.4f,-98)),(12f,new Vector3(172,y+7,-106)));cameraView.transform.LookAt(new Vector3(176,y+5.5f,-112));subtitle.text=t<5?"Мира: Он держал дверь. Кто научил его открывать её?":"Страж корней · Тот, кто помнит чужие голоса";}
+   else {cameraView.transform.position=CutscenePath.Sample(t,(0f,new Vector3(171,y+4,-106)),(8f,new Vector3(172.6f,y+3.1f,-108.4f)),(16f,new Vector3(174,y+2,-104)));cameraView.transform.LookAt(new Vector3(176,y+1,-103));subtitle.text=t<5?"Мира: Не подходите! Я ещё держу...":t<10?"Звук колокола обрывается. Корни замирают.":"Илья: Мира? Мы же договорились.";}
    panel.gameObject.SetActive(true);speaker.text=content.title;
   }
   void DialogueCamera()
