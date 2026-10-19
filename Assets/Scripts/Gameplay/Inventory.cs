@@ -38,8 +38,12 @@ namespace LestingCraft.Gameplay
             all[135]=new ItemDefinition(135,"Сырое мясо",32,food:4);all[136]=new ItemDefinition(136,"Сырая шкура");all[138]=new ItemDefinition(138,"Жареное мясо",32,food:28);all[139]=new ItemDefinition(139,"Кожа");
             string[] minerals={"Железный слиток","Медный слиток","Золотой слиток","Серебряный слиток","Оловянный слиток","Кварц","Сера","Уголь"};for(int i=0;i<8;i++)all[140+i]=new ItemDefinition(140+i,minerals[i]);
             all[Planks]=new ItemDefinition(Planks,"Доски",block:18);all[Stick]=new ItemDefinition(Stick,"Палки");all[Fiber]=new ItemDefinition(Fiber,"Волокно");
+            // Stage-1 fuel chain (FuelChain.cs). Icons and models come in step 1.3.
+            all[FuelChain.CrudeOil]=new ItemDefinition(FuelChain.CrudeOil,"Сырая нефть");all[FuelChain.Gasoline]=new ItemDefinition(FuelChain.Gasoline,"Бензин");all[FuelChain.Diesel]=new ItemDefinition(FuelChain.Diesel,"Дизель");all[FuelChain.Kerosene]=new ItemDefinition(FuelChain.Kerosene,"Керосин");
+            all[FuelChain.LiquidOxygen]=new ItemDefinition(FuelChain.LiquidOxygen,"Жидкий кислород");all[FuelChain.RocketFuel]=new ItemDefinition(FuelChain.RocketFuel,"Ракетное топливо");all[FuelChain.Residue]=new ItemDefinition(FuelChain.Residue,"Гудрон");all[FuelChain.CompressedAir]=new ItemDefinition(FuelChain.CompressedAir,"Сжатый воздух");
         }
-        public static int[] CatalogIds{get{var ids=new List<int>(all.Keys);ids.Sort();return ids.ToArray();}}
+        // Fuel-chain items stay out of the creative catalog until they have icons (step 1.3); BuildSmokeProbe requires catalog == ItemArtwork.AllIds.
+        public static int[] CatalogIds{get{var ids=new List<int>(all.Keys);ids.RemoveAll(id=>id>=FuelChain.CrudeOil&&id<=FuelChain.CompressedAir);ids.Sort();return ids.ToArray();}}
         public static bool Exists(int id)=>all.ContainsKey(id);
         public static ItemDefinition Get(int id)=>all.TryGetValue(id,out var item)?item:default;
         public static bool IsPick(int id)=>id==WoodPick||id==StonePick||id==150||id==151;

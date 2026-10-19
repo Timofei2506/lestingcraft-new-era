@@ -146,7 +146,7 @@ export class RoomState {
 export function validatePlayerSave(save,expanded=true,chapter=false,expedition=false) {
   if(!save||typeof save!=='object'||!save.inventory||!save.survival)throw new Error('Invalid player save');
   const maxStack=id=>(id>=150&&id<=164)?1:((id>=100&&id<=108)||(id>=130&&id<=132))?1:[110,111,112,135,138].includes(id)?32:64;
-  const validItem=id=>integer(id)&&(id===0||(expedition&&((id>=149&&id<=165)||id===47||id===48))||(chapter&&id===148)||(id>=1&&id<=17)||(expanded&&id>=19&&id<=46)||(id>=100&&id<=108)||(id>=130&&id<=132)||(id>=110&&id<=114)||(id>=120&&id<=123)||(expanded&&[135,136,138,139,140,141,142,143,144,145,146,147].includes(id)));
+  const validItem=id=>integer(id)&&(id===0||(expedition&&((id>=149&&id<=165)||id===47||id===48))||(chapter&&id===148)||(id>=1&&id<=17)||(expanded&&id>=19&&id<=46)||(id>=100&&id<=108)||(id>=130&&id<=132)||(id>=110&&id<=114)||(id>=120&&id<=123)||(expanded&&[135,136,138,139,140,141,142,143,144,145,146,147].includes(id))||(id>=170&&id<=177));
   const cleanStack=s=>{
     if(!s||!validItem(s.item)||!integer(s.count)||s.count<0||s.count>maxStack(s.item)||!integer(s.durability)||s.durability<0||s.durability>1500||(s.item===0)!==(s.count===0))throw new Error('Invalid item stack');
     const life={150:450,151:1500,...Object.fromEntries(Object.entries(weapons).map(([id])=>[id,({152:380,153:1100,154:260,155:800,156:340,157:1050,158:420,159:1200,160:500,161:1400,162:450,163:1300,164:400})[id]])),100:60,101:140,102:120,103:160,105:180,106:260,107:220,108:180};if(s.durability>(life[s.item]||0))throw new Error('Invalid tool durability');
