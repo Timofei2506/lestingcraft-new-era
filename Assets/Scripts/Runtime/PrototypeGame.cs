@@ -68,6 +68,27 @@ namespace LestingCraft.Runtime
                 Session.Notice="Кабина установлена: E — кнопки и люки, левый Shift — встать с кресла";
                 return;
             }
+            if(text=="/boss-models")
+            {
+                // QA gallery only: these are models, NOT actual bosses on Lestingia.
+                if(online||!Session.Creative||!world||!world.Ready){Session.Notice="Модели боссов: только офлайн-творческий режим";return;}
+                if(BossModelsDemo){Session.Notice="Галерея моделей уже создана";return;}
+                BossModelsDemo=new GameObject("QA only · planetary boss model gallery");
+                BossModelsDemo.transform.position=player.transform.position+player.transform.forward*20f;
+                BossModelsDemo.transform.rotation=Quaternion.LookRotation(-player.transform.forward,Vector3.up);
+                string[] planets={"Mars","Venus","Mercury"};
+                for(int i=0;i<planets.Length;i++)
+                {
+                    var visual=PlanetBossVisual.Build(BossModelsDemo.transform,planets[i]);
+                    Vector3 local=new Vector3((i-1)*14f,0,0);
+                    Vector3 projected=BossModelsDemo.transform.TransformPoint(local);
+                    int ground=TerrainGenerator.Height(Mathf.FloorToInt(projected.x),Mathf.FloorToInt(projected.z),world.Seed,Dimension.Lestingia);
+                    local.y=ground+1-BossModelsDemo.transform.position.y;
+                    visual.transform.localPosition=local;
+                }
+                Session.Notice="QA-модели: Марс, Венера, Меркурий. Это не игровые встречи с боссами";
+                return;
+            }
             var result=ChatCommands.Execute(text,Session.Creative,!Online,Session.Inventory,world.Seed,player.transform.position,PlayerCount);
             if(result.Action=="clear"){chatLog.Clear();ChatRevision++;}
             else if(result.Action=="save")Session.Checkpoint();
@@ -91,6 +112,7 @@ namespace LestingCraft.Runtime
         Material avatarMaterial;
         GameUI ui;bool leaving,saveAcknowledged;
         public ShuttleInteriorPreview ShuttleDemo {get;private set;}
+        public GameObject BossModelsDemo {get;private set;}
         public bool InWorld=>world;
         public bool Paused=>paused;
         public bool Online=>online;public string LocalPeerId=>selfId;
@@ -298,6 +320,7 @@ namespace LestingCraft.Runtime
             foreach(var a in avatars.Values)if(a)Destroy(a);avatars.Clear();targets.Clear();
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
             if(ShuttleDemo){Destroy(ShuttleDemo.gameObject);ShuttleDemo=null;}
+            if(BossModelsDemo){Destroy(BossModelsDemo);BossModelsDemo=null;}
             if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
             client=null;world=null;player=null;online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }

@@ -109,6 +109,21 @@ namespace LestingCraft.Runtime
             {Fail("Shuttle lift destination or airlock interlock failed");yield break;}
             Destroy(shuttleProbe);
             Debug.Log("[Smoke] SHUTTLE_INTERIOR: "+shuttleColliders+" physical colliders, six chairs, two MFDs, 28m animated lift and airlock interlock");
+            var planetGallery=new GameObject("Smoke-only real planetary boss meshes");
+            planetGallery.transform.position=player.transform.position+Vector3.down*120;
+            int bossVoxels=0,bossFaces=0;
+            foreach(var planetName in new[]{"Mars","Venus","Mercury"})
+            {
+                var model=PlanetBossVisual.Build(planetGallery.transform,planetName);
+                if(model.Planet!=planetName||model.PartCount<6||model.VoxelCount<2500||model.ExposedQuads<800||model.GetComponentsInChildren<BoxCollider>().Length!=model.PartCount)
+                {Fail("Missing articulated 3D boss geometry for "+planetName);yield break;}
+                foreach(var renderer in model.GetComponentsInChildren<MeshRenderer>())
+                    if(!renderer.sharedMaterial||!renderer.sharedMaterial.shader||!renderer.sharedMaterial.shader.isSupported)
+                    {Fail("Planet boss PBR material unsupported: "+planetName);yield break;}
+                bossVoxels+=model.VoxelCount;bossFaces+=model.ExposedQuads;
+            }
+            Destroy(planetGallery);
+            Debug.Log("[Smoke] PLANET_BOSS_MODELS: three articulated Unity PBR meshes, "+bossVoxels+" voxels / "+bossFaces+" quads, Mars/Venus/Mercury only, no combat/spawn yet");
             Camera.main.transform.localRotation=Quaternion.Euler(10,35,0);
             var fireCell=Vector3Int.FloorToInt(player.transform.position+new Vector3(1,0,2));game.Session.World.Edit(fireCell.x,fireCell.y,fireCell.z,15);
             yield return null;yield return null;yield return new WaitForEndOfFrame();

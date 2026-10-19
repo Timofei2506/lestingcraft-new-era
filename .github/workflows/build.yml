@@ -145,7 +145,7 @@ jobs:
           Get-Content $log -Tail 100
           $process.Refresh()
           $text = Get-Content $log -Raw
-          if ($process.ExitCode -ne 0 -or $text -notmatch '\[Smoke\] PASS' -or $text -notmatch '\[Smoke\] LIVING6' -or $text -notmatch '\[Smoke\] SHUTTLE_INTERIOR' -or $text -match 'NullReferenceException|MissingReferenceException|Shader error|\[Smoke\] FAIL') {
+          if ($process.ExitCode -ne 0 -or $text -notmatch '\[Smoke\] PASS' -or $text -notmatch '\[Smoke\] LIVING6' -or $text -notmatch '\[Smoke\] SHUTTLE_INTERIOR' -or $text -notmatch '\[Smoke\] PLANET_BOSS_MODELS' -or $text -match 'NullReferenceException|MissingReferenceException|Shader error|\[Smoke\] FAIL') {
             throw "Windows executable smoke test failed"
           }
 
