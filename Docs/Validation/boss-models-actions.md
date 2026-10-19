@@ -6,7 +6,7 @@ The user allows **voxel geometry if exceptionally well made**, with real varied 
 
 ## Fail closed, not fake success
 
-There are currently **no approved Blender sculpts**, so this workflow cannot yet produce a valid boss build. It refuses to run on old voxel JSON, generated placeholders or 2D concepts. Do **not** dispatch it just to obtain a failed Actions badge. Once models exist, adding the three `.blend` source files triggers the build automatically; `workflow_dispatch` can also be run manually.
+There are currently **no approved Blender sculpts**, so this workflow cannot yet produce a valid boss build. It refuses to run on old voxel JSON, generated placeholders or 2D concepts. Do **not** dispatch it just to obtain a failed Actions badge. Once models exist, adding the three `.blend` source files triggers the build automatically on this branch. GitHub only exposes `workflow_dispatch` after the workflow file also exists on the default branch; until then use the source-file push trigger.
 
 `Tools/boss_art_ci.py` checks:
 - distinctly named anatomy: four arms on Mars, six legs and a reservoir on Venus, six legs and four mirror plates on Mercury, with separate eye components;
