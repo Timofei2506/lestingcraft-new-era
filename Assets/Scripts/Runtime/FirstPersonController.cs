@@ -18,6 +18,13 @@ namespace LestingCraft.Runtime
         float pitch,vertical;
         Vector3 spawn,impulse;
         public void Knockback(Vector3 force){impulse=Vector3.ClampMagnitude(impulse+force,12);}
+        /// <summary>Move together with a physical lift; unlike TeleportTo this performs CharacterController collision checks every frame.</summary>
+        public void CarryByPlatform(Vector3 delta)
+        {
+            if(!controller)controller=GetComponent<CharacterController>();
+            if(controller.enabled)controller.Move(delta);
+            vertical=0;
+        }
         public void TeleportSpawn(){if(!controller)controller=GetComponent<CharacterController>();controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;}
         public void SetCheckpoint(Vector3 p){spawn=p;}
         public void TeleportTo(Vector3 p,bool checkpoint=false){if(!controller)controller=GetComponent<CharacterController>();controller.enabled=false;transform.position=p;controller.enabled=true;vertical=0;if(checkpoint)spawn=p;}
@@ -30,10 +37,21 @@ namespace LestingCraft.Runtime
             if(!Game.Paused&&World.Ready&&(keyboard.enterKey.wasPressedThisFrame||keyboard.tKey.wasPressedThisFrame)){Game.OpenChat();Game.Session.ResetMining();HasTarget=false;return;}
             if(keyboard.escapeKey.wasPressedThisFrame){if(Game.InventoryOpen)Game.ToggleInventory();else Game.TogglePause();return;}
             if(Game.Paused&&Game.EditingText)return;
-            if(keyboard.eKey.wasPressedThisFrame){Game.ToggleInventory();return;}
+            if(!Game.Paused&&Active&&Game.ShuttleDemo&&keyboard.leftShiftKey.wasPressedThisFrame&&Game.ShuttleDemo.IsPlayerSeated)
+            {
+                string note;Game.ShuttleDemo.StandFromSeat(out note);Game.Session.Notice=note;return;
+            }
+            if(keyboard.eKey.wasPressedThisFrame)
+            {
+                string note;
+                if(!Game.Paused&&Active&&Game.ShuttleDemo&&Game.ShuttleDemo.TryInteract(new Ray(Camera.transform.position,Camera.transform.forward),out note))
+                {Game.Session.Notice=note;return;}
+                Game.ToggleInventory();return;
+            }
             if(!Active||!World.Ready){Sprinting=false;HasTarget=false;if(Game.Session)Game.Session.ResetMining();return;}
             var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
             transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
+            if(Game.ShuttleDemo&&Game.ShuttleDemo.IsPlayerSeated){Sprinting=false;HasTarget=false;vertical=0;return;}
             var move=new Vector2((keyboard.dKey.isPressed?1:0)-(keyboard.aKey.isPressed?1:0),(keyboard.wKey.isPressed?1:0)-(keyboard.sKey.isPressed?1:0));
             if(move.sqrMagnitude>1)move.Normalize();
             bool swimming=World.InFluid(transform.position+Vector3.up*.8f,7);

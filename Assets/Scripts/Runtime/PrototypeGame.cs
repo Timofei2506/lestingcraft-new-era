@@ -57,7 +57,18 @@ namespace LestingCraft.Runtime
         }
         void ExecuteCommand(string text)
         {
-            if(!Session)return;var result=ChatCommands.Execute(text,Session.Creative,!Online,Session.Inventory,world.Seed,player.transform.position,PlayerCount);
+            if(!Session)return;
+            if(text=="/shuttle-demo")
+            {
+                if(online||!Session.Creative||!world||!world.Ready){Session.Notice="Демонстрация кабины: только в готовом офлайн-мире в творческом режиме";return;}
+                if(ShuttleDemo){Session.Notice="Демонстрационная кабина уже создана";return;}
+                var node=new GameObject("Space · walkable Discovery prototype");
+                node.transform.position=player.transform.position+player.transform.forward*6f;
+                ShuttleDemo=node.AddComponent<ShuttleInteriorPreview>();ShuttleDemo.Initialize(player);
+                Session.Notice="Кабина установлена: E — кнопки и люки, левый Shift — встать с кресла";
+                return;
+            }
+            var result=ChatCommands.Execute(text,Session.Creative,!Online,Session.Inventory,world.Seed,player.transform.position,PlayerCount);
             if(result.Action=="clear"){chatLog.Clear();ChatRevision++;}
             else if(result.Action=="save")Session.Checkpoint();
             else if(result.Action=="time")Session.Data.clock=result.Value;
@@ -79,6 +90,7 @@ namespace LestingCraft.Runtime
         long revision; float lastPosition,previousYaw,lastHeartbeat;Vector3 previousPosition;bool sentPosition;int previousEquipment;
         Material avatarMaterial;
         GameUI ui;bool leaving,saveAcknowledged;
+        public ShuttleInteriorPreview ShuttleDemo {get;private set;}
         public bool InWorld=>world;
         public bool Paused=>paused;
         public bool Online=>online;public string LocalPeerId=>selfId;
@@ -285,6 +297,7 @@ namespace LestingCraft.Runtime
             if(client)Destroy(client.gameObject);
             foreach(var a in avatars.Values)if(a)Destroy(a);avatars.Clear();targets.Clear();
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
+            if(ShuttleDemo){Destroy(ShuttleDemo.gameObject);ShuttleDemo=null;}
             if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
             client=null;world=null;player=null;online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }
