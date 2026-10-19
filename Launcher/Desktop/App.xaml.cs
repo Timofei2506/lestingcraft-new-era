@@ -50,7 +50,6 @@ public partial class App:Application
  static void RunSmoke()
  {
   var shots=new (int Page,string File)[]{(0,"launcher.png"),(1,"launcher-install.png"),(2,"launcher-settings.png")};
-  var window=(MainWindow)Current.MainWindow;
   int step=0;
   var timer=new DispatcherTimer{Interval=TimeSpan.FromSeconds(2.5)};
   timer.Tick+=(_,_)=>
@@ -65,6 +64,7 @@ public partial class App:Application
      Current.Shutdown(0);
      return;
     }
+    var window=Current.Windows.OfType<MainWindow>().FirstOrDefault()??throw new InvalidOperationException("Главное окно не найдено");
     window.ShowPage(shots[step].Page);
     window.UpdateLayout();
     Directory.CreateDirectory(SmokeFolder);
