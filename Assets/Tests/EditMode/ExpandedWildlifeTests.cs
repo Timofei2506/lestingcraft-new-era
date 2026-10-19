@@ -15,7 +15,7 @@ namespace LestingCraft.Tests
   [Test] public void CoalOreHasActualCoalDropAndAllSevenMineralsSmelt()
   {Assert.AreEqual(147,Items.ToolDrop(19));Assert.AreEqual(40,FurnaceState.FuelSeconds(147));for(int id=20;id<=26;id++)Assert.AreEqual(id+120,FurnaceState.Result(id));Assert.AreEqual(44,FurnaceState.Result(6));Assert.AreEqual(39,FurnaceState.Result(33));Assert.AreEqual(138,FurnaceState.Result(135));}
   [Test] public void LegacyGenerationFlagPreservesEverySample()
-  {for(int d=0;d<5;d++)for(int x=-17;x<=17;x+=5)for(int y=0;y<100;y+=7)for(int z=-15;z<18;z+=6)Assert.AreEqual(TerrainGenerator.Sample(x,y,z,2506,(Dimension)d),TerrainGenerator.SampleContent(x,y,z,2506,(Dimension)d,1));}
+  {for(int d=0;d<1;d++)for(int x=-17;x<=17;x+=5)for(int y=0;y<100;y+=7)for(int z=-15;z<18;z+=6)Assert.AreEqual(TerrainGenerator.Sample(x,y,z,2506,(Dimension)d),TerrainGenerator.SampleContent(x,y,z,2506,(Dimension)d,1));}
   [Test] public void NewGeneratorUsesRealOreIdsAndNeverTurnsBedrockIntoOre()
   {var found=new HashSet<ushort>();for(int x=-32;x<32;x++)for(int y=0;y<44;y++)found.Add(TerrainGenerator.SampleContent(x,y,7,2506,Dimension.Lestingia,2));Assert.IsTrue(found.Contains(19));Assert.IsTrue(found.Contains(20));for(int x=-20;x<20;x++)Assert.AreEqual(9,TerrainGenerator.SampleContent(x,0,3,2506,Dimension.Lestingia,2));}
   [Test] public void SaveV3RoundTripsAnimalsAndLootClaimsWithNewInventory()

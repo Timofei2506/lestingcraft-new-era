@@ -5,7 +5,8 @@ using Unity.Mathematics;
 
 namespace LestingCraft.World
 {
-    public enum Dimension { Lestingia, Ashlands, Skyreach, EchoCrypt, ChaosRift }
+    // Only the main dimension remains. Other dimensions are removed and will return stage by stage.
+    public enum Dimension { Lestingia }
 
     // Pure integer hash + smooth value noise. Generation version 1 is part of the network protocol.
     public static class TerrainGenerator
@@ -32,21 +33,11 @@ namespace LestingCraft.World
         public static int Height(int x, int z, int seed, Dimension dimension)
         {
             float broad = Noise(x / 55f, z / 55f, seed), fine = Noise(x / 13f, z / 13f, seed ^ 731);
-            switch (dimension)
-            {
-                case Dimension.Ashlands: return 26 + (int)(broad * 38 + fine * 6);
-                case Dimension.Skyreach: return 65 + (int)(broad * 30 + fine * 7);
-                case Dimension.EchoCrypt: return 34 + (int)(broad * 22 + fine * 8);
-                case Dimension.ChaosRift: return 45 + (int)(broad * 42 + fine * 15);
-                default: return 30 + (int)(broad * 32 + fine * 9);
-            }
+            return 30 + (int)(broad * 32 + fine * 9);
         }
         public static bool Island(int x, int z, int seed, Dimension d)
         {
-            if (d != Dimension.Skyreach && d != Dimension.ChaosRift) return true;
-            // Guaranteed starting island, then separated islands with deterministic borders.
-            if (x * x + z * z < 144) return true;
-            return Noise(x / 22f, z / 22f, seed ^ 8181) > (d == Dimension.ChaosRift ? .48f : .52f);
+            return true;
         }
         public static ushort Sample(int x, int y, int z, int seed, Dimension dimension)
         {
@@ -56,19 +47,15 @@ namespace LestingCraft.World
         }
         public static ushort SampleColumn(int x, int y, int z, int seed, Dimension d, int height, bool island)
         {
-            bool floating = d == Dimension.Skyreach || d == Dimension.ChaosRift;
             if (!island) return BlockRegistry.AirId;
-            int floor = floating ? height - 8 - (int)(Noise(x / 9f, z / 9f, seed ^ 97) * 10) : 0;
+            int floor = 0;
             if (y < floor) return BlockRegistry.AirId;
-            if (!floating && y == 0) return BlockRegistry.BedrockId;
+            if (y == 0) return BlockRegistry.BedrockId;
             if (y > height)
             {
-                if (d == Dimension.Lestingia && y <= 40) return BlockRegistry.WaterId;
-                if (d == Dimension.Ashlands && y <= 38) return BlockRegistry.LavaId;
-                if (d == Dimension.Lestingia && y <= height + 8 && height > 41 && height < 62)
+                if (y <= 40) return BlockRegistry.WaterId;
+                if (y <= height + 8 && height > 41 && height < 62)
                     return Tree(x, y, z, seed);
-                if (d == Dimension.EchoCrypt && y <= height + 3 && Hash(x, 0, z, seed) % 53 == 0)
-                    return BlockRegistry.CrystalId;
                 return BlockRegistry.AirId;
             }
             if (y > floor + 4 && y < height - 4)
@@ -76,10 +63,6 @@ namespace LestingCraft.World
                 float cave = Noise(x / 9f + y * .12f, z / 9f - y * .09f, seed ^ 910);
                 if (cave > .81f) return BlockRegistry.AirId;
             }
-            if (d == Dimension.Ashlands) return BlockRegistry.BasaltId;
-            if (d == Dimension.EchoCrypt) return Hash(x, y, z, seed) % 121 == 0 ? BlockRegistry.CrystalId : BlockRegistry.BasaltId;
-            if (d == Dimension.ChaosRift) return BlockRegistry.CrystalId;
-            if (d == Dimension.Skyreach) return y == height ? BlockRegistry.AetherId : BlockRegistry.StoneId;
             if (y == height) return height <= 41 ? BlockRegistry.SandId : height >= 64 ? BlockRegistry.SnowId : BlockRegistry.GrassId;
             if (y > height - 4) return BlockRegistry.DirtId;
             return Hash(x, y, z, seed) % 143 == 0 ? BlockRegistry.OreId : BlockRegistry.StoneId;
@@ -88,8 +71,6 @@ namespace LestingCraft.World
         {
             if(contentVersion<2)return original;
             uint region=Hash((int)math.floor(x/8f),(int)math.floor(y/6f),(int)math.floor(z/8f),seed^41011);
-            if(original==10&&d==Dimension.Ashlands){if(y<38&&region%19==0)return 31;if(region%43==0)return 26;return original;}
-            if(original==10&&d==Dimension.EchoCrypt&&region%11==0)return 30;
             if(d!=Dimension.Lestingia)return original;
             if(original==2){if(height<=44&&y>=height-2)return region%2==0?(ushort)33:(ushort)34;return original;}
             if(original==6&&region%4==0)return 32;

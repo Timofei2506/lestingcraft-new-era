@@ -17,7 +17,7 @@ namespace LestingCraft.Runtime
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap(){if(!FindAnyObjectByType<PrototypeGame>())new GameObject("LestingCraft").AddComponent<PrototypeGame>();}
-        readonly string[] dimensions={"Лестингия","Пеплоземье","Небокрай","Склеп Эха","Разлом Хаоса"};
+        readonly string[] dimensions={"Лестингия"};
         readonly Dictionary<string,GameObject> avatars=new Dictionary<string,GameObject>();
         readonly Dictionary<string,Vector3> targets=new Dictionary<string,Vector3>();
         string endpoint="",code="",playerName="Player",seedText="2506",status="",selfId="",lastError="";
@@ -164,8 +164,10 @@ namespace LestingCraft.Runtime
         }
         void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0)
         {
+            // Only the main dimension exists. Saves from removed dimensions open in the main one; their blocks stay unused.
+            realm=0;
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
-            var camera=Camera.main;camera.backgroundColor=realm==1?new Color(.19f,.08f,.07f):realm==3||realm==4?new Color(.075f,.045f,.14f):new Color(.42f,.66f,.78f);
+            var camera=Camera.main;camera.backgroundColor=new Color(.42f,.66f,.78f);
             RenderSettings.fogColor=camera.backgroundColor;
             var obj=new GameObject("Player");obj.transform.position=FindSpawn(seed,(Dimension)realm,world.ContentVersion);
             var controller=obj.AddComponent<CharacterController>();PlayerCapsule.Configure(controller);

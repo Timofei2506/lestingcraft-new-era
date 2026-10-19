@@ -25,8 +25,6 @@ namespace LestingCraft.Tests
         }
         [Test] public void StormReducesDirectLight()
         {Assert.Less(AtmosphereLighting.At(600,Dimension.Lestingia,.9f,1).DirectIntensity,AtmosphereLighting.At(600,Dimension.Lestingia,.28f,0).DirectIntensity);}
-        [Test] public void DimensionPalettesRemainDifferent()
-        {Assert.AreNotEqual(AtmosphereLighting.At(600,Dimension.Lestingia,.28f,0).Zenith,AtmosphereLighting.At(600,Dimension.EchoCrypt,.28f,0).Zenith);}
         [TestCase(-1200)] [TestCase(0)] [TestCase(300)] [TestCase(1200000)]
         public void LightDirectionsAreUnitAndOpposite(double clock)
         {

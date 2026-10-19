@@ -42,7 +42,7 @@ namespace LestingCraft.Gameplay
         {
             double cycle=clock/1200.0;float hour=(float)(cycle-Math.Floor(cycle))*24;
             uint h=unchecked((uint)(seed^((int)(clock/180)*1597334677)^realm*381201));h^=h>>16;h*=2246822519u;h^=h>>13;
-            float chance=(h&65535)/65535f;float baseline=realm==1?31:realm==2?-4:realm==3?3:realm==4?-10:18;
+            float chance=(h&65535)/65535f;float baseline=18;
             if(realm==0&&((int)cycle%8)>=5)baseline-=13;
             float air=baseline+Mathf.Sin((hour-6)*Mathf.PI/12)*7;
             if(clock<480&&realm==0)return new WeatherSample(WeatherKind.Clear,0,air,.28f,.15f);

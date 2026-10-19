@@ -17,12 +17,10 @@ namespace LestingCraft.Tests
             bool changed=false;for(int x=-50;x<50;x++)if(TerrainGenerator.Height(x,17,1,Dimension.Lestingia)!=TerrainGenerator.Height(x,17,902,Dimension.Lestingia))changed=true;
             Assert.IsTrue(changed);
         }
-        [TestCase(Dimension.Lestingia)] [TestCase(Dimension.Ashlands)] [TestCase(Dimension.EchoCrypt)]
+        [TestCase(Dimension.Lestingia)]
         public void GroundedDimensionsHaveProtectedFloor(Dimension dimension)
         {for(int x=-30;x<30;x+=5)Assert.AreEqual(BlockRegistry.BedrockId,TerrainGenerator.Sample(x,0,8,2506,dimension));}
-        [TestCase(Dimension.Skyreach)] [TestCase(Dimension.ChaosRift)]
-        public void FloatingDimensionsHaveAirBelowStartingIsland(Dimension dimension)
-        {Assert.AreEqual(0,TerrainGenerator.Sample(0,0,0,2506,dimension));Assert.AreNotEqual(0,TerrainGenerator.Sample(0,TerrainGenerator.Height(0,0,2506,dimension),0,2506,dimension));}
+
         [Test] public void OutsideHeightReturnsAir()
         {Assert.AreEqual(0,TerrainGenerator.Sample(3,-1,3,2506,Dimension.Lestingia));Assert.AreEqual(0,TerrainGenerator.Sample(3,256,3,2506,Dimension.Lestingia));}
         [Test] public void ColumnJobMatchesSamplerIncludingNegativeChunkCoordinates()
@@ -39,7 +37,7 @@ namespace LestingCraft.Tests
         public void ChunkMappingUsesFloorForNegativeCoordinates(int world,int chunk)
         {Assert.AreEqual(chunk,VoxelWorld.ChunkCoordinate(world));}
         [Test] public void TerrainNeverProducesUnknownBlocks()
-        {for(int d=0;d<5;d++)for(int y=0;y<256;y++)Assert.LessOrEqual(TerrainGenerator.Sample(-13,y,7,-2147483648,(Dimension)d),14);}
+        {for(int d=0;d<1;d++)for(int y=0;y<256;y++)Assert.LessOrEqual(TerrainGenerator.Sample(-13,y,7,-2147483648,(Dimension)d),14);}
     }
     public class ChunkMesherTests
     {

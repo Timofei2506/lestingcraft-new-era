@@ -26,13 +26,6 @@ namespace LestingCraft.Presentation
             var nightSky=new Color(.004f,.009f,.027f);var nightHorizon=new Color(.023f,.036f,.064f);
             var warm=new Color(1,.42f,.17f);var noon=new Color(1,.94f,.83f);
             ShallowWater=new Color(.18f,.43f,.36f);DeepWater=new Color(.018f,.095f,.12f);
-            switch(realm)
-            {
-                case Dimension.Ashlands:daySky=new Color(.19f,.085f,.055f);dayHorizon=new Color(.49f,.26f,.15f);noon=new Color(1,.68f,.40f);ShallowWater=new Color(.31f,.25f,.16f);DeepWater=new Color(.09f,.065f,.035f);break;
-                case Dimension.Skyreach:daySky=new Color(.14f,.36f,.61f);dayHorizon=new Color(.64f,.76f,.83f);break;
-                case Dimension.EchoCrypt:daySky=new Color(.065f,.05f,.145f);dayHorizon=new Color(.23f,.20f,.32f);noon=new Color(.73f,.70f,1);nightSky=new Color(.008f,.006f,.025f);ShallowWater=new Color(.23f,.20f,.36f);DeepWater=new Color(.035f,.025f,.09f);break;
-                case Dimension.ChaosRift:daySky=new Color(.10f,.025f,.14f);dayHorizon=new Color(.39f,.16f,.32f);noon=new Color(.85f,.61f,1);break;
-            }
             float overcast=Mathf.Clamp01(clouds*.38f+precipitation*.40f);
             Zenith=Color.Lerp(nightSky,Color.Lerp(daySky,new Color(.24f,.29f,.34f),overcast),Daylight);
             Horizon=Color.Lerp(nightHorizon,Color.Lerp(dayHorizon,new Color(.32f,.37f,.40f),overcast),Daylight);

@@ -64,7 +64,7 @@ namespace LestingCraft.Presentation
             fog.SetFloat("_Density",AtmosphereProfile.Density(precipitation,submerged));
             fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:VisualSettings.Current.VolumetricQuality==2?48:32);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);
-            Shader.SetGlobalFloat("_FogHeight",Session.World.Dimension==Dimension.Skyreach?86:44);
+            Shader.SetGlobalFloat("_FogHeight",44);
             float height=Mathf.Tan(cameraView.fieldOfView*Mathf.Deg2Rad*.5f)*2;
             fogPlane.transform.localScale=new Vector3(height*cameraView.aspect*1.01f,height*1.01f,1);
             timer+=dt;if(timer>2){timer=0;RefreshFires();}
