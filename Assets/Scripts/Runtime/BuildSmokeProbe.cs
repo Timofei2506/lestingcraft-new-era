@@ -87,6 +87,28 @@ namespace LestingCraft.Runtime
             Destroy(modelProbe);
             Debug.Log("[Smoke] LIVING6: rules10, content7, complete PBR arrays="+SurfaceLayers.Names.Length+", mandatory opening, six saved body zones, native villager/cat meshes and materials loaded");
             var player=game.Session.Player;player.enabled=false;
+            // Exercise REAL Unity objects, not only the pure C# shuttle checks: cabin walls, moving lift,
+            // interactive doors, six 3D chairs and two instrument text screens. Keep it off-camera.
+            var shuttleProbe=new GameObject("Smoke-only walkable shuttle");
+            shuttleProbe.transform.position=player.transform.position+Vector3.down*120;
+            var shuttle=shuttleProbe.AddComponent<ShuttleInteriorPreview>();shuttle.Initialize(player);
+            int shuttleColliders=shuttleProbe.GetComponentsInChildren<Collider>().Length;
+            if(shuttleColliders<55||shuttleProbe.GetComponentsInChildren<TextMesh>().Length<2)
+            {Fail("Walkable shuttle geometry, chairs or MFDs missing: "+shuttleColliders+" colliders");yield break;}
+            foreach(var mesh in shuttleProbe.GetComponentsInChildren<MeshRenderer>())
+                if(!mesh.sharedMaterial||!mesh.sharedMaterial.shader||!mesh.sharedMaterial.shader.isSupported)
+                {Fail("Shuttle cabin material unsupported: "+mesh.name);yield break;}
+            shuttle.Session.UpdatePosition(0,0,0);
+            if(!shuttle.Session.BoardLift()||!shuttle.Session.Elevator.RequestUp())
+            {Fail("Shuttle lift boarding or call failed");yield break;}
+            shuttle.Session.Elevator.Advance(3f);
+            if(Mathf.Abs(shuttle.Session.Elevator.Height-14f)>.01f)
+            {Fail("Shuttle lift must travel continuously, 14m after 3s");yield break;}
+            shuttle.Session.Elevator.Advance(3f);
+            if(shuttle.Session.Elevator.State!=ElevatorState.Top||!shuttle.Session.SetDoor(InteriorDoor.Outer,true)||shuttle.Session.SetDoor(InteriorDoor.Inner,true))
+            {Fail("Shuttle lift destination or airlock interlock failed");yield break;}
+            Destroy(shuttleProbe);
+            Debug.Log("[Smoke] SHUTTLE_INTERIOR: "+shuttleColliders+" physical colliders, six chairs, two MFDs, 28m animated lift and airlock interlock");
             Camera.main.transform.localRotation=Quaternion.Euler(10,35,0);
             var fireCell=Vector3Int.FloorToInt(player.transform.position+new Vector3(1,0,2));game.Session.World.Edit(fireCell.x,fireCell.y,fireCell.z,15);
             yield return null;yield return null;yield return new WaitForEndOfFrame();
