@@ -142,7 +142,7 @@ namespace LestingCraft.Gameplay
             if(SeatedSeat!=-1 || crewId<=0 || seat<0 || seat>=ShuttleInteriorLayout.SeatCount || Zone!=InteriorZone.FlightDeck)return false;
             float sx,sz;ShuttleInteriorLayout.SeatPosition(seat,out sx,out sz);
             if(Math.Abs(X-sx)>1.8f||Math.Abs(Z-sz)>1.3f||Math.Abs(Y-28f)>1.5f)return false;
-            if(!Launch.Board(seat,crewId))return false;
+            if(!(Launch.IsAboard(crewId)?Launch.Reseat(seat,crewId):Launch.Board(seat,crewId)))return false;
             SeatedSeat=seat;CrewId=crewId;return true;
         }
         public bool Stand(int crewId)
@@ -150,10 +150,10 @@ namespace LestingCraft.Gameplay
             if(SeatedSeat<0||CrewId!=crewId)return false;
             // LaunchControl.Leave means leaving the vehicle; after insertion only relinquish the seat.
             if(Launch.Phase==LaunchPhase.Ascent||Launch.Phase==LaunchPhase.Countdown)return false;
-            bool left=Launch.Phase==LaunchPhase.Orbit?Launch.Cabin.Leave(crewId):Launch.Leave(crewId);
+            bool left=Launch.Unseat(crewId);
             if(!left)return false;
             SeatedSeat=-1;CrewId=0;return true;
         }
-        public bool ReadyToLaunch {get{return Airlock.Sealed && Elevator.State==ElevatorState.Ground && !Elevator.Occupied && Launch.Phase==LaunchPhase.Ready;}}
+        public bool ReadyToLaunch {get{return Airlock.Sealed && !Elevator.IsMoving && !Elevator.Occupied && Launch.Phase==LaunchPhase.Ready;}}
     }
 }

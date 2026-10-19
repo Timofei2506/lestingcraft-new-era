@@ -169,6 +169,10 @@ namespace LestingCraft.Runtime
                 var rider=transform.InverseTransformPoint(player.transform.position);
                 if(Mathf.Abs(rider.x)>1.08f || Mathf.Abs(rider.z)>1.08f)Session.ExitLift();
             }
+            var localPlayer=transform.InverseTransformPoint(player.transform.position);
+            if(localPlayer.x<1f && localPlayer.y>DeckY-1f && Session.Airlock.OuterOpen &&
+               Session.SeatedSeat<0 && Session.Launch.IsAboard(1))
+                Session.Launch.ExitStanding(1); // physical exit via open outer hatch, never via unseating
             float step=Time.unscaledDeltaTime/DoorSeconds;
             outerVisual=Mathf.MoveTowards(outerVisual,Session.Airlock.OuterOpen?1:0,step);
             innerVisual=Mathf.MoveTowards(innerVisual,Session.Airlock.InnerOpen?1:0,step);

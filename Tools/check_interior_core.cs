@@ -77,8 +77,16 @@ class ShuttleInteriorCheck
         Check(flight.Launch.SetSwitch(PanelSwitch.MainBus,true),"main bus");
         Check(flight.Launch.SetSwitch(PanelSwitch.FuelFeed,true),"fuel feed");
         Check(flight.Launch.SetSwitch(PanelSwitch.Arm,true),"arm");
-        Check(flight.ReadyToLaunch,"sealed cabin and lift down");
-        Check(!flight.Stand(7),"cannot stand while sealed/armed");
+        Check(flight.ReadyToLaunch,"sealed cabin and lift empty");
+        flight.UpdatePosition(0,0,0);
+        Check(flight.BoardLift() && flight.Elevator.RequestUp(),"lift travels to cabin door");
+        flight.Elevator.Advance(6);Check(flight.Elevator.Exit() && flight.ReadyToLaunch,"lift can remain at top after crew enters, no softlock");
+        flight.UpdatePosition(cx,28,cz);
+        Check(flight.Stand(7) && flight.Launch.IsAboard(7),"stand inside sealed cabin without disembarking");
+        Check(!flight.Launch.IsOn(PanelSwitch.Arm),"commander getting up disarms launch");
+        flight.UpdatePosition(cx,28,cz);
+        Check(flight.Sit(0,7),"same commander can reseat with hatch sealed");
+        Check(flight.Launch.SetSwitch(PanelSwitch.Arm,true),"re-arm after reseating");
         Check(flight.Launch.Ignite(),"start existing countdown");
         Check(!flight.SetDoor(InteriorDoor.Outer,true),"cannot open outer hatch in countdown");
         Check(!flight.SetDoor(InteriorDoor.Inner,true),"cannot open inner hatch in countdown");
@@ -89,6 +97,11 @@ class ShuttleInteriorCheck
         // Guard against negative dt corrupting persistent progress.
         bool threw=false;try{lift.Advance(-1);}catch(ArgumentOutOfRangeException){threw=true;}
         Check(threw,"negative time rejected");
+        var exit=new LaunchControl();
+        Check(exit.Board(0,99) && exit.IsAboard(99),"crew boards craft");
+        Check(exit.Unseat(99) && exit.IsAboard(99),"standing is not leaving craft");
+        Check(exit.ExitStanding(99) && !exit.IsAboard(99),"crew walks out through unsealed hatch");
+        Check(!exit.Reseat(0,99),"left crew cannot remotely re-seat through sealed shell");
         Console.WriteLine("PASS: "+n+" shuttle interior checks (physical lift, airlock, 3D walkable zones, six seats, launch)");
     }
 }

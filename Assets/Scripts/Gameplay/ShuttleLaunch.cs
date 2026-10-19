@@ -58,6 +58,9 @@ namespace LestingCraft.Gameplay
         public double T = -CountdownSeconds;
         public readonly ShuttleCabin Cabin = new ShuttleCabin();
         readonly List<LaunchEvent> fired = new List<LaunchEvent>();
+        // A crew member may leave a chair without exiting the spacecraft; seat occupancy and crew aboard differ.
+        readonly HashSet<int> aboard = new HashSet<int>();
+        public bool IsAboard(int crewId) { return aboard.Contains(crewId); }
 
         bool mainBus, fuelFeed, arm, hatchClosed;
 
@@ -112,7 +115,8 @@ namespace LestingCraft.Gameplay
         public bool Board(int seatIndex, int crewId)
         {
             if (Phase != LaunchPhase.Standby || hatchClosed) return false;
-            if (!Cabin.Board(seatIndex, crewId)) return false;
+            if (aboard.Contains(crewId) || !Cabin.Board(seatIndex, crewId)) return false;
+            aboard.Add(crewId);
             Refresh();
             return true;
         }
@@ -121,9 +125,36 @@ namespace LestingCraft.Gameplay
         {
             if (Phase != LaunchPhase.Standby || hatchClosed) return false;
             if (!Cabin.Leave(crewId)) return false;
+            aboard.Remove(crewId);
             if (!Cabin.CommanderSeated) arm = false;
             Refresh();
             return true;
+        }
+
+        /// <summary>Stand up INSIDE a sealed shuttle. This does not disembark. Crew can walk in standby/ready/orbit, not under ascent g-load.</summary>
+        public bool Unseat(int crewId)
+        {
+            if (Phase == LaunchPhase.Countdown || Phase == LaunchPhase.Ascent || !aboard.Contains(crewId)) return false;
+            if (!Cabin.Leave(crewId)) return false;
+            if (!Cabin.CommanderSeated) arm = false;
+            Refresh();
+            return true;
+        }
+
+        /// <summary>Return to a chair while still aboard, even if the entry hatch is sealed.</summary>
+        public bool Reseat(int seatIndex, int crewId)
+        {
+            if (Phase == LaunchPhase.Countdown || Phase == LaunchPhase.Ascent || !aboard.Contains(crewId)) return false;
+            if (!Cabin.Board(seatIndex, crewId)) return false;
+            Refresh();
+            return true;
+        }
+
+        /// <summary>Walk out through the open hatch when standing (not in flight). A boarded crew member instead uses Leave.</summary>
+        public bool ExitStanding(int crewId)
+        {
+            if (Phase != LaunchPhase.Standby || hatchClosed || Cabin.SeatOf(crewId) >= 0) return false;
+            return aboard.Remove(crewId);
         }
 
         /// <summary>Ignition button. Only from Ready. Starts the 10 s countdown.</summary>
