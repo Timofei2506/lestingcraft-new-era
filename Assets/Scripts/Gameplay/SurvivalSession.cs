@@ -77,6 +77,7 @@ namespace LestingCraft.Gameplay
         {
             if(World.Online&&World.ContentVersion<4&&index>=0&&index<CraftingTable.All.Length&&CraftingTable.All[index].Output==148){Notice="Для факела нужна комната новых правил";return false;}
             if(!CanInteract||index<0||index>=CraftingTable.All.Length)return false;
+            if(World.Online&&World.ContentVersion<7&&CraftingTable.RoomVersionFor(CraftingTable.All[index].Output)==7){Notice="Нужна новая комната версии 7";return false;}
             if(World.Online&&World.ContentVersion<5&&(CraftingTable.All[index].Output>=149||CraftingTable.All[index].Output==48)){Notice="Нужна новая комната версии 5";return false;}
             bool ok=CraftingTable.Fill(Inventory,CraftingTable.All[index],width);
             string costs="";foreach(var cost in Recipes.All[index].inputs)costs+=(costs.Length==0?"":" · ")+Items.Get(cost.item).Name+" ×"+cost.count;
@@ -86,8 +87,15 @@ namespace LestingCraft.Gameplay
         {
             if(World.Online&&World.ContentVersion<4&&CraftingTable.Match(Inventory.grid,width)?.Output==148){Notice="Для факела нужна комната новых правил";return 0;}
             if(World.Online&&World.ContentVersion<5){var r=CraftingTable.Match(Inventory.grid,width);if(r!=null&&(r.Output>=149||r.Output==48)){Notice="Нужна новая комната версии 5";return 0;}}
+            if(World.Online&&World.ContentVersion<7){var r7=CraftingTable.Match(Inventory.grid,width);if(r7!=null&&CraftingTable.RoomVersionFor(r7.Output)==7){Notice="Нужна новая комната версии 7";return 0;}}
             if(!CanInteract)return 0;var recipe=CraftingTable.Match(Inventory.grid,width);int count=CraftingTable.Take(Inventory,width,shift);
             if(count>0){Progress.Add("crafted",count);Progress.Add("craft_"+recipe.Output,count);if(recipe.Output==100||recipe.Output==101)Data.player.milestones|=1;Notice="Создано: "+Items.Get(recipe.Output).Name;}return count;
+        }
+        public void UseStation(int id,Vector3Int cell)
+        {
+            if(!CanInteract||!FuelStations.Has(id)||!StationNearby(id,cell))return;
+            if(World.Online&&World.ContentVersion<FuelStations.RoomVersion){Notice="Нужна новая комната версии 7";return;}
+            Notice=FuelStations.Use(Inventory,id);Inventory.revision++;
         }
         public void UseActive()
         {

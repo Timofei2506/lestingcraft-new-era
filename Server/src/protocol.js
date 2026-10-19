@@ -119,7 +119,7 @@ export class RoomState {
     if(p.type==='edit') {
       if(this.config.story&&protectedSite(p.x,p.z))throw Error('This story landmark is protected');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
-      const edit=validateEdit(p,peer,this.edits,now,this.config.contentVersion>=5?48:this.config.contentVersion>=2?46:18,this.config.contentVersion>=4?384:64),record={x:edit.x,y:edit.y,z:edit.z,block:edit.block,rev:this.config.rev+1};
+      const edit=validateEdit(p,peer,this.edits,now,this.config.contentVersion>=7?53:this.config.contentVersion>=5?48:this.config.contentVersion>=2?46:18,this.config.contentVersion>=4?384:64),record={x:edit.x,y:edit.y,z:edit.z,block:edit.block,rev:this.config.rev+1};
       // Persistence succeeds before acknowledgement/broadcast and memory mutation.
       let candidate=null,next={...this.config,rev:record.rev};if(this.config.contentVersion>=6){candidate=new Living(this.config.seed,this.living.save(),this.edits,this.config.contentVersion);candidate.queue=this.living.queue.map(p=>({...p}));candidate.queued=new Set(this.living.queued);candidate.last=this.living.last;candidate.flow=this.living.flow;candidate.fluidPass=this.living.fluidPass;const before=this.living.block(edit.x,edit.y,edit.z);candidate.edited(edit);if(edit.block===0&&before>0&&before!==7&&before!==8&&this.config.mode!==2&&!candidate.drop(toolDrop(before),1,0,edit.x+.5,edit.y+.5,edit.z+.5))throw Error('Dropped item limit');next.living=candidate.save();}persistEdit(record,next);this.config=next;if(candidate){this.living=candidate;this.fauna.dynamicCells=candidate.cells;}this.config.rev=record.rev;this.edits.set(edit.key,record);peer.lastEdit=now;
       return {type:'edit',...record,id:peer.id,living:candidate?candidate.save():undefined};
@@ -146,7 +146,7 @@ export class RoomState {
 export function validatePlayerSave(save,expanded=true,chapter=false,expedition=false) {
   if(!save||typeof save!=='object'||!save.inventory||!save.survival)throw new Error('Invalid player save');
   const maxStack=id=>(id>=150&&id<=164)?1:((id>=100&&id<=108)||(id>=130&&id<=132))?1:[110,111,112,135,138].includes(id)?32:64;
-  const validItem=id=>integer(id)&&(id===0||(expedition&&((id>=149&&id<=165)||id===47||id===48))||(chapter&&id===148)||(id>=1&&id<=17)||(expanded&&id>=19&&id<=46)||(id>=100&&id<=108)||(id>=130&&id<=132)||(id>=110&&id<=114)||(id>=120&&id<=123)||(expanded&&[135,136,138,139,140,141,142,143,144,145,146,147].includes(id))||(id>=170&&id<=177));
+  const validItem=id=>integer(id)&&(id===0||(expedition&&((id>=149&&id<=165)||id===47||id===48))||(chapter&&id===148)||(id>=1&&id<=17)||(expanded&&id>=19&&id<=46)||(expanded&&id>=49&&id<=53)||(id>=100&&id<=108)||(id>=130&&id<=132)||(id>=110&&id<=114)||(id>=120&&id<=123)||(expanded&&[135,136,138,139,140,141,142,143,144,145,146,147].includes(id))||(id>=170&&id<=177));
   const cleanStack=s=>{
     if(!s||!validItem(s.item)||!integer(s.count)||s.count<0||s.count>maxStack(s.item)||!integer(s.durability)||s.durability<0||s.durability>1500||(s.item===0)!==(s.count===0))throw new Error('Invalid item stack');
     const life={150:450,151:1500,...Object.fromEntries(Object.entries(weapons).map(([id])=>[id,({152:380,153:1100,154:260,155:800,156:340,157:1050,158:420,159:1200,160:500,161:1400,162:450,163:1300,164:400})[id]])),100:60,101:140,102:120,103:160,105:180,106:260,107:220,108:180};if(s.durability>(life[s.item]||0))throw new Error('Invalid tool durability');

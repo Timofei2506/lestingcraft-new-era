@@ -114,6 +114,7 @@ namespace LestingCraft.Runtime
             if(id==17){var f=Session.Inventory.furnace;f.x=cell.x;f.y=cell.y;f.z=cell.z;f.realm=(int)Session.World.Dimension;}
             paused=true;SetCursor(false);ui.ShowInventory(id,cell);
         }
+        public void UseStation(int id,Vector3Int cell){if(Session)Session.UseStation(id,cell);}
         public void OpenDeathScreen(){paused=true;SetCursor(false);ui.ShowDeathScreen();}
         public void SendSave(PlayerSave save,bool force=false){if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save,force=force});}
         public void CreateRoom(){if(!busy)StartCoroutine(CreateRoomRoutine());}

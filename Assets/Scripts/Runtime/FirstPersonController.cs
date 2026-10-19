@@ -74,6 +74,7 @@ namespace LestingCraft.Runtime
                 {
                     int station=World.GetBlock(target.Cell.x,target.Cell.y,target.Cell.z);
                     if(station==16||station==17){Game.OpenStation(station,target.Cell);return;}
+                    if(FuelStations.Has(station)){Game.UseStation(station,target.Cell);return;}
                 }
                 if(Selected==0){Game.Session.UseActive();return;}
                 if(!HasTarget||target.Normal==Vector3Int.zero)return;

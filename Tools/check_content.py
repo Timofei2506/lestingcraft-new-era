@@ -5,18 +5,18 @@ import json,re
 from PIL import Image
 R=Path(__file__).resolve().parents[1]
 blocks=json.loads((R/'Assets/Resources/Models/ExpandedBlocks.json').read_text())['blocks']
-assert [b['id'] for b in blocks]==list(range(19,49))
+assert [b['id'] for b in blocks]==list(range(19,54))
 names=re.findall(r'"([a-z-]+)"',(R/'Assets/Scripts/Presentation/SurfaceLayers.cs').read_text().split('Names={')[1].split('};')[0])
 assert len(names)==63 and len(set(names))==63
 rows=re.findall(r'new ExpandedBlock\((\d+),"([^"]+)","([^"]+)",([\d.]+)f,(true|false),(\d+)\)',(R/'Assets/Scripts/Gameplay/ExpandedContent.cs').read_text())
-assert len(rows)==30
+assert len(rows)==35
 for b,row in zip(blocks,rows):
  id,name,surface,hardness,pick,layer=row
  assert int(id)==b['id'] and name==b['name'] and surface==b['surface']
  assert float(hardness)==b['hardness'] and (pick=='true')==b['pick'] and names[int(layer)]==surface
 catalog=load_catalog(R)
-expected=set(range(1,18))|set(range(19,49))|set(range(100,109))|set(range(110,115))|set(range(120,124))|set(range(130,133))|{135,136,138,139,140,141,142,143,144,145,146,147,148}|set(range(149,166))
-assert len(expected)==98 and {m['id'] for m in catalog['models']}==expected
+expected=set(range(1,18))|set(range(19,54))|set(range(100,109))|set(range(110,115))|set(range(120,124))|set(range(130,133))|{135,136,138,139,140,141,142,143,144,145,146,147,148}|set(range(149,166))|set(range(170,178))
+assert len(expected)==111 and {m['id'] for m in catalog['models']}==expected
 assert len(catalog['colors'])==len(catalog['layers']) and all(0<=x<len(names) for x in catalog['layers'])
 for m in catalog['models']:
  assert len(m['cells'])%4==0 and len(m['cells'])>0
@@ -37,6 +37,6 @@ assert len(animal_info['masters'])==3
 visual=(R/'Assets/Scripts/Presentation/AnimalVisual.cs').read_text()
 assert 'fur=FurLayerForSpecies(kind)' in visual and 'if(fur<0)fur=4' not in visual
 assert '_Tint'  in (R/'Assets/Resources/CrystalGlass.shader').read_text()
-print('PASS: 30 catalog/registry/layer definitions, 63 surface layers, 98 shared voxel models and 384px transparent icons, 9 base AI masters + 3 species-specific AI masters; no missing resource assets')
+print('PASS: 35 catalog/registry/layer definitions, 63 surface layers, 111 shared voxel models and 384px transparent icons, 9 base AI masters + 3 species-specific AI masters; no missing resource assets')
 
 assert "145,146,147,148" in (R/"Assets/Scripts/Presentation/ItemArtwork.cs").read_text(), "Torch omitted from generated icon index"

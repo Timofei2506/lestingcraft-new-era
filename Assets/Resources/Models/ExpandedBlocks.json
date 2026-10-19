@@ -210,6 +210,41 @@
       "surface": "diamond-facets",
       "hardness": 5.5,
       "pick": true
+    },
+    {
+      "id": 49,
+      "name": "Нефтяная скважина",
+      "surface": "basalt",
+      "hardness": 2.5,
+      "pick": true
+    },
+    {
+      "id": 50,
+      "name": "Компрессор",
+      "surface": "metal-ingot",
+      "hardness": 3,
+      "pick": true
+    },
+    {
+      "id": 51,
+      "name": "Перегонный куб",
+      "surface": "obsidian",
+      "hardness": 3.5,
+      "pick": true
+    },
+    {
+      "id": 52,
+      "name": "Криоустановка",
+      "surface": "snow",
+      "hardness": 2.8,
+      "pick": true
+    },
+    {
+      "id": 53,
+      "name": "Смеситель топлива",
+      "surface": "clay-bricks",
+      "hardness": 2.6,
+      "pick": true
     }
   ]
 }

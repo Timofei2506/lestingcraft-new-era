@@ -192,3 +192,4 @@ print('Generated',len(models),'textured voxel icons and shared model catalog; no
 if __name__=="__main__":
  import subprocess,sys
  subprocess.run([sys.executable,str(ROOT/"Tools/build_expedition_items.py")],check=True)
+ subprocess.run([sys.executable,str(ROOT/"Tools/build_space_items.py")],check=True)

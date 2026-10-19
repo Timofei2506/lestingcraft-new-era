@@ -42,8 +42,8 @@ namespace LestingCraft.Gameplay
             all[FuelChain.CrudeOil]=new ItemDefinition(FuelChain.CrudeOil,"Сырая нефть");all[FuelChain.Gasoline]=new ItemDefinition(FuelChain.Gasoline,"Бензин");all[FuelChain.Diesel]=new ItemDefinition(FuelChain.Diesel,"Дизель");all[FuelChain.Kerosene]=new ItemDefinition(FuelChain.Kerosene,"Керосин");
             all[FuelChain.LiquidOxygen]=new ItemDefinition(FuelChain.LiquidOxygen,"Жидкий кислород");all[FuelChain.RocketFuel]=new ItemDefinition(FuelChain.RocketFuel,"Ракетное топливо");all[FuelChain.Residue]=new ItemDefinition(FuelChain.Residue,"Гудрон");all[FuelChain.CompressedAir]=new ItemDefinition(FuelChain.CompressedAir,"Сжатый воздух");
         }
-        // Fuel-chain items stay out of the creative catalog until they have icons (step 1.3); BuildSmokeProbe requires catalog == ItemArtwork.AllIds.
-        public static int[] CatalogIds{get{var ids=new List<int>(all.Keys);ids.RemoveAll(id=>id>=FuelChain.CrudeOil&&id<=FuelChain.CompressedAir);ids.Sort();return ids.ToArray();}}
+        // Fuel-chain items 170..177 and stations 49..53 have icons since step 1.3; catalog must equal ItemArtwork.AllIds.
+        public static int[] CatalogIds{get{var ids=new List<int>(all.Keys);ids.Sort();return ids.ToArray();}}
         public static bool Exists(int id)=>all.ContainsKey(id);
         public static ItemDefinition Get(int id)=>all.TryGetValue(id,out var item)?item:default;
         public static bool IsPick(int id)=>id==WoodPick||id==StonePick||id==150||id==151;

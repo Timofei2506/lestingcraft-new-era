@@ -17,7 +17,7 @@ class ExpandedCheck
   if(args.Length>0&&args[0]=="--terrain-vectors")
   {var random=new Random(2591);for(int i=0;i<300;i++){int x=random.Next(-64,64),z=random.Next(-64,64),seed=i%3==0?2506:i%3==1?-1971:int.MaxValue;Console.WriteLine(x+","+z+","+seed+","+TerrainGenerator.Height(x,z,seed,Dimension.Lestingia)+","+TerrainGenerator.Sample(x,60,z,seed,Dimension.Lestingia));}return;}
 #endif
-  Check(ExpandedContent.Blocks.Length==30,"exactly 30 distinct block definitions, including diamonds");
+  Check(ExpandedContent.Blocks.Length==35,"exactly 35 distinct block definitions, including diamonds and stations 49..53");
   var layers=new HashSet<int>();foreach(var b in ExpandedContent.Blocks){Check(Items.Exists(b.Id)&&Items.Get(b.Id).Block==b.Id,"placeable item "+b.Id);Check(b.Hardness>0&&b.Layer>0,"hardness / explicit layer");layers.Add(b.Layer);}
   Check(layers.Count>=27,"distinct appearance for every new material except clear glass");
   Check(Items.ToolDrop(19)==147&&FurnaceState.FuelSeconds(147)==40,"coal mining and fuel");

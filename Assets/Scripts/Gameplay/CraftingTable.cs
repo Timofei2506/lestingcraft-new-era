@@ -38,8 +38,13 @@ new GridRecipe(139,2,2,136,4,136,4),
 new GridRecipe(132,1,3,139,0,139,139,0,139),
             new GridRecipe(105,1,3,140,140,140,140,0,140),new GridRecipe(106,1,3,140,0,140,140,140,140,140,140,140),new GridRecipe(107,1,3,140,140,140,140,0,140,140,0,140),new GridRecipe(108,1,3,140,0,140,140,0,140),
             new GridRecipe(11,1,3,0,145,0,145,143,145,0,145,0),new GridRecipe(15,1,3,0,146,0,147,4,147,4,4,4),new GridRecipe(148,4,1,123,121),
+            new GridRecipe(49,1,3,140,121,140,140,123,140,140,121,140),new GridRecipe(50,1,3,140,140,140,140,17,140,140,140,140),
+            new GridRecipe(51,1,3,11,140,11,140,0,140,11,140,11),new GridRecipe(52,1,3,140,0,140,140,123,140,140,0,140),
+            new GridRecipe(53,1,3,123,140,123,0,121,0,123,140,123),
 new GridRecipe(150,1,3,140,140,140,0,121,0,0,121,0),new GridRecipe(151,1,3,149,149,149,0,121,0,0,121,0),new GridRecipe(48,1,3,149,149,149,149,149,149,149,149,149),new GridRecipe(149,9,1,48),new GridRecipe(164,1,3,0,121,122,121,0,122,0,121,122),new GridRecipe(165,4,1,1,121,122),new GridRecipe(152,1,1,140,140,121),new GridRecipe(153,1,1,149,149,121),new GridRecipe(154,1,2,140,0,121,122),new GridRecipe(155,1,2,149,0,121,122),new GridRecipe(156,1,3,0,0,140,0,121,0,121,0,0),new GridRecipe(157,1,3,0,0,149,0,121,0,121,0,0),new GridRecipe(158,1,2,140,140,140,121,0,121),new GridRecipe(159,1,2,149,149,149,121,0,121),new GridRecipe(160,1,3,140,140,140,140,121,140,0,121,0),new GridRecipe(161,1,3,149,149,149,149,121,149,0,121,0),new GridRecipe(162,1,3,0,140,0,140,140,140,0,121,0),new GridRecipe(163,1,3,0,149,0,149,149,149,0,121,0)
         };
+        /// <summary>Room content version needed to craft an output: 7 for stations 49..53, 5 for 48 and 149+, else 0.</summary>
+        public static int RoomVersionFor(int output)=>output>=49&&output<=53?7:output>=149||output==48?5:0;
         public static GridRecipe Match(ItemStack[] grid,int size)
         {
             if(grid==null||grid.Length!=9||(size!=2&&size!=3))return null;

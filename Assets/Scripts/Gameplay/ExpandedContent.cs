@@ -5,7 +5,7 @@ namespace LestingCraft.Gameplay
  {public readonly int Id,Layer;public readonly string Name,Surface;public readonly float Hardness;public readonly bool Pick;public ExpandedBlock(int id,string name,string surface,float hardness,bool pick,int layer){Id=id;Name=name;Surface=surface;Hardness=hardness;Pick=pick;Layer=layer;}}
  public static class ExpandedContent
  {
-  public const int MaxBlock=48,Version=3;
+  public const int MaxBlock=53,Version=3;
   public static readonly ExpandedBlock[] Blocks={new ExpandedBlock(19,"Угольная руда","ore-coal",2.5f,true,25),
 new ExpandedBlock(20,"Железная руда","ore",3f,true,14),
 new ExpandedBlock(21,"Медная руда","ore-copper",2.8f,true,24),
@@ -33,8 +33,11 @@ new ExpandedBlock(42,"Полированный мрамор","polished-marble",2
 new ExpandedBlock(43,"Песчаник","sandstone",1.2f,true,45),
 new ExpandedBlock(44,"Стекло","crystal",0.4f,false,12),
 new ExpandedBlock(45,"Угольный блок","coal-block",3f,true,46),
-new ExpandedBlock(46,"Медный блок","copper-block",3.5f,true,47),new ExpandedBlock(47,"Алмазная руда","diamond-ore",5f,true,57),new ExpandedBlock(48,"Алмазный блок","diamond-facets",5.5f,true,58)};
-  public static bool Has(int id)=>id>=19&&id<=48;
+new ExpandedBlock(46,"Медный блок","copper-block",3.5f,true,47),new ExpandedBlock(47,"Алмазная руда","diamond-ore",5f,true,57),new ExpandedBlock(48,"Алмазный блок","diamond-facets",5.5f,true,58),
+new ExpandedBlock(49,"Нефтяная скважина","basalt",2.5f,true,11),new ExpandedBlock(50,"Компрессор","metal-ingot",3f,true,51),
+new ExpandedBlock(51,"Перегонный куб","obsidian",3.5f,true,35),new ExpandedBlock(52,"Криоустановка","snow",2.8f,true,15),
+new ExpandedBlock(53,"Смеситель топлива","clay-bricks",2.6f,true,43)};
+  public static bool Has(int id)=>id>=19&&id<=53;
   public static bool NeedsPick(int id)=>id==1||id>=10&&id<=13||id==17||Has(id)&&Blocks[id-19].Pick;
   public static int Smelt(int id)=>id>=20&&id<=26?140+id-20:id==6?44:id==33?39:id==135?138:0;
  }
