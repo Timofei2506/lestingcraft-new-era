@@ -5,8 +5,15 @@ workers_dev = true
 [assets]
 directory = "./public"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+not_found_handling = "404-page"
 run_worker_first = ["/api/*"]
+
+# Waitlist storage. Optional: without it POST /api/waitlist answers 503.
+# To enable, create the namespace (npx wrangler kv namespace create WAITLIST)
+# and add its id here as:
+# [[kv_namespaces]]
+# binding = "WAITLIST"
+# id = "<namespace id from the command output>"
 
 [[services]]
 binding = "COOP"

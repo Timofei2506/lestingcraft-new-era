@@ -1,9 +1,11 @@
 import {api,securityHeaders} from './api.mjs';
 import {launcherFeed} from './launcher.mjs';
+import {handleWaitlist} from './waitlist.mjs';
 export default {
   async fetch(request,env,ctx) {
     const url=new URL(request.url);
     if(url.pathname==='/api/launcher/latest')return launcherFeed(request,env);
+    if(url.pathname==='/api/waitlist')return handleWaitlist(request,env);
     if(url.pathname.startsWith('/api/')) {
       if(request.method!=='GET')return Response.json({error:'Method not allowed'},{status:405});
       if(!['/api/releases','/api/status'].includes(url.pathname))return Response.json({error:'Not found'},{status:404});

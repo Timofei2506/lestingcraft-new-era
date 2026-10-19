@@ -1,0 +1,20 @@
+# Old single-page routes from the previous site. Keep the 301s so shared links still land somewhere useful.
+/game /#game 301
+/game/* /#game 301
+/worlds /#game 301
+/worlds/* /#game 301
+/downloads / 301
+/downloads/* / 301
+/roadmap /#progress 301
+/roadmap/* /#progress 301
+/journal /#progress 301
+/journal/* /#progress 301
+/multiplayer /#game 301
+/hosting /#game 301
+/faq /#faq 301
+/faq/* /#faq 301
+/community / 301
+/community/* / 301
+/items /#shots 301
+/art /#shots 301
+/screenshots /#shots 301

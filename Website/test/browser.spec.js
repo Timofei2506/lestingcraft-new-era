@@ -1,33 +1,130 @@
 import {test,expect} from '@playwright/test';
-const routes=['/','/worlds','/worlds/lestingia','/worlds/ashlands','/worlds/skyreach','/worlds/echocrypt','/worlds/chaosrift','/game','/downloads','/roadmap','/journal','/journal/world-lab','/journal/cooperative','/journal/new-home','/multiplayer','/hosting','/faq','/community','/press','/privacy'];
-test.beforeEach(async({page})=>{await page.route('**/api/releases',r=>r.fulfill({json:{available:true,releases:[]}}));await page.route('**/api/status',r=>r.fulfill({json:{online:true}}));});
-test('all 20 pages render without JavaScript errors',async({page})=>{const errors=[];page.on('pageerror',e=>errors.push(e.message));for(const route of routes){await page.goto(route);await expect(page.locator('main h1')).toBeVisible();await expect(page.locator('header .brand')).toBeVisible();}expect(errors).toEqual([]);});
-test('dimension tabs work with clicks and keyboard',async({page})=>{await page.goto('/');await page.locator('[data-world="ashlands"]').click();await expect(page.locator('#world-feature h3')).toHaveText('Пеплоземье');await page.locator('[data-world="ashlands"]').press('ArrowRight');await expect(page.locator('#world-feature h3')).toHaveText('Небокрай');});
-test('FAQ search, category filters and accordions',async({page})=>{await page.goto('/faq');await page.locator('#faq-search').fill('Unity');await expect(page.locator('#faq-list details')).toHaveCount(3);await page.locator('#faq-list summary').first().click();await expect(page.locator('#faq-list details[open]')).toHaveCount(1);await page.locator('[data-faq-filter="Хостинг"]').click();await expect(page.locator('#faq-list details')).toHaveCount(1);});
-test('journal filters and navigation',async({page})=>{await page.goto('/journal');await page.locator('[data-journal-filter="Кооператив"]').click();await expect(page.locator('.article-card')).toHaveCount(1);await page.locator('.article-card').click();await expect(page).toHaveURL(/\/journal\/cooperative$/);await expect(page.locator('h1')).toHaveText('Мир становится общим');});
-test('empty releases never show an executable download',async({page})=>{await page.goto('/downloads');await expect(page.locator('#release-panel')).toContainText('Готовой стабильной сборки пока нет');await expect(page.locator('.platform-button')).toHaveCount(0);});
-for (const includeRetiredBrowser of [false, true]) {
- test(`Windows download works ${includeRetiredBrowser ? 'with an ignored legacy WebGL field' : 'without a browser asset'}`,async({page})=>{
-  const release={tag:'v1',name:'Готовая версия',date:'2026-10-14',url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/tag/v1',windows:{url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v1/build-StandaloneWindows64.zip',size:1048576}};
-  if(includeRetiredBrowser) release.webgl={url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v1/build-WebGL.zip',size:2097152};
-  await page.unroute('**/api/releases');
-  await page.route('**/api/releases',r=>r.fulfill({json:{available:true,releases:[release]}}));
-  await page.goto('/downloads');
-  await expect(page.locator('.platform-button')).toHaveCount(1);
-  await expect(page.locator('.platform-button')).toHaveAttribute('href',/build-StandaloneWindows64.zip$/);
- });
-}
-test('release API failure is not mistaken for no releases',async({page})=>{await page.unroute('**/api/releases');await page.route('**/api/releases',r=>r.fulfill({status:503,json:{available:false}}));await page.goto('/downloads');await expect(page.locator('#release-panel')).toContainText('Не удалось проверить сборки');});
-test('mobile menu and all pages fit the screen',async({page})=>{await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#menu-toggle').click();await page.locator('#mobile-nav a[href="/downloads"]').click();await expect(page).toHaveURL(/\/downloads$/);await expect(page.locator('#mobile-nav')).toBeHidden();for(const route of routes){await page.goto(route);await expect(page.locator('main h1')).toBeVisible();const width=await page.evaluate(()=>({screen:innerWidth,document:document.documentElement.scrollWidth}));expect(width.document,route).toBeLessThanOrEqual(width.screen+1);}});
-test('hosting commands copy to clipboard',async({page,context})=>{await context.grantPermissions(['clipboard-read','clipboard-write']);await page.goto('/hosting');await page.locator('[data-copy-code="node-code"]').click();await expect(page.locator('#toast')).toHaveText('Скопировано в буфер обмена');expect(await page.evaluate(()=>navigator.clipboard.readText())).toContain('npm ci --omit=dev');});
-test('real gameplay gallery opens and closes with keyboard',async({page})=>{
- await page.goto('/');await page.locator('.field-window [data-view-shot]').click();await expect(page.locator('#media-dialog')).toBeVisible();await expect(page.locator('#media-image')).toHaveAttribute('src','/screenshots/world-hud.webp');await page.keyboard.press('Escape');await expect(page.locator('#media-dialog')).not.toBeVisible();
- await page.locator('.gameplay-shot').nth(1).click();await expect(page.locator('#media-image')).toHaveAttribute('src','/screenshots/workbench-3x3.webp');await page.locator('[data-close-media]').click();await expect(page.locator('#media-dialog')).not.toBeVisible();
+
+const pages=['/','/press/','/privacy/'];
+
+test.beforeEach(async({page})=>{
+  await page.route('**/api/status',r=>r.fulfill({json:{online:true,server:'https://example.test',checkedAt:new Date().toISOString()}}));
 });
-test('all local images load and test access never masquerades as a release',async({page})=>{
- for(const route of ['/','/game','/press','/downloads']){
-  await page.goto(route);await page.locator('main h1').waitFor();
-  const broken=await page.evaluate(async()=>{const images=[...document.querySelectorAll('main img')];await Promise.all(images.map(i=>{i.loading='eager';return i.decode().catch(()=>{});}));return images.filter(i=>!i.naturalWidth).map(i=>i.getAttribute('src'));});expect(broken,route).toEqual([]);
- }
- await expect(page.locator('.tester-access')).toContainText('приватному репозиторию');await expect(page.locator('.platform-button')).toHaveCount(0);
+
+test('every page renders without JavaScript errors or failed same-origin requests',async({page})=>{
+  const errors=[];const failed=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+  page.on('requestfailed',r=>failed.push(r.url()));
+  for(const route of pages){
+    await page.goto(route);
+    await expect(page.locator('main h1')).toBeVisible();
+    await expect(page.locator('header .brand')).toBeVisible();
+    await expect(page.locator('html')).not.toHaveClass(/no-js/);
+  }
+  expect(errors).toEqual([]);
+  expect(failed.filter(u=>u.startsWith(new URL(page.url()).origin))).toEqual([]);
+});
+
+test('unknown page returns the 404 page',async({page})=>{
+  const response=await page.goto('/this-page-does-not-exist');
+  expect(response.status()).toBe(404);
+  await expect(page.locator('main h1')).toHaveText('Такой страницы нет');
+});
+
+test('no horizontal scroll on a phone-width screen',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  for(const route of pages){
+    await page.goto(route);
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+    expect(overflow,route).toBeLessThanOrEqual(1);
+  }
+});
+
+test('mobile menu opens, navigates and closes with Escape',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const toggle=page.locator('#menu-toggle');
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await expect(page.locator('#nav-links')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+});
+
+test('server status reflects the API answer',async({page})=>{
+  await page.goto('/');
+  await expect(page.locator('#server-status')).toHaveAttribute('data-state','online');
+  await expect(page.locator('#server-status span').last()).toHaveText('Сервер онлайн');
+});
+
+test('server status shows an honest unknown state when the API fails',async({page})=>{
+  await page.unroute('**/api/status');
+  await page.route('**/api/status',r=>r.abort());
+  await page.goto('/');
+  await expect(page.locator('#server-status')).toHaveAttribute('data-state','unknown');
+  await expect(page.locator('#server-status span').last()).toHaveText('Статус недоступен');
+});
+
+test('gallery opens a lightbox and closes it with Escape',async({page})=>{
+  await page.goto('/');
+  const shot=page.locator('[data-shot]').first();
+  await shot.scrollIntoViewIfNeeded();
+  await shot.click();
+  const dialog=page.locator('#lightbox');
+  await expect(dialog).toHaveJSProperty('open',true);
+  await expect(page.locator('#lb-img')).toHaveAttribute('src',/\/media\/world-hud\.webp$/);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveJSProperty('open',false);
+});
+
+test.describe('waitlist form',()=>{
+  const fill=async(page,{email='player@example.com',consent=true,note=''}={})=>{
+    await page.locator('#waitlist input[name="email"]').fill(email);
+    if(note)await page.locator('#waitlist textarea[name="note"]').fill(note);
+    if(consent)await page.locator('#waitlist input[name="consent"]').check();
+  };
+
+  test('invalid address is rejected in the browser without a request',async({page})=>{
+    let requests=0;
+    await page.route('**/api/waitlist',r=>{requests++;return r.fulfill({status:200,json:{ok:true}});});
+    await page.goto('/');
+    await fill(page,{email:'not-an-email'});
+    await page.locator('#waitlist button[type="submit"]').click();
+    await expect(page.locator('#form-status')).toContainText('Проверьте адрес почты');
+    expect(requests).toBe(0);
+  });
+
+  test('consent is required',async({page})=>{
+    await page.goto('/');
+    await fill(page,{consent:false});
+    await page.locator('#waitlist button[type="submit"]').click();
+    await expect(page.locator('#form-status')).toContainText('Нужно согласие');
+  });
+
+  test('successful submit sends the note and shows the confirmation',async({page})=>{
+    let body=null;
+    await page.route('**/api/waitlist',async r=>{body=r.request().postDataJSON();await r.fulfill({status:200,json:{ok:true,message:'Готово! Напишем, когда откроем тестовый доступ.'}});});
+    await page.goto('/#waitlist');
+    await fill(page,{note:'Пресса'});
+    await page.locator('#waitlist button[type="submit"]').click();
+    await expect(page.locator('#form-status')).toContainText('Готово!');
+    expect(body.email).toBe('player@example.com');
+    expect(body.note).toBe('Пресса');
+    expect(body.consent).toBe(true);
+    expect(body.website).toBe('');
+  });
+
+  test('503 from the server says the list is not open yet',async({page})=>{
+    await page.route('**/api/waitlist',r=>r.fulfill({status:503,json:{ok:false,message:'Лист ожидания скоро откроется. Попробуйте позже.'}}));
+    await page.goto('/');
+    await fill(page);
+    await page.locator('#waitlist button[type="submit"]').click();
+    await expect(page.locator('#form-status')).toContainText('скоро откроется');
+    await expect(page.locator('#form-status')).toHaveAttribute('data-kind','soon');
+  });
+
+  test('network failure is reported, not hidden',async({page})=>{
+    await page.route('**/api/waitlist',r=>r.abort());
+    await page.goto('/');
+    await fill(page);
+    await page.locator('#waitlist button[type="submit"]').click();
+    await expect(page.locator('#form-status')).toContainText('Нет связи');
+  });
 });

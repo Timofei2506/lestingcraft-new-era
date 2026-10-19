@@ -7,8 +7,7 @@
     "start": "node server.mjs",
     "deploy": "wrangler deploy",
     "test": "node --test test/*.test.mjs",
-    "test:browser": "playwright test",
-    "prerender": "node prerender.mjs"
+    "test:browser": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",

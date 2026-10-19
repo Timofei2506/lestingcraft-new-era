@@ -1,23 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://lestingcraft.kroterallitir.workers.dev/</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/worlds</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/worlds/lestingia</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/worlds/ashlands</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/worlds/skyreach</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/worlds/echocrypt</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/worlds/chaosrift</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/game</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/downloads</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/roadmap</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/journal</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/journal/world-lab</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/journal/cooperative</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/journal/new-home</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/multiplayer</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/hosting</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/faq</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/community</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/press</loc></url>
-<url><loc>https://lestingcraft.kroterallitir.workers.dev/privacy</loc></url>
+<url><loc>https://lestingcraft.kroterallitir.workers.dev/press/</loc></url>
+<url><loc>https://lestingcraft.kroterallitir.workers.dev/privacy/</loc></url>
 </urlset>
