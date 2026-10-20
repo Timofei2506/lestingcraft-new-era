@@ -39,10 +39,11 @@ namespace LestingCraft.Gameplay
     public static class VerticalShuttleWalk
     {
         public const int SeatCount=2;
-        // Pad walking surface is Y=2 and deck top Y=30; placing the shuttle origin
-        // at pad Y=2 puts ground at shuttle-local Y=0 and cabin entry at Y=28.
+        // At this side of the pad, ground walking surface is Y=5; deck top Y=30.
+        // With shuttle origin at pad Y=2, ground is local Y=3 and entry is Y=28.
         // X=-19.8 avoids the approved orbiter's mid-height booster (X>=-18).
-        public const float LiftTravel=28f;
+        public const float LiftTravel=25f;
+        public const float LiftGroundY=3f;
         public const float LiftX=-19.8f;
         public static bool Inside(double x,double y,double z)
         {

@@ -45,7 +45,7 @@ class SpaceAssetCheck
                         Check(fitted.At(x,y,z)==0&&LaunchPadLiftOpening.Remove(x-47,y,z-45),"Only well and tower door removed");
                     }
                 Check(changes==10,"Six lift deck cells and four tower partition cells");
-                Check(model.At(27,1,48)!=0&&model.At(27,2,48)==0,"Pad ground walking surface at Y=2");
+                Check(model.At(27,4,48)!=0&&model.At(27,5,48)==0,"Pad ground walking surface at Y=5");
                 Check(model.At(33,29,48)!=0&&model.At(33,30,48)==0,"Pad deck walking surface at Y=30");
                 Check(fitted.At(34,30,48)==0,"Walk-through in tower wall");
             }

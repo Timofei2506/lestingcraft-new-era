@@ -25,9 +25,9 @@ class ShuttleInteriorCheck
         var vertical=new ShuttleElevator(VerticalShuttleWalk.LiftTravel);
         Check(vertical.Board()&&vertical.RequestUp(),"vertical cabin lift boards");
         vertical.Advance(3);
-        Check(Math.Abs(vertical.Height-14)<1e-4,"3 s = 14 m continuously");
+        Check(Math.Abs(vertical.Height-12.5f)<1e-4,"3 s = 12.5 m continuously");
         vertical.Advance(3);
-        Check(Math.Abs(vertical.Height-28)<1e-4&&vertical.State==ElevatorState.Top,"6 s = 28 m at tower deck");
+        Check(Math.Abs(vertical.Height-25)<1e-4&&vertical.State==ElevatorState.Top,"6 s = 25 m between pad surfaces");
         Check(vertical.Exit()&&vertical.ReturnEmpty(),"recall empty lift for the second player");
         vertical.Advance(6);
         Check(vertical.State==ElevatorState.Ground&&Math.Abs(vertical.Height)<1e-4,"empty lift returns without teleporting a rider");

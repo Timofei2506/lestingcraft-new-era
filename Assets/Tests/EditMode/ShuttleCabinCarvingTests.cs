@@ -62,9 +62,9 @@ namespace LestingCraft.Tests.EditMode
             var lift=new ShuttleElevator(VerticalShuttleWalk.LiftTravel);
             Assert.IsFalse(lift.RequestUp());
             Assert.IsTrue(lift.Board());Assert.IsTrue(lift.RequestUp());
-            lift.Advance(3);Assert.AreEqual(14f,lift.Height,.001f);
+            lift.Advance(3);Assert.AreEqual(12.5f,lift.Height,.001f);
             Assert.IsFalse(lift.Exit());lift.Advance(3);
-            Assert.AreEqual(28f,lift.Height,.001f);
+            Assert.AreEqual(25f,lift.Height,.001f);
             Assert.IsTrue(lift.Exit());Assert.IsFalse(lift.RequestDown());
             Assert.IsTrue(lift.ReturnEmpty());lift.Advance(6);
             Assert.AreEqual(ElevatorState.Ground,lift.State);
@@ -118,7 +118,7 @@ namespace LestingCraft.Tests.EditMode
             Assert.AreEqual(0,fitted.At(27,29,48));
             Assert.AreNotEqual(0,approved.At(34,30,48));
             Assert.AreEqual(0,fitted.At(34,30,48));
-            Assert.AreNotEqual(0,approved.At(27,1,48)); // ground top Y=2
+            Assert.AreNotEqual(0,approved.At(27,4,48)); // ground top Y=5
             Assert.AreNotEqual(0,approved.At(33,29,48)); // deck top Y=30
         }
         [Test] public void DerivedPadHasPhysicalCollidingDeckAndOpenWell()

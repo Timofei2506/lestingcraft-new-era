@@ -5,7 +5,8 @@ namespace LestingCraft.Gameplay
     /// <summary>Functional openings in a copy of the owner-approved LaunchPad, never
     /// in the source. The crew lift rises between the pad's structural rails; a small
     /// doorway through the tower partition connects the deck to the orbiter hatch.
-    /// Pad and Shuttle use the same X/Z axes; shuttle origin is pad Y=2.</summary>
+    /// Pad and Shuttle use the same X/Z axes; shuttle origin is pad Y=2,
+    /// while the ground walking surface beside the lift is pad Y=5.</summary>
     public static class LaunchPadLiftOpening
     {
         public const int CenterX=47,CenterZ=45;
