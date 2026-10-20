@@ -22,6 +22,15 @@ class ShuttleInteriorCheck
         // Continuous travel; button cannot operate an empty lift, travel time precisely 6 s.
         var lift=new ShuttleElevator();
         Check(!lift.RequestUp(),"empty lift cannot move");
+        var vertical=new ShuttleElevator(VerticalShuttleWalk.LiftTravel);
+        Check(vertical.Board()&&vertical.RequestUp(),"vertical cabin lift boards");
+        vertical.Advance(3);
+        Check(Math.Abs(vertical.Height-15)<1e-4,"3 s = 15 m continuously");
+        vertical.Advance(3);
+        Check(Math.Abs(vertical.Height-30)<1e-4&&vertical.State==ElevatorState.Top,"6 s = 30 m at tower deck");
+        Check(vertical.Exit()&&vertical.ReturnEmpty(),"recall empty lift for the second player");
+        vertical.Advance(6);
+        Check(vertical.State==ElevatorState.Ground&&Math.Abs(vertical.Height)<1e-4,"empty lift returns without teleporting a rider");
         var s=new ShuttleInteriorSession();s.UpdatePosition(0,0,0);
         Check(s.BoardLift()&&!s.BoardLift(),"board once");
         Check(s.Elevator.RequestUp(),"button up");

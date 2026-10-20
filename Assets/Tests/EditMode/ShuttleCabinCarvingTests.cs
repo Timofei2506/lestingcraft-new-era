@@ -56,6 +56,19 @@ namespace LestingCraft.Tests.EditMode
                 Assert.IsTrue(VerticalShuttleWalk.Inside(x,y,z));
             }
         }
+        [Test] public void ThirtyMetreLiftCarriesOneRiderThenReturnsEmptyForSecond()
+        {
+            var lift=new ShuttleElevator(VerticalShuttleWalk.LiftTravel);
+            Assert.IsFalse(lift.RequestUp());
+            Assert.IsTrue(lift.Board());Assert.IsTrue(lift.RequestUp());
+            lift.Advance(3);Assert.AreEqual(15f,lift.Height,.001f);
+            Assert.IsFalse(lift.Exit());lift.Advance(3);
+            Assert.AreEqual(30f,lift.Height,.001f);
+            Assert.IsTrue(lift.Exit());Assert.IsFalse(lift.RequestDown());
+            Assert.IsTrue(lift.ReturnEmpty());lift.Advance(6);
+            Assert.AreEqual(ElevatorState.Ground,lift.State);
+            Assert.AreEqual(0f,lift.Height,.001f);
+        }
         [Test] public void PhysicallyFittedDecksSeatsAndHatchHaveCollision()
         {
             var root=new GameObject("vertical shuttle test");
@@ -65,6 +78,12 @@ namespace LestingCraft.Tests.EditMode
                 Assert.IsNotNull(visual.GetComponentInChildren<SpaceVoxelVisual>());
                 Assert.Greater(visual.GetComponentsInChildren<BoxCollider>().Length,10);
                 Assert.IsNotNull(visual.transform.Find("Lower crew deck").GetComponent<BoxCollider>());
+                var lift=visual.transform.Find("Moving 30 m crew lift");
+                var bridge=visual.transform.Find("Tower lift exit bridge");
+                Assert.IsNotNull(lift.GetComponent<BoxCollider>());
+                Assert.IsNotNull(bridge.GetComponent<BoxCollider>());
+                Assert.LessOrEqual(bridge.localPosition.x-bridge.localScale.x/2,
+                                   lift.localPosition.x+lift.localScale.x/2); // no gap at top
                 Assert.IsNotNull(visual.transform.Find("Cockpit forward bridge").GetComponent<BoxCollider>());
                 Assert.IsNotNull(visual.transform.Find("Cockpit ladder landing").GetComponent<BoxCollider>());
                 for(int i=0;i<VerticalShuttleWalk.SeatCount;i++)

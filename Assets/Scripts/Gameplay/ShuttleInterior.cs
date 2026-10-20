@@ -46,10 +46,16 @@ namespace LestingCraft.Gameplay
     /// <summary>Server-authoritative progress can be advanced in fixed time steps; never moves a player instantaneously.</summary>
     public sealed class ShuttleElevator
     {
+        readonly float travelHeight;
+        public ShuttleElevator(float height=ShuttleInteriorLayout.LiftHeight)
+        {
+            if(height<=0||float.IsNaN(height)||float.IsInfinity(height))throw new ArgumentOutOfRangeException("height");
+            travelHeight=height;
+        }
         public ElevatorState State {get;private set;}
         public float Progress {get;private set;} // 0 at ground, 1 at top
         public bool Occupied {get;private set;}
-        public float Height {get{return Progress*ShuttleInteriorLayout.LiftHeight;}}
+        public float Height {get{return Progress*travelHeight;}}
         public bool IsMoving {get{return State==ElevatorState.Rising||State==ElevatorState.Descending;}}
         public bool Board()
         {
@@ -69,6 +75,13 @@ namespace LestingCraft.Gameplay
         public bool RequestDown()
         {
             if(State!=ElevatorState.Top||!Occupied)return false;
+            State=ElevatorState.Descending;return true;
+        }
+        /// <summary>Recall the empty platform so the next crew member can board from ground.
+        /// Nobody is carried if the rider already stepped off at the top.</summary>
+        public bool ReturnEmpty()
+        {
+            if(State!=ElevatorState.Top||Occupied)return false;
             State=ElevatorState.Descending;return true;
         }
         public void Advance(float seconds)
