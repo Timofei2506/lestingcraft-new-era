@@ -47,3 +47,46 @@ test('preflight fails closed for hatch, moving lift, disconnected crew, stale or
   assert.equal(send(pilot,'space_preflight',t+2800).ready,false);
   assert.equal(room.config.spaceMission,undefined);
 });
+
+test('trusted ignition transition persists a unique two-person lunar mission only after fresh preflight',()=>{
+  const {room,pilot,copilot,seat}=crew();
+  assert.throws(()=>room.igniteVerifiedMoon(copilot,t+400),/pilot/);
+  room.config.launchHatch=true;
+  assert.throws(()=>room.igniteVerifiedMoon(pilot,t+400),/Preflight refused/);
+  room.config.launchHatch=false;
+  let commits=0;
+  assert.throws(()=>room.igniteVerifiedMoon(pilot,t+400,()=>{throw Error('storage unavailable');}),/storage unavailable/);
+  assert.equal(room.config.spaceMission,undefined,'failed storage must not strand the room');
+  const started=room.igniteVerifiedMoon(pilot,t+500,next=>{
+    assert.equal(next.spaceMission.crew.length,2);
+    assert.deepEqual(next.spaceMission.crew,[a,b]);
+    commits++;
+  });
+  assert.equal(commits,1);
+  assert.equal(started.space.phase,'countdown');
+  assert.equal(started.space.seconds,1800);
+  assert.deepEqual(started.space.position,[149597870700,0,0]);
+  assert(!JSON.stringify(started).includes(a));assert(!JSON.stringify(started).includes(b));
+  assert.throws(()=>room.igniteVerifiedMoon(pilot,t+600),/Preflight refused/);
+  assert.equal(room.config.spaceMission.ignitionAt,t+500+10000);
+  // Normal ground packets are refused for crew while the server owns the mission.
+  assert.throws(()=>seat(pilot,0,t+700),/In-flight crew/);
+  const restarted=new RoomState(JSON.parse(JSON.stringify(room.config)));
+  assert.equal(restarted.config.spaceMission.crew.length,2);
+  assert.equal(restarted.welcome(newPeer('new-pilot','Pilot',a),[]).space.active,true);
+});
+
+test('trusted ignition fails when seat claims are stale, a crew member leaves or a rider remains',()=>{
+  const {room,pilot,copilot,send,seat}=crew();
+  assert.throws(()=>room.igniteVerifiedMoon(pilot,t+2000),/Preflight refused/);
+  seat(pilot,0,t+2100);seat(copilot,1,t+2200);
+  room.config.launchLift={from:1,to:1,startedAt:t,riderKey:b};
+  assert.throws(()=>room.igniteVerifiedMoon(pilot,t+2300),/Preflight refused/);
+  room.config.launchLift={from:1,to:1,startedAt:t,riderKey:null};
+  send(copilot,'space_seat',t+2300,{action:'stand',index:1});
+  assert.throws(()=>room.igniteVerifiedMoon(pilot,t+2400),/Preflight refused/);
+  seat(copilot,1,t+2500);send(copilot,'space_seat',t+2600,{action:'sit',index:1});
+  room.disconnect(copilot,()=>{});
+  assert.throws(()=>room.igniteVerifiedMoon(pilot,t+2700),/Preflight refused/);
+  assert.equal(room.config.spaceMission,undefined);
+});

@@ -4,7 +4,7 @@ import {weapons} from './weapons.js';
 import {Fauna} from './wildlife.js';
 import {Living,ownerTag,transact,toolDrop} from './living.js';
 import {stationWalk,stationTrade} from './station-visit.js';
-import {advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
+import {beginMoonMission,advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
 import {launchSite} from './launch-site.js';
 import {emptyLift,liftAt,liftSnapshot,operateLift} from './shuttle-lift.js';
 import {preflight} from './shuttle-preflight.js';
@@ -61,6 +61,20 @@ export function validateEdit(p,peer,edits,now,maxBlock=18,bound=64) {
 export class RoomState {
   constructor(config,edits=[],savedPlayers=[]) {this.config={...config,contentVersion:config.contentVersion??(config.rulesVersion>=10?7:config.rulesVersion>=9?6:config.rulesVersion>=8?5:config.rulesVersion>=7?4:config.rulesVersion>=6?3:config.rulesVersion>=5?2:1)};this.members=new Map();this.storyEngine=new StoryEngine();this.observers=new Map();this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));this.fauna=new Fauna(config.seed,config.wildlife||{},this.edits,this.config.contentVersion);this.living=new Living(config.seed,config.living||{},this.edits,this.config.contentVersion);this.living.restorePending();this.fauna.dynamicCells=this.living.cells;}
   setMembers(peers){this.members=new Map(peers.map(p=>[p.id,p]));const connected=new Set(peers.map(p=>p.playerKey)),ackKey=this.config.story?`${this.config.story.stage}:${this.config.story.line}`:'';for(const key of this.storyEngine.ready)if(!connected.has(key))this.storyEngine.ready.delete(key);this.storyEngine.acks=new Set(peers.filter(p=>p.storyAckKey===ackKey&&ackKey!=='').map(p=>p.playerKey));for(const p of peers){if(p.storyReady)this.storyEngine.ready.add(p.playerKey);if(p.lastStoryHit)this.storyEngine.hits.set(p.playerKey,p.lastStoryHit);}}
+  // Internal atomic ignition transition. Deliberately NOT mapped to an incoming
+  // WebSocket message while the Unity flight/landing client cannot restore a crew.
+  // It must never be called on an unverified snapshot or before persistence succeeds.
+  igniteVerifiedMoon(peer,now,persist=()=>{}){
+    if(this.config.shuttleSeats?.[0]!==peer?.playerKey||this.members.get(peer.id)!==peer)
+      throw Error('Only the connected seated pilot may ignite');
+    const check=preflight(this.config,[...this.members.values()],now);
+    if(!check.ready)throw Error('Preflight refused: '+check.issues.join('; '));
+    const seats=[...this.config.shuttleSeats];
+    const mission=beginMoonMission({crew:seats,boarded:[...this.config.padVisited],pilot:peer.playerKey,now});
+    const next={...this.config,spaceMission:mission};
+    persist(next);this.config=next;
+    return {type:'space_mission',id:peer.id,space:safeMission(mission,now),serverNow:now};
+  }
   clock(now=Date.now()){return 420+Math.max(0,(now-(this.config.startedAt||now))/1000);}
   lobbyState(){return {clock:this.clock(),type:'lobby',started:!!this.config.started,hostId:[...this.members.values()].find(p=>p.playerKey===this.config.ownerKey)?.id||'',players:[...this.members.values()].map(publicPeer),story:this.config.story,serverNow:Date.now()};}
   disconnect(peer,persist=()=>{}){this.members.delete(peer.id);this.observers.delete(peer.id);this.storyEngine.ready.delete(peer.playerKey);this.storyEngine.acks.delete(peer.playerKey);this.storyEngine.hits.delete(peer.playerKey);let next=this.config;
