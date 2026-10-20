@@ -37,6 +37,20 @@ namespace LestingCraft.Tests.EditMode
             Assert.IsTrue(withPad.launchSite.active);
             Assert.AreEqual(70,withPad.launchSite.y);
             Assert.IsFalse(ordinary.launchSite!=null&&ordinary.launchSite.active);
+            var withLift=JsonUtility.FromJson<NetPacket>(
+                "{\"type\":\"space_lift\",\"lift\":{\"active\":true,\"moving\":true,\"direction\":\"up\",\"progress\":0.5,\"height\":12.5,\"occupied\":true,\"riderId\":\"peer-a\",\"serverNow\":12000}}");
+            Assert.IsTrue(withLift.lift.active);
+            Assert.AreEqual(12.5f,withLift.lift.height,.001f);
+            Assert.AreEqual("up",withLift.lift.direction);
+            Assert.AreEqual("peer-a",withLift.lift.riderId);
+            Assert.IsFalse(ordinary.lift!=null&&ordinary.lift.active);
+            var opened=JsonUtility.FromJson<NetPacket>("{\"type\":\"space_hatch\",\"hatchOpen\":true}");
+            Assert.IsTrue(opened.hatchOpen);
+            Assert.IsFalse(ordinary.hatchOpen);
+            var seated=JsonUtility.FromJson<NetPacket>(
+                "{\"type\":\"space_seat\",\"seats\":[\"peer-a\",\"peer-b\"]}");
+            Assert.AreEqual(2,seated.seats.Length);
+            Assert.AreEqual("peer-b",seated.seats[1]);
         }
     }
 }

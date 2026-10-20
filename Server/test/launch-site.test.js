@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {launchSite,PAD_X,PAD_Z,RAMP_START_Z,LIFT_X} from '../src/launch-site.js';
 import {height} from '../src/terrain-legacy.js';
-import {createConfig,RoomState,publicConfig,newPeer} from '../src/protocol.js';
+import {createConfig,RoomState,publicConfig,newPeer,acceptsClient} from '../src/protocol.js';
 const owner='a'.repeat(32);
 
 test('approved pad is anchored above the entire deterministic ground and approach',()=>{
@@ -21,13 +21,16 @@ test('approved pad is anchored above the entire deterministic ground and approac
 });
 
 test('room chooses site, ignores client supplied coordinates and preserves it on reconnect',()=>{
-  const config=createConfig({version:1,seed:2506,dimension:0,mode:2,rulesVersion:10,
+  const config=createConfig({version:1,seed:2506,dimension:0,mode:2,rulesVersion:11,
     ownerKey:owner,launchSite:{x:0,y:1,z:0}});
   assert.deepEqual(config.launchSite,launchSite(2506));
   const peer=newPeer('one','Player',owner),room=new RoomState(config);
   assert.deepEqual(room.welcome(peer,[]).launchSite,config.launchSite);
   assert.deepEqual(publicConfig(config).launchSite,config.launchSite);
   assert.deepEqual(new RoomState(JSON.parse(JSON.stringify(config))).welcome(peer,[]).launchSite,config.launchSite);
-  const old=createConfig({version:1,seed:2506,dimension:0,mode:2,rulesVersion:9,ownerKey:owner});
-  assert.equal(old.launchSite,undefined,'old content topology is unchanged');
+  const old=createConfig({version:1,seed:2506,dimension:0,mode:2,rulesVersion:10,ownerKey:owner});
+  assert.equal(old.launchSite,undefined,'old rules10 room topology is unchanged');
+  assert.equal(acceptsClient(config,10),false,'older clients cannot join a visible site they cannot render');
+  assert.equal(acceptsClient(config,11),true);
+  assert.equal(acceptsClient(old,10),true,'old rooms remain joinable');
 });

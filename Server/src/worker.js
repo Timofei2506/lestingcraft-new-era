@@ -87,7 +87,7 @@ export class GameRoom {
           this.ctx.storage.sql.exec('UPDATE meta SET json=? WHERE id=1',JSON.stringify(config));
         });
       },config=>this.ctx.storage.sql.exec('UPDATE meta SET json=? WHERE id=1',JSON.stringify(config)));
-      socket.serializeAttachment(peer);if(message.privateSave){socket.send(JSON.stringify({type:message.type==='station_trade'?'station_trade_saved':'living_saved',requestId:message.requestId,save:message.privateSave}));delete message.privateSave;}this.broadcast(message,message.type==='player'&&!message.animals&&!message.story&&!message.living?socket:null);
+      socket.serializeAttachment(peer);if(message.privateSave){socket.send(JSON.stringify({type:message.type==='station_trade'?'station_trade_saved':'living_saved',requestId:message.requestId,save:message.privateSave}));delete message.privateSave;}this.broadcast(message,message.type==='player'&&!message.animals&&!message.story&&!message.living&&!message.lift?socket:null);
     }catch(e){socket.serializeAttachment(peer);if(peer.count>30)socket.close(1008,'Rate limit');else try{socket.send(JSON.stringify(packetError(raw,e)));}catch{}}
   }
   broadcast(message,exclude=null) {const raw=JSON.stringify(message);for(const socket of this.ctx.getWebSockets())if(socket!==exclude)try{socket.send(raw);}catch{}}

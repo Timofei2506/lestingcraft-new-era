@@ -6,8 +6,9 @@ import {Living,ownerTag,transact,toolDrop} from './living.js';
 import {stationWalk,stationTrade} from './station-visit.js';
 import {advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
 import {launchSite} from './launch-site.js';
+import {emptyLift,liftAt,liftSnapshot,operateLift} from './shuttle-lift.js';
 export const VERSION = 1;
-export const RULES_VERSION = 10;
+export const RULES_VERSION = 11;
 export const MAX_MESSAGE = 16384;
 export const MAX_PLAYERS = 8;
 export const MAX_EDITS = 4096;
@@ -20,10 +21,10 @@ const finite = v => typeof v === 'number' && Number.isFinite(v);
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
     throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
-  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
-  if([2,3,4,5,6,7,8,9,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
+  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
+  if([2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
-  return {launchSite:value.rulesVersion>=RULES_VERSION?launchSite(value.seed):undefined, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
+  return {launchSite:value.rulesVersion>=RULES_VERSION?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=RULES_VERSION?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
 const safeMission=(m,now)=>{const v=missionView(m,now);return {active:true,from:v.from,to:v.to,seconds:v.seconds,phase:v.phase,elapsed:v.elapsed,position:v.position,autopilot:v.autopilot,landingBurn:v.landingBurn,crewCount:v.crew.length};};
 export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
@@ -61,11 +62,17 @@ export class RoomState {
   setMembers(peers){this.members=new Map(peers.map(p=>[p.id,p]));const connected=new Set(peers.map(p=>p.playerKey)),ackKey=this.config.story?`${this.config.story.stage}:${this.config.story.line}`:'';for(const key of this.storyEngine.ready)if(!connected.has(key))this.storyEngine.ready.delete(key);this.storyEngine.acks=new Set(peers.filter(p=>p.storyAckKey===ackKey&&ackKey!=='').map(p=>p.playerKey));for(const p of peers){if(p.storyReady)this.storyEngine.ready.add(p.playerKey);if(p.lastStoryHit)this.storyEngine.hits.set(p.playerKey,p.lastStoryHit);}}
   clock(now=Date.now()){return 420+Math.max(0,(now-(this.config.startedAt||now))/1000);}
   lobbyState(){return {clock:this.clock(),type:'lobby',started:!!this.config.started,hostId:[...this.members.values()].find(p=>p.playerKey===this.config.ownerKey)?.id||'',players:[...this.members.values()].map(publicPeer),story:this.config.story,serverNow:Date.now()};}
-  disconnect(peer,persist=()=>{}){this.members.delete(peer.id);this.observers.delete(peer.id);this.storyEngine.ready.delete(peer.playerKey);this.storyEngine.acks.delete(peer.playerKey);this.storyEngine.hits.delete(peer.playerKey);if(this.config.lobby&&this.config.ownerKey===peer.playerKey&&this.members.size){const next={...this.config,ownerKey:this.members.values().next().value.playerKey};persist(next);this.config=next;}}
+  disconnect(peer,persist=()=>{}){this.members.delete(peer.id);this.observers.delete(peer.id);this.storyEngine.ready.delete(peer.playerKey);this.storyEngine.acks.delete(peer.playerKey);this.storyEngine.hits.delete(peer.playerKey);let next=this.config;
+    // A disconnected rider cannot strand the only platform forever; it continues its
+    // current path empty. No person is moved by this cleanup or by a new connection.
+    if(next.launchLift?.riderKey===peer.playerKey)next={...next,launchLift:{...next.launchLift,riderKey:null}};
+    if(next.shuttleSeats?.includes(peer.playerKey))next={...next,shuttleSeats:next.shuttleSeats.map(k=>k===peer.playerKey?null:k)};
+    if(next.lobby&&next.ownerKey===peer.playerKey&&this.members.size)next={...next,ownerKey:this.members.values().next().value.playerKey};
+    if(next!==this.config){persist(next);this.config=next;}}
   welcome(peer,peers) {
     this.setMembers([...peers.filter(p=>p.id!==peer.id),peer]);
-    const {wildlife,ownerKey,living,spaceVisit,spaceMission,...publicConfig}=this.config,save=this.savedPlayers.get(peer.playerKey)||null;
-    return {space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{active:true,dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
+    const {wildlife,ownerKey,living,spaceVisit,spaceMission,launchLift,padVisited,shuttleSeats,...publicConfig}=this.config,save=this.savedPlayers.get(peer.playerKey)||null;
+    return {seats:(shuttleSeats||[null,null]).map(key=>[...this.members.values()].find(m=>m.playerKey===key)?.id||''),hatchOpen:!!this.config.launchHatch,lift:this.config.launchSite?.active?liftSnapshot(launchLift||emptyLift(),Date.now(),[...this.members.values()]):undefined,space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{active:true,dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
   }
   handle(peer,raw,now,persistEdit,persistPlayer=()=>{},persistFauna=()=>{}) {
     if(!consumeRate(peer,now))throw new Error('Rate limit');
@@ -75,6 +82,46 @@ export class RoomState {
       const next={...this.config,started:true,startedAt:now,story:this.config.story?{...this.config.story,bossMax:180+90*Math.max(0,this.members.size-1)}:null};persistFauna(next);this.config=next;return {...this.lobbyState(),type:'lobby_start',serverNow:now};
     }
     if(this.config.lobby&&!this.config.started)throw Error('Wait for host to start the lobby');
+    // A room owns the lift. The command supplies an action, never a height, crew key,
+    // timestamp or teleported position. Position is the latest server-recorded sample.
+    if(p.type==='space_lift'){
+      if(!this.config.launchSite?.active||!this.config.launchLift||this.config.runEnded||
+         this.config.spaceMission||this.config.spaceVisit||now-(peer.lastLiftAction||0)<350)
+        throw Error('Crew lift unavailable');
+      const previous=liftAt(this.config.launchLift,now);
+      const nextLift=operateLift(this.config.launchLift,this.config.launchSite,peer,p.action,now);
+      const walkedOut=p.action==='exit'&&previous.progress===1&&previous.riderKey===peer.playerKey;
+      const visited=this.config.padVisited||[];
+      const next={...this.config,launchLift:nextLift,
+        padVisited:walkedOut&&!visited.includes(peer.playerKey)?[...visited,peer.playerKey]:visited};
+      persistFauna(next);this.config=next;peer.lastLiftAction=now;
+      return {type:'space_lift',id:peer.id,lift:liftSnapshot(nextLift,now,[...this.members.values()])};
+    }
+    if(p.type==='space_hatch'){
+      const site=this.config.launchSite;
+      if(!site?.active||this.config.runEnded||this.config.spaceMission||this.config.spaceVisit||
+         !this.config.padVisited?.includes(peer.playerKey)||
+         typeof p.open!=='boolean'||!peer.positioned||now-peer.lastPosition>1500||
+         Math.abs(peer.x-(site.x-9))>3.5||Math.abs(peer.z-(site.z+3))>1.5||
+         Math.abs(peer.y-(site.y+30+1.58))>2)throw Error('Hatch needs crew physically at the upper deck');
+      if(p.open===!!this.config.launchHatch)return {type:'space_hatch',hatchOpen:p.open,id:peer.id};
+      const next={...this.config,launchHatch:p.open};persistFauna(next);this.config=next;
+      return {type:'space_hatch',hatchOpen:p.open,id:peer.id};
+    }
+    if(p.type==='space_seat'){
+      const site=this.config.launchSite,key=peer.playerKey,seats=this.config.shuttleSeats||[null,null];
+      if(!site?.active||this.config.runEnded||this.config.spaceMission||this.config.spaceVisit||
+         !this.config.padVisited?.includes(key)||!peer.positioned||now-peer.lastPosition>1500||
+         !['sit','stand'].includes(p.action)||!integer(p.index)||p.index<0||p.index>1||
+         Math.abs(peer.x-(site.x+(p.index===0?-.4:1.4)))>1.1||
+         Math.abs(peer.z-(site.z+5.35))>1.1||
+         Math.abs(peer.y-(site.y+44+1.58))>1.4)throw Error('Crew must walk to a real cockpit seat');
+      if(p.action==='sit'&&(seats[p.index]||seats.includes(key))||
+         p.action==='stand'&&seats[p.index]!==key)throw Error('Crew seat occupied or unavailable');
+      const nextSeats=[...seats];nextSeats[p.index]=p.action==='sit'?key:null;
+      const next={...this.config,shuttleSeats:nextSeats};persistFauna(next);this.config=next;
+      return {type:'space_seat',id:peer.id,seats:nextSeats.map(k=>[...this.members.values()].find(m=>m.playerKey===k)?.id||'')};
+    }
     // Only trusted physical-boarding code may install a mission; no network launch packet.
     // All flight updates below use the server clock and stable crew identities.
     if(['space_heartbeat','space_control','space_autopilot','space_land'].includes(p.type)) {
@@ -105,6 +152,14 @@ export class RoomState {
       persistFauna(next);this.config=next;this.storyEngine=result.engine;if(p.type==='story_ready')peer.storyReady=true;if(p.action==='ack')peer.storyAckKey=`${p.stage}:${p.line}`;if(p.action==='hit')peer.lastStoryHit=now;return {clock:this.clock(now),type:'story',story:result.story,damageEvents:result.damageEvents,serverNow:now,campaign:this.config.campaign};
     }
     if(p.type==='position') {
+      const site=this.config.launchSite;
+      if(site?.active&&peer.positioned&&now-peer.lastPosition>0&&now-peer.lastPosition<5000&&
+         Math.abs(peer.x-site.x)<70&&Math.abs(peer.z-site.z)<70&&
+         finite(p.x)&&finite(p.y)&&finite(p.z)&&Math.abs(p.x-site.x)<70&&Math.abs(p.z-site.z)<70){
+        const dt=(now-peer.lastPosition)/1000;
+        if(Math.hypot(p.x-peer.x,p.z-peer.z)>11*dt+.4||Math.abs(p.y-peer.y)>35*dt+.4)
+          throw Error('Unphysical step near launch site');
+      }
       const message=validatePosition(p,peer,now,this.config.contentVersion>=4?384:64);Object.assign(peer,message,{positioned:true,lastPosition:now});message.clock=this.clock(now);this.observers.set(peer.id,{...peer,seen:now});
       for(const [id,observer] of this.observers)if(now-observer.seen>5000)this.observers.delete(id);
       if(this.config.contentVersion>=2&&!this.config.runEnded){
@@ -113,6 +168,9 @@ export class RoomState {
       }
       if(this.config.contentVersion>=6&&!this.config.runEnded){const candidate=new Living(this.config.seed,this.living.save(),this.edits,this.config.contentVersion);candidate.last=this.living.last;candidate.flow=this.living.flow;candidate.fluidPass=this.living.fluidPass;candidate.queue=this.living.queue.map(p=>({...p}));candidate.queued=new Set(this.living.queued);candidate.paths=new Map(this.living.paths);if(candidate.tick(now,this.clock(now),[...this.observers.values()].filter(p=>this.savedPlayers.get(p.playerKey)?.survival?.health!==0))){const next={...this.config,living:candidate.save()};persistFauna(next);this.config=next;this.living=candidate;this.fauna.dynamicCells=candidate.cells;message.living=candidate.save();if(this.config.mode!==2)message.damageEvents=[...(message.damageEvents||[]),...candidate.impacts];}}
       if(this.config.story){const result=this.storyEngine.process(this.config,{type:'tick'},peer,[...this.members.values()],now);if(result.changed){const next={...this.config,story:result.story};persistFauna(next);this.config=next;this.storyEngine=result.engine;message.story=result.story;message.serverNow=now;message.damageEvents=[...(message.damageEvents||[]),...result.damageEvents];}}
+      if(this.config.launchSite?.active&&this.config.launchLift&&
+         Math.abs(peer.x-this.config.launchSite.x)<60&&Math.abs(peer.z-this.config.launchSite.z)<60)
+        message.lift=liftSnapshot(this.config.launchLift,now,[...this.members.values()]);
       return message;
     }
     if(p.type==='arrow_shot') {if(this.config.contentVersion<5||this.config.runEnded||!peer.positioned||this.savedPlayers.get(peer.playerKey)?.survival?.health===0||now-(peer.lastBowShot||0)<1300||!Number.isInteger(p.requestId)||p.requestId<1||p.requestId>2147483647)throw Error('Invalid bow shot / cooldown');peer.bowShots=Object.fromEntries(Object.entries(peer.bowShots||{}).filter(([id,s])=>s.until>now));if(Object.keys(peer.bowShots).length>=4)throw Error('Too many flying arrows');peer.bowShots[p.requestId]={x:peer.x,y:peer.y,z:peer.z,until:now+2500};peer.lastBowShot=now;return {type:'arrow_shot',id:peer.id,requestId:p.requestId};}
@@ -178,7 +236,7 @@ export class RoomState {
       return {type:'edit',...record,id:peer.id,living:candidate?candidate.save():undefined};
     }
     if(p.type==='state') {
-      if(![2,3,4,5,6,7,8,9,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
+      if(![2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
       const save=validatePlayerSave(p.save,this.config.contentVersion>=2,this.config.contentVersion>=4,this.config.contentVersion>=5);if((save.claimedStoryRewards&~(this.config.story?.rewards||0))!==0||((this.savedPlayers.get(peer.playerKey)?.claimedStoryRewards||0)&~save.claimedStoryRewards)!==0)throw Error("Invalid story rewards / rollback");const dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
       if(previous&&save.inventory.revision<previous.inventory.revision)throw Error('Stale inventory after confirmed transaction');
@@ -241,8 +299,8 @@ export function validateEquipmentIds(ids){
 }
 
 // New content must never reach a pre-expansion client (unknown IDs would become air).
-export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
+export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.launchSite?.active?11:config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
 
 export function packetError(raw,error){let p={};try{if(typeof raw==='string'&&raw.length<=MAX_MESSAGE)p=JSON.parse(raw)||{};}catch{}return {type:'error',message:error.message,code:typeof p.type==='string'?p.type:'',requestId:Number.isInteger(p.requestId)?p.requestId:0};}
 
-export function publicConfig(config){const {ownerKey,wildlife,living,spaceVisit,spaceMission,...safe}=config;return safe;}
+export function publicConfig(config){const {ownerKey,wildlife,living,spaceVisit,spaceMission,launchLift,padVisited,shuttleSeats,...safe}=config;return safe;}

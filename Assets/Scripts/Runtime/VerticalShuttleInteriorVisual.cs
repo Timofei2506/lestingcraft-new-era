@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using LestingCraft.Gameplay;
+using LestingCraft.Networking;
 
 namespace LestingCraft.Runtime
 {
@@ -16,6 +17,7 @@ namespace LestingCraft.Runtime
         BoxCollider hatchCollider;
         FirstPersonController liftRider;
         float lastLiftHeight;
+        long lastLiftServerNow;
         public readonly ShuttleElevator Lift=new ShuttleElevator(VerticalShuttleWalk.LiftTravel);
         public bool HatchOpen {get;private set;}
 
@@ -124,14 +126,54 @@ namespace LestingCraft.Runtime
             return liftRider==player&&Lift.RequestDown();
         }
         public bool RecallEmptyLift(){return Lift.ReturnEmpty();}
+        /// <summary>Continuous, collision-checked ladder movement inside the hollow
+        /// shaft. No position assignment, scene change or automatic trip to a seat.</summary>
+        public bool TryClimb(FirstPersonController player,float direction,float seconds)
+        {
+            if(!player||float.IsNaN(seconds)||seconds<=0||seconds>.2f||
+               (direction!=1f&&direction!= -1f))return false;
+            var p=transform.InverseTransformPoint(player.transform.position);
+            if(p.x<-.2f||p.x>.4f||p.z<2.4f||p.z>2.75f||p.y<27.9f||p.y>42.05f)return false;
+            float next=Mathf.Clamp(p.y+direction*Mathf.Min(.44f,2.2f*seconds),28f,42f);
+            if(!VerticalShuttleWalk.CanStep(p.x,p.y,p.z,p.x,next,p.z,HatchOpen))return false;
+            player.CarryByPlatform(transform.up*(next-p.y));
+            return true;
+        }
+        /// <summary>Room snapshots reconcile one shared platform. Rider motion is split
+        /// into short collision-checked steps; a long desync never warps a person.</summary>
+        public void SyncLift(NetShuttleLift snapshot,FirstPersonController player,string selfId)
+        {
+            if(snapshot==null||!snapshot.active||snapshot.serverNow<lastLiftServerNow||!liftPlatform||
+               snapshot.progress<0||snapshot.progress>1||float.IsNaN(snapshot.progress))return;
+            lastLiftServerNow=snapshot.serverNow;
+            bool mine=snapshot.occupied&&snapshot.riderId==selfId&&player;
+            if(mine&&!liftRider&&!Lift.Occupied&&!Lift.IsMoving)BoardLift(player);
+            if(!mine)liftRider=null;
+            var state=snapshot.moving?snapshot.direction=="up"?ElevatorState.Rising:
+                snapshot.direction=="down"?ElevatorState.Descending:ElevatorState.Ground:
+                snapshot.progress>=1?ElevatorState.Top:ElevatorState.Ground;
+            if(snapshot.moving&&state==ElevatorState.Ground)return;
+            Lift.Reconcile(snapshot.progress,state,snapshot.occupied);
+            float height=Lift.Height,delta=height-lastLiftHeight;
+            liftPlatform.localPosition=new Vector3(VerticalShuttleWalk.LiftX,
+                VerticalShuttleWalk.LiftGroundY+height-.14f,3);
+            CarryShort(delta);
+            lastLiftHeight=height;
+        }
+        void CarryShort(float delta)
+        {
+            if(!liftRider||!Lift.Occupied||Mathf.Abs(delta)<.0001f)return;
+            if(Mathf.Abs(delta)>1.25f){liftRider=null;return;}
+            int steps=Mathf.CeilToInt(Mathf.Abs(delta)/.20f);
+            for(int i=0;i<steps;i++)liftRider.CarryByPlatform(transform.up*(delta/steps));
+        }
         void LateUpdate()
         {
             if(!liftPlatform)return;
             Lift.Advance(Time.unscaledDeltaTime);
             float height=Lift.Height,delta=height-lastLiftHeight;
             liftPlatform.localPosition=new Vector3(VerticalShuttleWalk.LiftX,VerticalShuttleWalk.LiftGroundY+height-.14f,3);
-            if(liftRider&&Lift.Occupied&&Mathf.Abs(delta)>.0001f)
-                liftRider.CarryByPlatform(transform.up*delta);
+            CarryShort(delta);
             lastLiftHeight=height;
             if(liftRider&&Lift.Occupied&&!Lift.IsMoving)
             {

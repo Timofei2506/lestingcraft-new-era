@@ -31,6 +31,11 @@ class ShuttleInteriorCheck
         Check(vertical.Exit()&&vertical.ReturnEmpty(),"recall empty lift for the second player");
         vertical.Advance(6);
         Check(vertical.State==ElevatorState.Ground&&Math.Abs(vertical.Height)<1e-4,"empty lift returns without teleporting a rider");
+        vertical.Reconcile(.5f,ElevatorState.Descending,false);
+        Check(Math.Abs(vertical.Height-12.5f)<.001f&&vertical.IsMoving,"room snapshot can restore the same moving platform");
+        vertical.Reconcile(0f,ElevatorState.Ground,false);
+        bool badSnapshot=false;try{vertical.Reconcile(float.NaN,ElevatorState.Rising,true);}catch(ArgumentOutOfRangeException){badSnapshot=true;}
+        Check(badSnapshot,"invalid room platform snapshot rejected");
         var s=new ShuttleInteriorSession();s.UpdatePosition(0,0,0);
         Check(s.BoardLift()&&!s.BoardLift(),"board once");
         Check(s.Elevator.RequestUp(),"button up");

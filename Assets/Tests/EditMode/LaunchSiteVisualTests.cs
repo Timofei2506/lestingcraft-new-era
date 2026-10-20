@@ -32,7 +32,8 @@ namespace LestingCraft.Tests.EditMode
         }
         [Test] public void LocalSiteCalculationUsesTheSameSeedAndIsWithinWorldHeight()
         {
-            var a=LaunchSiteVisual.OfflineSite(2506),b=LaunchSiteVisual.OfflineSite(2506);
+            var a=LaunchSiteVisual.OfflineSite(2506);
+            var b=LaunchSiteVisual.OfflineSite(2506);
             Assert.AreEqual(a,b);
             Assert.AreEqual(168,a.x);Assert.AreEqual(168,a.z);
             Assert.LessOrEqual(Mathf.Abs(a.y-70),1,"Server picks the actual vertical origin");

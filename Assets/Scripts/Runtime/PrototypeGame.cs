@@ -102,6 +102,8 @@ namespace LestingCraft.Runtime
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
         Vector3Int? sharedLaunchSite;LaunchSiteVisual launchVisual;
+        NetShuttleLift liftSnapshot;bool hatchOpen;string[] shuttleSeats=new string[2];float lastLiftRequest=-10f;
+        public bool ShuttleSeated=>!string.IsNullOrEmpty(selfId)&&Array.Exists(shuttleSeats,id=>id==selfId);
         public LaunchSiteVisual LaunchSite=>launchVisual;
         long revision; float lastPosition,previousYaw,lastHeartbeat;Vector3 previousPosition;bool sentPosition;int previousEquipment;
         Material avatarMaterial;
@@ -112,13 +114,72 @@ namespace LestingCraft.Runtime
         public bool Paused=>paused;
         public bool Online=>online;public string LocalPeerId=>selfId;
         public void SendAnimalHit(string animal,int weapon,int requestId){if(client&&client.Connected)client.Send(new NetPacket{type="animal_hit",animal=animal,weapon=weapon,requestId=requestId});}
+        void ApplyHatch(bool open){hatchOpen=open;if(launchVisual&&launchVisual.Cabin)launchVisual.Cabin.SyncHatch(open);}
+        void ApplySeats(string[] seats){if(seats!=null&&seats.Length==2)shuttleSeats=seats;}
+        void ApplyLift(NetShuttleLift state)
+        {
+            if(state==null||!state.active)return;
+            liftSnapshot=state;
+            if(launchVisual&&launchVisual.Cabin)
+                launchVisual.Cabin.SyncLift(state,player,selfId);
+        }
+        /// <summary>E near the real lift asks the room, never moves the lift locally.</summary>
+        public bool TryInteractLaunch()
+        {
+            if(!online||!client||!client.Connected||!player||!launchVisual||!launchVisual.Cabin||
+               liftSnapshot==null||!liftSnapshot.active||!Session)return false;
+            var cabin=launchVisual.Cabin;
+            var local=cabin.transform.InverseTransformPoint(player.transform.position);
+            for(int i=0;i<VerticalShuttleWalk.SeatCount;i++)
+            {
+                double sx,sy,sz;VerticalShuttleWalk.Seat(i,out sx,out sy,out sz);
+                if(Mathf.Abs(local.x-(float)sx)>1f||Mathf.Abs(local.z-(float)sz)>1f||
+                   Mathf.Abs(local.y-(float)sy)>1.3f)continue;
+                if(Time.unscaledTime-lastLiftRequest<.4f)return true;
+                if(!string.IsNullOrEmpty(shuttleSeats[i])&&shuttleSeats[i]!=selfId)
+                {Session.Notice="Это место занято вторым игроком";return true;}
+                string command=shuttleSeats[i]==selfId?"stand":"sit";
+                lastLiftRequest=Time.unscaledTime;
+                client.Send(new NetPacket{type="space_seat",action=command,index=i});
+                Session.Notice=command=="sit"?"Запрос места в кабине":"Встать с места";
+                return true;
+            }
+            if(Mathf.Abs(local.x+9)<3.5f&&Mathf.Abs(local.z-3)<1.3f&&Mathf.Abs(local.y-28)<2)
+            {
+                if(Time.unscaledTime-lastLiftRequest<.4f)return true;
+                lastLiftRequest=Time.unscaledTime;
+                client.Send(new NetPacket{type="space_hatch",open=!hatchOpen});
+                Session.Notice=hatchOpen?"Запрос закрытия люка":"Запрос открытия люка";
+                return true;
+            }
+            if(Mathf.Abs(local.x-VerticalShuttleWalk.LiftX)>1.5f||Mathf.Abs(local.z-3)>1.5f)return false;
+            if(Time.unscaledTime-lastLiftRequest<.4f)return true;
+            if(cabin.Lift.IsMoving){Session.Notice="Лифт движется — дождитесь остановки";return true;}
+            bool ground=Mathf.Abs(local.y-VerticalShuttleWalk.LiftGroundY)<1.15f;
+            bool top=Mathf.Abs(local.y-(VerticalShuttleWalk.LiftGroundY+VerticalShuttleWalk.LiftTravel))<1.15f;
+            if(!ground&&!top)return false;
+            string action;
+            if(liftSnapshot.occupied)
+            {
+                if(liftSnapshot.riderId!=selfId){Session.Notice="Лифт занят другим участником";return true;}
+                action="exit";
+            }
+            else if(cabin.Lift.State==ElevatorState.Ground&&ground)action="up";
+            else if(cabin.Lift.State==ElevatorState.Top&&ground)action="recall";
+            else {Session.Notice="Войдите на платформу лифта";return true;}
+            lastLiftRequest=Time.unscaledTime;client.Send(new NetPacket{type="space_lift",action=action});
+            Session.Notice=action=="up"?"Запрос подъёма лифта":action=="exit"?"Выход с лифта — проходите пешком":
+                "Возврат пустого лифта для следующего игрока";
+            return true;
+        }
         public bool IsConnecting=>busy;
         public string LastError=>lastError;
         public string ServerLabel=>endpoint.Replace("https://","").Replace("http://","");
         public string WorldSeed=>seedText;
         public string PlayerName {get=>playerName;set=>playerName=value;}
         public string RoomCode {get=>code;set=>code=value.Trim();}
-        public string WorldLabel=>world?dimensions[(int)world.Dimension]+"  /  SEED "+world.Seed:"";
+        public string WorldLabel=>world?dimensions[(int)world.Dimension]+"  /  SEED "+world.Seed+
+            (sharedLaunchSite.HasValue?"  ·  Космодром X="+sharedLaunchSite.Value.x+" Z="+sharedLaunchSite.Value.z:""):"";
         public int PlayerCount=>avatars.Count+1;
         public int ChunkCount=>world?world.LoadedChunks:0;
         public bool WorldReady=>world&&world.Ready;
@@ -273,7 +334,10 @@ namespace LestingCraft.Runtime
                 case "living_saved":case "living":if(Session)Session.Living.Apply(packet);break;
                 case "animal_hit":if(Session){Session.Animals.Apply(packet);}break;
                 case "chat":AddChat(packet);break;
-                case "player":if(Session)Session.Living.Apply(packet);if(Story&&packet.story!=null)Story.Apply(packet.story,packet.serverNow);if(Session)Session.Animals.Apply(packet);SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw,offhand=packet.offhand,weapon=packet.weapon,equipment=packet.equipment});break;
+                case "player":if(Session)Session.Living.Apply(packet);if(Story&&packet.story!=null)Story.Apply(packet.story,packet.serverNow);if(Session)Session.Animals.Apply(packet);ApplyLift(packet.lift);SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw,offhand=packet.offhand,weapon=packet.weapon,equipment=packet.equipment});break;
+                case "space_lift":ApplyLift(packet.lift);break;
+                case "space_hatch":ApplyHatch(packet.hatchOpen);break;
+                case "space_seat":ApplySeats(packet.seats);break;
                 case "leave":if(avatars.TryGetValue(packet.id,out var avatar))Destroy(avatar);avatars.Remove(packet.id);targets.Remove(packet.id);break;
                 case "state_saved":if(packet.id==selfId)saveAcknowledged=true;if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
                 case "run_ended":if(packet.id==selfId)saveAcknowledged=true;if(Session){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;Session.Notice="Хардкор завершён: погиб участник команды";OpenDeathScreen();}break;
@@ -282,7 +346,7 @@ namespace LestingCraft.Runtime
         }
         void BeginNetworkWorld(NetPacket packet)
         {
-            InLobby=false;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock,packet.contentVersion<=0?1:packet.contentVersion,packet.story,packet.serverNow,packet.launchSite);revision=packet.rev;Session.Animals.Apply(packet);
+            InLobby=false;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock,packet.contentVersion<=0?1:packet.contentVersion,packet.story,packet.serverNow,packet.launchSite);revision=packet.rev;Session.Animals.Apply(packet);ApplyLift(packet.lift);ApplyHatch(packet.hatchOpen);ApplySeats(packet.seats);
             if(packet.campaign!=null)Session.Data.campaign=packet.campaign;if(packet.runEnded){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;OpenDeathScreen();}
             if(packet.edits!=null)foreach(var edit in packet.edits)world.Edit(edit.x,edit.y,edit.z,(ushort)edit.block);Session.Living.Apply(packet);if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);status="Комната подключена • "+code;
         }
@@ -308,7 +372,11 @@ namespace LestingCraft.Runtime
             if(sharedLaunchSite.HasValue&&!launchVisual&&world&&world.Ready&&player&&
                new Vector2(player.transform.position.x-sharedLaunchSite.Value.x,
                            player.transform.position.z-sharedLaunchSite.Value.z).sqrMagnitude<140f*140f)
+            {
                 launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed);
+                ApplyLift(liftSnapshot);
+                ApplyHatch(hatchOpen);
+            }
             foreach(var pair in avatars)if(pair.Value&&targets.TryGetValue(pair.Key,out var target))
             {pair.Value.transform.position=Vector3.Lerp(pair.Value.transform.position,target,Time.deltaTime*12);}
             if(online&&client&&client.Connected&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
@@ -330,7 +398,7 @@ namespace LestingCraft.Runtime
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
             if(ShuttleDemo){Destroy(ShuttleDemo.gameObject);ShuttleDemo=null;}
             if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
-            client=null;world=null;player=null;sharedLaunchSite=null;launchVisual=null;online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
+            client=null;world=null;player=null;sharedLaunchSite=null;launchVisual=null;liftSnapshot=null;hatchOpen=false;shuttleSeats=new string[2];online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }
         static Vector3 FindSpawn(int seed,Dimension realm,int contentVersion)
         {

@@ -57,6 +57,15 @@ namespace LestingCraft.Gameplay
         public bool Occupied {get;private set;}
         public float Height {get{return Progress*travelHeight;}}
         public bool IsMoving {get{return State==ElevatorState.Rising||State==ElevatorState.Descending;}}
+        /// <summary>Apply the room-owned snapshot to a client-side physical platform.
+        /// This sets platform state only; passenger motion still uses collision checks.</summary>
+        public void Reconcile(float progress,ElevatorState state,bool occupied)
+        {
+            if(float.IsNaN(progress)||float.IsInfinity(progress)||progress<0||progress>1||
+               !Enum.IsDefined(typeof(ElevatorState),state)||state==ElevatorState.Ground&&progress!=0||
+               state==ElevatorState.Top&&progress!=1)throw new ArgumentOutOfRangeException("progress");
+            Progress=progress;State=state;Occupied=occupied;
+        }
         public bool Board()
         {
             if(IsMoving||Occupied)return false;

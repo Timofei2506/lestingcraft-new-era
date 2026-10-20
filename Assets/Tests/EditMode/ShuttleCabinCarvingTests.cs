@@ -83,6 +83,14 @@ namespace LestingCraft.Tests.EditMode
                 var bridge=visual.transform.Find("Tower lift exit bridge");
                 Assert.IsNotNull(lift.GetComponent<BoxCollider>());
                 Assert.IsNotNull(bridge.GetComponent<BoxCollider>());
+                visual.SyncLift(new LestingCraft.Networking.NetShuttleLift{
+                    active=true,moving=true,direction="up",progress=.5f,occupied=true,
+                    riderId="other",serverNow=12000},null,"me");
+                Assert.AreEqual(12.5f,visual.Lift.Height,.001f);
+                Assert.AreEqual(VerticalShuttleWalk.LiftGroundY+12.5f-.14f,lift.localPosition.y,.001f);
+                visual.SyncLift(new LestingCraft.Networking.NetShuttleLift{
+                    active=true,moving=true,direction="up",progress=.1f,serverNow=11000},null,"me");
+                Assert.AreEqual(12.5f,visual.Lift.Height,.001f,"stale snapshot cannot reverse lift");
                 Assert.LessOrEqual(bridge.localPosition.x-bridge.localScale.x/2,
                                    lift.localPosition.x+lift.localScale.x/2+.01f); // no gap at top
                 Assert.IsNotNull(visual.transform.Find("Cockpit forward bridge").GetComponent<BoxCollider>());

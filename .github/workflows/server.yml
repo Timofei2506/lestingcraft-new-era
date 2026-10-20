@@ -25,6 +25,7 @@ jobs:
           trap 'kill "$SERVER_PID" || true' EXIT
           node -e 'const go=async()=>{for(let i=0;i<30;i++){try{if((await fetch("http://127.0.0.1:8787/health")).ok)return}catch{};await new Promise(r=>setTimeout(r,250))}process.exit(1)};go()'
           npm run test:integration
+          node test/launch-site-integration.js
       - name: Wildlife websocket, pending loot and full process restart
         working-directory: Server
         run: |

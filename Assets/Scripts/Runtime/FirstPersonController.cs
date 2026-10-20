@@ -46,12 +46,18 @@ namespace LestingCraft.Runtime
                 string note;
                 if(!Game.Paused&&Active&&Game.ShuttleDemo&&Game.ShuttleDemo.TryInteract(new Ray(Camera.transform.position,Camera.transform.forward),out note))
                 {Game.Session.Notice=note;return;}
+                if(!Game.Paused&&Active&&Game.TryInteractLaunch())return;
                 Game.ToggleInventory();return;
             }
             if(!Active||!World.Ready){Sprinting=false;HasTarget=false;if(Game.Session)Game.Session.ResetMining();return;}
             var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
             transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
-            if(Game.ShuttleDemo&&Game.ShuttleDemo.IsPlayerSeated){Sprinting=false;HasTarget=false;vertical=0;return;}
+            if(Game.ShuttleDemo&&Game.ShuttleDemo.IsPlayerSeated||Game.ShuttleSeated)
+            {Sprinting=false;HasTarget=false;vertical=0;return;}
+            var cabin=Game.LaunchSite?Game.LaunchSite.Cabin:null;
+            float climb=keyboard.spaceKey.isPressed?1f:keyboard.leftCtrlKey.isPressed?-1f:0f;
+            if(climb!=0&&cabin&&cabin.TryClimb(this,climb,Mathf.Min(Time.deltaTime,.2f)))
+            {Sprinting=false;HasTarget=false;Game.Session.ResetMining();return;}
             var move=new Vector2((keyboard.dKey.isPressed?1:0)-(keyboard.aKey.isPressed?1:0),(keyboard.wKey.isPressed?1:0)-(keyboard.sKey.isPressed?1:0));
             if(move.sqrMagnitude>1)move.Normalize();
             bool swimming=World.InFluid(transform.position+Vector3.up*.8f,7);
