@@ -49,6 +49,10 @@ namespace LestingCraft.Tests.EditMode
             Assert.AreEqual(1,flight.space.seatIndex);
             Assert.AreEqual(1792478572000L,flight.space.ignitionAt);
             Assert.AreEqual(1792478562000L,flight.serverNow);
+            var join=JsonUtility.FromJson<NetPacket>(
+                "{\"type\":\"space_crew_join\",\"id\":\"peer-b\",\"name\":\"Copilot\",\"seatIndex\":1}");
+            Assert.AreEqual("peer-b",join.id);
+            Assert.AreEqual(1,join.seatIndex);
             var opened=JsonUtility.FromJson<NetPacket>("{\"type\":\"space_hatch\",\"hatchOpen\":true}");
             Assert.IsTrue(opened.hatchOpen);
             Assert.IsFalse(ordinary.hatchOpen);

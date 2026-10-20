@@ -89,7 +89,8 @@ namespace LestingCraft.Presentation
     if(biomeHUD)biomeHUD.text=game.Session.World.ContentVersion>=7&&game.Session.World.Dimension==LestingCraft.World.Dimension.Lestingia?LestingCraft.World.BiomeGenerator.Name(LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(position.x),Mathf.FloorToInt(position.z),game.Session.World.Seed)):"";
     if(padHUD)
     {
-     if(!game.Online||!game.HasSharedLaunchSite)padHUD.text="";
+     if(game.InMoonFlight)padHUD.text=game.MoonFlightStatus;
+     else if(!game.Online||!game.HasSharedLaunchSite)padHUD.text="";
      else if(Mathf.Abs(position.x-168)<50&&Mathf.Abs(position.z-168)<40)
       padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЛифт: X 148 · Z 171 · E — взаимодействие";
      else if(Mathf.Abs(position.x-148)<22&&position.z>45&&position.z<183)

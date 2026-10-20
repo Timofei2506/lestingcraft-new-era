@@ -27,9 +27,9 @@ namespace LestingCraft.Networking
     {
         public LivingSave living;public string ownerTag;
         // Private room mission snapshots are parsed, but the terrestrial client must refuse to render them as Earth.
-        public NetLaunchSite launchSite;public NetShuttleLift lift;public NetSpaceMission space;public NetStationVisit station;public float[] local;public int stationRequestId,role,index;
+        public NetLaunchSite launchSite;public NetShuttleLift lift;public NetSpaceMission space;public NetStationVisit station;public float[] local;public int stationRequestId,role,index,seatIndex;
         public LestingCraft.Story.StoryState story;public bool lobby,started,host;public string hostId,action;public int arg,stage,line,offhand,expectedRevision;public long serverNow;public string type,id,name,message,code,animal;public int weapon,requestId,contentVersion;public AnimalState[] animals;public AnimalLoot[] loot;public AnimalDamage[] damageEvents;public int seed,dimension,version,block,maxPlayers,mode,rulesVersion,serverRulesVersion;public bool runEnded,force,hatchOpen,open;public CampaignProgress campaign;public PlayerSave save;public long rev;
-        public int[] equipment;public string[] seats,issues;public bool ready;public double clock;public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
+        public int[] equipment;public string[] seats,issues;public double[] heading;public double landingThrottle;public bool on,ready;public double clock;public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
     }
     public sealed class RoomClient : MonoBehaviour
     {

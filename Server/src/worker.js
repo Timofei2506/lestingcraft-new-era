@@ -70,7 +70,10 @@ export class GameRoom {
     if(this.room.config.rulesVersion>=2&&(!validCode(key)||this.ctx.getWebSockets().some(s=>s.deserializeAttachment()?.playerKey===key)))return error('Valid unique player key required',409);
     const pair=new WebSocketPair(),[client,server]=Object.values(pair),peer=newPeer(crypto.randomUUID(),url.searchParams.get('name'),key);
     server.serializeAttachment(peer);this.ctx.acceptWebSocket(server);
-    server.send(JSON.stringify(this.room.welcome(peer,this.ctx.getWebSockets().map(s=>s.deserializeAttachment()))));if(this.room.config.lobby)this.broadcast(this.room.lobbyState());
+    server.send(JSON.stringify(this.room.welcome(peer,this.ctx.getWebSockets().map(s=>s.deserializeAttachment()))));
+    const seatIndex=this.room.config.spaceMission?.crew?.indexOf(key)??-1;
+    if(seatIndex>=0)this.broadcast({type:'space_crew_join',id:peer.id,name:peer.name,seatIndex},server);
+    if(this.room.config.lobby)this.broadcast(this.room.lobbyState());
     return new Response(null,{status:101,webSocket:client});
   }
   webSocketMessage(socket,raw) {

@@ -43,7 +43,10 @@ server.on('upgrade',(req,socket,head)=>{
   if(room.config.rulesVersion>=2&&(!validCode(key)||peers(code).some(p=>p.peer.playerKey===key)))return reject(409,'Invalid Player Key');
   wss.handleUpgrade(req,socket,head,ws=>{
     ws.peer=newPeer(crypto.randomUUID(),url.searchParams.get('name'),key);if(!sockets.has(code))sockets.set(code,new Set());sockets.get(code).add(ws);
-    ws.send(JSON.stringify(room.welcome(ws.peer,peers(code).map(s=>s.peer))));if(room.config.lobby)broadcast(code,room.lobbyState());
+    ws.send(JSON.stringify(room.welcome(ws.peer,peers(code).map(s=>s.peer))));
+    const seatIndex=room.config.spaceMission?.crew?.indexOf(key)??-1;
+    if(seatIndex>=0)broadcast(code,{type:'space_crew_join',id:ws.peer.id,name:ws.peer.name,seatIndex},ws);
+    if(room.config.lobby)broadcast(code,room.lobbyState());
     ws.on('message',(buffer,binary)=>{
       try {
         const message=room.handle(ws.peer,binary?buffer:buffer.toString(),Date.now(),(record,nextConfig)=>{

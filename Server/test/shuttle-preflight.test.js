@@ -73,7 +73,11 @@ test('trusted ignition transition persists a unique two-person lunar mission onl
   assert.throws(()=>seat(pilot,0,t+700),/In-flight crew/);
   const restarted=new RoomState(JSON.parse(JSON.stringify(room.config)));
   assert.equal(restarted.config.spaceMission.crew.length,2);
-  assert.equal(restarted.welcome(newPeer('new-pilot','Pilot',a),[]).space.active,true);
+  const welcome=restarted.welcome(newPeer('new-pilot','Pilot',a),[]);
+  assert.equal(welcome.space.active,true);
+  assert.equal(welcome.space.seatIndex,0);
+  assert.equal(welcome.space.ignitionAt,t+500+10000);
+  assert(!JSON.stringify(welcome).includes(a));assert(!JSON.stringify(welcome).includes(b));
 });
 
 test('trusted ignition fails when seat claims are stale, a crew member leaves or a rider remains',()=>{

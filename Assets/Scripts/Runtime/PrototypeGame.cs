@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.InputSystem;
 using LestingCraft.World;
 using LestingCraft.Networking;
 using LestingCraft.Presentation;
@@ -103,12 +104,32 @@ namespace LestingCraft.Runtime
         VoxelWorld world; FirstPersonController player; RoomClient client;
         Vector3Int? sharedLaunchSite;LaunchSiteVisual launchVisual;
         NetShuttleLift liftSnapshot;bool hatchOpen;string[] shuttleSeats=new string[2];float lastLiftRequest=-10f;
-        public bool ShuttleSeated=>!string.IsNullOrEmpty(selfId)&&Array.Exists(shuttleSeats,id=>id==selfId);
+        NetSpaceMission flightSnapshot;int flightSeatIndex=-1;float lastFlightHeartbeat,lastFlightControl;
+        public bool ShuttleSeated=>flightSnapshot!=null&&flightSnapshot.active||
+            !string.IsNullOrEmpty(selfId)&&Array.Exists(shuttleSeats,id=>id==selfId);
         public void RequestShuttlePreflight()
         {
-            if(!ShuttleSeated||!online||!client||!client.Connected||!Session)return;
+            if(flightSnapshot!=null&&flightSnapshot.active||!ShuttleSeated||!online||!client||!client.Connected||!Session)return;
             client.Send(new NetPacket{type="space_preflight"});
             Session.Notice="Запрашиваю проверку экипажа. Запуск в этой сборке заблокирован.";
+        }
+        public void HandleMoonFlightControls(Keyboard keyboard)
+        {
+            if(keyboard==null||!InMoonFlight||!flightSnapshot.pilot||!client||!client.Connected)return;
+            if(keyboard.pKey.wasPressedThisFrame&&flightSnapshot.phase=="cruise")
+                client.Send(new NetPacket{type="space_autopilot",on=!flightSnapshot.autopilot});
+            if(keyboard.lKey.wasPressedThisFrame&&flightSnapshot.phase=="landing-ready")
+                client.Send(new NetPacket{type="space_land"});
+            if(Time.unscaledTime-lastFlightControl<.5f)return;
+            bool manual=keyboard.leftArrowKey.isPressed||keyboard.rightArrowKey.isPressed||
+                keyboard.upArrowKey.isPressed||keyboard.downArrowKey.isPressed;
+            bool burn=flightSnapshot.phase=="approach"&&keyboard.spaceKey.isPressed;
+            if(!manual&&!burn)return;
+            lastFlightControl=Time.unscaledTime;
+            double vertical=(keyboard.upArrowKey.isPressed?0.35:0)-(keyboard.downArrowKey.isPressed?0.35:0);
+            double lateral=(keyboard.rightArrowKey.isPressed?0.35:0)-(keyboard.leftArrowKey.isPressed?0.35:0);
+            client.Send(new NetPacket{type="space_control",heading=new[]{1d,vertical,lateral},
+                landingThrottle=burn?1d:0d});
         }
         public LaunchSiteVisual LaunchSite=>launchVisual;
         long revision; float lastPosition,previousYaw,lastHeartbeat;Vector3 previousPosition;bool sentPosition;int previousEquipment;
@@ -122,6 +143,52 @@ namespace LestingCraft.Runtime
         public void SendAnimalHit(string animal,int weapon,int requestId){if(client&&client.Connected)client.Send(new NetPacket{type="animal_hit",animal=animal,weapon=weapon,requestId=requestId});}
         void ApplyHatch(bool open){hatchOpen=open;if(launchVisual&&launchVisual.Cabin)launchVisual.Cabin.SyncHatch(open);}
         void ApplySeats(string[] seats){if(seats!=null&&seats.Length==2)shuttleSeats=seats;}
+        // A flight snapshot moves the approved hull. Local and remote occupants are
+        // children of that same solid hull, not independently teleported between sectors.
+        // This path stays unreachable in public rooms until the Moon surface is ready.
+        void ApplyMoonFlight(NetSpaceMission mission)
+        {
+            if(mission==null||!mission.active||!sharedLaunchSite.HasValue||!player||!world)return;
+            int claimed=Array.IndexOf(shuttleSeats,selfId);
+            if(claimed>=0)flightSeatIndex=claimed;
+            if(flightSeatIndex<0||flightSeatIndex>=2)return;
+            if(!launchVisual)
+                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed);
+            if(!LaunchSiteVisual.TryMoonFlightOffset(mission,out var ignored))return;
+            if(player.transform.parent!=launchVisual.ShuttleRoot)
+                player.transform.SetParent(launchVisual.ShuttleRoot,true);
+            for(int i=0;i<shuttleSeats.Length;i++)
+            {
+                var id=shuttleSeats[i];
+                if(!string.IsNullOrEmpty(id)&&avatars.TryGetValue(id,out var remote)&&remote&&
+                   remote.transform.parent!=launchVisual.ShuttleRoot)
+                    remote.transform.SetParent(launchVisual.ShuttleRoot,true);
+            }
+            string previous=flightSnapshot?.phase;
+            if(!launchVisual.SyncMoonFlight(mission))return;
+            mission.pilot=flightSnapshot!=null?flightSnapshot.pilot:flightSeatIndex==0;
+            mission.seatIndex=flightSeatIndex;
+            flightSnapshot=mission;
+            if(Session&&previous!=mission.phase)
+                Session.Notice="Общий корабль · "+mission.phase+" · "+mission.elapsed.ToString("0")+" / 1800 с";
+        }
+        void ApplyFlightCrewJoin(NetPacket packet)
+        {
+            if(flightSnapshot==null||!flightSnapshot.active||!launchVisual||
+               packet.id==selfId||packet.seatIndex<0||packet.seatIndex>=2||
+               string.IsNullOrEmpty(packet.id)||!sharedLaunchSite.HasValue)return;
+            double sx,sy,sz;
+            VerticalShuttleWalk.Seat(packet.seatIndex,out sx,out sy,out sz);
+            var site=sharedLaunchSite.Value;
+            SetAvatar(new NetPlayer{id=packet.id,name=packet.name,
+                x=site.x+(float)sx,y=site.y+2+(float)sy+PlayerCapsule.EyeHeight,
+                z=site.z+(float)sz});
+            if(avatars.TryGetValue(packet.id,out var remote))
+            {
+                remote.transform.SetParent(launchVisual.ShuttleRoot,false);
+                remote.transform.localPosition=new Vector3((float)sx,(float)sy,(float)sz);
+            }
+        }
         void ApplyLift(NetShuttleLift state)
         {
             if(state==null||!state.active)return;
@@ -134,6 +201,8 @@ namespace LestingCraft.Runtime
         {
             if(!online||!client||!client.Connected||!player||!launchVisual||!launchVisual.Cabin||
                liftSnapshot==null||!liftSnapshot.active||!Session)return false;
+            if(flightSnapshot!=null&&flightSnapshot.active)
+            {Session.Notice="Экипаж в полёте: выход откроется после посадки на поверхность";return true;}
             var cabin=launchVisual.Cabin;
             var local=cabin.transform.InverseTransformPoint(player.transform.position);
             for(int i=0;i<VerticalShuttleWalk.SeatCount;i++)
@@ -190,6 +259,10 @@ namespace LestingCraft.Runtime
         public int ChunkCount=>world?world.LoadedChunks:0;
         public bool WorldReady=>world&&world.Ready;
         public bool HasSharedLaunchSite=>sharedLaunchSite.HasValue;
+        public bool InMoonFlight=>flightSnapshot!=null&&flightSnapshot.active;
+        public string MoonFlightStatus=>flightSnapshot==null?"":
+            "ЛУНА · "+flightSnapshot.phase+" · "+flightSnapshot.elapsed.ToString("0")+" / 1800 с\n"+
+            (flightSnapshot.pilot?"P — автопилот · стрелки — курс · Space — тормоз · L — посадка":"Вы — второй член экипажа");
         public ushort SelectedBlock=>Session?Items.Get(Session.Inventory.Active.item).Block:(ushort)1;
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
         public void PlayOffline()
@@ -202,6 +275,8 @@ namespace LestingCraft.Runtime
         }
         public void ToggleInventory()
         {
+            if(flightSnapshot!=null&&flightSnapshot.active)
+            {if(Session)Session.Notice="Инвентарь полёта пока недоступен; экипаж остаётся в креслах";return;}
             if(!Session||StoryLocked||Session.Vitals.dead||Session.Data.campaign.runEnded)return;
             if(ui.InventoryOpen){Resume();return;}paused=true;SetCursor(false);ui.ShowInventory();
         }
@@ -213,7 +288,13 @@ namespace LestingCraft.Runtime
         }
         public void UseStation(int id,Vector3Int cell){if(Session)Session.UseStation(id,cell);}
         public void OpenDeathScreen(){paused=true;SetCursor(false);ui.ShowDeathScreen();}
-        public void SendSave(PlayerSave save,bool force=false){if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save,force=force});}
+        public void SendSave(PlayerSave save,bool force=false)
+        {
+            // Ground inventory was checkpointed before ignition. A flight crew may
+            // not overwrite its terrestrial save with a fabricated ground position.
+            if(flightSnapshot!=null&&flightSnapshot.active)return;
+            if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save,force=force});
+        }
         public void CreateRoom(){if(!busy)StartCoroutine(CreateRoomRoutine());}
         public void JoinRoom(){if(!busy)JoinRoomInternal();}
         public void Resume(){if(!world||Session&&(Session.Vitals.dead||Session.Data.campaign.runEnded))return;if(Session&&Session.Living)Session.Living.Hint="";paused=false;SetCursor(true);ui.ShowHUD();}
@@ -221,7 +302,8 @@ namespace LestingCraft.Runtime
         IEnumerator LeaveAfterCheckpoint()
         {
             leaving=true;paused=true;SetCursor(false);
-            if(online&&client&&client.Connected&&Session&&!Session.ServerRunEnded)
+            if(online&&client&&client.Connected&&Session&&!Session.ServerRunEnded&&
+               !(flightSnapshot!=null&&flightSnapshot.active))
             {
                 saveAcknowledged=false;SendSave(Session.Data.player,true);float deadline=Time.unscaledTime+2;
                 while(!saveAcknowledged&&Time.unscaledTime<deadline)yield return null;
@@ -260,7 +342,7 @@ namespace LestingCraft.Runtime
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
         }
-        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null)
+        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
         {
             // Multiplayer and persisted worlds remain on Lestingia; planet inspection is explicitly offline and unsaved.
             if(multiplayer)IsSurfacePreview=false;
@@ -271,7 +353,10 @@ namespace LestingCraft.Runtime
                 new Vector3Int(approvedSite.x,approvedSite.y,approvedSite.z):(Vector3Int?)null;
             var camera=Camera.main;camera.backgroundColor=new Color(.42f,.66f,.78f);
             RenderSettings.fogColor=camera.backgroundColor;
-            var obj=new GameObject("Player");obj.transform.position=FindSpawn(seed,(Dimension)realm,world.ContentVersion);
+            var obj=new GameObject("Player");
+            // On reconnect only: restore a previously server-verified crew member
+            // directly in their cockpit seat before any gameplay frame is rendered.
+            obj.transform.position=cockpitRestore??FindSpawn(seed,(Dimension)realm,world.ContentVersion);
             var controller=obj.AddComponent<CharacterController>();PlayerCapsule.Configure(controller);
             player=obj.AddComponent<FirstPersonController>();player.World=world;player.Game=this;player.Camera=camera;
             camera.transform.SetParent(obj.transform,false);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.nearClipPlane=.05f;camera.farClipPlane=160;
@@ -325,10 +410,15 @@ namespace LestingCraft.Runtime
             {
                 case "welcome":
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
-                    // Never show a docked crew or a flying ship as if it had reappeared on Earth.
-                    // The space rendering/physical-boarding client is not connected yet.
-                    if(packet.space!=null&&packet.space.active||packet.station!=null&&packet.station.active)
-                    {Fail("Космический экипаж в полёте или на станции: эта сборка пока не умеет восстанавливать корабль. Не запускайте публичный релиз.");Destroy(client.gameObject);busy=false;return;}
+                    // A docked station still has no walkable Unity client. For a lunar
+                    // flight, restore only a verified cockpit seat and a valid continuous
+                    // hull projection; never spawn a flying crew member on Earth.
+                    if(packet.station!=null&&packet.station.active||
+                       packet.space!=null&&packet.space.active&&
+                       (packet.launchSite==null||!packet.launchSite.active||
+                        packet.space.seatIndex<0||packet.space.seatIndex>=2||
+                        !LaunchSiteVisual.TryMoonFlightOffset(packet.space,out var offset)))
+                    {Fail("Невозможно восстановить общий корабль или станцию: обновите клиент. Публичный релиз заблокирован.");Destroy(client.gameObject);busy=false;return;}
                     if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Несовместимые правила комнаты. Обновите сервер; для нового содержимого нужна новая комната");Destroy(client.gameObject);return;}
                     if(packet.contentVersion>7||packet.contentVersion<0||packet.rulesVersion>=10&&packet.contentVersion!=7||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;IsHost=packet.host;pendingWelcome=packet;
@@ -345,6 +435,9 @@ namespace LestingCraft.Runtime
                 case "space_lift":ApplyLift(packet.lift);break;
                 case "space_hatch":ApplyHatch(packet.hatchOpen);break;
                 case "space_seat":ApplySeats(packet.seats);break;
+                case "space_mission":if(packet.space!=null&&(ShuttleSeated||flightSnapshot!=null))
+                    ApplyMoonFlight(packet.space);break;
+                case "space_crew_join":ApplyFlightCrewJoin(packet);break;
                 case "space_preflight":if(Session&&packet.id==selfId)
                     Session.Notice=packet.ready?"Экипаж из двух человек проверен сервером. Запуск и полёт ещё не подключены.":
                         "Предстартовая проверка не пройдена: "+string.Join("; ",packet.issues??Array.Empty<string>());
@@ -357,9 +450,24 @@ namespace LestingCraft.Runtime
         }
         void BeginNetworkWorld(NetPacket packet)
         {
-            InLobby=false;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock,packet.contentVersion<=0?1:packet.contentVersion,packet.story,packet.serverNow,packet.launchSite);revision=packet.rev;Session.Animals.Apply(packet);ApplyLift(packet.lift);ApplyHatch(packet.hatchOpen);ApplySeats(packet.seats);
+            Vector3? seatRestore=null;
+            if(packet.space!=null&&packet.space.active&&packet.launchSite!=null)
+            {
+                double sx,sy,sz;
+                VerticalShuttleWalk.Seat(packet.space.seatIndex,out sx,out sy,out sz);
+                seatRestore=new Vector3(packet.launchSite.x+(float)sx,
+                    packet.launchSite.y+2+(float)sy,packet.launchSite.z+(float)sz);
+                flightSeatIndex=packet.space.seatIndex;
+            }
+            InLobby=false;
+            StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock,packet.contentVersion<=0?1:packet.contentVersion,packet.story,packet.serverNow,packet.launchSite,seatRestore);
+            revision=packet.rev;Session.Animals.Apply(packet);ApplyLift(packet.lift);ApplyHatch(packet.hatchOpen);ApplySeats(packet.seats);
             if(packet.campaign!=null)Session.Data.campaign=packet.campaign;if(packet.runEnded){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;OpenDeathScreen();}
-            if(packet.edits!=null)foreach(var edit in packet.edits)world.Edit(edit.x,edit.y,edit.z,(ushort)edit.block);Session.Living.Apply(packet);if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);status="Комната подключена • "+code;
+            if(packet.edits!=null)foreach(var edit in packet.edits)world.Edit(edit.x,edit.y,edit.z,(ushort)edit.block);
+            Session.Living.Apply(packet);
+            if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);
+            if(packet.space!=null&&packet.space.active)ApplyMoonFlight(packet.space);
+            status="Комната подключена • "+code;
         }
         void SetAvatar(NetPlayer peer)
         {
@@ -389,8 +497,17 @@ namespace LestingCraft.Runtime
                 ApplyHatch(hatchOpen);
             }
             foreach(var pair in avatars)if(pair.Value&&targets.TryGetValue(pair.Key,out var target))
-            {pair.Value.transform.position=Vector3.Lerp(pair.Value.transform.position,target,Time.deltaTime*12);}
-            if(online&&client&&client.Connected&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
+            {
+                if(flightSnapshot!=null&&flightSnapshot.active&&launchVisual&&
+                   pair.Value.transform.parent==launchVisual.ShuttleRoot)continue;
+                pair.Value.transform.position=Vector3.Lerp(pair.Value.transform.position,target,Time.deltaTime*12);
+            }
+            if(online&&client&&client.Connected&&flightSnapshot!=null&&flightSnapshot.active)
+            {
+                if(Time.unscaledTime-lastFlightHeartbeat>=.75f)
+                {client.Send(new NetPacket{type="space_heartbeat"});lastFlightHeartbeat=Time.unscaledTime;}
+            }
+            else if(online&&client&&client.Connected&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
             {
                 var pos=player.transform.position+Vector3.up*PlayerCapsule.EyeHeight;int activeItem=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;int weapon=Weapons.Has(activeItem)||Items.IsPick(activeItem)||activeItem==102||activeItem==103?activeItem:0;var equipment=new int[8];int equipmentHash=weapon*31+17+(Session.Inventory.offhand.count>0?148:0);
                 for(int i=0;i<8;i++){var slot=Session.Inventory.equipment[i];equipment[i]=slot.count>0?slot.item:0;equipmentHash=unchecked(equipmentHash*31+equipment[i]);}
@@ -409,7 +526,9 @@ namespace LestingCraft.Runtime
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
             if(ShuttleDemo){Destroy(ShuttleDemo.gameObject);ShuttleDemo=null;}
             if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
-            client=null;world=null;player=null;sharedLaunchSite=null;launchVisual=null;liftSnapshot=null;hatchOpen=false;shuttleSeats=new string[2];online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
+            client=null;world=null;player=null;sharedLaunchSite=null;launchVisual=null;liftSnapshot=null;hatchOpen=false;
+            shuttleSeats=new string[2];flightSnapshot=null;flightSeatIndex=-1;lastFlightHeartbeat=0;lastFlightControl=0;
+            online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }
         static Vector3 FindSpawn(int seed,Dimension realm,int contentVersion)
         {
