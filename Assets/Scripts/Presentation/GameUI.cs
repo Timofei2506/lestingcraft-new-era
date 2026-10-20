@@ -146,28 +146,44 @@ namespace LestingCraft.Presentation
         public void ShowHome()
         {
             Clear(Page.Home);
-            Button("Аккаунт и достижения",1247,103,267,48,ShowAccount);
-            Label(content.transform,"L / C",86,46,220,40,27,Accent,true);
-            Label(content.transform,"A NEW ERA OF ADVENTURE",87,99,580,22,12,Muted);
-            var version=Box(content.transform,1247,48,267,40,new Color(.035f,.055f,.065f,.72f));
-            Label(version.transform,"WINDOWS · ТЕСТОВАЯ ВЕРСИЯ",10,0,247,40,11,White,false,TextAnchor.MiddleCenter);
-            Label(content.transform,"LESTINGCRAFT",80,223,1060,90,58,White,true);
-            Label(content.transform,"N E W   E R A",87,316,730,48,25,Accent,true);
-            Box(content.transform,88,395,64,2,Accent,false);
-            Label(content.transform,"Твоя история начинается здесь.",87,424,760,45,23,White);
-            Label(content.transform,"Исследуй Лестингию. Построй своё убежище.\nОтправляйся навстречу неизвестному — вместе.",88,480,720,69,17,Muted);
-            float y=594;
-            if(game.HasSave){HomeAction("Продолжить экспедицию","Вернуться в локальное сохранение",y,game.ContinueOffline,true,"Home.Continue");y+=82;}
-            HomeAction(game.HasSave?"Новая экспедиция":"Начать экспедицию","Выбрать режим и открыть новый мир",y,ShowWorld,!game.HasSave,"Home.Play");
-            HomeAction("Играть с друзьями","Создать комнату или войти по коду",y+82,ShowRooms,false,"Home.Coop");
-            var settings=Button("Настройки",88,game.HasSave?843:807,210,43,()=>ShowSettings(Page.Home));settings.name="Home.Settings";
-            var quit=Button("Выйти из игры",312,game.HasSave?843:807,229,43,()=>Application.Quit());quit.name="Home.Quit";
-            var card=Box(content.transform,1110,645,405,131,new Color(.035f,.055f,.065f,.83f));
-            Box(card.transform,0,22,2,87,Accent,false);
-            Label(card.transform,"01  /  ЛЕСТИНГИЯ",25,21,355,23,12,Accent);
-            Label(card.transform,"Первая экспедиция",25,56,355,31,22,White,true);
-            Label(card.transform,"Леса, озёра и неизведанные горизонты",25,98,357,20,12,Muted);
-            Label(content.transform,"Фон — концепт-арт. Кампания ещё разрабатывается.",1100,839,415,34,11,Muted,false,TextAnchor.MiddleRight);
+            // Keep the landscape visible while reserving a calm, high-contrast reading surface.
+            // All action names below are stable: the executable smoke test clicks them by name.
+            Box(content.transform,56,44,1480,1,new Color(.82f,.74f,.54f,.36f),false);
+            Label(content.transform,"L / C",76,66,120,36,27,Accent,true);
+            Label(content.transform,"НОВАЯ ЭРА · ПЕРВАЯ ЭКСПЕДИЦИЯ",207,71,750,28,13,White);
+            var version=Box(content.transform,1190,61,346,39,new Color(.035f,.055f,.065f,.86f));
+            Label(version.transform,"WINDOWS  /  РАННЯЯ ВЕРСИЯ",15,0,316,39,12,White,false,TextAnchor.MiddleCenter);
+            var account=Button("Аккаунт · достижения",1190,114,346,52,ShowAccount);account.name="Home.Account";
+            var panel=Box(content.transform,56,189,710,610,new Color(.023f,.047f,.055f,.87f));
+            panel.raycastTarget=false;
+            Box(content.transform,56,189,4,610,Accent,false);
+            Label(content.transform,"МИР, КОТОРЫЙ ТЫ СТРОИШЬ САМ",86,214,640,27,13,Accent,true);
+            Label(content.transform,"LESTINGCRAFT",82,254,660,73,54,White,true);
+            Label(content.transform,"N E W   E R A",89,330,588,41,25,Accent,true);
+            Box(content.transform,88,393,78,2,Accent,false);
+            Label(content.transform,"Исследуй. Строй. Выживай. Вместе.",88,420,632,39,22,White,true);
+            Label(content.transform,"Лестингия ждёт: леса, пещеры, деревни и ваша история.\nВыбери свою экспедицию или позови друга.",88,472,624,54,17,White);
+            if(game.HasSave)
+            {
+                HomeAction("Продолжить экспедицию","Вернуться к своему сохранённому миру",546,game.ContinueOffline,true,"Home.Continue");
+                HomeAction("Новая экспедиция","Внимание: заменит прежнее локальное сохранение",624,ShowWorld,false,"Home.Play");
+                HomeAction("Играть с друзьями","Создать комнату или войти по коду",702,ShowRooms,false,"Home.Coop");
+            }
+            else
+            {
+                HomeAction("Начать экспедицию","Выбрать режим и создать свой мир",546,ShowWorld,true,"Home.Play");
+                HomeAction("Играть с друзьями","Создать комнату или войти по коду",624,ShowRooms,false,"Home.Coop");
+            }
+            var settings=Button("Настройки",88,821,200,52,()=>ShowSettings(Page.Home));settings.name="Home.Settings";
+            var quit=Button("Выйти",302,821,170,52,()=>Application.Quit());quit.name="Home.Quit";
+            Label(content.transform,"Космические полёты пока в разработке",1057,601,465,32,17,White,true);
+            var card=Box(content.transform,1047,646,474,138,new Color(.021f,.043f,.052f,.88f));
+            card.raycastTarget=false;
+            Box(card.transform,0,0,4,138,Accent,false);
+            Label(card.transform,"01   /   ЛЕСТИНГИЯ",22,18,425,27,13,Accent,true);
+            Label(card.transform,"Приключение начинается здесь",22,53,425,38,21,White,true);
+            Label(card.transform,"Космос и совместные перелёты — следующая глава.",22,101,430,25,13,White);
+            Label(content.transform,"Фон — концепт-арт · разработка продолжается",1049,818,472,34,11,White,false,TextAnchor.MiddleRight);
         }
         void HomeAction(string title,string subtitle,float y,Action action,bool primary,string objectName)
         {
@@ -180,7 +196,7 @@ namespace LestingCraft.Presentation
         {
             Clear(Page.World);Header("Режим новой экспедиции");
             Label(content.transform,"КАК НАЧНЁТСЯ ТВОЯ ЭРА?",64,171,1400,67,36,White,true);
-            Label(content.transform,"Все начинают в Лестингии. Другие измерения открываются по ходу кампании.",66,247,1440,42,19,Muted);
+            Label(content.transform,"Все начинают в Лестингии. Космос и планеты пока в разработке: здесь экспедиция начинается в Лестингии.",66,247,1440,42,19,Muted);
             for(int i=0;i<4;i++)
             {
                 int mode=i;bool chosen=game.SelectedMode==i;var button=Button("",64+i*368,331,352,254,()=>{game.SelectedMode=mode;ShowWorld();},chosen);
@@ -202,7 +218,7 @@ namespace LestingCraft.Presentation
         {
             Clear(Page.Rooms);Header("Кооператив · до 8 игроков");
             Label(content.transform,"ОДИН МИР. ВМЕСТЕ.",64,171,1400,67,36,White,true);
-            Label(content.transform,"Создай комнату и передай её код друзьям — или присоединись к их миру.",66,247,1380,42,19,Muted);
+            Label(content.transform,"Создай комнату, передай код друзьям и отправляйтесь исследовать Лестингию вместе.",66,247,1380,42,19,Muted);
             Input("ТВОЁ ИМЯ",game.PlayerName,"Исследователь",64,321,440,v=>game.PlayerName=v);
             Button("Режим: "+GameRules.ModeNames[game.SelectedMode],542,355,430,58,()=>{game.SelectedMode=(game.SelectedMode+1)%4;ShowRooms();});
             var left=Box(content.transform,64,454,710,305,Panel);var right=Box(content.transform,795,454,741,305,Panel);
@@ -214,7 +230,8 @@ namespace LestingCraft.Presentation
             var input=Input("КОД КОМНАТЫ",game.RoomCode,"32 символа от хозяина комнаты",823,540,350,v=>game.RoomCode=v);
             actions.Add(Button("Войти  →",404,111,307,64,game.JoinRoom,true,right.transform));
             Label(right.transform,"Сервер: "+game.ServerLabel,28,211,685,64,14,Muted);
-            status=Label(content.transform,"",250,798,930,73,16,Accent);
+            Label(content.transform,"Совместный космический полёт ещё разрабатывается.",64,777,795,25,14,Muted);
+            status=Label(content.transform,"",250,816,930,48,16,Accent);
         }
         public void ShowPause()
         {
