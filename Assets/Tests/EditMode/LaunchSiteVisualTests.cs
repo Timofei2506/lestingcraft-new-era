@@ -27,6 +27,24 @@ namespace LestingCraft.Tests.EditMode
                 Assert.AreEqual(LaunchSiteVisual.RampEndZ-site.z-.5f,last.localPosition.z,.001f);
                 Assert.IsFalse(visual.Cabin.HatchOpen,"No local-only launch before server authority");
                 Assert.AreEqual(0f,visual.Cabin.Lift.Height,.001f);
+                var platform=visual.transform.Find("Moving crew lift");
+                var bridge=visual.transform.Find("Tower lift exit bridge");
+                var guide=visual.transform.Find("Lift guide rear 3");
+                Assert.IsNotNull(platform);Assert.IsNotNull(bridge);Assert.IsNotNull(guide);
+                Assert.AreEqual(visual.transform,platform.parent);
+                var platformWorld=platform.position,bridgeWorld=bridge.position,guideWorld=guide.position;
+                var orbiterWorld=visual.Cabin.transform.position;
+                visual.ShuttleRoot.position+=Vector3.up*6;
+                Assert.AreEqual(platformWorld,platform.position,"Platform stays with ground");
+                Assert.AreEqual(bridgeWorld,bridge.position,"Tower bridge stays with pad");
+                Assert.AreEqual(guideWorld,guide.position,"Lift guide stays with pad");
+                Assert.AreEqual(orbiterWorld+Vector3.up*6,visual.Cabin.transform.position,
+                    "Hull and cockpit alone can rise continuously");
+                visual.Cabin.SyncLift(new LestingCraft.Networking.NetShuttleLift{
+                    active=true,moving=true,direction="up",progress=.5f,serverNow=1000},null,"");
+                Assert.Less(Vector3.Distance(platformWorld+Vector3.up*12.5f,platform.position),.001f,
+                    "Server lift height remains pad-relative after hull starts moving");
+                Assert.AreEqual(bridgeWorld,bridge.position);
             }
             finally {Object.DestroyImmediate(root);}
         }

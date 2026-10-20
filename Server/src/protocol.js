@@ -7,6 +7,7 @@ import {stationWalk,stationTrade} from './station-visit.js';
 import {advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
 import {launchSite} from './launch-site.js';
 import {emptyLift,liftAt,liftSnapshot,operateLift} from './shuttle-lift.js';
+import {preflight} from './shuttle-preflight.js';
 export const VERSION = 1;
 export const RULES_VERSION = 11;
 export const MAX_MESSAGE = 16384;
@@ -121,6 +122,13 @@ export class RoomState {
       const nextSeats=[...seats];nextSeats[p.index]=p.action==='sit'?key:null;
       const next={...this.config,shuttleSeats:nextSeats};persistFauna(next);this.config=next;
       return {type:'space_seat',id:peer.id,seats:nextSeats.map(k=>[...this.members.values()].find(m=>m.playerKey===k)?.id||'')};
+    }
+    // Pilot can ask the server for a read-only check, not an ignition command.
+    // Never install a mission until the Unity client implements shared ship flight.
+    if(p.type==='space_preflight'){
+      if(!this.config.launchSite?.active||this.config.shuttleSeats?.[0]!==peer.playerKey)
+        throw Error('Only the seated pilot can request preflight');
+      return {type:'space_preflight',id:peer.id,...preflight(this.config,[...this.members.values()],now)};
     }
     // Only trusted physical-boarding code may install a mission; no network launch packet.
     // All flight updates below use the server clock and stable crew identities.

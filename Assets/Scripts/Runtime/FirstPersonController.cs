@@ -53,7 +53,8 @@ namespace LestingCraft.Runtime
             var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
             transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
             if(Game.ShuttleDemo&&Game.ShuttleDemo.IsPlayerSeated||Game.ShuttleSeated)
-            {Sprinting=false;HasTarget=false;vertical=0;return;}
+            {if(Game.ShuttleSeated&&keyboard.rKey.wasPressedThisFrame)Game.RequestShuttlePreflight();
+             Sprinting=false;HasTarget=false;vertical=0;return;}
             var cabin=Game.LaunchSite?Game.LaunchSite.Cabin:null;
             float climb=keyboard.spaceKey.isPressed?1f:keyboard.leftCtrlKey.isPressed?-1f:0f;
             if(climb!=0&&cabin&&cabin.TryClimb(this,climb,Mathf.Min(Time.deltaTime,.2f)))

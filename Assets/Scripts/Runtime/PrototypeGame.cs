@@ -104,6 +104,12 @@ namespace LestingCraft.Runtime
         Vector3Int? sharedLaunchSite;LaunchSiteVisual launchVisual;
         NetShuttleLift liftSnapshot;bool hatchOpen;string[] shuttleSeats=new string[2];float lastLiftRequest=-10f;
         public bool ShuttleSeated=>!string.IsNullOrEmpty(selfId)&&Array.Exists(shuttleSeats,id=>id==selfId);
+        public void RequestShuttlePreflight()
+        {
+            if(!ShuttleSeated||!online||!client||!client.Connected||!Session)return;
+            client.Send(new NetPacket{type="space_preflight"});
+            Session.Notice="Запрашиваю проверку экипажа. Запуск в этой сборке заблокирован.";
+        }
         public LaunchSiteVisual LaunchSite=>launchVisual;
         long revision; float lastPosition,previousYaw,lastHeartbeat;Vector3 previousPosition;bool sentPosition;int previousEquipment;
         Material avatarMaterial;
@@ -338,6 +344,10 @@ namespace LestingCraft.Runtime
                 case "space_lift":ApplyLift(packet.lift);break;
                 case "space_hatch":ApplyHatch(packet.hatchOpen);break;
                 case "space_seat":ApplySeats(packet.seats);break;
+                case "space_preflight":if(Session&&packet.id==selfId)
+                    Session.Notice=packet.ready?"Экипаж из двух человек проверен сервером. Запуск и полёт ещё не подключены.":
+                        "Предстартовая проверка не пройдена: "+string.Join("; ",packet.issues??Array.Empty<string>());
+                    break;
                 case "leave":if(avatars.TryGetValue(packet.id,out var avatar))Destroy(avatar);avatars.Remove(packet.id);targets.Remove(packet.id);break;
                 case "state_saved":if(packet.id==selfId)saveAcknowledged=true;if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
                 case "run_ended":if(packet.id==selfId)saveAcknowledged=true;if(Session){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;Session.Notice="Хардкор завершён: погиб участник команды";OpenDeathScreen();}break;

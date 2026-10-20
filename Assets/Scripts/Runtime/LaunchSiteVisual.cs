@@ -13,6 +13,7 @@ namespace LestingCraft.Runtime
     {
         public const int PadX=168,PadZ=168,LiftWorldX=148,RampStartZ=58,RampEndZ=140;
         readonly List<Material> materials=new List<Material>();
+        public Transform ShuttleRoot {get;private set;}
         public VerticalShuttleInteriorVisual Cabin {get;private set;}
         public static Vector3Int OfflineSite(int seed)
         {
@@ -27,14 +28,16 @@ namespace LestingCraft.Runtime
         {
             if(site.x!=PadX||site.z!=PadZ||site.y<40||site.y>140)
                 throw new ArgumentException("Invalid server-owned launch site");
-            var node=new GameObject("Shared physical launch site · boarding not active yet");
+            var node=new GameObject("Shared physical launch site · flight not active yet");
             node.transform.SetParent(parent,false);node.transform.position=site;
             var visual=node.AddComponent<LaunchSiteVisual>();
             SpaceVoxelVisual.CreateWalkableLaunchPad(node.transform);
             var shuttle=new GameObject("Approved upright Shuttle · pad offset +2 m");
             shuttle.transform.SetParent(node.transform,false);
             shuttle.transform.localPosition=new Vector3(0,2,0);
+            visual.ShuttleRoot=shuttle.transform;
             visual.Cabin=VerticalShuttleInteriorVisual.Create(shuttle.transform);
+            if(!visual.Cabin.AnchorLiftToPad(node.transform))throw new InvalidOperationException("Pad infrastructure anchor failed");
             visual.BuildAccess(seed,site.y);
             return visual;
         }

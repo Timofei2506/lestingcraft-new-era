@@ -13,7 +13,9 @@ namespace LestingCraft.Runtime
     public sealed class VerticalShuttleInteriorVisual : MonoBehaviour
     {
         readonly List<Material> materials=new List<Material>();
-        Transform hatch,liftPlatform;
+        readonly List<Transform> padEquipment=new List<Transform>();
+        Transform hatch,liftPlatform,liftAnchor;
+        Vector3 liftBaseLocal,liftRiseLocal;
         BoxCollider hatchCollider;
         FirstPersonController liftRider;
         float lastLiftHeight;
@@ -59,7 +61,7 @@ namespace LestingCraft.Runtime
             // a continuous foot plane through the freshly carved 2 m tower-side opening.
             Box("Physical tower-to-airlock walkway",new Vector3(-5.5f,27.88f,3),new Vector3(7f,.24f,1.90f),floor);
             // A short bridge meets the pad deck at the upper stop, without sealing the lift shaft.
-            Box("Tower lift exit bridge",new Vector3(-18.3f,27.88f,3),new Vector3(1.1f,.24f,1.90f),floor);
+            padEquipment.Add(Box("Tower lift exit bridge",new Vector3(-18.3f,27.88f,3),new Vector3(1.1f,.24f,1.90f),floor));
             Box("Lower crew deck",new Vector3(.5f,27.88f,3.5f),new Vector3(4.85f,.24f,4.85f),floor);
             Box("Lower deck equipment left",new Vector3(-1.62f,28.7f,1.18f),new Vector3(.48f,1.22f,.26f),dark);
             Box("Lower deck equipment right",new Vector3(2.56f,28.7f,1.18f),new Vector3(.48f,1.22f,.26f),dark);
@@ -94,17 +96,38 @@ namespace LestingCraft.Runtime
             hatchCollider=hatch.GetComponent<BoxCollider>();
             // Platform starts at local Y=3 (pad ground Y=5) and arrives flush
             // with cabin entry Y=28, clearing the approved booster. No teleport occurs.
-            liftPlatform=Box("Moving crew lift",new Vector3(VerticalShuttleWalk.LiftX,VerticalShuttleWalk.LiftGroundY-.14f,3),new Vector3(1.9f,.28f,1.9f),floor);
+            liftBaseLocal=new Vector3(VerticalShuttleWalk.LiftX,VerticalShuttleWalk.LiftGroundY-.14f,3);
+            liftRiseLocal=Vector3.up;liftAnchor=transform;
+            liftPlatform=Box("Moving crew lift",liftBaseLocal,new Vector3(1.9f,.28f,1.9f),floor);
+            padEquipment.Add(liftPlatform);
             Box("Lift safety back",new Vector3(VerticalShuttleWalk.LiftX-.93f,VerticalShuttleWalk.LiftGroundY+.86f,3),new Vector3(.08f,1.9f,1.88f),dark).SetParent(liftPlatform,true);
             Box("Lift safety port",new Vector3(VerticalShuttleWalk.LiftX,VerticalShuttleWalk.LiftGroundY+.65f,2.08f),new Vector3(1.9f,1.45f,.08f),dark).SetParent(liftPlatform,true);
             Box("Lift safety starboard",new Vector3(VerticalShuttleWalk.LiftX,VerticalShuttleWalk.LiftGroundY+.65f,3.92f),new Vector3(1.9f,1.45f,.08f),dark).SetParent(liftPlatform,true);
             for(int y=3;y<=28;y+=5)
             {
-                Box("Lift guide rear "+y,new Vector3(VerticalShuttleWalk.LiftX-.99f,y+.5f,2.02f),new Vector3(.09f,4.8f,.09f),wall);
-                Box("Lift guide front "+y,new Vector3(VerticalShuttleWalk.LiftX-.99f,y+.5f,3.98f),new Vector3(.09f,4.8f,.09f),wall);
+                padEquipment.Add(Box("Lift guide rear "+y,new Vector3(VerticalShuttleWalk.LiftX-.99f,y+.5f,2.02f),new Vector3(.09f,4.8f,.09f),wall));
+                padEquipment.Add(Box("Lift guide front "+y,new Vector3(VerticalShuttleWalk.LiftX-.99f,y+.5f,3.98f),new Vector3(.09f,4.8f,.09f),wall));
             }
             SyncHatch(false);
         }
+        /// <summary>Ground infrastructure belongs to the launch pad, never the orbiter.
+        /// Reparent in world space while still on the pad; later moving the ship must
+        /// not drag its platform, rails or tower bridge into space.</summary>
+        public bool AnchorLiftToPad(Transform pad)
+        {
+            if(!pad||!liftPlatform||liftAnchor!=transform||pad==transform||pad.IsChildOf(transform))return false;
+            Vector3 baseWorld=transform.TransformPoint(liftBaseLocal);
+            Vector3 riseWorld=transform.TransformVector(Vector3.up);
+            if(Mathf.Abs(riseWorld.magnitude-1)>1e-3f)return false;
+            foreach(var part in padEquipment)part.SetParent(pad,true);
+            liftAnchor=pad;
+            liftBaseLocal=pad.InverseTransformPoint(baseWorld);
+            liftRiseLocal=pad.InverseTransformVector(riseWorld);
+            SetPlatformHeight(Lift.Height);
+            return true;
+        }
+        void SetPlatformHeight(float height)
+        {if(liftPlatform)liftPlatform.localPosition=liftBaseLocal+liftRiseLocal*height;}
         /// <summary>Board only if the real CharacterController is standing on the stationary
         /// platform. Future network authority must confirm this before activating both clients.</summary>
         public bool BoardLift(FirstPersonController player)
@@ -155,8 +178,7 @@ namespace LestingCraft.Runtime
             if(snapshot.moving&&state==ElevatorState.Ground)return;
             Lift.Reconcile(snapshot.progress,state,snapshot.occupied);
             float height=Lift.Height,delta=height-lastLiftHeight;
-            liftPlatform.localPosition=new Vector3(VerticalShuttleWalk.LiftX,
-                VerticalShuttleWalk.LiftGroundY+height-.14f,3);
+            SetPlatformHeight(height);
             CarryShort(delta);
             lastLiftHeight=height;
         }
@@ -165,14 +187,14 @@ namespace LestingCraft.Runtime
             if(!liftRider||!Lift.Occupied||Mathf.Abs(delta)<.0001f)return;
             if(Mathf.Abs(delta)>1.25f){liftRider=null;return;}
             int steps=Mathf.CeilToInt(Mathf.Abs(delta)/.20f);
-            for(int i=0;i<steps;i++)liftRider.CarryByPlatform(transform.up*(delta/steps));
+            for(int i=0;i<steps;i++)liftRider.CarryByPlatform(liftAnchor.TransformVector(liftRiseLocal*(delta/steps)));
         }
         void LateUpdate()
         {
             if(!liftPlatform)return;
             Lift.Advance(Time.unscaledDeltaTime);
             float height=Lift.Height,delta=height-lastLiftHeight;
-            liftPlatform.localPosition=new Vector3(VerticalShuttleWalk.LiftX,VerticalShuttleWalk.LiftGroundY+height-.14f,3);
+            SetPlatformHeight(height);
             CarryShort(delta);
             lastLiftHeight=height;
             if(liftRider&&Lift.Occupied&&!Lift.IsMoving)
