@@ -33,6 +33,18 @@ namespace LestingCraft.Runtime
             var visual=obj.AddComponent<SpaceVoxelVisual>();visual.Build(data,collision);
             return visual;
         }
+        /// <summary>Derives only a crew cavity and tower-facing hatch from the exact approved
+        /// Shuttle resource. Pair with a real colliding interior/hatch before placing in game.</summary>
+        public static SpaceVoxelVisual CreateWalkableShuttle(Transform parent)
+        {
+            var resource=Resources.Load<TextAsset>("Space/Shuttle");
+            if(!resource)throw new InvalidOperationException("Missing approved shuttle model");
+            var data=ShuttleCabinCarving.Make(SpaceVoxelAsset.Read(resource.bytes));
+            var obj=new GameObject("Approved Shuttle · fitted crew volume");
+            obj.transform.SetParent(parent,false);
+            var visual=obj.AddComponent<SpaceVoxelVisual>();visual.Build(data,true);
+            return visual;
+        }
         void Build(SpaceVoxelAsset data,bool collision)
         {
             var vertices=new List<Vector3>();var normals=new List<Vector3>();

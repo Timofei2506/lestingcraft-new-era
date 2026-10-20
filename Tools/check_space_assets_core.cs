@@ -13,6 +13,26 @@ class SpaceAssetCheck
             byte[] bytes=File.ReadAllBytes("Assets/Resources/Space/"+names[j]+".bytes");
             var model=SpaceVoxelAsset.Read(bytes);
             Check(model.SolidCount==solid[j],names[j]+" solid cells");
+            if(names[j]=="Shuttle")
+            {
+                var walkable=ShuttleCabinCarving.Make(model);
+                Check(walkable.SolidCount==13591,"Derived cabin removes exactly 338 internal/hatch voxels");
+                Check(model.SolidCount==13929,"Approved model stays unchanged in memory");
+                Check(walkable.At(31,30,33)==0&&walkable.At(31,43,33)==0,"Two decks are hollow");
+                Check(walkable.At(31,45,36)==model.At(31,45,36),"Small approved windows retained");
+                int surface=0;
+                for(int x=0;x<model.X;x++)for(int y=0;y<model.Y;y++)for(int z=0;z<model.Z;z++)
+                {
+                    if(model.At(x,y,z)==0||walkable.At(x,y,z)!=0)continue;
+                    if(model.At(x+1,y,z)==0||model.At(x-1,y,z)==0||model.At(x,y+1,z)==0||
+                       model.At(x,y-1,z)==0||model.At(x,y,z+1)==0||model.At(x,y,z-1)==0)
+                    {surface++;Check(ShuttleCabinCarving.Remove(x-31,y,z-30)&&y>=28&&y<=30,"Only the hatch pierces exterior");}
+                }
+                Check(surface==6,"Two-metre portal; no other exterior changes");
+                Check(!VerticalShuttleWalk.CanStep(-9.2,29,3,-8.8,29,3,false)&&
+                       VerticalShuttleWalk.CanStep(-9.2,29,3,-8.8,29,3,true),"Hatch physically gates short steps");
+                Check(!VerticalShuttleWalk.CanStep(-10,29,3,0,43,3,true),"No boarding teleport");
+            }
             Check(model.X>=60&&model.Y>=38&&model.Z>=34,names[j]+" is full size");
             Check(model.At(-1,0,0)==0&&model.At(model.X,0,0)==0&&model.At(0,-1,0)==0,"safe outside volume");
             int faces=0;for(int x=0;x<model.X;x++)for(int y=0;y<model.Y;y++)for(int z=0;z<model.Z;z++)
