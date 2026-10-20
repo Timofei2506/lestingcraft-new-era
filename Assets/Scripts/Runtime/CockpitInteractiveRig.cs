@@ -46,6 +46,9 @@ namespace LestingCraft.Runtime
 
     public sealed class CockpitInteractiveRig : MonoBehaviour
     {
+        // Seated pilot eye in VerticalShuttleInteriorVisual local coordinates (Seat 0 at -0.40, 42.0, 5.35)
+        public static readonly Vector3 PilotEyeLocal = new Vector3(-0.40f, 43.62f, 5.35f);
+
         public readonly Dictionary<CockpitControlId, CockpitControlHitbox> Controls =
             new Dictionary<CockpitControlId, CockpitControlHitbox>();
 
@@ -90,92 +93,134 @@ namespace LestingCraft.Runtime
 
             transform.SetParent(cabinParent, false);
             transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+            transform.localScale = Vector3.one;
 
-            var console = Box("PilotInteractiveConsole", transform, new Vector3(.48f, 43.08f, 5.38f),
-                new Vector3(.92f, .10f, .52f), metalDark, false);
-            console.transform.localRotation = Quaternion.Euler(-28f, 0f, 0f);
+            // Every container & hitbox pivot has strict uniform localScale == Vector3.one (pure rigid SE(3)),
+            // preventing PhysX non-uniform shear under rotation and preserving 1:1 physical meter proportions!
+            var consoleRoot = CreateNode("PilotConsoleRoot", transform, new Vector3(0.24f, 43.34f, 5.63f),
+                Quaternion.Euler(-62f, -56f, 0f));
+            VisualMesh("PilotInteractiveConsolePlate", consoleRoot, new Vector3(0f, -0.025f, 0f),
+                new Vector3(0.76f, 0.05f, 0.44f), metalDark);
 
-            AddToggleSwitch(CockpitControlId.MainBusSwitch, "ГЛАВНАЯ ШИНА ПИТАНИЯ", console.transform, new Vector3(-.31f, .06f, .12f), amberMat);
-            AddToggleSwitch(CockpitControlId.FuelFeedSwitch, "ПОДАЧА КРИОТОПЛИВА", console.transform, new Vector3(-.12f, .06f, .12f), greenMat);
-            AddToggleSwitch(CockpitControlId.HatchSwitch, "ГЕРМОЗАТВОР ЛЮКА", console.transform, new Vector3(.07f, .06f, .12f), amberMat);
+            AddToggleSwitch(CockpitControlId.MainBusSwitch, "ГЛАВНАЯ ШИНА ПИТАНИЯ", consoleRoot, new Vector3(-0.25f, 0.01f, 0.11f), amberMat);
+            AddToggleSwitch(CockpitControlId.FuelFeedSwitch, "ПОДАЧА КРИОТОПЛИВА", consoleRoot, new Vector3(-0.09f, 0.01f, 0.11f), greenMat);
+            AddToggleSwitch(CockpitControlId.HatchSwitch, "ГЕРМОЗАТВОР ЛЮКА", consoleRoot, new Vector3(0.07f, 0.01f, 0.11f), amberMat);
 
-            var guardPivot = new GameObject("MasterArmGuardPivot").transform;
-            guardPivot.SetParent(console.transform, false);
-            guardPivot.localPosition = new Vector3(.27f, .065f, .15f);
-            var guardCap = Box("MasterArmCoverMesh", guardPivot, new Vector3(0f, .035f, -.03f), new Vector3(.10f, .07f, .11f), redMat, true);
-            RegisterHitbox(guardCap, CockpitControlId.MasterArmCover, "ЗАЩИТНЫЙ КОЛПАК «ВЗВОД»", guardPivot);
-            AddToggleSwitch(CockpitControlId.MasterArmSwitch, "ТУМБЛЕР «ГЛАВНЫЙ ВЗВОД»", console.transform, new Vector3(.27f, .055f, .12f), redMat);
+            AddToggleSwitch(CockpitControlId.MasterArmSwitch, "ТУМБЛЕР «ГЛАВНЫЙ ВЗВОД»", consoleRoot, new Vector3(0.24f, 0.01f, 0.11f), redMat);
+            var guardPivot = CreateNode("MasterArmGuardPivot", consoleRoot, new Vector3(0.24f, 0.02f, 0.155f), Quaternion.identity);
+            var guardHit = HitboxNode("MasterArmCoverHitbox", guardPivot, new Vector3(0f, 0.045f, -0.045f), new Vector3(0.115f, 0.105f, 0.125f));
+            VisualMesh("MasterArmCoverMesh", guardHit.transform, Vector3.zero, new Vector3(0.105f, 0.095f, 0.115f), redMat);
+            RegisterHitbox(guardHit, CockpitControlId.MasterArmCover, "ЗАЩИТНЫЙ КОЛПАК «ВЗВОД»", guardPivot);
 
-            AddPushButton(CockpitControlId.IgniteButton, "КНОПКА «ПУСК ДВИГАТЕЛЕЙ»", console.transform, new Vector3(-.22f, .06f, -.08f), greenMat, 1.25f);
-            AddPushButton(CockpitControlId.AbortButton, "АВАРИЙНЫЙ СБРОС (ABORT)", console.transform, new Vector3(-.02f, .06f, -.08f), redMat, 1.15f);
-            AddPushButton(CockpitControlId.HelmModeButton, "РЕЖИМ ШТУРВАЛА: РУЧНОЙ / АВТО", console.transform, new Vector3(.22f, .06f, -.08f), amberMat, 1.0f);
+            AddPushButton(CockpitControlId.IgniteButton, "КНОПКА «ПУСК ДВИГАТЕЛЕЙ»", consoleRoot, new Vector3(-0.21f, 0.01f, -0.09f), greenMat, 1.15f);
+            AddPushButton(CockpitControlId.AbortButton, "АВАРИЙНЫЙ СБРОС (ABORT)", consoleRoot, new Vector3(0.0f, 0.01f, -0.09f), redMat, 1.10f);
+            AddPushButton(CockpitControlId.HelmModeButton, "РЕЖИМ ШТУРВАЛА: РУЧНОЙ / АВТО", consoleRoot, new Vector3(0.21f, 0.01f, -0.09f), amberMat, 1.05f);
 
-            var quadrant = Box("ThrottleQuadrant", transform, new Vector3(-.14f, 42.92f, 5.02f), new Vector3(.16f, .14f, .44f), metalDark, false);
-            var throttlePivot = new GameObject("ThrottlePivot").transform;
-            throttlePivot.SetParent(quadrant.transform, false);
-            throttlePivot.localPosition = new Vector3(0f, .05f, -.12f);
-            Box("ThrottleStem", throttlePivot, new Vector3(0f, .10f, 0f), new Vector3(.03f, .20f, .03f), metalLight, false);
-            var grip = Box("ThrottleGrip", throttlePivot, new Vector3(0f, .21f, 0f), new Vector3(.12f, .055f, .055f), amberMat, true);
-            RegisterHitbox(grip, CockpitControlId.ThrottleLever, "РУД — РЫЧАГ ТЯГИ (ЛКМ / КОЛЕСО МЫШИ)", throttlePivot);
+            // Port HOTAS Throttle Quadrant (left hand of Pilot Seat 0, clear of restraint bar)
+            var quadrantRoot = CreateNode("ThrottleQuadrantRoot", transform, new Vector3(-0.84f, 43.12f, 5.56f), Quaternion.Euler(0f, 16f, 0f));
+            VisualMesh("ThrottleQuadrantHousing", quadrantRoot, new Vector3(0f, -0.04f, 0f), new Vector3(0.15f, 0.10f, 0.36f), metalDark);
+            var throttlePivot = CreateNode("ThrottlePivot", quadrantRoot, new Vector3(0f, 0.02f, -0.08f), Quaternion.identity);
+            VisualMesh("ThrottleStem", throttlePivot, new Vector3(0f, 0.09f, 0f), new Vector3(0.028f, 0.18f, 0.028f), metalLight);
+            var gripHit = HitboxNode("ThrottleGripHitbox", throttlePivot, new Vector3(0f, 0.19f, 0f), new Vector3(0.14f, 0.075f, 0.075f));
+            VisualMesh("ThrottleGripMesh", gripHit.transform, Vector3.zero, new Vector3(0.125f, 0.055f, 0.055f), amberMat);
+            RegisterHitbox(gripHit, CockpitControlId.ThrottleLever, "РУД — РЫЧАГ ТЯГИ (ЛКМ / КОЛЕСО МЫШИ)", throttlePivot);
 
-            var stickBase = Box("FlightStickBase", transform, new Vector3(.48f, 42.56f, 4.92f), new Vector3(.14f, .08f, .14f), metalDark, false);
-            var stickPivot = new GameObject("FlightStickPivot").transform;
-            stickPivot.SetParent(stickBase.transform, false);
-            stickPivot.localPosition = new Vector3(0f, .04f, 0f);
-            Box("FlightStickColumn", stickPivot, new Vector3(0f, .18f, 0f), new Vector3(.035f, .36f, .035f), metalLight, false);
-            var stickHead = Box("FlightStickGrip", stickPivot, new Vector3(0f, .37f, .02f), new Vector3(.09f, .11f, .09f), redMat, true);
-            RegisterHitbox(stickHead, CockpitControlId.FlightStick, "РУС — ШТУРВАЛ ОРИЕНТАЦИИ 6-DOF (ЗАЖАТЬ ЛКМ)", stickPivot);
+            // Center-Starboard 6-DOF Flight Stick (right hand of Pilot Seat 0, clear of restraint bar)
+            var stickRoot = CreateNode("FlightStickRoot", transform, new Vector3(-0.04f, 43.02f, 5.54f), Quaternion.identity);
+            VisualMesh("FlightStickBase", stickRoot, new Vector3(0f, -0.03f, 0f), new Vector3(0.12f, 0.06f, 0.12f), metalDark);
+            var stickPivot = CreateNode("FlightStickPivot", stickRoot, Vector3.zero, Quaternion.identity);
+            VisualMesh("FlightStickColumn", stickPivot, new Vector3(0f, 0.13f, 0f), new Vector3(0.03f, 0.26f, 0.03f), metalLight);
+            var stickHit = HitboxNode("FlightStickGripHitbox", stickPivot, new Vector3(0f, 0.28f, 0.01f), new Vector3(0.095f, 0.125f, 0.095f));
+            VisualMesh("FlightStickGripMesh", stickHit.transform, Vector3.zero, new Vector3(0.075f, 0.105f, 0.075f), redMat);
+            RegisterHitbox(stickHit, CockpitControlId.FlightStick, "РУС — ШТУРВАЛ ОРИЕНТАЦИИ 6-DOF (ЗАЖАТЬ ЛКМ)", stickPivot);
 
-            var mfdFrame = Box("PilotMfdHousing", transform, new Vector3(-.38f, 43.56f, 5.66f), new Vector3(.66f, .42f, .06f), metalDark, false);
-            Box("PilotMfdScreen", mfdFrame.transform, new Vector3(0f, .03f, -.035f), new Vector3(.58f, .28f, .01f), cyanScreenMat, false);
+            // Primary 3D Onboard Navigation Computer (MFD) directly ahead of Pilot Seat 0 (-0.40, 43.62, 5.35),
+            // positioned cleanly proud of the static cabin backing panel at z=5.72 (front z=5.68).
+            var mfdRoot = CreateNode("PilotMfdRoot", transform, new Vector3(-0.42f, 43.58f, 5.64f), Quaternion.identity);
+            VisualMesh("PilotMfdHousing", mfdRoot, Vector3.zero, new Vector3(0.64f, 0.40f, 0.04f), metalDark);
+            VisualMesh("PilotMfdScreen", mfdRoot, new Vector3(0f, 0.025f, -0.022f), new Vector3(0.56f, 0.26f, 0.008f), cyanScreenMat);
 
             var readoutGo = new GameObject("MfdReadoutText");
-            readoutGo.transform.SetParent(mfdFrame.transform, false);
-            readoutGo.transform.localPosition = new Vector3(-.265f, .145f, -.045f);
+            readoutGo.transform.SetParent(mfdRoot, false);
+            readoutGo.transform.localPosition = new Vector3(-0.26f, 0.135f, -0.030f);
             readoutGo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-            readoutGo.transform.localScale = Vector3.one * 0.0115f;
+            readoutGo.transform.localScale = Vector3.one * 0.0075f;
             mfdReadout = readoutGo.AddComponent<TextMesh>();
             mfdReadout.characterSize = 1f;
             mfdReadout.fontSize = 26;
-            mfdReadout.color = new Color(.58f, .96f, 1f);
+            mfdReadout.color = new Color(0.58f, 0.96f, 1f);
 
-            AddBezelButton(CockpitControlId.MfdTargetPrev, "◀ ПРЕД. ПЛАНЕТА / ЦЕЛЬ", mfdFrame.transform, new Vector3(-.24f, -.15f, -.04f), metalLight);
-            AddBezelButton(CockpitControlId.MfdTargetNext, "СЛЕД. ПЛАНЕТА / ЦЕЛЬ ▶", mfdFrame.transform, new Vector3(-.12f, -.15f, -.04f), metalLight);
-            AddBezelButton(CockpitControlId.MfdCycleSystem, "★ ЗВЁЗДНАЯ СИСТЕМА", mfdFrame.transform, new Vector3(.0f, -.15f, -.04f), amberMat);
-            AddBezelButton(CockpitControlId.MfdToggleGalaxy, "✦ ГАЛАКТИКА (МЛЕЧНЫЙ ПУТЬ / M31)", mfdFrame.transform, new Vector3(.12f, -.15f, -.04f), amberMat);
-            AddBezelButton(CockpitControlId.HyperjumpButton, "⚡ ГИПЕРПРЫЖОК", mfdFrame.transform, new Vector3(.24f, -.15f, -.04f), greenMat);
-            AddBezelButton(CockpitControlId.LandOrDockButton, "▼ ПОСАДКА / СТЫКОВКА", mfdFrame.transform, new Vector3(.24f, .15f, -.04f), greenMat);
+            AddBezelButton(CockpitControlId.MfdTargetPrev, "◀ ПРЕД. ПЛАНЕТА / ЦЕЛЬ", mfdRoot, new Vector3(-0.24f, -0.145f, -0.032f), metalLight);
+            AddBezelButton(CockpitControlId.MfdTargetNext, "СЛЕД. ПЛАНЕТА / ЦЕЛЬ ▶", mfdRoot, new Vector3(-0.12f, -0.145f, -0.032f), metalLight);
+            AddBezelButton(CockpitControlId.MfdCycleSystem, "★ ЗВЁЗДНАЯ СИСТЕМА", mfdRoot, new Vector3(0.0f, -0.145f, -0.032f), amberMat);
+            AddBezelButton(CockpitControlId.MfdToggleGalaxy, "✦ ГАЛАКТИКА (МЛЕЧНЫЙ ПУТЬ / M31)", mfdRoot, new Vector3(0.12f, -0.145f, -0.032f), amberMat);
+            AddBezelButton(CockpitControlId.HyperjumpButton, "⚡ ГИПЕРПРЫЖОК", mfdRoot, new Vector3(0.24f, -0.145f, -0.032f), greenMat);
+            AddBezelButton(CockpitControlId.LandOrDockButton, "▼ ПОСАДКА / СТЫКОВКА", mfdRoot, new Vector3(0.24f, 0.145f, -0.032f), greenMat);
 
             RefreshVisualPoses();
         }
 
+        static Transform CreateNode(string name, Transform parent, Vector3 localPos, Quaternion localRot)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = localRot;
+            go.transform.localScale = Vector3.one;
+            return go.transform;
+        }
+
+        static GameObject HitboxNode(string name, Transform parent, Vector3 localPos, Vector3 meterSize)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            var box = go.AddComponent<BoxCollider>();
+            box.center = Vector3.zero;
+            box.size = meterSize;
+            return go;
+        }
+
+        static GameObject VisualMesh(string name, Transform parent, Vector3 localPos, Vector3 size, Material mat)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = size;
+            var mr = go.GetComponent<MeshRenderer>();
+            if (mr) mr.sharedMaterial = mat;
+            var c = go.GetComponent<Collider>();
+            if (c) SafeDestroy(c);
+            return go;
+        }
+
         void AddToggleSwitch(CockpitControlId id, string label, Transform parent, Vector3 pos, Material tipMat)
         {
-            Box(id + "_Base", parent, pos, new Vector3(.07f, .025f, .07f), metalLight, false);
-            var pivot = new GameObject(id + "_Pivot").transform;
-            pivot.SetParent(parent, false);
-            pivot.localPosition = pos + new Vector3(0f, .015f, 0f);
-            var lever = Box(id + "_Lever", pivot, new Vector3(0f, .04f, 0f), new Vector3(.026f, .085f, .026f), tipMat, true);
-            var col = lever.GetComponent<BoxCollider>();
-            if (col) col.size = new Vector3(2.4f, 1.5f, 2.4f);
-            RegisterHitbox(lever, id, label, pivot);
+            VisualMesh(id + "_Base", parent, pos, new Vector3(0.065f, 0.02f, 0.065f), metalLight);
+            var pivot = CreateNode(id + "_Pivot", parent, pos + new Vector3(0f, 0.012f, 0f), Quaternion.identity);
+            var leverHit = HitboxNode(id + "_Hitbox", pivot, new Vector3(0f, 0.042f, 0f), new Vector3(0.062f, 0.095f, 0.062f));
+            VisualMesh(id + "_LeverMesh", leverHit.transform, Vector3.zero, new Vector3(0.024f, 0.082f, 0.024f), tipMat);
+            RegisterHitbox(leverHit, id, label, pivot);
         }
 
         void AddPushButton(CockpitControlId id, string label, Transform parent, Vector3 pos, Material mat, float scale)
         {
-            var collar = Box(id + "_Collar", parent, pos, new Vector3(.10f * scale, .02f, .10f * scale), metalLight, false);
-            var plunger = Box(id + "_Cap", collar.transform, new Vector3(0f, .022f, 0f), new Vector3(.075f * scale, .035f, .075f * scale), mat, true);
-            var col = plunger.GetComponent<BoxCollider>();
-            if (col) col.size = new Vector3(1.6f, 2.2f, 1.6f);
-            RegisterHitbox(plunger, id, label, plunger.transform);
+            VisualMesh(id + "_Collar", parent, pos, new Vector3(0.095f * scale, 0.018f, 0.095f * scale), metalLight);
+            var plungerHit = HitboxNode(id + "_Hitbox", parent, pos + new Vector3(0f, 0.026f, 0f), new Vector3(0.092f * scale, 0.052f, 0.092f * scale));
+            VisualMesh(id + "_CapMesh", plungerHit.transform, Vector3.zero, new Vector3(0.072f * scale, 0.036f, 0.072f * scale), mat);
+            RegisterHitbox(plungerHit, id, label, plungerHit.transform);
         }
 
         void AddBezelButton(CockpitControlId id, string label, Transform parent, Vector3 pos, Material mat)
         {
-            var btn = Box(id + "_Bezel", parent, pos, new Vector3(.095f, .05f, .025f), mat, true);
-            var col = btn.GetComponent<BoxCollider>();
-            if (col) col.size = new Vector3(1.15f, 1.35f, 3.0f);
-            RegisterHitbox(btn, id, label, btn.transform);
+            var btnHit = HitboxNode(id + "_Hitbox", parent, pos, new Vector3(0.096f, 0.056f, 0.038f));
+            VisualMesh(id + "_BezelMesh", btnHit.transform, Vector3.zero, new Vector3(0.086f, 0.044f, 0.022f), mat);
+            RegisterHitbox(btnHit, id, label, btnHit.transform);
         }
 
         void RegisterHitbox(GameObject go, CockpitControlId id, string label, Transform movingPivot)
@@ -185,23 +230,6 @@ namespace LestingCraft.Runtime
             hb.Label = label;
             hb.MovingPivot = movingPivot;
             Controls[id] = hb;
-        }
-
-        static GameObject Box(string name, Transform parent, Vector3 localPos, Vector3 size, Material mat, bool collider)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = name;
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = localPos;
-            go.transform.localScale = size;
-            var mr = go.GetComponent<MeshRenderer>();
-            if (mr) mr.sharedMaterial = mat;
-            if (!collider)
-            {
-                var c = go.GetComponent<Collider>();
-                if (c) SafeDestroy(c);
-            }
-            return go;
         }
 
         static Material MakeMat(Shader sh, Color c, float metallic, float smooth)
@@ -301,7 +329,9 @@ namespace LestingCraft.Runtime
             var result = default(CockpitActionResult);
             HoveredControl = null;
 
-            if (Physics.Raycast(aimRay, out RaycastHit hit, 3.2f) && hit.collider)
+            // Crucial in both EditMode (autoSyncTransforms=false) and high-velocity 12,000 m/s open-space flight in Update()!
+            Physics.SyncTransforms();
+            if (Physics.Raycast(aimRay, out RaycastHit hit, 3.2f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore) && hit.collider)
             {
                 var hb = hit.collider.GetComponent<CockpitControlHitbox>() ?? hit.collider.GetComponentInParent<CockpitControlHitbox>();
                 if (hb != null) HoveredControl = hb.ControlId;
@@ -357,7 +387,7 @@ namespace LestingCraft.Runtime
                 SetToggleAngle(CockpitControlId.MasterArmSwitch, panel.Arm);
             }
             if (Controls.TryGetValue(CockpitControlId.MasterArmCover, out var cover) && cover.MovingPivot)
-                cover.MovingPivot.localRotation = Quaternion.Euler(SafetyCoverOpen ? -92f : 0f, 0f, 0f);
+                cover.MovingPivot.localRotation = Quaternion.Euler(SafetyCoverOpen ? -96f : 0f, 0f, 0f);
             if (Controls.TryGetValue(CockpitControlId.MasterArmSwitch, out var armSw))
             {
                 var armCol = armSw.GetComponent<BoxCollider>();
@@ -367,8 +397,8 @@ namespace LestingCraft.Runtime
             if (Controls.TryGetValue(CockpitControlId.ThrottleLever, out var thr) && thr.MovingPivot)
             {
                 float t = helm != null ? helm.Throttle : 0f;
-                thr.MovingPivot.localPosition = new Vector3(0f, .05f, Mathf.Lerp(-.14f, .15f, t));
-                thr.MovingPivot.localRotation = Quaternion.Euler(Mathf.Lerp(26f, -28f, t), 0f, 0f);
+                thr.MovingPivot.localPosition = new Vector3(0f, 0.02f, Mathf.Lerp(-0.10f, 0.10f, t));
+                thr.MovingPivot.localRotation = Quaternion.Euler(Mathf.Lerp(24f, -26f, t), 0f, 0f);
             }
 
             if (Controls.TryGetValue(CockpitControlId.FlightStick, out var stick) && stick.MovingPivot)
@@ -387,12 +417,13 @@ namespace LestingCraft.Runtime
                     $"ЦЕЛЬ: {target.NameRu} ({helm.DistanceToTargetKm():0} км)\n" +
                     $"РУД: {Mathf.RoundToInt(helm.Throttle * 100f)}% | СТАТУС: {mode}";
             }
+            Physics.SyncTransforms();
         }
 
         void SetToggleAngle(CockpitControlId id, bool on)
         {
             if (Controls.TryGetValue(id, out var c) && c.MovingPivot)
-                c.MovingPivot.localRotation = Quaternion.Euler(on ? 28f : -28f, 0f, 0f);
+                c.MovingPivot.localRotation = Quaternion.Euler(on ? 24f : -24f, 0f, 0f);
         }
 
         static void SafeDestroy(UnityEngine.Object o)

@@ -78,6 +78,26 @@ namespace LestingCraft.World
             return kind;
         }
 
+        static int TreeDensity(BiomeKind kind)
+        {
+            switch ((int)kind)
+            {
+                case 0: return 45;
+                case 1: return 680;
+                case 2: return 760;
+                case 3: return 0;
+                case 4: return 390;
+                case 5: return 25;
+                case 6: return 620;
+                case 7: return 15;
+                case 8: return 20;
+                case 9: return 0;
+                case 10: return 520;
+                case 11: return 180;
+                default: return 0;
+            }
+        }
+
         public static TreeColumn Trees(int x, int z, int seed, int ground) => Trees(x, z, seed, ground, 7);
 
         public static TreeColumn Trees(int x, int z, int seed, int ground, int contentVersion)
@@ -85,7 +105,6 @@ namespace LestingCraft.World
             if (Reserved(x, z)) return NatureGenerator.Trees(x, z, seed, ground);
             ulong wood = 0, leaf = 0;
             int cx = Div(x, 8), cz = Div(z, 8);
-            int[] densities = { 45, 680, 760, 0, 390, 25, 620, 15, 20, 0, 520, 180 };
             for (int dz = -1; dz <= 1; dz++)
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -93,7 +112,7 @@ namespace LestingCraft.World
                     uint t = TerrainGenerator.Hash(a, 0, b, seed ^ 62113);
                     int ax = a * 8 + 1 + (int)(t % 6), az = b * 8 + 1 + (int)((t >> 8) % 6);
                     BiomeKind kind = At(ax, az, seed, contentVersion);
-                    int density = densities[(int)kind];
+                    int density = TreeDensity(kind);
                     if ((t >> 16) % 1000 >= (uint)density) continue;
                     int top = TerrainGenerator.Height(ax, az, seed, Dimension.Lestingia);
                     if (top <= 42 || top >= 67 || NatureGenerator.Entrance(ax, top, az, seed)) continue;

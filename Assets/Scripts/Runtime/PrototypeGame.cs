@@ -900,8 +900,13 @@ namespace LestingCraft.Runtime
                 string command=shuttleSeats[i]==selfId?"stand":"sit";
                 lastLiftRequest=Time.unscaledTime;
                 client.Send(new NetPacket{type="space_seat",action=command,index=i});
-                if(command=="sit")client.Send(new NetPacket{type="space_flight_ready",protocol=2});
-                Session.Notice=command=="sit"?"Вы заняли кресло пилота · [G] Цель · [R] Пуск!":"Вы встали с кресла";
+                if(command=="sit")
+                {
+                    cabin.BindHelm(SpaceHelm);
+                    player.TeleportTo(cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy+0.35f,(float)sz)));
+                    client.Send(new NetPacket{type="space_flight_ready",protocol=2});
+                }
+                Session.Notice=command=="sit"?"Вы в кресле пилота · Наводите мышь на 3D-тумблеры, РУД, РУС и экран MFD (ЛКМ / колесо) · [E] Встать":"Вы встали с кресла";
                 return true;
             }
             if(Mathf.Abs(local.x+9)<3.5f&&Mathf.Abs(local.z-3)<1.5f&&Mathf.Abs(local.y-28)<2.2f)
@@ -945,8 +950,13 @@ namespace LestingCraft.Runtime
                 double sx,sy,sz;VerticalShuttleWalk.Seat(i,out sx,out sy,out sz);
                 if(Mathf.Abs(local.x-(float)sx)>1.15f||Mathf.Abs(local.z-(float)sz)>1.15f||Mathf.Abs(local.y-(float)sy)>1.45f)continue;
                 offlineShuttleSeat=!offlineShuttleSeat;
+                if(offlineShuttleSeat)
+                {
+                    cabin.BindHelm(SpaceHelm);
+                    player.TeleportTo(cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy+0.35f,(float)sz)));
+                }
                 Session.Notice=offlineShuttleSeat
-                    ? "Вы в кресле пилота! [G] Выбрать цель ("+SpaceFlightVisuals.TargetNameRu(SelectedSpaceTarget)+") · [R] ЗАПУСК РАКЕТЫ · [E] Встать"
+                    ? "Вы в кресле пилота! Наводите прицел/мышь на 3D-тумблеры, РУД, штурвал и бортовой экран MFD (ЛКМ / колесо мыши) · [E] Встать"
                     : "Вы встали с кресла пилота";
                 return true;
             }

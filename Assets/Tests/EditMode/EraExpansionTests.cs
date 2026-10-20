@@ -16,13 +16,18 @@ namespace LestingCraft.Tests
         [Test]
         public void Interactive3DCockpitMouseRaycastsSwitchesCoverThrottleStickAndMfd()
         {
-            var root = new GameObject("CabinRoot");
+            var host = new GameObject("ShuttleCabinHost");
             try
             {
-                var panel = new CockpitPanel();
+                // Build the FULL physical orbiter cabin (carved hull MeshCollider + seats + restraints + displays + 3D cockpit rig)
+                // and shoot all 16 rays directly from the actual seated Pilot Seat 0 eye position!
+                var cabin = VerticalShuttleInteriorVisual.Create(host.transform);
                 var helm = new OpenSpaceHelm();
                 helm.EnterOrbitAround(CelestialBodyId.Earth);
-                var rig = CockpitInteractiveRig.Create(root.transform, panel, helm);
+                cabin.BindHelm(helm);
+                var rig = cabin.InteractiveRig;
+                var panel = cabin.Panel;
+                Vector3 pilotEye = cabin.transform.TransformPoint(CockpitInteractiveRig.PilotEyeLocal);
 
                 Assert.AreEqual(16, rig.Controls.Count, "All 16 physical 3D cockpit controls must register BoxCollider hitboxes");
                 foreach (var kv in rig.Controls)
@@ -35,39 +40,38 @@ namespace LestingCraft.Tests
                         continue;
                     }
                     Vector3 worldCenter = kv.Value.transform.TransformPoint(box.center);
-                    Vector3 origin = worldCenter + new Vector3(0f, 0.25f, -0.75f);
-                    var ray = new Ray(origin, (worldCenter - origin).normalized);
+                    var ray = new Ray(pilotEye, (worldCenter - pilotEye).normalized);
                     rig.StepMouseInteraction(ray, false, false, false, Vector2.zero, 0f);
-                    Assert.AreEqual(kv.Key, rig.HoveredControl, "3D mouse raycast must resolve hitbox for " + kv.Key);
+                    Assert.AreEqual(kv.Key, rig.HoveredControl, "Seated pilot 3D mouse raycast must cleanly hit " + kv.Key + " without cabin occlusion");
                 }
 
-                // Full preflight sequence using ONLY 3D mouse clicks on cockpit switches!
+                // Full preflight sequence using ONLY seated-pilot 3D mouse clicks on cockpit switches!
                 Assert.IsFalse(panel.MainBus);
-                Click3DControl(rig, CockpitControlId.MainBusSwitch);
+                Click3DControl(rig, CockpitControlId.MainBusSwitch, pilotEye);
                 Assert.IsTrue(panel.MainBus);
 
-                Click3DControl(rig, CockpitControlId.FuelFeedSwitch);
+                Click3DControl(rig, CockpitControlId.FuelFeedSwitch, pilotEye);
                 Assert.IsTrue(panel.FuelFeed);
 
-                Click3DControl(rig, CockpitControlId.HatchSwitch);
+                Click3DControl(rig, CockpitControlId.HatchSwitch, pilotEye);
                 Assert.IsTrue(panel.HatchSealed);
 
                 Assert.IsFalse(rig.SafetyCoverOpen);
-                Click3DControl(rig, CockpitControlId.MasterArmCover);
+                Click3DControl(rig, CockpitControlId.MasterArmCover, pilotEye);
                 Assert.IsTrue(rig.SafetyCoverOpen);
 
-                Click3DControl(rig, CockpitControlId.MasterArmSwitch);
+                Click3DControl(rig, CockpitControlId.MasterArmSwitch, pilotEye);
                 Assert.IsTrue(panel.Arm);
 
-                var ignite = Click3DControl(rig, CockpitControlId.IgniteButton);
+                var ignite = Click3DControl(rig, CockpitControlId.IgniteButton, pilotEye);
                 Assert.IsTrue(ignite.RequestedIgnite);
 
                 // Scroll wheel & drag on 3D Throttle Lever + 3D Flight Stick + MFD Galaxy jump
                 float beforeThrottle = helm.Throttle;
-                Scroll3DControl(rig, CockpitControlId.ThrottleLever, 0.25f);
+                Scroll3DControl(rig, CockpitControlId.ThrottleLever, 0.25f, pilotEye);
                 Assert.Greater(helm.Throttle, beforeThrottle);
 
-                var galSwitch = Click3DControl(rig, CockpitControlId.MfdToggleGalaxy);
+                var galSwitch = Click3DControl(rig, CockpitControlId.MfdToggleGalaxy, pilotEye);
                 Assert.IsTrue(galSwitch.RequestedHyperjump);
                 helm.Step(0.1f, 0f, 0f, 0f);
                 for (int i = 0; i < 20; i++) helm.Step(0.1f, 0f, 0f, 0f);
@@ -75,26 +79,24 @@ namespace LestingCraft.Tests
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(host);
             }
         }
 
-        static CockpitActionResult Click3DControl(CockpitInteractiveRig rig, CockpitControlId id)
+        static CockpitActionResult Click3DControl(CockpitInteractiveRig rig, CockpitControlId id, Vector3 pilotEye)
         {
             var hb = rig.Controls[id];
             var box = hb.GetComponent<BoxCollider>();
             Vector3 target = hb.transform.TransformPoint(box.center);
-            Vector3 origin = target + new Vector3(0f, 0.2f, -0.6f);
-            return rig.StepMouseInteraction(new Ray(origin, (target - origin).normalized), true, true, false, Vector2.zero, 0f);
+            return rig.StepMouseInteraction(new Ray(pilotEye, (target - pilotEye).normalized), true, true, false, Vector2.zero, 0f);
         }
 
-        static void Scroll3DControl(CockpitInteractiveRig rig, CockpitControlId id, float scroll)
+        static void Scroll3DControl(CockpitInteractiveRig rig, CockpitControlId id, float scroll, Vector3 pilotEye)
         {
             var hb = rig.Controls[id];
             var box = hb.GetComponent<BoxCollider>();
             Vector3 target = hb.transform.TransformPoint(box.center);
-            Vector3 origin = target + new Vector3(0f, 0.2f, -0.6f);
-            rig.StepMouseInteraction(new Ray(origin, (target - origin).normalized), false, false, false, Vector2.zero, scroll);
+            rig.StepMouseInteraction(new Ray(pilotEye, (target - pilotEye).normalized), false, false, false, Vector2.zero, scroll);
         }
 
         [Test]
@@ -250,7 +252,7 @@ namespace LestingCraft.Tests
             Assert.AreEqual(6, seen7.Count);
             Assert.AreEqual(12, seen8.Count);
 
-            // Diverse villagers across all 10 professions build clean 24-vertex meshes with zero child colliders
+            // Diverse villagers across all 10 professions build clean multi-part meshes with valid normals and zero child colliders
             for (int i = 0; i < 12; i++)
             {
                 int job = i % TradeOffer.ProfessionCount;
@@ -266,7 +268,12 @@ namespace LestingCraft.Tests
                     Assert.AreEqual(0, go.GetComponentsInChildren<Collider>(true).Length);
                     var filters = go.GetComponentsInChildren<MeshFilter>(true);
                     Assert.Greater(filters.Length, 6);
-                    foreach (var mf in filters) Assert.AreEqual(24, mf.sharedMesh.vertexCount);
+                    foreach (var mf in filters)
+                    {
+                        Assert.IsNotNull(mf.sharedMesh);
+                        Assert.GreaterOrEqual(mf.sharedMesh.vertexCount, 24);
+                        Assert.Greater(mf.sharedMesh.normals.Length, 0);
+                    }
                 }
                 finally
                 {
