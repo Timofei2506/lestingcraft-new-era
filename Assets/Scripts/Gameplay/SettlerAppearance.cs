@@ -1,25 +1,24 @@
-using System;
 namespace LestingCraft.Gameplay
 {
-    /// <summary>Appearance only. No new save/network fields: the same actor ID has the same
-    /// face, hair and clothing on every client, including after reconnect.</summary>
-    public struct SettlerAppearance
-    {
-        public int Skin,Coat,Hair,Headwear,Detail;
-        public static SettlerAppearance For(string actorId,int job)
-        {
-            if(actorId==null)actorId="";
-            unchecked
-            {
-                uint h=2166136261u;
-                for(int i=0;i<actorId.Length;i++){h^=actorId[i];h*=16777619u;}
-                h^=(uint)job*0x9e3779b9u;
-                h^=h>>16;h*=0x7feb352du;h^=h>>15;h*=0x846ca68bu;h^=h>>16;
-                return new SettlerAppearance{
-                    Skin=(int)(h%5),Coat=(int)((h>>4)%6),Hair=(int)((h>>9)%5),
-                    Headwear=(int)((h>>15)%4),Detail=(int)((h>>21)%4)
-                };
-            }
-        }
-    }
+ public readonly struct SettlerAppearance
+ {
+  public readonly int Skin,Coat,Hair,Headwear,Detail;
+  public SettlerAppearance(int skin,int coat,int hair,int headwear,int detail)
+  {Skin=skin;Coat=coat;Hair=hair;Headwear=headwear;Detail=detail;}
+
+  public static SettlerAppearance For(string actorId,int job)
+  {
+   uint h = 2166136261u ^ ((uint)(job + 11) * 2654435761u);
+   if (actorId != null)
+    for (int i = 0; i < actorId.Length; i++) { h ^= actorId[i]; h *= 16777619u; }
+   h ^= h >> 13; h *= 1274126177u; h ^= h >> 16;
+   int head = job == 3 ? 4 : job == 6 ? 5 : job == 7 ? 6 : job == 9 ? 7 : (int)((h >> 12) % 6);
+   return new SettlerAppearance(
+    (int)(h % 8),
+    (int)(((h >> 3) + (uint)job) % 10),
+    (int)((h >> 8) % 8),
+    head,
+    (int)((h >> 16) % 6));
+  }
+ }
 }

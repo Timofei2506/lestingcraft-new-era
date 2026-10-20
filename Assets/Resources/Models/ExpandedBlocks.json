@@ -1,250 +1,412 @@
 {
-  "version": 3,
   "blocks": [
     {
       "id": 19,
       "name": "Угольная руда",
       "surface": "ore-coal",
       "hardness": 2.5,
-      "pick": true
+      "pick": true,
+      "layer": 25
     },
     {
       "id": 20,
       "name": "Железная руда",
       "surface": "ore",
-      "hardness": 3,
-      "pick": true
+      "hardness": 3.0,
+      "pick": true,
+      "layer": 14
     },
     {
       "id": 21,
       "name": "Медная руда",
       "surface": "ore-copper",
       "hardness": 2.8,
-      "pick": true
+      "pick": true,
+      "layer": 24
     },
     {
       "id": 22,
       "name": "Золотая руда",
       "surface": "ore-gold",
       "hardness": 3.2,
-      "pick": true
+      "pick": true,
+      "layer": 26
     },
     {
       "id": 23,
       "name": "Серебряная руда",
       "surface": "ore-silver",
-      "hardness": 3,
-      "pick": true
+      "hardness": 3.0,
+      "pick": true,
+      "layer": 27
     },
     {
       "id": 24,
       "name": "Оловянная руда",
       "surface": "ore-tin",
       "hardness": 2.7,
-      "pick": true
+      "pick": true,
+      "layer": 28
     },
     {
       "id": 25,
       "name": "Кварцевая жила",
       "surface": "ore-quartz",
       "hardness": 2.6,
-      "pick": true
+      "pick": true,
+      "layer": 29
     },
     {
       "id": 26,
       "name": "Серная руда",
       "surface": "ore-sulfur",
       "hardness": 2.3,
-      "pick": true
+      "pick": true,
+      "layer": 30
     },
     {
       "id": 27,
       "name": "Гранит",
       "surface": "granite",
       "hardness": 2.5,
-      "pick": true
+      "pick": true,
+      "layer": 31
     },
     {
       "id": 28,
       "name": "Известняк",
       "surface": "limestone",
       "hardness": 1.6,
-      "pick": true
+      "pick": true,
+      "layer": 32
     },
     {
       "id": 29,
       "name": "Сланец",
       "surface": "slate",
       "hardness": 1.8,
-      "pick": true
+      "pick": true,
+      "layer": 33
     },
     {
       "id": 30,
       "name": "Мрамор",
       "surface": "marble",
       "hardness": 2.4,
-      "pick": true
+      "pick": true,
+      "layer": 34
     },
     {
       "id": 31,
       "name": "Обсидиан",
       "surface": "obsidian",
-      "hardness": 6,
-      "pick": true
+      "hardness": 6.0,
+      "pick": true,
+      "layer": 35
     },
     {
       "id": 32,
       "name": "Гравий",
       "surface": "gravel",
       "hardness": 0.7,
-      "pick": false
+      "pick": false,
+      "layer": 36
     },
     {
       "id": 33,
       "name": "Глина",
       "surface": "clay",
       "hardness": 0.6,
-      "pick": false
+      "pick": false,
+      "layer": 37
     },
     {
       "id": 34,
       "name": "Ил",
       "surface": "mud",
       "hardness": 0.5,
-      "pick": false
+      "pick": false,
+      "layer": 38
     },
     {
       "id": 35,
       "name": "Замшелый камень",
       "surface": "mossy-stone",
       "hardness": 1.5,
-      "pick": true
+      "pick": true,
+      "layer": 39
     },
     {
       "id": 36,
       "name": "Булыжник",
       "surface": "cobblestone",
       "hardness": 1.7,
-      "pick": true
+      "pick": true,
+      "layer": 40
     },
     {
       "id": 37,
       "name": "Каменные кирпичи",
       "surface": "stone-bricks",
-      "hardness": 2,
-      "pick": true
+      "hardness": 2.0,
+      "pick": true,
+      "layer": 41
     },
     {
       "id": 38,
       "name": "Треснувшие кирпичи",
       "surface": "cracked-bricks",
       "hardness": 1.8,
-      "pick": true
+      "pick": true,
+      "layer": 42
     },
     {
       "id": 39,
       "name": "Глиняные кирпичи",
       "surface": "clay-bricks",
       "hardness": 1.9,
-      "pick": true
+      "pick": true,
+      "layer": 43
     },
     {
       "id": 40,
       "name": "Полированный камень",
       "surface": "polished-stone",
       "hardness": 2.1,
-      "pick": true
+      "pick": true,
+      "layer": 44
     },
     {
       "id": 41,
       "name": "Полированный гранит",
       "surface": "polished-granite",
       "hardness": 2.6,
-      "pick": true
+      "pick": true,
+      "layer": 48
     },
     {
       "id": 42,
       "name": "Полированный мрамор",
       "surface": "polished-marble",
       "hardness": 2.5,
-      "pick": true
+      "pick": true,
+      "layer": 49
     },
     {
       "id": 43,
       "name": "Песчаник",
       "surface": "sandstone",
       "hardness": 1.2,
-      "pick": true
+      "pick": true,
+      "layer": 45
     },
     {
       "id": 44,
       "name": "Стекло",
       "surface": "crystal",
       "hardness": 0.4,
-      "pick": false
+      "pick": false,
+      "layer": 12
     },
     {
       "id": 45,
       "name": "Угольный блок",
       "surface": "coal-block",
-      "hardness": 3,
-      "pick": true
+      "hardness": 3.0,
+      "pick": true,
+      "layer": 46
     },
     {
       "id": 46,
       "name": "Медный блок",
       "surface": "copper-block",
       "hardness": 3.5,
-      "pick": true
+      "pick": true,
+      "layer": 47
     },
     {
       "id": 47,
       "name": "Алмазная руда",
       "surface": "diamond-ore",
       "hardness": 5.0,
-      "pick": true
+      "pick": true,
+      "layer": 57
     },
     {
       "id": 48,
       "name": "Алмазный блок",
       "surface": "diamond-facets",
       "hardness": 5.5,
-      "pick": true
+      "pick": true,
+      "layer": 58
     },
     {
       "id": 49,
       "name": "Нефтяная скважина",
       "surface": "basalt",
       "hardness": 2.5,
-      "pick": true
+      "pick": true,
+      "layer": 11
     },
     {
       "id": 50,
       "name": "Компрессор",
       "surface": "metal-ingot",
-      "hardness": 3,
-      "pick": true
+      "hardness": 3.0,
+      "pick": true,
+      "layer": 51
     },
     {
       "id": 51,
       "name": "Перегонный куб",
       "surface": "obsidian",
       "hardness": 3.5,
-      "pick": true
+      "pick": true,
+      "layer": 35
     },
     {
       "id": 52,
       "name": "Криоустановка",
       "surface": "snow",
       "hardness": 2.8,
-      "pick": true
+      "pick": true,
+      "layer": 15
     },
     {
       "id": 53,
       "name": "Смеситель топлива",
       "surface": "clay-bricks",
       "hardness": 2.6,
-      "pick": true
+      "pick": true,
+      "layer": 43
+    },
+    {
+      "id": 54,
+      "name": "Уличный факел",
+      "surface": "bark",
+      "hardness": 0.35,
+      "pick": false,
+      "layer": 4
+    },
+    {
+      "id": 55,
+      "name": "Уютная кровать",
+      "surface": "planks",
+      "hardness": 0.8,
+      "pick": false,
+      "layer": 16
+    },
+    {
+      "id": 56,
+      "name": "Кованый фонарь",
+      "surface": "metal-ingot",
+      "hardness": 1.4,
+      "pick": true,
+      "layer": 51
+    },
+    {
+      "id": 57,
+      "name": "Книжный шкаф",
+      "surface": "planks",
+      "hardness": 1.2,
+      "pick": false,
+      "layer": 16
+    },
+    {
+      "id": 58,
+      "name": "Резной дуб",
+      "surface": "wood-end",
+      "hardness": 1.5,
+      "pick": false,
+      "layer": 5
+    },
+    {
+      "id": 59,
+      "name": "Черепичная крыша",
+      "surface": "terracotta-shingles",
+      "hardness": 1.8,
+      "pick": true,
+      "layer": 80
+    },
+    {
+      "id": 60,
+      "name": "Листва сакуры",
+      "surface": "cherry-blossom",
+      "hardness": 0.3,
+      "pick": false,
+      "layer": 81
+    },
+    {
+      "id": 61,
+      "name": "Светящийся гриб",
+      "surface": "glow-shroom",
+      "hardness": 0.6,
+      "pick": false,
+      "layer": 82
+    },
+    {
+      "id": 62,
+      "name": "Красная терракота",
+      "surface": "red-mesa",
+      "hardness": 1.9,
+      "pick": true,
+      "layer": 83
+    },
+    {
+      "id": 63,
+      "name": "Ледниковый лёд",
+      "surface": "glacial-ice",
+      "hardness": 1.3,
+      "pick": true,
+      "layer": 84
+    },
+    {
+      "id": 64,
+      "name": "Магмовый базальт",
+      "surface": "magma-basalt",
+      "hardness": 2.8,
+      "pick": true,
+      "layer": 85
+    },
+    {
+      "id": 65,
+      "name": "Лавандовый дёрн",
+      "surface": "grass-side",
+      "hardness": 0.7,
+      "pick": false,
+      "layer": 3
+    },
+    {
+      "id": 66,
+      "name": "Титановая обшивка",
+      "surface": "titanium-hull",
+      "hardness": 4.2,
+      "pick": true,
+      "layer": 86
+    },
+    {
+      "id": 67,
+      "name": "Кристалл Андромеды",
+      "surface": "andromeda-crystal",
+      "hardness": 3.6,
+      "pick": true,
+      "layer": 87
+    },
+    {
+      "id": 68,
+      "name": "Монолит Сна",
+      "surface": "obsidian",
+      "hardness": 8.0,
+      "pick": true,
+      "layer": 35
+    },
+    {
+      "id": 69,
+      "name": "Бледный камень Сна",
+      "surface": "polished-marble",
+      "hardness": 3.2,
+      "pick": true,
+      "layer": 49
     }
   ]
 }

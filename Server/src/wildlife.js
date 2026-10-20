@@ -12,23 +12,23 @@ export function sample(x, y, z, seed, edits, contentVersion = 2) {
     const edit = edits.get(`${x},${y},${z}`);
     if (edit) return edit.block;
     if (contentVersion >= 4) {
-        const placed = site(x, y, z, seed);
+        const placed = site(x, y, z, seed, contentVersion);
         if (placed !== null) return placed;
     }
-    const raw = contentVersion >= 7 ? sampleBiomes(x, y, z, seed)
+    const raw = contentVersion >= 7 ? sampleBiomes(x, y, z, seed, contentVersion)
         : contentVersion >= 3 ? sampleNature(x, y, z, seed)
         : sampleLegacy(x, y, z, seed, edits);
-    return contentVersion >= 5 ? sampleExpedition(x, y, z, seed, raw) : raw;
+    return contentVersion >= 5 ? sampleExpedition(x, y, z, seed, raw, contentVersion) : raw;
 }
 
-const HEALTH = [30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20];
-const HEIGHT = [2.2, .8, .95, 1.25, 1.95, .9, 2.05, 1.65, 1.05, .7, .55, .9];
-const RADIUS = [.43, .21, .45, .38, .72, .27, .76, .32, .34, .35, .38, .36];
-const MEAT = [3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2];
-const HIDE = [2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1];
-const ATTACK = [0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0];
-const WALK = [.65, .75, .65, 1.15, .65, 1.25, .55, .9, 1.05, .55, .5, 2.8];
-const RUN = [3.8, 4.2, 3.8, 4.6, 3.3, 4.8, 3.4, 3.6, 4.4, 2.1, 2.7, 4.5];
+const HEALTH = [30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55];
+const HEIGHT = [2.2, .8, .95, 1.25, 1.95, .9, 2.05, 1.65, 1.05, .7, .55, .9, .75, .95, 2.35, .55, .62, 2.45, .82, .85];
+const RADIUS = [.43, .21, .45, .38, .72, .27, .76, .32, .34, .35, .38, .36, .30, .28, .58, .36, .40, .74, .36, .55];
+const MEAT = [3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2];
+const HIDE = [2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3];
+const ATTACK = [0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0];
+const WALK = [.65, .75, .65, 1.15, .65, 1.25, .55, .9, 1.05, .55, .5, 2.8, 2.4, .62, .72, .95, .35, .60, .58, 2.6];
+const RUN = [3.8, 4.2, 3.8, 4.6, 3.3, 4.8, 3.4, 3.6, 4.4, 2.1, 2.7, 4.5, 4.1, 2.4, 3.5, 3.6, 1.2, 3.9, 2.8, 4.6];
 const HABITATS = [
     [0, 0, 1, 1, 5, 6, 6, 11],
     [0, 0, 1, 2, 2, 3, 4, 5, 8, 11],
@@ -37,9 +37,18 @@ const HABITATS = [
     [2, 2, 9, 9, 9, 10, 10, 10, 11],
     [1, 3, 7, 7, 7, 8, 11, 11]
 ];
+const HABITATS_V8 = [
+    [0, 1, 5, 6, 11, 12, 16, 18],
+    [0, 1, 2, 3, 4, 5, 8, 11, 12, 17],
+    [0, 1, 3, 4, 6, 8, 12, 13, 13, 17, 17],
+    [1, 5, 7, 11, 14, 14, 15, 15],
+    [2, 9, 10, 11, 16, 16, 18, 18, 19],
+    [1, 3, 7, 8, 11, 12, 15, 17, 19]
+];
 const EMPTY_EDITS = new Map();
 const solid = id => id > 0 && id !== 7 && id !== 8;
-const index = s => Number.isInteger(s) && s >= 0 && s < 12 ? s : 2;
+const index = s => Number.isInteger(s) && s >= 0 && s < 20 ? s : 2;
+const flyingSpecies = s => s === 11 || s === 12 || s === 19;
 const health = s => HEALTH[index(s)];
 export const animalHeight = s => HEIGHT[index(s)];
 const radius = s => RADIUS[index(s)];
@@ -53,10 +62,10 @@ const snapshot = a => ({
 // Must match WildlifeSimulation.Habitat. Substrate is sampled from the actual
 // biome-authored world, including edits. Meadow and forest share grassy ground.
 export function wildlifeHabitat(surface, x, z, seed) {
-    if (surface === 33 || surface === 34 || surface === 7) return 4;
-    if (surface === 6 || surface === 43) return 3;
-    if (surface === 27 || surface === 32 || surface === 1) return 5;
-    if (surface === 14) return 2;
+    if (surface === 33 || surface === 34 || surface === 7 || surface === 61) return 4;
+    if (surface === 6 || surface === 43 || surface === 62) return 3;
+    if (surface === 27 || surface === 32 || surface === 1 || surface === 10 || surface === 31 || surface === 64 || surface === 65) return 5;
+    if (surface === 14 || surface === 63) return 2;
     return speciesHash(Math.floor(x / 160), Math.floor(z / 160), seed ^ 81473) % 2;
 }
 
@@ -82,7 +91,7 @@ export class Fauna {
             if (this.animals.length >= 256) break;
             if (!source || typeof source.id !== 'string' || ids.has(source.id) ||
                 !Number.isInteger(source.species) || source.species < 0 ||
-                source.species >= (contentVersion >= 7 ? 12 : 3) ||
+                source.species >= (contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3) ||
                 ![source.x, source.y, source.z, source.yaw].every(finite)) continue;
             const a = {...source};
             ids.add(a.id);
@@ -95,7 +104,7 @@ export class Fauna {
             a.timer = a.anger = a.bite = a.fallSpeed = a.impulseX = a.impulseZ = 0;
             a.wander = Number.isInteger(a.wander) ? a.wander | 0 : 0;
             a.flightPhase = finite(a.flightPhase) ? a.flightPhase : 0;
-            a.flightHeight = a.species === 11
+            a.flightHeight = flyingSpecies(a.species)
                 ? finite(a.flightHeight) && a.flightHeight >= 3.5 && a.flightHeight <= 6 ? a.flightHeight : 4.75
                 : 0;
             this.animals.push(a);
@@ -104,8 +113,8 @@ export class Fauna {
         for (const l of Array.isArray(saved.loot) ? saved.loot : []) {
             if (this.loot.length >= 256) break;
             if (!l || typeof l.id !== 'string' || typeof l.key !== 'string' || lootIds.has(l.id) ||
-                !Number.isInteger(l.meat) || l.meat < 1 || l.meat > 7 ||
-                !Number.isInteger(l.hide) || l.hide < 1 || l.hide > 4) continue;
+                !Number.isInteger(l.meat) || l.meat < 1 || l.meat > 8 ||
+                !Number.isInteger(l.hide) || l.hide < 1 || l.hide > 5) continue;
             lootIds.add(l.id);
             this.loot.push({...l});
         }
@@ -140,7 +149,7 @@ export class Fauna {
     }
 
     ground(x, z, previous, s) {
-        const r = radius(s), h = animalHeight(s) + (s === 11 ? 6 : 0);
+        const r = radius(s), h = animalHeight(s) + (flyingSpecies(s) ? 6 : 0);
         const natural = height(Math.floor(x), Math.floor(z), this.seed) + 1;
         const hi = previous < 0 ? natural + 1 : Math.floor(previous) + 1;
         const lo = previous < 0 ? natural - 2 : Math.floor(previous) - 1;
@@ -159,7 +168,8 @@ export class Fauna {
                     valid = false; break;
                 }
                 if (previous < 0 && ![3, 2, 14].includes(below) &&
-                    !(this.contentVersion >= 7 && [1, 6, 27, 32, 33, 34, 43].includes(below))) {
+                    !(this.contentVersion >= 7 && [1, 6, 27, 32, 33, 34, 43].includes(below)) &&
+                    !(this.contentVersion >= 8 && [10, 29, 60, 61, 62, 63, 64, 65].includes(below))) {
                     valid = false; break;
                 }
                 for (let cy = y; cy < Math.ceil(y + h); cy++) {
@@ -172,7 +182,7 @@ export class Fauna {
     }
 
     foot(a, x, z, previous) {
-        const offset = a.species === 11 ? a.flightHeight : 0;
+        const offset = flyingSpecies(a.species) ? a.flightHeight : 0;
         let y = this.ground(x, z, previous - offset, a.species);
         if (!Number.isFinite(y) && a.species === 7) y = this.ground(x, z, previous + 1, a.species);
         return Number.isFinite(y) ? y + offset : NaN;
@@ -196,12 +206,13 @@ export class Fauna {
                 if (this.contentVersion >= 7) {
                     const ix = Math.floor(x), iz = Math.floor(z);
                     const surface = this.block(ix, height(ix, iz, this.seed), iz);
-                    const choices = HABITATS[wildlifeHabitat(surface, ix, iz, this.seed)];
+                    const pool = this.contentVersion >= 8 ? HABITATS_V8 : HABITATS;
+                    const choices = pool[wildlifeHabitat(surface, ix, iz, this.seed)];
                     species = choices[(h >>> 16) % choices.length];
                 }
                 let y = this.ground(x, z, -1, species);
                 if (!Number.isFinite(y)) continue;
-                const flightHeight = species === 11 ? 4.75 : 0;
+                const flightHeight = flyingSpecies(species) ? 4.75 : 0;
                 y += flightHeight;
                 this.animals.push({
                     id: 'a:' + key, species, health: health(species), x, y, z, yaw: h % 360,
@@ -238,7 +249,7 @@ export class Fauna {
                 if (!nearest) continue;
                 if (active++ >= 32) break;
                 const s = a.species;
-                if (s === 11) {
+                if (flyingSpecies(s)) {
                     const old = a.flightHeight;
                     a.flightPhase = (a.flightPhase + dt * .8) % (Math.PI * 2);
                     a.flightHeight = 4.75 + 1.25 * Math.sin(a.flightPhase);
@@ -274,12 +285,12 @@ export class Fauna {
                 a.anger = Math.max(0, (a.anger || 0) - dt);
                 a.bite = Math.max(0, (a.bite || 0) - dt);
                 a.timer -= dt;
-                const hostile = (s === 2 || s === 6 || s === 8) && a.anger > 0 ||
-                    s === 3 && (a.anger > 0 || best < 81) ||
-                    s === 4 && (a.anger > 0 || best < 36);
+                const hostile = (s === 2 || s === 6 || s === 8 || s === 19) && a.anger > 0 ||
+                    (s === 3 || s === 12) && (a.anger > 0 || best < 81) ||
+                    (s === 4 || s === 15) && (a.anger > 0 || best < 36);
                 const defending = hostile && best < 196 && Math.abs(a.y - nearest.y) < 8;
                 const flee = best < (s === 1 ? 100 : 64) && !defending &&
-                    Math.abs(a.y - nearest.y) < 8 && s !== 11;
+                    Math.abs(a.y - nearest.y) < 8 && !flyingSpecies(s);
                 let speed = WALK[s];
                 if (defending) {
                     a.goalX = nearest.x; a.goalZ = nearest.z;

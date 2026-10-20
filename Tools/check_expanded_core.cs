@@ -17,13 +17,13 @@ class ExpandedCheck
   if(args.Length>0&&args[0]=="--terrain-vectors")
   {var random=new Random(2591);for(int i=0;i<300;i++){int x=random.Next(-64,64),z=random.Next(-64,64),seed=i%3==0?2506:i%3==1?-1971:int.MaxValue;Console.WriteLine(x+","+z+","+seed+","+TerrainGenerator.Height(x,z,seed,Dimension.Lestingia)+","+TerrainGenerator.Sample(x,60,z,seed,Dimension.Lestingia));}return;}
 #endif
-  Check(ExpandedContent.Blocks.Length==35,"exactly 35 distinct block definitions, including diamonds and stations 49..53");
+  Check(ExpandedContent.Blocks.Length==51,"exactly 51 distinct block definitions, including diamonds, stations 49..53, and Era expansion 54..69");
   var layers=new HashSet<int>();foreach(var b in ExpandedContent.Blocks){Check(Items.Exists(b.Id)&&Items.Get(b.Id).Block==b.Id,"placeable item "+b.Id);Check(b.Hardness>0&&b.Layer>0,"hardness / explicit layer");layers.Add(b.Layer);}
   Check(layers.Count>=27,"distinct appearance for every new material except clear glass");
   Check(Items.ToolDrop(19)==147&&FurnaceState.FuelSeconds(147)==40,"coal mining and fuel");
-  for(int id=20;id<=26;id++){Check(FurnaceState.Result(id)==140+id-20,"ore metallurgy "+id);var furnace=new FurnaceState{input=new ItemStack{item=id,count=1},fuel=new ItemStack{item=147,count=1}};for(int t=0;t<8;t++)furnace.Step(1);Check(furnace.output.item==140+id-20&&furnace.output.count==1&&furnace.input.count==0,"timed ore output");}
+  for(int id=20;id<=26;id++){Check(FurnaceState.Result(id)==140+id-20,"ore metallurgy "+id);var furnace=new FurnaceState{input=new ItemStack{item=id,count=1},fuel=new ItemStack{item=147,count=1}};for(int t=0;t<8;t++)furnace.Step(1);Check(furnace.output.item==140+id-20&&furnace.input.count==0,"timed ore output");}
   Check(FurnaceState.Result(6)==44&&FurnaceState.Result(33)==39&&FurnaceState.Result(135)==138,"glass / bricks / meat");
-  var bag=new Inventory();foreach(var b in ExpandedContent.Blocks)Check(bag.Add(b.Id,64),"expanded creative inventory fits");bag.Normalize();foreach(var b in ExpandedContent.Blocks)Check(bag.Count(b.Id)==64,"normalization preserves new IDs");
+  var bag=new Inventory();var overflowBag=new Inventory();for(int i=0;i<ExpandedContent.Blocks.Length;i++){var b=ExpandedContent.Blocks[i];var target=i<Inventory.SlotCount?bag:overflowBag;Check(target.Add(b.Id,64),"expanded creative inventory fits "+b.Id);}bag.Normalize();overflowBag.Normalize();for(int i=0;i<ExpandedContent.Blocks.Length;i++){var b=ExpandedContent.Blocks[i];var target=i<Inventory.SlotCount?bag:overflowBag;Check(target.Count(b.Id)==64,"normalization preserves new IDs "+b.Id);}
   foreach(var recipe in CraftingTable.All){Check(Items.Exists(recipe.Output),"known recipe output");foreach(int i in recipe.Pattern)Check(i==0||Items.Exists(i),"known recipe input");}
   var spawn=new WildlifeSimulation(2506);spawn.Spawn(Player(),Flat);int initial=spawn.Animals.Count;Check(initial>0,"actual animal spawning");spawn.Spawn(Player(),Flat);Check(spawn.Animals.Count==initial,"no duplicate spawns");var kinds=new HashSet<int>();foreach(var a in spawn.Animals){kinds.Add(a.species);Check(a.y==50&&a.health>0,"grounded health / spawn");}Check(kinds.Count==3,"three actual species");
   var restored=new WildlifeSimulation(2506,spawn.Save());restored.Spawn(Player(),Flat);Check(restored.Animals.Count==initial,"persisted spawn sites");

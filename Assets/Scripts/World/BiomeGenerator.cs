@@ -1,60 +1,210 @@
 using Unity.Mathematics;
+using TreeColumn = LestingCraft.World.NatureGenerator.TreeColumn;
+
 namespace LestingCraft.World
 {
- // Content 7 only: old samplers and terrain heights remain immutable.
- public enum BiomeKind { Meadow, MixedForest, Taiga, Dunes, Marsh, RockyHighlands }
- public static class BiomeGenerator
- {
-  public const int Version=7;
-  public static string Name(BiomeKind kind){switch(kind){case BiomeKind.Meadow:return "Луга";case BiomeKind.Taiga:return "Хвойная тайга";case BiomeKind.Dunes:return "Песчаные дюны";case BiomeKind.Marsh:return "Заболоченный лес";case BiomeKind.RockyHighlands:return "Каменистые пустоши";default:return "Смешанный лес";}}
-  static int Floor(int x,int size)=>x>=0?x/size:(x-size+1)/size;
-  public static BiomeKind At(int x,int z,int seed)
-  {
-   if(ExpeditionGenerator.Reserved(x,z))return BiomeKind.MixedForest;
-   int cx=Floor(x,160),cz=Floor(z,160),best=int.MaxValue,kind=1;
-   for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++)
-   {int a=cx+dx,b=cz+dz;uint h=TerrainGenerator.Hash(a,0,b,seed^81473);int ax=a*160+32+(int)(h%96),az=b*160+32+(int)((h>>8)%96),rx=x-ax,rz=z-az,d=rx*rx+rz*rz;if(d<best){best=d;kind=(int)((h>>19)%6);}}
-   return (BiomeKind)kind;
-  }
-  public static float TemperatureOffset(BiomeKind biome)=>biome==BiomeKind.Taiga?-9:biome==BiomeKind.Dunes?10:biome==BiomeKind.Marsh?3:biome==BiomeKind.RockyHighlands?-6:0;
-  public static NatureGenerator.TreeColumn Trees(int x,int z,int seed,int height)
-  {
-   if(ExpeditionGenerator.Reserved(x,z))return NatureGenerator.Trees(x,z,seed,height);
-   var result=new NatureGenerator.TreeColumn{Base=height-16};int cx=Floor(x,8),cz=Floor(z,8);
-   for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++)
-   {
-    int a=cx+dx,b=cz+dz;uint h=TerrainGenerator.Hash(a,0,b,seed^62113);int ax=a*8+1+(int)(h%6),az=b*8+1+(int)((h>>8)%6);var kind=At(ax,az,seed);
-    int density=kind==BiomeKind.MixedForest?680:kind==BiomeKind.Taiga?760:kind==BiomeKind.Marsh?390:kind==BiomeKind.Meadow?45:kind==BiomeKind.RockyHighlands?25:0;
-    if((h>>16)%1000>=density)continue;int top=TerrainGenerator.Height(ax,az,seed,Dimension.Lestingia);if(top<=42||top>=67||NatureGenerator.Entrance(ax,top,az,seed))continue;
-    bool pine=kind==BiomeKind.Taiga;int tall=pine?12+(int)(h%6):kind==BiomeKind.Marsh?6+(int)(h%3):8+(int)(h%5);int rx=x-ax,rz=z-az,dist=rx*rx+rz*rz;
-    for(int dy=1;dy<=tall+3;dy++)
+    public enum BiomeKind
     {
-     int bit=top+dy-result.Base;if(bit<0||bit>=64)continue;bool wood=rx==0&&rz==0&&dy<=tall;
-     if(kind==BiomeKind.Marsh&&dy<=2&&math.abs(rx)+math.abs(rz)==1)wood=true;
-     bool leaf;if(pine){int radius=math.min(4,(tall-dy)/3+1);leaf=dy>=4&&dy<=tall+1&&dist<=radius*radius&&(dy%3!=0||dist<=1);}
-     else {int radius=kind==BiomeKind.Marsh?4:3,vertical=dy-(tall-1);leaf=dy>=tall-3&&dist+vertical*vertical<=radius*radius;}
-     if(wood)result.Wood|=1UL<<bit;else if(leaf)result.Leaves|=1UL<<bit;
+        Meadow = 0,
+        MixedForest = 1,
+        Taiga = 2,
+        Dunes = 3,
+        Marsh = 4,
+        RockyHighlands = 5,
+        CherryGrove = 6,
+        RedMesa = 7,
+        GlacialTundra = 8,
+        VolcanicBasalt = 9,
+        BioluminescentGrove = 10,
+        LavenderHighlands = 11
     }
-   }return result;
-  }
-  public static ushort Column(int x,int y,int z,int seed,int height,NatureGenerator.TreeColumn trees)=>Column(x,y,z,seed,height,trees,At(x,z,seed));
-  public static ushort Column(int x,int y,int z,int seed,int height,NatureGenerator.TreeColumn trees,BiomeKind kind)
-  {
-   if(ExpeditionGenerator.Reserved(x,z))return NatureGenerator.Column(x,y,z,seed,height,trees);
-   if(y<0||y>=256)return 0;if(y==0)return 9;
-   if(y>height){if(y<=40)return 7;return trees.At(y);}
-   if(NatureGenerator.Cave(x,y,z,seed,height))return 0;
-   if(height>41&&y>=height-3)
-   {
-    if(kind==BiomeKind.Dunes)return y>=height-1?(ushort)6:(ushort)43;
-    if(kind==BiomeKind.Taiga)return y==height?(ushort)14:(ushort)2;
-    if(kind==BiomeKind.Marsh){uint pool=TerrainGenerator.Hash(Floor(x,7),0,Floor(z,7),seed^47119);if(pool%5==0&&y>=height-1)return 7;return y==height?(ushort)34:(ushort)33;}
-    if(kind==BiomeKind.RockyHighlands)return y==height?(height>=62?(ushort)14:(ushort)32):(ushort)27;
-   }
-   ushort raw=y==height?(height<=41?(ushort)6:height>=64?(ushort)14:(ushort)3):y>height-4?(ushort)2:TerrainGenerator.Hash(x,y,z,seed)%143==0?(ushort)13:(ushort)1;
-   return TerrainGenerator.Expanded(raw,x,y,z,seed,Dimension.Lestingia,height,2);
-  }
-  public static ushort Sample(int x,int y,int z,int seed)
-  {if(y<0||y>=256)return 0;int h=TerrainGenerator.Height(x,z,seed,Dimension.Lestingia);var trees=y>h&&y<h+48?Trees(x,z,seed,h):default(NatureGenerator.TreeColumn);return Column(x,y,z,seed,h,trees);}
- }
+
+    public static class BiomeGenerator
+    {
+        public const int Version = 8;
+        public static readonly string[] Names =
+        {
+            "Луга", "Смешанный лес", "Хвойная тайга",
+            "Песчаные дюны", "Заболоченный лес", "Каменистые пустоши",
+            "Роща сакуры", "Красный каньон", "Ледниковая тундра",
+            "Вулканическое плато", "Биолюминесцентная чаща", "Лавандовое нагорье"
+        };
+
+        public static string Name(BiomeKind kind)
+        {
+            int idx = (int)kind;
+            return idx >= 0 && idx < Names.Length ? Names[idx] : "Смешанный лес";
+        }
+
+        public static float TemperatureOffset(BiomeKind biome)
+        {
+            switch (biome)
+            {
+                case BiomeKind.Taiga: return -9f;
+                case BiomeKind.Dunes: return 10f;
+                case BiomeKind.Marsh: return 3f;
+                case BiomeKind.RockyHighlands: return -6f;
+                case BiomeKind.CherryGrove: return 2f;
+                case BiomeKind.RedMesa: return 8f;
+                case BiomeKind.GlacialTundra: return -12f;
+                case BiomeKind.VolcanicBasalt: return 14f;
+                case BiomeKind.BioluminescentGrove: return 1f;
+                case BiomeKind.LavenderHighlands: return -2f;
+                default: return 0f;
+            }
+        }
+
+        static int Div(int a, int b) => a >= 0 ? a / b : (a - b + 1) / b;
+        static bool Reserved(int x, int z) => x >= -110 && x <= 270 && z >= -190 && z <= 158;
+
+        // Preserves exact 6-biome Voronoi output for contentVersion <= 7, and unlocks all 12 biomes for contentVersion >= 8!
+        public static BiomeKind At(int x, int z, int seed) => At(x, z, seed, 7);
+
+        public static BiomeKind At(int x, int z, int seed, int contentVersion)
+        {
+            if (Reserved(x, z)) return BiomeKind.MixedForest;
+            int count = contentVersion >= 8 ? 12 : 6;
+            int cx = Div(x, 160), cz = Div(z, 160), best = int.MaxValue;
+            BiomeKind kind = BiomeKind.MixedForest;
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int a = cx + dx, b = cz + dz;
+                    uint h = TerrainGenerator.Hash(a, 0, b, seed ^ 81473);
+                    int ax = a * 160 + 32 + (int)(h % 96), az = b * 160 + 32 + (int)((h >> 8) % 96);
+                    int rx = x - ax, rz = z - az, d = rx * rx + rz * rz;
+                    if (d < best) { best = d; kind = (BiomeKind)((h >> 19) % (uint)count); }
+                }
+            return kind;
+        }
+
+        public static TreeColumn Trees(int x, int z, int seed, int ground) => Trees(x, z, seed, ground, 7);
+
+        public static TreeColumn Trees(int x, int z, int seed, int ground, int contentVersion)
+        {
+            if (Reserved(x, z)) return NatureGenerator.Trees(x, z, seed, ground);
+            ulong wood = 0, leaf = 0;
+            int cx = Div(x, 8), cz = Div(z, 8);
+            int[] densities = { 45, 680, 760, 0, 390, 25, 620, 15, 20, 0, 520, 180 };
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int a = cx + dx, b = cz + dz;
+                    uint t = TerrainGenerator.Hash(a, 0, b, seed ^ 62113);
+                    int ax = a * 8 + 1 + (int)(t % 6), az = b * 8 + 1 + (int)((t >> 8) % 6);
+                    BiomeKind kind = At(ax, az, seed, contentVersion);
+                    int density = densities[(int)kind];
+                    if ((t >> 16) % 1000 >= (uint)density) continue;
+                    int top = TerrainGenerator.Height(ax, az, seed, Dimension.Lestingia);
+                    if (top <= 42 || top >= 67 || NatureGenerator.Entrance(ax, top, az, seed)) continue;
+                    bool pine = kind == BiomeKind.Taiga || kind == BiomeKind.LavenderHighlands;
+                    int tall = pine ? 12 + (int)(t % 6) :
+                               kind == BiomeKind.Marsh ? 6 + (int)(t % 3) :
+                               kind == BiomeKind.BioluminescentGrove ? 5 + (int)(t % 4) :
+                               8 + (int)(t % 5);
+                    int rx = x - ax, rz = z - az, dist = rx * rx + rz * rz;
+                    for (int y = top + 1; y <= top + tall + 3; y++)
+                    {
+                        int bit = y - (ground - 16);
+                        if ((uint)bit >= 64) continue;
+                        int dy = y - top;
+                        bool trunk = rx == 0 && rz == 0 && dy <= tall;
+                        if (kind == BiomeKind.Marsh && dy <= 2 && math.abs(rx) + math.abs(rz) == 1) trunk = true;
+                        if (trunk) wood |= 1ul << bit;
+                        bool canopy;
+                        if (pine)
+                        {
+                            int r = math.min(4, (tall - dy) / 3 + 1);
+                            canopy = dy >= 4 && dy <= tall + 1 && dist <= r * r && (dy % 3 != 0 || dist <= 1);
+                        }
+                        else if (kind == BiomeKind.BioluminescentGrove)
+                        {
+                            canopy = (dy == tall || dy == tall + 1) && dist <= 5 || (dy == tall + 2 && dist <= 2);
+                        }
+                        else
+                        {
+                            int r = kind == BiomeKind.Marsh || kind == BiomeKind.CherryGrove ? 4 : 3, v = dy - (tall - 1);
+                            canopy = dy >= tall - 3 && dist + v * v <= r * r;
+                        }
+                        if (canopy) leaf |= 1ul << bit;
+                    }
+                }
+            return new TreeColumn { Base = ground - 16, Wood = wood, Leaves = leaf };
+        }
+
+        public static ushort Column(int x, int y, int z, int seed, int h, TreeColumn trees)
+        {
+            return Column(x, y, z, seed, h, trees, At(x, z, seed, 7));
+        }
+
+        public static ushort Column(int x, int y, int z, int seed, int h, TreeColumn trees, BiomeKind kind)
+        {
+            if (Reserved(x, z)) return NatureGenerator.Column(x, y, z, seed, h, trees);
+            if (y < 0 || y >= ChunkData.SizeY) return 0;
+            if (y == 0) return 9;
+            if (y > h)
+            {
+                if (y <= 40) return kind == BiomeKind.GlacialTundra && y == 40 ? BlockRegistry.GlacialIceId : (ushort)7;
+                ushort treeBlock = y < h + 48 ? trees.At(y) : (ushort)0;
+                if (treeBlock == 5)
+                {
+                    if (kind == BiomeKind.CherryGrove) return BlockRegistry.CherryLeavesId;
+                    if (kind == BiomeKind.BioluminescentGrove) return BlockRegistry.GlowShroomId;
+                }
+                return treeBlock;
+            }
+            if (NatureGenerator.Cave(x, y, z, seed, h)) return 0;
+            if (h > 41 && y >= h - 3)
+            {
+                switch (kind)
+                {
+                    case BiomeKind.Dunes:
+                        return y >= h - 1 ? (ushort)6 : (ushort)43;
+                    case BiomeKind.Taiga:
+                        return y == h ? (ushort)14 : (ushort)2;
+                    case BiomeKind.Marsh:
+                    {
+                        uint pool = TerrainGenerator.Hash(Div(x, 7), 0, Div(z, 7), seed ^ 47119);
+                        if (pool % 5 == 0 && y >= h - 1) return 7;
+                        return y == h ? (ushort)34 : (ushort)33;
+                    }
+                    case BiomeKind.RockyHighlands:
+                        return y == h ? (h >= 62 ? (ushort)14 : (ushort)32) : (ushort)27;
+                    case BiomeKind.CherryGrove:
+                        return y == h ? (ushort)3 : (ushort)2;
+                    case BiomeKind.RedMesa:
+                        return (y + Div(x + z, 11)) % 3 == 0 ? (ushort)43 : BlockRegistry.RedMesaId;
+                    case BiomeKind.GlacialTundra:
+                    {
+                        uint ice = TerrainGenerator.Hash(Div(x, 5), 0, Div(z, 5), seed ^ 55313);
+                        return ice % 3 == 0 || y < h ? BlockRegistry.GlacialIceId : (ushort)14;
+                    }
+                    case BiomeKind.VolcanicBasalt:
+                    {
+                        uint vent = TerrainGenerator.Hash(Div(x, 6), 0, Div(z, 6), seed ^ 99131);
+                        if (vent % 9 == 0) return BlockRegistry.MagmaBasaltId;
+                        return y == h && vent % 4 == 0 ? (ushort)31 : (ushort)10;
+                    }
+                    case BiomeKind.BioluminescentGrove:
+                        return y == h ? (ushort)34 : (ushort)2;
+                    case BiomeKind.LavenderHighlands:
+                    {
+                        uint spur = TerrainGenerator.Hash(x, 0, z, seed ^ 31337);
+                        if (y == h && spur % 97 == 0) return 11;
+                        return y == h ? BlockRegistry.LavenderTurfId : (ushort)2;
+                    }
+                }
+            }
+            return NatureGenerator.Column(x, y, z, seed, h, trees);
+        }
+
+        public static ushort Sample(int x, int y, int z, int seed) => Sample(x, y, z, seed, 7);
+
+        public static ushort Sample(int x, int y, int z, int seed, int contentVersion)
+        {
+            if (Reserved(x, z)) return NatureGenerator.Sample(x, y, z, seed);
+            int h = TerrainGenerator.Height(x, z, seed, Dimension.Lestingia);
+            return Column(x, y, z, seed, h, Trees(x, z, seed, h, contentVersion), At(x, z, seed, contentVersion));
+        }
+    }
 }

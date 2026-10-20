@@ -2,19 +2,7 @@ namespace LestingCraft.Presentation
 {
     public static class SurfaceLayers
     {
-        public static readonly string[] Names={
-            "stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava",
-            "bedrock","basalt","crystal","aether","ore","snow","planks","workbench-top","workbench-side",
-            "furnace-side","furnace-front","furnace-top","campfire-side","campfire-top","ore-copper",
-            "ore-coal","ore-gold","ore-silver","ore-tin","ore-quartz","ore-sulfur","granite","limestone",
-            "slate","marble","obsidian","gravel","clay","mud","mossy-stone","cobblestone","stone-bricks",
-            "cracked-bricks","clay-bricks","polished-stone","sandstone","coal-block","copper-block",
-            "polished-granite","polished-marble","wildlife-fur","metal-ingot","deer-fur","hare-fur",
-            "boar-bristles","animal-underfur","animal-keratin","diamond-ore","diamond-facets","leather",
-            "raw-meat","cooked-meat","cat-fur",
-            "wolf-fur","bear-fur","fox-fur","bison-fur","goat-fur","lynx-fur","beaver-fur",
-            "frog-skin","eagle-feathers"
-        };
+        public static readonly string[] Names={"stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava","bedrock","basalt","crystal","aether","ore","snow","planks","workbench-top","workbench-side","furnace-side","furnace-front","furnace-top","campfire-side","campfire-top","ore-copper","ore-coal","ore-gold","ore-silver","ore-tin","ore-quartz","ore-sulfur","granite","limestone","slate","marble","obsidian","gravel","clay","mud","mossy-stone","cobblestone","stone-bricks","cracked-bricks","clay-bricks","polished-stone","sandstone","coal-block","copper-block","polished-granite","polished-marble","wildlife-fur","metal-ingot","deer-fur","hare-fur","boar-bristles","animal-underfur","animal-keratin","diamond-ore","diamond-facets","leather","raw-meat","cooked-meat","cat-fur","wolf-fur","bear-fur","fox-fur","bison-fur","goat-fur","lynx-fur","beaver-fur","frog-skin","eagle-feathers","owl-feathers","penguin-plumage","camel-coat","scorpion-chitin","turtle-shell","moose-fur","capybara-fur","voidray-skin","terracotta-shingles","cherry-blossom","glow-shroom","red-mesa","glacial-ice","magma-basalt","titanium-hull","andromeda-crystal"};
 
         public static int ForFace(ushort block, int face)
         {
@@ -38,6 +26,7 @@ namespace LestingCraft.Presentation
                 case 16: return face == 2 ? 17 : face == 3 ? 16 : 18;
                 case 17: return face == 2 || face == 3 ? 21 : face == 5 ? 20 : 19;
                 case 18: return 16;
+                case 65: return face == 2 ? 81 : face == 3 ? 1 : 3;
                 default:
                     return LestingCraft.Gameplay.ExpandedContent.Has(block)
                         ? LestingCraft.Gameplay.ExpandedContent.Blocks[block - 19].Layer : 0;

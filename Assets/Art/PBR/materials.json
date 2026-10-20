@@ -158,7 +158,15 @@
       "lynx": "lynx-fur",
       "beaver": "beaver-fur",
       "frog": "frog-skin",
-      "eagle": "eagle-feathers"
+      "eagle": "eagle-feathers",
+      "owl": "owl-feathers",
+      "penguin": "penguin-plumage",
+      "camel": "camel-coat",
+      "scorpion": "scorpion-chitin",
+      "turtle": "turtle-shell",
+      "moose": "moose-fur",
+      "capybara": "capybara-fur",
+      "voidray": "voidray-skin"
     },
     "auxiliaries": [
       "animal-underfur",

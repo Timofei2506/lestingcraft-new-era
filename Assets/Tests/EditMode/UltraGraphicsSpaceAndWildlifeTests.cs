@@ -42,44 +42,46 @@ namespace LestingCraft.Tests
         }
 
         [Test]
-        public void ExpandedWildlifeSpawnsAllTwelveSpeciesWithDedicatedPbrCoatsAndRigs()
+        public void ExpandedWildlifeSpawnsAllTwentySpeciesWithDedicatedPbrCoatsAndRigs()
         {
-            Assert.AreEqual(12, AnimalVisual.SpeciesFurNames.Length);
+            Assert.AreEqual(20, AnimalVisual.SpeciesFurNames.Length);
             var coatLayers = new HashSet<int>();
-            for (int kind = 0; kind < 12; kind++)
+            for (int kind = 0; kind < 20; kind++)
             {
                 int layer = AnimalVisual.FurLayerForSpecies(kind);
                 coatLayers.Add(layer);
                 Assert.AreEqual(AnimalVisual.SpeciesFurNames[kind], SurfaceLayers.Names[layer]);
 
-                var obj = new GameObject("Animal12_" + kind);
+                var obj = new GameObject("Animal20_" + kind);
                 try
                 {
                     var visual = obj.AddComponent<AnimalVisual>();
                     visual.Build(kind);
                     Assert.IsNotNull(visual.Head);
-                    Assert.AreEqual(kind == 11 ? 2 : 4, visual.Legs.Count);
-                    if (kind == 11) Assert.AreEqual(2, visual.Wings.Count);
+                    bool winged = kind == 11 || kind == 12 || kind == 13 || kind == 19;
+                    int expectedLegs = kind == 19 ? 0 : kind == 15 ? 6 : (kind == 11 || kind == 12 || kind == 13) ? 2 : 4;
+                    Assert.AreEqual(expectedLegs, visual.Legs.Count);
+                    if (winged) Assert.AreEqual(2, visual.Wings.Count);
                 }
                 finally
                 {
                     Object.DestroyImmediate(obj);
                 }
             }
-            Assert.AreEqual(12, coatLayers.Count);
+            Assert.AreEqual(20, coatLayers.Count);
 
             var found = new HashSet<int>();
-            int[] surfaces = { 3, 6, 14, 27, 33 };
+            int[] surfaces = { 3, 6, 14, 27, 33, 60, 61, 62 };
             foreach (int surf in surfaces)
-                for (int ring = -4; ring <= 4; ring++)
+                for (int ring = -6; ring <= 6; ring++)
                 {
-                    var sim = new WildlifeSimulation(20261020 + ring * 17, null, 7) { SurfaceAt = (x, z) => surf };
+                    var sim = new WildlifeSimulation(20261020 + ring * 17, null, 8) { SurfaceAt = (x, z) => surf };
                     sim.Spawn(
                         new AnimalObserver { id = "p", x = ring * 128f, y = 52f, z = surf * 96f, alive = true },
                         (x, z, y, r, h) => 50f);
                     foreach (var a in sim.Animals) found.Add(a.species);
                 }
-            Assert.AreEqual(12, found.Count);
+            Assert.AreEqual(20, found.Count);
         }
 
         [Test]

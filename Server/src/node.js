@@ -15,7 +15,7 @@ function load(code) {
 function save(code,config,edits,players=[]) {const file=path.join(dataDir,code+'.json'),temp=file+'.tmp';fs.writeFileSync(temp,JSON.stringify({config,edits,players}));fs.renameSync(temp,file);}
 function reply(res,status,value) {res.writeHead(status,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});res.end(JSON.stringify(value));}
 function peers(code) {return [...(sockets.get(code)||[])].filter(s=>s.readyState===1);}
-function broadcast(code,message,except) {const raw=JSON.stringify(message);for(const s of peers(code))if(s!==except)s.send(raw);}
+function broadcast(code,message,except) {const raw=JSON.stringify(message);for(const s of peers(code))if(s!==except&&!s.peer?.inDream)s.send(raw);}
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://server');
   if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'});res.end();return;}
@@ -53,7 +53,7 @@ server.on('upgrade',(req,socket,head)=>{
           const records=new Map(room.edits);records.set(`${record.x},${record.y},${record.z}`,record);save(code,nextConfig||{...room.config,rev:record.rev},[...records.values()],[...room.savedPlayers].map(([key,save])=>({key,save})));
         },(key,state,config)=>{
           const saved=new Map(room.savedPlayers);saved.set(key,state);save(code,config,[...room.edits.values()],[...saved].map(([key,save])=>({key,save})));
-        },config=>save(code,config,[...room.edits.values()],[...room.savedPlayers].map(([key,save])=>({key,save}))));if(message.privateSave){ws.send(JSON.stringify({type:message.type==='station_trade'?'station_trade_saved':'living_saved',requestId:message.requestId,save:message.privateSave}));delete message.privateSave;}broadcast(code,message,message.type==='player'&&!message.animals&&!message.story&&!message.living&&!message.lift?ws:null);
+        },config=>save(code,config,[...room.edits.values()],[...room.savedPlayers].map(([key,save])=>({key,save}))));if(message.privateSave){ws.send(JSON.stringify({type:message.type==='station_trade'?'station_trade_saved':'living_saved',requestId:message.requestId,save:message.privateSave}));delete message.privateSave;}if(message.type==='dream_woke'){ws.send(JSON.stringify(room.welcome(ws.peer,peers(code).map(s=>s.peer))));return;}broadcast(code,message,message.type==='player'&&!message.animals&&!message.story&&!message.living&&!message.lift?ws:message.dreamIsolated?ws:null);
       }catch(e){if(ws.peer.count>30)ws.close(1008,'Rate limit');else if(ws.readyState===1)ws.send(JSON.stringify(packetError(binary?null:buffer.toString(),e)));}
     });
     ws.on('close',()=>{sockets.get(code)?.delete(ws);room.disconnect(ws.peer,config=>save(code,config,[...room.edits.values()],[...room.savedPlayers].map(([key,save])=>({key,save}))));if(room.config.lobby)broadcast(code,room.lobbyState());broadcast(code,{type:'leave',id:ws.peer.id},ws);});ws.on('error',()=>{});

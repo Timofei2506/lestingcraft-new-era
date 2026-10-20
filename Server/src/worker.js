@@ -90,10 +90,10 @@ export class GameRoom {
           this.ctx.storage.sql.exec('UPDATE meta SET json=? WHERE id=1',JSON.stringify(config));
         });
       },config=>this.ctx.storage.sql.exec('UPDATE meta SET json=? WHERE id=1',JSON.stringify(config)));
-      socket.serializeAttachment(peer);if(message.privateSave){socket.send(JSON.stringify({type:message.type==='station_trade'?'station_trade_saved':'living_saved',requestId:message.requestId,save:message.privateSave}));delete message.privateSave;}this.broadcast(message,message.type==='player'&&!message.animals&&!message.story&&!message.living&&!message.lift?socket:null);
+      socket.serializeAttachment(peer);if(message.privateSave){socket.send(JSON.stringify({type:message.type==='station_trade'?'station_trade_saved':'living_saved',requestId:message.requestId,save:message.privateSave}));delete message.privateSave;}if(message.type==='dream_woke'){socket.send(JSON.stringify(this.room.welcome(peer,this.ctx.getWebSockets().map(s=>s.deserializeAttachment()))));return;}this.broadcast(message,message.type==='player'&&!message.animals&&!message.story&&!message.living&&!message.lift?socket:message.dreamIsolated?socket:null);
     }catch(e){socket.serializeAttachment(peer);if(peer.count>30)socket.close(1008,'Rate limit');else try{socket.send(JSON.stringify(packetError(raw,e)));}catch{}}
   }
-  broadcast(message,exclude=null) {const raw=JSON.stringify(message);for(const socket of this.ctx.getWebSockets())if(socket!==exclude)try{socket.send(raw);}catch{}}
+  broadcast(message,exclude=null) {const raw=JSON.stringify(message);for(const socket of this.ctx.getWebSockets())if(socket!==exclude&&!socket.deserializeAttachment()?.inDream)try{socket.send(raw);}catch{}}
   webSocketClose(socket) {const p=socket.deserializeAttachment();if(this.room){this.room.setMembers(this.ctx.getWebSockets().filter(s=>s!==socket).map(s=>s.deserializeAttachment()));this.room.disconnect(p,config=>this.ctx.storage.sql.exec('UPDATE meta SET json=? WHERE id=1',JSON.stringify(config)));if(this.room.config.lobby)this.broadcast(this.room.lobbyState(),socket);}try{socket.close(1000,'Disconnected');}catch{}this.broadcast({type:'leave',id:p.id},socket);}
   webSocketError(socket) {try{socket.close(1011,'Socket error');}catch{}}
 }

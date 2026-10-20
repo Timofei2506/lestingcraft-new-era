@@ -14,13 +14,21 @@ namespace LestingCraft.Runtime
         Mars = 2,
         Venus = 3,
         Mercury = 4,
-        OrbitalStation = 5
+        OrbitalStation = 5,
+        Europa = 6,
+        Titan = 7,
+        Pluto = 8,
+        ProximaB = 9,
+        Trappist1e = 10,
+        Kepler452b = 11,
+        AndromedaPrime = 12,
+        Somnia = 13
     }
 
     /// <summary>
-    /// Renders procedural 3D deep-space celestial bodies, starfields, rocket plumes,
-    /// planetary skies, the walkable 3D Orbital Station interior with 3 Astronaut traders,
-    /// and articulated 3D Planetary Guardian Bosses on Mars, Venus, and Mercury.
+    /// Renders procedural 3D deep-space celestial bodies across all 7 Star Systems and both Galaxies
+    /// (Milky Way & Andromeda M31), planetary rings, asteroid belt, spiral galaxy disc, rocket plumes,
+    /// Orbital Station interior, Planetary Guardian Bosses, and the Dream Anomaly's Shadow Watcher.
     /// </summary>
     public sealed class SpaceFlightVisuals : MonoBehaviour
     {
@@ -30,7 +38,11 @@ namespace LestingCraft.Runtime
         MeshRenderer domeRenderer;
         GameObject starfieldObj;
         GameObject sunObj;
+        GameObject spiralGalaxyObj;
+        GameObject asteroidBeltObj;
+        GameObject dreamWatcherRoot;
         readonly Dictionary<SpaceTargetKind, GameObject> planetSpheres = new Dictionary<SpaceTargetKind, GameObject>();
+        readonly Dictionary<CelestialBodyId, GameObject> atlasBodyObjects = new Dictionary<CelestialBodyId, GameObject>();
 
         GameObject plumeRoot;
         Transform mainFlame, leftPlume, rightPlume, plasmaShield;
@@ -43,6 +55,7 @@ namespace LestingCraft.Runtime
         public Vector3 StationSpawnWorldPos { get; private set; }
         public Vector3 StationReturnHatchWorldPos { get; private set; }
         public bool IsStationSpawned => stationRoot != null;
+        public int SpawnedAtlasBodyCount => atlasBodyObjects.Count;
 
         public static string TargetNameRu(SpaceTargetKind target)
         {
@@ -54,6 +67,14 @@ namespace LestingCraft.Runtime
                 case SpaceTargetKind.Venus: return "Венера";
                 case SpaceTargetKind.Mercury: return "Меркурий";
                 case SpaceTargetKind.OrbitalStation: return "Орбитальная станция";
+                case SpaceTargetKind.Europa: return "Европа (Юпитер II)";
+                case SpaceTargetKind.Titan: return "Титан (Сатурн VI)";
+                case SpaceTargetKind.Pluto: return "Плутон";
+                case SpaceTargetKind.ProximaB: return "Проксима Центавра b";
+                case SpaceTargetKind.Trappist1e: return "TRAPPIST-1e";
+                case SpaceTargetKind.Kepler452b: return "Кеплер-452b";
+                case SpaceTargetKind.AndromedaPrime: return "Андромеда Прайм (M31)";
+                case SpaceTargetKind.Somnia: return "Сомния (Разлом M31)";
                 default: return "Космос";
             }
         }
@@ -68,6 +89,14 @@ namespace LestingCraft.Runtime
                 case SpaceTargetKind.Venus: return "venus";
                 case SpaceTargetKind.Mercury: return "mercury";
                 case SpaceTargetKind.OrbitalStation: return "station";
+                case SpaceTargetKind.Europa: return "europa";
+                case SpaceTargetKind.Titan: return "titan";
+                case SpaceTargetKind.Pluto: return "pluto";
+                case SpaceTargetKind.ProximaB: return "proxima_b";
+                case SpaceTargetKind.Trappist1e: return "trappist_1e";
+                case SpaceTargetKind.Kepler452b: return "kepler_452b";
+                case SpaceTargetKind.AndromedaPrime: return "andromeda_prime";
+                case SpaceTargetKind.Somnia: return "somnia";
                 default: return "moon";
             }
         }
@@ -83,6 +112,61 @@ namespace LestingCraft.Runtime
                 case "venus": return SpaceTargetKind.Venus;
                 case "mercury": return SpaceTargetKind.Mercury;
                 case "station": return SpaceTargetKind.OrbitalStation;
+                case "europa": return SpaceTargetKind.Europa;
+                case "titan": return SpaceTargetKind.Titan;
+                case "pluto": return SpaceTargetKind.Pluto;
+                case "proxima_b":
+                case "proximab": return SpaceTargetKind.ProximaB;
+                case "trappist_1e":
+                case "trappist1e": return SpaceTargetKind.Trappist1e;
+                case "kepler_452b":
+                case "kepler452b": return SpaceTargetKind.Kepler452b;
+                case "andromeda_prime":
+                case "andromeda": return SpaceTargetKind.AndromedaPrime;
+                case "somnia": return SpaceTargetKind.Somnia;
+                default: return SpaceTargetKind.Moon;
+            }
+        }
+
+        public static Dimension DimensionForTarget(SpaceTargetKind target)
+        {
+            switch (target)
+            {
+                case SpaceTargetKind.Earth: return Dimension.Lestingia;
+                case SpaceTargetKind.Moon: return Dimension.Moon;
+                case SpaceTargetKind.Mars: return Dimension.Mars;
+                case SpaceTargetKind.Venus: return Dimension.Venus;
+                case SpaceTargetKind.Mercury: return Dimension.Mercury;
+                case SpaceTargetKind.Europa: return Dimension.Europa;
+                case SpaceTargetKind.Titan: return Dimension.Titan;
+                case SpaceTargetKind.Pluto: return Dimension.Pluto;
+                case SpaceTargetKind.ProximaB: return Dimension.ProximaB;
+                case SpaceTargetKind.Trappist1e: return Dimension.Trappist1e;
+                case SpaceTargetKind.Kepler452b: return Dimension.Kepler452b;
+                case SpaceTargetKind.AndromedaPrime: return Dimension.AndromedaPrime;
+                case SpaceTargetKind.Somnia: return Dimension.Somnia;
+                default: return Dimension.Lestingia;
+            }
+        }
+
+        public static SpaceTargetKind TargetForBody(CelestialBodyId bodyId)
+        {
+            switch (bodyId)
+            {
+                case CelestialBodyId.Earth: return SpaceTargetKind.Earth;
+                case CelestialBodyId.OrbitalStation: return SpaceTargetKind.OrbitalStation;
+                case CelestialBodyId.Moon: return SpaceTargetKind.Moon;
+                case CelestialBodyId.Mars: return SpaceTargetKind.Mars;
+                case CelestialBodyId.Venus: return SpaceTargetKind.Venus;
+                case CelestialBodyId.Mercury: return SpaceTargetKind.Mercury;
+                case CelestialBodyId.Europa: return SpaceTargetKind.Europa;
+                case CelestialBodyId.Titan: return SpaceTargetKind.Titan;
+                case CelestialBodyId.Pluto: return SpaceTargetKind.Pluto;
+                case CelestialBodyId.ProximaB: return SpaceTargetKind.ProximaB;
+                case CelestialBodyId.Trappist1e: return SpaceTargetKind.Trappist1e;
+                case CelestialBodyId.Kepler452b: return SpaceTargetKind.Kepler452b;
+                case CelestialBodyId.AndromedaPrime: return SpaceTargetKind.AndromedaPrime;
+                case CelestialBodyId.Somnia: return SpaceTargetKind.Somnia;
                 default: return SpaceTargetKind.Moon;
             }
         }
@@ -95,6 +179,15 @@ namespace LestingCraft.Runtime
                 case Dimension.Mars: return 0.42f;
                 case Dimension.Venus: return 0.90f;
                 case Dimension.Mercury: return 0.40f;
+                case Dimension.Europa: return 0.14f;
+                case Dimension.Titan: return 0.18f;
+                case Dimension.Pluto: return 0.08f;
+                case Dimension.ProximaB: return 1.07f;
+                case Dimension.Trappist1e: return 0.93f;
+                case Dimension.Kepler452b: return 1.60f;
+                case Dimension.AndromedaPrime: return 1.12f;
+                case Dimension.Somnia: return 0.62f;
+                case Dimension.Dream: return 0.86f;
                 default: return 1.0f;
             }
         }
@@ -169,7 +262,189 @@ namespace LestingCraft.Runtime
             planetSpheres[SpaceTargetKind.Venus] = CreateCelestialBody("Planet_Venus", 8.2f, SpaceTargetKind.Venus, false);
             planetSpheres[SpaceTargetKind.Mercury] = CreateCelestialBody("Planet_Mercury", 4.2f, SpaceTargetKind.Mercury, false);
 
+            // Full 24-body 3D Celestial Atlas across Solar System, Extrasolar Systems & Andromeda M31
+            foreach (var body in CelestialAtlas.Bodies)
+            {
+                var node = CreateAtlasBodyVisual(body);
+                atlasBodyObjects[body.Id] = node;
+                node.SetActive(false);
+            }
+            spiralGalaxyObj = CreateSpiralGalaxyBackdrop();
+            asteroidBeltObj = CreateAsteroidBeltVisual();
+
             spaceDomeRoot.SetActive(false);
+        }
+
+        GameObject CreateAtlasBodyVisual(CelestialBodyDef body)
+        {
+            var go = new GameObject("Atlas_" + body.WireKey);
+            go.transform.SetParent(spaceDomeRoot.transform, false);
+            float visualRadius = body.IsStar ? 10.5f : body.HasRings ? 8.2f : Mathf.Clamp((float)Math.Log10(Math.Max(200.0, body.RadiusKm)) * 1.65f, 2.2f, 9.2f);
+            Color cA = new Color(body.ColorR, body.ColorG, body.ColorB, 1f);
+            Color cB = new Color(body.SecondaryR, body.SecondaryG, body.SecondaryB, 1f);
+            var mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = BuildAtlasSphereMesh(24, 16, visualRadius, cA, cB, body.IsStar, (int)body.Id);
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = body.IsStar
+                ? MakeLitMaterial("AtlasStar_" + body.WireKey, cA, cA * 2.2f, 0f, 0.1f)
+                : MakeVertexColorMaterial("AtlasPlanet_" + body.WireKey);
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+
+            if (body.HasRings)
+            {
+                var ring = new GameObject("Rings_" + body.WireKey);
+                ring.transform.SetParent(go.transform, false);
+                ring.transform.localRotation = Quaternion.Euler(body.Id == CelestialBodyId.Uranus ? 97.8f : 26.7f, 14f, 0f);
+                var rmf = ring.AddComponent<MeshFilter>();
+                rmf.sharedMesh = BuildRingMesh(visualRadius * (float)body.RingInnerScale, visualRadius * (float)body.RingOuterScale, cA, cB, 48);
+                var rmr = ring.AddComponent<MeshRenderer>();
+                rmr.sharedMaterial = MakeVertexColorMaterial("RingsMat_" + body.WireKey);
+                rmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                rmr.receiveShadows = false;
+            }
+            return go;
+        }
+
+        Mesh BuildAtlasSphereMesh(int lonSegs, int latSegs, float radius, Color primary, Color secondary, bool isStar, int seed)
+        {
+            var verts = new List<Vector3>();
+            var norms = new List<Vector3>();
+            var cols = new List<Color>();
+            var tris = new List<int>();
+            for (int lat = 0; lat <= latSegs; lat++)
+            {
+                float v = (float)lat / latSegs;
+                float phi = (v - 0.5f) * Mathf.PI;
+                for (int lon = 0; lon <= lonSegs; lon++)
+                {
+                    float u = (float)lon / lonSegs;
+                    float theta = u * Mathf.PI * 2f;
+                    Vector3 n = new Vector3(Mathf.Cos(phi) * Mathf.Cos(theta), Mathf.Sin(phi), Mathf.Cos(phi) * Mathf.Sin(theta));
+                    verts.Add(n * radius);
+                    norms.Add(n);
+                    float band = Mathf.Sin(n.y * (7.5f + (seed % 5)) + Mathf.Sin(n.x * 3.3f + seed) * 0.8f) * 0.5f + 0.5f;
+                    float patch = Mathf.Cos(n.x * 4.4f + seed * 0.7f) * Mathf.Sin(n.z * 4.1f - seed * 0.3f) * 0.5f + 0.5f;
+                    Color c = isStar ? Color.Lerp(primary, Color.white, 0.35f * patch) : Color.Lerp(primary, secondary, Mathf.Clamp01(band * 0.65f + patch * 0.35f));
+                    c.a = 1f;
+                    cols.Add(c);
+                }
+            }
+            int stride = lonSegs + 1;
+            for (int lat = 0; lat < latSegs; lat++)
+                for (int lon = 0; lon < lonSegs; lon++)
+                {
+                    int a = lat * stride + lon, b = a + 1, c = a + stride, d = c + 1;
+                    tris.Add(a); tris.Add(c); tris.Add(b);
+                    tris.Add(b); tris.Add(c); tris.Add(d);
+                }
+            var mesh = new Mesh { name = "AtlasSphere_" + seed };
+            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            ownedObjects.Add(mesh);
+            return mesh;
+        }
+
+        Mesh BuildRingMesh(float innerR, float outerR, Color cA, Color cB, int segs)
+        {
+            var verts = new List<Vector3>();
+            var cols = new List<Color>();
+            var tris = new List<int>();
+            for (int i = 0; i <= segs; i++)
+            {
+                float a = (float)i / segs * Mathf.PI * 2f;
+                Vector3 dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                verts.Add(dir * innerR);
+                verts.Add(dir * outerR);
+                cols.Add(Color.Lerp(cA, Color.white, 0.35f));
+                cols.Add(Color.Lerp(cB, cA, 0.45f));
+            }
+            for (int i = 0; i < segs; i++)
+            {
+                int b = i * 2;
+                tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
+                tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3);
+                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
+                tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2);
+            }
+            var mesh = new Mesh { name = "PlanetaryRingDisc" };
+            mesh.SetVertices(verts); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            ownedObjects.Add(mesh);
+            return mesh;
+        }
+
+        GameObject CreateSpiralGalaxyBackdrop()
+        {
+            var go = new GameObject("NeighborSpiralGalaxyBackdrop");
+            go.transform.SetParent(spaceDomeRoot.transform, false);
+            go.transform.localPosition = new Vector3(-92f, 64f, 148f);
+            go.transform.localRotation = Quaternion.Euler(34f, -22f, 19f);
+            var verts = new List<Vector3>(2400);
+            var cols = new List<Color>(2400);
+            var tris = new List<int>(3600);
+            var rng = new System.Random(31031);
+            for (int i = 0; i < 600; i++)
+            {
+                int arm = i % 2;
+                float r = Mathf.Pow((float)rng.NextDouble(), 0.62f) * 34f;
+                float ang = arm * Mathf.PI + r * 0.24f + ((float)rng.NextDouble() - 0.5f) * 0.55f;
+                Vector3 p = new Vector3(Mathf.Cos(ang) * r, ((float)rng.NextDouble() - 0.5f) * (1.8f - r * 0.03f), Mathf.Sin(ang) * r * 0.58f);
+                float sz = Mathf.Lerp(1.6f, 0.42f, r / 34f);
+                Color c = Color.Lerp(new Color(1.0f, 0.90f, 0.72f, 1f), new Color(0.56f, 0.44f, 0.98f, 1f), r / 34f);
+                int b = verts.Count;
+                verts.Add(p + new Vector3(-sz, 0f, -sz)); verts.Add(p + new Vector3(sz, 0f, -sz));
+                verts.Add(p + new Vector3(sz, 0f, sz));   verts.Add(p + new Vector3(-sz, 0f, sz));
+                cols.Add(c); cols.Add(c); cols.Add(c); cols.Add(c);
+                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
+                tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
+                tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
+                tris.Add(b); tris.Add(b + 3); tris.Add(b + 2);
+            }
+            var mesh = new Mesh { name = "SpiralGalaxyM31" };
+            mesh.SetVertices(verts); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            ownedObjects.Add(mesh);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = MakeVertexColorMaterial("SpiralGalaxyMat", true);
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            go.SetActive(false);
+            return go;
+        }
+
+        GameObject CreateAsteroidBeltVisual()
+        {
+            var go = new GameObject("SolarAsteroidBelt");
+            go.transform.SetParent(spaceDomeRoot.transform, false);
+            var verts = new List<Vector3>(1280);
+            var cols = new List<Color>(1280);
+            var tris = new List<int>(1920);
+            var rng = new System.Random(413999);
+            for (int i = 0; i < 320; i++)
+            {
+                float a = (float)(rng.NextDouble() * Math.PI * 2.0);
+                float r = 74f + ((float)rng.NextDouble() - 0.5f) * 9f;
+                Vector3 p = new Vector3(Mathf.Cos(a) * r, ((float)rng.NextDouble() - 0.5f) * 3.4f, Mathf.Sin(a) * r);
+                float s = 0.25f + (float)rng.NextDouble() * 0.55f;
+                Color c = Color.Lerp(new Color(0.42f, 0.39f, 0.36f, 1f), new Color(0.62f, 0.58f, 0.52f, 1f), (float)rng.NextDouble());
+                int b = verts.Count;
+                verts.Add(p + new Vector3(-s, -s, 0f)); verts.Add(p + new Vector3(s, -s, 0f));
+                verts.Add(p + new Vector3(s, s, 0f));  verts.Add(p + new Vector3(-s, s, 0f));
+                cols.Add(c); cols.Add(c); cols.Add(c); cols.Add(c);
+                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
+                tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
+            }
+            var mesh = new Mesh { name = "AsteroidBeltTorus" };
+            mesh.SetVertices(verts); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            ownedObjects.Add(mesh);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = MakeVertexColorMaterial("AsteroidBeltMat");
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            go.SetActive(false);
+            return go;
         }
 
         GameObject CreateCelestialBody(string name, float radius, SpaceTargetKind paletteKind, bool isSun)
@@ -409,11 +684,151 @@ namespace LestingCraft.Runtime
             }
         }
 
+        public void SetOpenSpaceFlightActive(OpenSpaceHelm helm, Transform shuttleTransform, Transform viewer)
+        {
+            BuildCelestialRig();
+            if (helm == null || !helm.Active)
+            {
+                foreach (var kv in atlasBodyObjects) if (kv.Value) kv.Value.SetActive(false);
+                if (spiralGalaxyObj) spiralGalaxyObj.SetActive(false);
+                if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
+                return;
+            }
+
+            if (spaceDomeRoot)
+            {
+                spaceDomeRoot.SetActive(true);
+                if (viewer) spaceDomeRoot.transform.position = viewer.position;
+                bool jumping = helm.InHyperjump;
+                Color deepSky = helm.CurrentGalaxy == GalaxyId.Andromeda
+                    ? new Color(0.018f, 0.010f, 0.038f)
+                    : new Color(0.006f, 0.010f, 0.024f);
+                if (jumping)
+                    deepSky = Color.Lerp(deepSky, new Color(0.18f, 0.42f, 0.85f), Mathf.Sin((float)helm.HyperjumpProgress * Mathf.PI));
+                if (domeRenderer && domeRenderer.sharedMaterial.HasProperty("_BaseColor"))
+                    domeRenderer.sharedMaterial.SetColor("_BaseColor", deepSky);
+                if (starfieldObj) starfieldObj.SetActive(true);
+                if (sunObj) sunObj.SetActive(false);
+                foreach (var kv in planetSpheres) if (kv.Value) kv.Value.SetActive(false);
+                if (spiralGalaxyObj)
+                {
+                    spiralGalaxyObj.SetActive(true);
+                    spiralGalaxyObj.transform.Rotate(0f, Time.deltaTime * 1.4f, 0f, Space.Self);
+                }
+                if (asteroidBeltObj)
+                {
+                    bool showBelt = helm.CurrentSystem == StarSystemId.SolarSystem;
+                    asteroidBeltObj.SetActive(showBelt);
+                    if (showBelt) asteroidBeltObj.transform.Rotate(0f, Time.deltaTime * 0.9f, 0f, Space.Self);
+                }
+
+                // Map real million-km vectors in the active StarSystem into compressed 3D sky-dome coordinates around the shuttle
+                Quaternion invShipRot = Quaternion.Inverse(helm.Rotation);
+                foreach (var body in CelestialAtlas.Bodies)
+                {
+                    if (!atlasBodyObjects.TryGetValue(body.Id, out var obj) || !obj) continue;
+                    bool inSys = body.System == helm.CurrentSystem;
+                    obj.SetActive(inSys);
+                    if (!inSys) continue;
+                    SpaceVector deltaKm = CelestialAtlas.WorldPositionKm(body.Id, helm.OrbitTimeDays) - helm.PositionKm;
+                    double distKm = Math.Max(1.0, deltaKm.Magnitude);
+                    // Logarithmic compression keeps nearby moons large & approachable while distant outer giants stay visible on the ecliptic!
+                    float renderDist = Mathf.Clamp(22f + (float)Math.Log10(distKm / Math.Max(1000.0, body.RadiusKm * 2.0) + 1.0) * 34f, 18f, 182f);
+                    SpaceVector dir = deltaKm.Normalized;
+                    Vector3 rel = invShipRot * new Vector3((float)dir.X, (float)dir.Y, (float)dir.Z) * renderDist;
+                    obj.transform.localPosition = rel;
+                    obj.transform.Rotate(0f, Time.deltaTime * 5.0f, 0f, Space.Self);
+                }
+            }
+
+            EnsurePlumes(shuttleTransform);
+            if (plumeRoot)
+            {
+                bool engineOn = helm.Throttle > 0.04f || helm.InHyperjump;
+                plumeRoot.SetActive(engineOn);
+                float flicker = 0.85f + 0.25f * Mathf.Sin(Time.time * 49f);
+                if (mainFlame) mainFlame.localScale = new Vector3(2.6f, Mathf.Lerp(2.4f, 11.2f, helm.Throttle) * flicker, 2.6f);
+                if (leftPlume) leftPlume.gameObject.SetActive(helm.Boost);
+                if (rightPlume) rightPlume.gameObject.SetActive(helm.Boost);
+                if (plasmaShield) plasmaShield.gameObject.SetActive(helm.InHyperjump);
+                if (engineLight) engineLight.intensity = engineOn ? Mathf.Lerp(1.6f, 7.5f, helm.Throttle) * flicker : 0.6f;
+            }
+        }
+
+        public void SyncDreamWatcher(DreamAnomaly dream, Transform viewer)
+        {
+            if (dream == null || !dream.IsActive)
+            {
+                if (dreamWatcherRoot) dreamWatcherRoot.SetActive(false);
+                return;
+            }
+            if (!dreamWatcherRoot)
+            {
+                dreamWatcherRoot = new GameObject("DreamShadowWatcher");
+                dreamWatcherRoot.transform.SetParent(transform, false);
+                var shadowMat = MakeLitMaterial("DreamShadowSilhouette", new Color(0.015f, 0.012f, 0.022f), Color.black, 0f, 0.05f);
+                var eyeMat = MakeLitMaterial("DreamShadowEyes", new Color(0.88f, 0.90f, 0.98f), new Color(1.5f, 1.55f, 1.8f), 0f, 0.9f);
+
+                var torso = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                torso.name = "WatcherTorso";
+                torso.transform.SetParent(dreamWatcherRoot.transform, false);
+                torso.transform.localPosition = new Vector3(0f, 1.18f, 0f);
+                torso.transform.localScale = new Vector3(0.46f, 2.24f, 0.24f);
+                DestroyImmediate(torso.GetComponent<Collider>());
+                torso.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
+
+                var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                head.name = "WatcherHead";
+                head.transform.SetParent(dreamWatcherRoot.transform, false);
+                head.transform.localPosition = new Vector3(0f, 2.48f, 0f);
+                head.transform.localScale = new Vector3(0.30f, 0.38f, 0.28f);
+                DestroyImmediate(head.GetComponent<Collider>());
+                head.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
+
+                for (int i = -1; i <= 1; i += 2)
+                {
+                    var eye = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    eye.name = "WatcherEye" + i;
+                    eye.transform.SetParent(dreamWatcherRoot.transform, false);
+                    eye.transform.localPosition = new Vector3(i * 0.075f, 2.50f, 0.145f);
+                    eye.transform.localScale = new Vector3(0.042f, 0.024f, 0.02f);
+                    DestroyImmediate(eye.GetComponent<Collider>());
+                    eye.GetComponent<MeshRenderer>().sharedMaterial = eyeMat;
+                }
+            }
+            dreamWatcherRoot.SetActive(true);
+            dreamWatcherRoot.transform.position = new Vector3(dream.StalkerX, dream.StalkerY - 1f, dream.StalkerZ);
+            if (viewer)
+            {
+                Vector3 toViewer = viewer.position - dreamWatcherRoot.transform.position;
+                toViewer.y = 0f;
+                if (toViewer.sqrMagnitude > 0.001f)
+                    dreamWatcherRoot.transform.rotation = Quaternion.LookRotation(toViewer.normalized, Vector3.up);
+            }
+        }
+
         public void ApplyPlanetAtmosphereAndGravity(Dimension dim, FirstPersonController player, Camera cam)
         {
             BuildCelestialRig();
             if (player) player.GravityScale = GravityForDimension(dim);
             if (plumeRoot) plumeRoot.SetActive(false);
+            foreach (var kv in atlasBodyObjects) if (kv.Value) kv.Value.SetActive(false);
+            if (spiralGalaxyObj) spiralGalaxyObj.SetActive(dim == Dimension.AndromedaPrime || dim == Dimension.Somnia);
+            if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
+
+            if (dim == Dimension.Dream)
+            {
+                if (spaceDomeRoot) spaceDomeRoot.SetActive(false);
+                Color dreamFog = new Color(0.17f, 0.15f, 0.23f);
+                RenderSettings.fog = true;
+                RenderSettings.fogMode = FogMode.ExponentialSquared;
+                RenderSettings.fogColor = dreamFog;
+                RenderSettings.fogDensity = 0.038f;
+                if (cam) cam.backgroundColor = dreamFog;
+                return;
+            }
+
+            if (dreamWatcherRoot) dreamWatcherRoot.SetActive(false);
 
             if (dim == Dimension.Lestingia && !IsStationSpawned)
             {
@@ -466,6 +881,40 @@ namespace LestingCraft.Runtime
                 sky = new Color(0.018f, 0.014f, 0.012f);
                 overheadBody = SpaceTargetKind.Venus;
                 sunScale = 2.35f;
+            }
+            else if (dim == Dimension.Europa)
+            {
+                sky = new Color(0.012f, 0.024f, 0.048f);
+                sunScale = 0.28f;
+            }
+            else if (dim == Dimension.Titan)
+            {
+                sky = new Color(0.58f, 0.36f, 0.14f);
+                emit = new Color(0.32f, 0.18f, 0.06f);
+                showStars = false;
+                sunScale = 0.22f;
+            }
+            else if (dim == Dimension.Pluto)
+            {
+                sky = new Color(0.008f, 0.010f, 0.022f);
+                sunScale = 0.10f;
+            }
+            else if (dim == Dimension.ProximaB || dim == Dimension.Trappist1e)
+            {
+                sky = new Color(0.24f, 0.08f, 0.09f);
+                emit = new Color(0.14f, 0.04f, 0.05f);
+                sunScale = 1.45f;
+            }
+            else if (dim == Dimension.Kepler452b)
+            {
+                sky = new Color(0.18f, 0.36f, 0.44f);
+                sunScale = 1.08f;
+            }
+            else if (dim == Dimension.AndromedaPrime || dim == Dimension.Somnia)
+            {
+                sky = new Color(0.06f, 0.03f, 0.14f);
+                emit = new Color(0.04f, 0.02f, 0.10f);
+                sunScale = dim == Dimension.Somnia ? 0.65f : 1.75f;
             }
 
             if (cam) cam.backgroundColor = sky;

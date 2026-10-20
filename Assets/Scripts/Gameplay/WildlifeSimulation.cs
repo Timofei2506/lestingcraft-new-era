@@ -38,6 +38,7 @@ namespace LestingCraft.Gameplay
 
     public sealed class WildlifeSimulation
     {
+        public const int SpeciesCount = 20;
         public const int MaxAnimals = 256, MaxSites = 4096, ActiveLimit = 32;
         public readonly List<AnimalState> Animals = new List<AnimalState>();
         readonly HashSet<string> sites = new HashSet<string>();
@@ -50,16 +51,18 @@ namespace LestingCraft.Gameplay
 
         public delegate float Ground(float x, float z, float previousY, float radius, float height);
 
-        static readonly int[] Health = { 30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20 };
-        static readonly int[] Meat = { 3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2 };
-        static readonly int[] Hide = { 2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1 };
-        static readonly int[] AttackDamage = { 0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0 };
-        static readonly float[] Heights = { 2.2f, .8f, .95f, 1.25f, 1.95f, .9f, 2.05f, 1.65f, 1.05f, .7f, .55f, .9f };
-        static readonly float[] Radii = { .43f, .21f, .45f, .38f, .72f, .27f, .76f, .32f, .34f, .35f, .38f, .36f };
-        static readonly float[] Lengths = { 1.6f, .65f, 1.6f, 1.9f, 2.3f, 1.5f, 2.6f, 1.35f, 1.35f, 1.5f, .95f, 1.15f };
-        static readonly float[] Walk = { .65f, .75f, .65f, 1.15f, .65f, 1.25f, .55f, .9f, 1.05f, .55f, .5f, 2.8f };
-        static readonly float[] Run = { 3.8f, 4.2f, 3.8f, 4.6f, 3.3f, 4.8f, 3.4f, 3.6f, 4.4f, 2.1f, 2.7f, 4.5f };
-        static readonly int[][] HabitatSpecies =
+        // 0..11 original species + 12:Owl, 13:Penguin, 14:Camel, 15:Scorpion, 16:Turtle, 17:Moose, 18:Capybara, 19:VoidRay
+        static readonly int[] Health = { 30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55 };
+        static readonly int[] Meat = { 3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2 };
+        static readonly int[] Hide = { 2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3 };
+        static readonly int[] AttackDamage = { 0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0 };
+        static readonly float[] Heights = { 2.2f, .8f, .95f, 1.25f, 1.95f, .9f, 2.05f, 1.65f, 1.05f, .7f, .55f, .9f, .75f, .95f, 2.35f, .55f, .62f, 2.45f, .82f, .85f };
+        static readonly float[] Radii = { .43f, .21f, .45f, .38f, .72f, .27f, .76f, .32f, .34f, .35f, .38f, .36f, .30f, .28f, .58f, .36f, .40f, .74f, .36f, .55f };
+        static readonly float[] Lengths = { 1.6f, .65f, 1.6f, 1.9f, 2.3f, 1.5f, 2.6f, 1.35f, 1.35f, 1.5f, .95f, 1.15f, .62f, .58f, 2.25f, 1.15f, .95f, 2.55f, 1.15f, 1.65f };
+        static readonly float[] Walk = { .65f, .75f, .65f, 1.15f, .65f, 1.25f, .55f, .9f, 1.05f, .55f, .5f, 2.8f, 2.4f, .62f, .72f, .95f, .35f, .60f, .58f, 2.6f };
+        static readonly float[] Run = { 3.8f, 4.2f, 3.8f, 4.6f, 3.3f, 4.8f, 3.4f, 3.6f, 4.4f, 2.1f, 2.7f, 4.5f, 4.1f, 2.4f, 3.5f, 3.6f, 1.2f, 3.9f, 2.8f, 4.6f };
+
+        static readonly int[][] HabitatSpeciesV7 =
         {
             new[] { 0, 0, 1, 1, 5, 6, 6, 11 },
             new[] { 0, 0, 1, 2, 2, 3, 4, 5, 8, 11 },
@@ -68,6 +71,18 @@ namespace LestingCraft.Gameplay
             new[] { 2, 2, 9, 9, 9, 10, 10, 10, 11 },
             new[] { 1, 3, 7, 7, 7, 8, 11, 11 }
         };
+
+        static readonly int[][] HabitatSpeciesV8 =
+        {
+            new[] { 0, 1, 5, 6, 11, 12, 16, 18 },             // 0: Meadow & Sakura glades
+            new[] { 0, 1, 2, 3, 4, 5, 8, 11, 12, 17 },        // 1: Mixed & Sakura Forests
+            new[] { 0, 1, 3, 4, 6, 8, 12, 13, 13, 17, 17 },   // 2: Snow / Taiga / Glacial Ice
+            new[] { 1, 5, 7, 11, 14, 14, 15, 15 },            // 3: Dunes & Red Mesa Canyon
+            new[] { 2, 9, 10, 11, 16, 16, 18, 18, 19 },       // 4: Marsh, Glow-Shroom & Water
+            new[] { 1, 3, 7, 8, 11, 12, 15, 17, 19 }          // 5: Rocky, Volcanic & Andromeda
+        };
+
+        public static bool IsFlyer(int s) { return s == 11 || s == 12 || s == 19; }
 
         public WildlifeSimulation(int seed, WildlifeSave saved = null, int contentVersion = 2)
         {
@@ -93,15 +108,15 @@ namespace LestingCraft.Gameplay
                 a.goalZ = a.z;
                 a.timer = a.anger = a.bite = a.fallSpeed = a.impulseX = a.impulseZ = 0;
                 a.flightPhase = Finite(a.flightPhase) ? a.flightPhase : 0;
-                a.flightHeight = a.species == 11 ? ClampFlight(a.flightHeight) : 0;
+                a.flightHeight = IsFlyer(a.species) ? ClampFlight(a.flightHeight) : 0;
                 Animals.Add(a);
             }
         }
 
-        bool ValidSpecies(int s) { return s >= 0 && s < (contentVersion >= 7 ? 12 : 3); }
+        bool ValidSpecies(int s) { return s >= 0 && s < (contentVersion >= 8 ? SpeciesCount : contentVersion >= 7 ? 12 : 3); }
         static bool Finite(float v) { return !float.IsNaN(v) && !float.IsInfinity(v) && Math.Abs(v) < 32000; }
-        static int Index(int s) { return s >= 0 && s < 12 ? s : 2; }
-        static float ClampFlight(float h) { return Finite(h) && h >= 3.5f && h <= 6 ? h : 4.75f; }
+        static int Index(int s) { return s >= 0 && s < SpeciesCount ? s : 2; }
+        static float ClampFlight(float h) { return Finite(h) && h >= 2.8f && h <= 6.5f ? h : 4.5f; }
 
         public static uint Hash(int x, int z, int seed)
         {
@@ -123,22 +138,19 @@ namespace LestingCraft.Gameplay
             return new AnimalLoot { id = a.id, meat = Meat[Index(a.species)], hide = Hide[Index(a.species)] };
         }
 
-        // Habitat is resolved from the actual biome-authored substrate, rather than
-        // a second, drifting copy of the world's biome algorithm. Grass supports
-        // both meadow and forest fauna. The deterministic regional mix selects
-        // between those two compatible communities.
         public static int Habitat(int surface, int x, int z, int seed)
         {
-            if (surface == 33 || surface == 34 || surface == 7) return 4;
-            if (surface == 6 || surface == 43) return 3;
-            if (surface == 27 || surface == 32 || surface == 1) return 5;
-            if (surface == 14) return 2;
+            if (surface == 33 || surface == 34 || surface == 7 || surface == 61) return 4;
+            if (surface == 6 || surface == 43 || surface == 62) return 3;
+            if (surface == 27 || surface == 32 || surface == 1 || surface == 64 || surface == 67) return 5;
+            if (surface == 14 || surface == 63) return 2;
             return (int)(Hash((int)Math.Floor(x / 160.0), (int)Math.Floor(z / 160.0), seed ^ 81473) % 2);
         }
 
-        public static int SpeciesForHabitat(uint hash, int habitat)
+        public static int SpeciesForHabitat(uint hash, int habitat, int contentVersion = 7)
         {
-            int[] choices = HabitatSpecies[Math.Max(0, Math.Min(5, habitat))];
+            int[][] table = contentVersion >= 8 ? HabitatSpeciesV8 : HabitatSpeciesV7;
+            int[] choices = table[Math.Max(0, Math.Min(5, habitat))];
             return choices[(int)((hash >> 16) % (uint)choices.Length)];
         }
 
@@ -170,11 +182,12 @@ namespace LestingCraft.Gameplay
                     {
                         int ix = (int)Math.Floor(ax), iz = (int)Math.Floor(az);
                         int surface = SurfaceAt == null ? 3 : SurfaceAt(ix, iz);
-                        species = SpeciesForHabitat(h, Habitat(surface, ix, iz, seed));
+                        species = SpeciesForHabitat(h, Habitat(surface, ix, iz, seed), contentVersion);
                     }
-                    float ay = ground(ax, az, -1, Radius(species), Height(species) + (species == 11 ? 6 : 0));
+                    bool flyer = IsFlyer(species);
+                    float ay = ground(ax, az, -1, Radius(species), Height(species) + (flyer ? 6 : 0));
                     if (!Finite(ay)) continue;
-                    float flight = species == 11 ? 4.75f : 0;
+                    float flight = species == 11 ? 4.75f : species == 12 ? 3.65f : species == 19 ? 4.25f : 0;
                     Animals.Add(new AnimalState
                     {
                         id = "a:" + key, species = species, health = MaxHealth(species),
@@ -186,9 +199,10 @@ namespace LestingCraft.Gameplay
 
         float Foot(AnimalState a, float x, float z, float previous, Ground ground)
         {
-            float offset = a.species == 11 ? a.flightHeight : 0;
-            float y = ground(x, z, previous - offset, Radius(a.species), Height(a.species) + (a.species == 11 ? 6 : 0));
-            if (float.IsNaN(y) && a.species == 7)
+            bool flyer = IsFlyer(a.species);
+            float offset = flyer ? a.flightHeight : 0;
+            float y = ground(x, z, previous - offset, Radius(a.species), Height(a.species) + (flyer ? 6 : 0));
+            if (float.IsNaN(y) && (a.species == 7 || a.species == 15))
                 y = ground(x, z, previous + 1, Radius(a.species), Height(a.species));
             return float.IsNaN(y) ? y : y + offset;
         }
@@ -213,11 +227,12 @@ namespace LestingCraft.Gameplay
                 }
                 if (nearest.id == null) continue;
                 if (active++ >= ActiveLimit) break;
-                if (a.species == 11)
+                if (IsFlyer(a.species))
                 {
                     float old = a.flightHeight;
-                    a.flightPhase = (a.flightPhase + dt * .8f) % 6.2831853f;
-                    a.flightHeight = 4.75f + 1.25f * (float)Math.Sin(a.flightPhase);
+                    a.flightPhase = (a.flightPhase + dt * (a.species == 19 ? .55f : .8f)) % 6.2831853f;
+                    float baseH = a.species == 12 ? 3.65f : a.species == 19 ? 4.25f : 4.75f;
+                    a.flightHeight = baseH + 1.15f * (float)Math.Sin(a.flightPhase);
                     a.y += a.flightHeight - old;
                 }
                 if (Math.Abs(a.impulseX) + Math.Abs(a.impulseZ) > .01f)
@@ -255,18 +270,18 @@ namespace LestingCraft.Gameplay
                 a.bite = Math.Max(0, a.bite - dt);
                 a.timer -= dt;
                 int s = a.species;
-                bool hostile = (s == 2 || s == 6 || s == 8) && a.anger > 0 ||
-                               s == 3 && (a.anger > 0 || best < 81) ||
+                bool hostile = (s == 2 || s == 6 || s == 8 || s == 17) && a.anger > 0 ||
+                               (s == 3 || s == 15) && (a.anger > 0 || best < 81) ||
                                s == 4 && (a.anger > 0 || best < 36);
                 bool defending = hostile && best < 196 && Math.Abs(a.y - nearest.y) < 8;
                 bool flee = best < (s == 1 ? 100 : 64) && !defending &&
-                            Math.Abs(a.y - nearest.y) < 8 && s != 11;
+                            Math.Abs(a.y - nearest.y) < 8 && !IsFlyer(s) && s != 18;
                 float speed = Walk[s];
                 if (defending)
                 {
                     a.goalX = nearest.x; a.goalZ = nearest.z;
                     speed = s == 2 ? 3.1f : Run[s];
-                    if (best < (s == 4 || s == 6 ? 4 : 2.4f) &&
+                    if (best < (s == 4 || s == 6 || s == 17 ? 4 : 2.4f) &&
                         Math.Abs(nearest.y - (a.y + 1.5f)) < 2.3f && a.bite <= 0)
                     {
                         if (damage != null) damage(nearest.id, AttackDamage[s]);
@@ -286,7 +301,7 @@ namespace LestingCraft.Gameplay
                         seed ^ a.health ^ unchecked(++a.wander * 1597334677));
                     double angle = h % 6283 * .001;
                     float range = 2 + (h >> 8) % 9;
-                    if (s == 11) range += 8;
+                    if (IsFlyer(s)) range += 8;
                     a.goalX = a.homeX + (float)Math.Sin(angle) * range;
                     a.goalZ = a.homeZ + (float)Math.Cos(angle) * range;
                     a.timer = 3 + (h >> 16) % 5;

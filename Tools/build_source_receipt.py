@@ -10,5 +10,5 @@ paths.extend(p for name in ['Server/package.json','Server/package-lock.json','.g
 files=[{'path':p.relative_to(R).as_posix(),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(set(paths))]
 fingerprint=hashlib.sha256(json.dumps(files,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 out=Path(sys.argv[1]) if len(sys.argv)>1 else R/'Builds/Logs/source-receipt.json';out.parent.mkdir(parents=True,exist_ok=True)
-out.write_text(json.dumps({'target':'Windows x64','rulesVersion':10,'contentVersion':7,'commit':os.environ.get('GITHUB_SHA','workspace-uncommitted'),'sourceFingerprint':fingerprint,'files':files},indent=2))
+out.write_text(json.dumps({'target':'Windows x64','rulesVersion':13,'contentVersion':8,'commit':os.environ.get('GITHUB_SHA','workspace-uncommitted'),'sourceFingerprint':fingerprint,'files':files},indent=2))
 print('Windows source receipt:',len(files),'files;',fingerprint,'->',out)

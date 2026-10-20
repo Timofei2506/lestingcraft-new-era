@@ -1,94 +1,79 @@
-using System.Collections.Generic;
+using LestingCraft.Gameplay;
 
 namespace LestingCraft.World
 {
-    /// <summary>
-    /// Определение блока: чистые данные без привязки к рендеру и Unity.
-    /// </summary>
     public readonly struct BlockDefinition
     {
         public readonly ushort Id;
         public readonly string Name;
+        public readonly bool Solid;
+        public readonly byte LightEmission;
         public readonly float Hardness;
-        public readonly bool IsSolid;
-        public readonly byte LightLevel;
 
-        public BlockDefinition(ushort id, string name, float hardness, bool isSolid, byte lightLevel = 0)
+        public BlockDefinition(ushort id, string name, bool solid, float hardness, byte lightEmission = 0)
         {
             Id = id;
             Name = name;
+            Solid = solid;
             Hardness = hardness;
-            IsSolid = isSolid;
-            LightLevel = lightLevel;
+            LightEmission = lightEmission;
         }
     }
 
-    /// <summary>
-    /// Реестр блоков мира. Регистрация идемпотентна: повторная регистрация id перезаписывает определение.
-    /// </summary>
     public static class BlockRegistry
     {
-        public const ushort AirId = 0;
-        public const ushort StoneId = 1;
-        public const ushort DirtId = 2;
-        public const ushort GrassId = 3;
-        public const ushort WoodId = 4;
-        public const ushort LeavesId = 5;
-        public const ushort SandId = 6;
-        public const ushort WaterId = 7;
-        public const ushort LavaId = 8;
-        public const ushort BedrockId = 9;
-        public const ushort BasaltId = 10;
-        public const ushort CrystalId = 11;
-        public const ushort AetherId = 12;
-        public const ushort OreId = 13;
-        public const ushort SnowId = 14;
-        public const ushort CampfireId = 15,WorkbenchId=16,FurnaceId=17,PlanksId=18;
+        public const ushort AirId = 0, StoneId = 1, DirtId = 2, GrassId = 3, WoodId = 4, LeavesId = 5;
+        public const ushort SandId = 6, WaterId = 7, LavaId = 8, BedrockId = 9, BasaltId = 10;
+        public const ushort CrystalId = 11, AetherStoneId = 12, OreId = 13, SnowId = 14, CampfireId = 15;
+        public const ushort WorkbenchId = 16, FurnaceId = 17, PlanksId = 18;
+        public const ushort TorchBlockId = 54, BedBlockId = 55, LanternBlockId = 56, BookshelfId = 57;
+        public const ushort CarvedOakId = 58, ShinglesId = 59, CherryLeavesId = 60, GlowShroomId = 61;
+        public const ushort RedMesaId = 62, GlacialIceId = 63, MagmaBasaltId = 64, LavenderTurfId = 65;
+        public const ushort TitaniumHullId = 66, AndromedaCrystalId = 67, DreamMonolithId = 68, DreamStoneId = 69;
 
-        private static readonly Dictionary<ushort, BlockDefinition> Blocks = new Dictionary<ushort, BlockDefinition>();
+        private static readonly BlockDefinition[] Definitions = BuildDefinitions();
 
-        static BlockRegistry()
+        static BlockDefinition[] BuildDefinitions()
         {
-            foreach(var b in LestingCraft.Gameplay.ExpandedContent.Blocks)Register(new BlockDefinition((ushort)b.Id,b.Name,b.Hardness,true));
-            Register(new BlockDefinition(AirId, "Air", 0f, isSolid: false));
-            Register(new BlockDefinition(StoneId, "Stone", 1.5f, isSolid: true));
-            Register(new BlockDefinition(DirtId, "Dirt", 0.5f, isSolid: true));
-            Register(new BlockDefinition(GrassId, "Grass", 0.6f, isSolid: true));
-            Register(new BlockDefinition(WoodId, "Wood", 2f, isSolid: true));
-            Register(new BlockDefinition(LeavesId, "Leaves", 0.2f, isSolid: true));
-            Register(new BlockDefinition(SandId, "Sand", 0.5f, isSolid: true));
-            Register(new BlockDefinition(WaterId, "Water", 0f, isSolid: false));
-            Register(new BlockDefinition(LavaId, "Lava", 0f, isSolid: false, lightLevel: 15));
-            Register(new BlockDefinition(BasaltId, "Basalt", 2f, true));
-            Register(new BlockDefinition(CrystalId, "Crystal", 2f, true, 6));
-            Register(new BlockDefinition(AetherId, "Aether", 1f, true));
-            Register(new BlockDefinition(OreId, "Ore", 3f, true));
-            Register(new BlockDefinition(CampfireId, "Campfire", 1f, true, 12));
-            Register(new BlockDefinition(WorkbenchId,"Workbench",2f,true));Register(new BlockDefinition(FurnaceId,"Furnace",2.8f,true));Register(new BlockDefinition(PlanksId,"Planks",1.2f,true));
-            Register(new BlockDefinition(SnowId, "Snow", .3f, true));
-            Register(new BlockDefinition(BedrockId, "Bedrock", float.PositiveInfinity, isSolid: true));
+            var list = new BlockDefinition[ExpandedContent.MaxBlock + 1];
+            list[0] = new BlockDefinition(0, "Air", false, 0);
+            list[1] = new BlockDefinition(1, "Stone", true, 1.8f);
+            list[2] = new BlockDefinition(2, "Dirt", true, .65f);
+            list[3] = new BlockDefinition(3, "Grass", true, .7f);
+            list[4] = new BlockDefinition(4, "Wood", true, 1.3f);
+            list[5] = new BlockDefinition(5, "Leaves", true, .25f);
+            list[6] = new BlockDefinition(6, "Sand", true, .6f);
+            list[7] = new BlockDefinition(7, "Water", false, 0);
+            list[8] = new BlockDefinition(8, "Lava", false, 0, 15);
+            list[9] = new BlockDefinition(9, "Bedrock", true, -1);
+            list[10] = new BlockDefinition(10, "Basalt", true, 2.4f);
+            list[11] = new BlockDefinition(11, "Crystal", true, 1.5f, 10);
+            list[12] = new BlockDefinition(12, "Aether Stone", true, 2.0f, 4);
+            list[13] = new BlockDefinition(13, "Ore", true, 2.6f);
+            list[14] = new BlockDefinition(14, "Snow", true, .45f);
+            list[15] = new BlockDefinition(15, "Campfire", true, .9f, 14);
+            list[16] = new BlockDefinition(16, "Workbench", true, 1.4f);
+            list[17] = new BlockDefinition(17, "Furnace", true, 2.2f, 6);
+            list[18] = new BlockDefinition(18, "Planks", true, 1.2f);
+            foreach (var b in ExpandedContent.Blocks)
+            {
+                byte light = b.Id == 56 ? (byte)15 :
+                             b.Id == 54 ? (byte)14 :
+                             b.Id == 67 ? (byte)13 :
+                             b.Id == 61 ? (byte)12 :
+                             b.Id == 64 ? (byte)9 : (byte)0;
+                list[b.Id] = new BlockDefinition((ushort)b.Id, b.Name, true, b.Hardness, light);
+            }
+            return list;
         }
 
-        public static void Register(BlockDefinition definition)
-        {
-            Blocks[definition.Id] = definition;
-        }
-
-        public static BlockDefinition Get(ushort id)
-        {
-            return Blocks.TryGetValue(id, out var definition) ? definition : Blocks[AirId];
-        }
-
-        public static bool Occludes(ushort id)=>id!=CampfireId&&id!=CrystalId&&id!=44&&IsSolid(id);
-
-        public static bool IsSolid(ushort id)
-        {
-            return Get(id).IsSolid;
-        }
-
-        public static bool IsAir(ushort id)
-        {
-            return id == AirId;
-        }
+        public static BlockDefinition Get(ushort id) => id < Definitions.Length ? Definitions[id] : Definitions[0];
+        public static bool IsAir(ushort id) => id == 0;
+        public static bool IsSolid(ushort id) => id < Definitions.Length && Definitions[id].Solid;
+        public static bool IsCustomPlacedModel(ushort id) =>
+            id == CampfireId || id == CrystalId || id == TorchBlockId || id == BedBlockId || id == LanternBlockId;
+        public static bool Occludes(ushort id) =>
+            IsSolid(id) && id != CampfireId && id != CrystalId && id != 44 &&
+            id != TorchBlockId && id != BedBlockId && id != LanternBlockId;
     }
 }

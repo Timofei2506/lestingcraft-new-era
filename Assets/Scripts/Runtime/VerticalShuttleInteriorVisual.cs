@@ -21,6 +21,8 @@ namespace LestingCraft.Runtime
         float lastLiftHeight;
         long lastLiftServerNow;
         public readonly ShuttleElevator Lift=new ShuttleElevator(VerticalShuttleWalk.LiftTravel);
+        public readonly CockpitPanel Panel=new CockpitPanel();
+        public CockpitInteractiveRig InteractiveRig {get;private set;}
         public bool HatchOpen {get;private set;}
 
         public static VerticalShuttleInteriorVisual Create(Transform parent)
@@ -108,7 +110,12 @@ namespace LestingCraft.Runtime
                 padEquipment.Add(Box("Lift guide rear "+y,new Vector3(VerticalShuttleWalk.LiftX-.99f,y+.5f,2.02f),new Vector3(.09f,4.8f,.09f),wall));
                 padEquipment.Add(Box("Lift guide front "+y,new Vector3(VerticalShuttleWalk.LiftX-.99f,y+.5f,3.98f),new Vector3(.09f,4.8f,.09f),wall));
             }
+            InteractiveRig=CockpitInteractiveRig.Create(transform,Panel,new OpenSpaceHelm());
             SyncHatch(false);
+        }
+        public void BindHelm(OpenSpaceHelm helm)
+        {
+            if(InteractiveRig&&helm!=null)InteractiveRig.BindHelm(helm);
         }
         /// <summary>Ground infrastructure belongs to the launch pad, never the orbiter.
         /// Reparent in world space while still on the pad; later moving the ship must

@@ -232,6 +232,7 @@ namespace LestingCraft.World
                                     position.y = other == id && face != 2 && face != 3
                                         ? Mathf.Lerp(adjacentHeight, ownHeight, position.y) : position.y * ownHeight;
                                 if (id == 15) position.y *= .34f;
+                                else if (id == BlockRegistry.BedBlockId) position.y *= .58f;
                                 data.Vertices.Add(new Vector3(x, y, z) + position);
                                 data.Normals.Add(dir);
                                 data.Colors.Add(new Color32(shade, (byte)((skylight != null ? skylight(ox + nx, ny, oz + nz) : 15) * 17), shade, 255));
@@ -348,7 +349,7 @@ namespace LestingCraft.World
                 (!liquid || face == 2 || face == 3 || own <= adjacent))) return default(Face);
             Face result = new Face
             {
-                Id = id, Solid = solid, Top = id == 15 ? .34f : 1,
+                Id = id, Solid = solid, Top = id == 15 ? .34f : id == BlockRegistry.BedBlockId ? .58f : 1,
                 Layer = SurfaceLayers.ForCellFace(id, face, ox + p.x, p.y, oz + p.z, seed)
             };
             if (liquid && fluidHeight != null && cache.Block(p.x, p.y + 1, p.z) != id)
@@ -385,8 +386,8 @@ namespace LestingCraft.World
         static void AddIndices(ChunkMeshData data, ushort id, bool solid, int start)
         {
             AddFace(data.Triangles, start);
-            if (id != 15)
-                AddFace(id == 44 ? data.TransparentTriangles :
+            if (id != 15 && id != BlockRegistry.TorchBlockId && id != BlockRegistry.BedBlockId && id != BlockRegistry.LanternBlockId)
+                AddFace(id == 44 || id == BlockRegistry.GlacialIceId ? data.TransparentTriangles :
                     id == BlockRegistry.WaterId ? data.WaterTriangles : data.OpaqueTriangles, start);
             if (solid) AddFace(data.ColliderTriangles, start);
         }

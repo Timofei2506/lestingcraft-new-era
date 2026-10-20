@@ -11,7 +11,7 @@ import {emptyLift,liftAt,liftSnapshot,operateLift} from './shuttle-lift.js';
 import {preflight} from './shuttle-preflight.js';
 
 export const VERSION = 1;
-export const RULES_VERSION = 12;
+export const RULES_VERSION = 13;
 export const MAX_MESSAGE = 16384;
 export const MAX_PLAYERS = 8;
 export const MAX_EDITS = 4096;
@@ -21,18 +21,20 @@ export const safeName = name => String(name || 'Player').replace(/[<>\x00-\x1f\x
 export const randomCode = () => crypto.randomUUID().replaceAll('-', '');
 const integer = v => typeof v === 'number' && Number.isInteger(v);
 const finite = v => typeof v === 'number' && Number.isFinite(v);
-const flightBodies = Object.freeze(['earth','moon','mars','venus','mercury']);
+const flightBodiesLegacy = Object.freeze(['earth','moon','mars','venus','mercury']);
+const flightBodiesV8 = Object.freeze(['earth','moon','mars','venus','mercury','europa','titan','pluto','proxima_b','trappist_1e','kepler_452b','andromeda_prime','somnia']);
+const allowedFlightBodies = contentVersion => contentVersion >= 8 ? flightBodiesV8 : flightBodiesLegacy;
 
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
     throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
-  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,11,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
-  if([2,3,4,5,6,7,8,9,10,11,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
+  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,11,12,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
+  if([2,3,4,5,6,7,8,9,10,11,12,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
-  return {launchSite:value.rulesVersion>=11?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=11?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,11,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
+  return {launchSite:value.rulesVersion>=11?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=11?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=13?8:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,11,12,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
 const safeMission=(m,now)=>{const v=missionView(m,now);return {active:true,from:v.from,to:v.to,seconds:v.seconds,phase:v.phase,elapsed:v.elapsed,position:v.position,autopilot:v.autopilot,landingBurn:v.landingBurn,crewCount:v.crew.length,ignitionAt:m.ignitionAt};};
-export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
+export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),inDream:false,lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
 export function publicPeer(p) {return {id:p.id,name:p.name,x:p.x,y:p.y,z:p.z,yaw:p.yaw,weapon:p.weapon||0,offhand:p.offhand||0,equipment:p.equipment||Array(8).fill(0)};}
 export function consumeRate(peer, now) {
   if (now - peer.windowStart >= 1000) {peer.windowStart=now;peer.count=0;}
@@ -63,7 +65,7 @@ export function validateEdit(p,peer,edits,now,maxBlock=18,bound=64) {
   return {key,x:p.x,y:p.y,z:p.z,block:p.block};
 }
 export class RoomState {
-  constructor(config,edits=[],savedPlayers=[]) {this.config={...config,contentVersion:config.contentVersion??(config.rulesVersion>=10?7:config.rulesVersion>=9?6:config.rulesVersion>=8?5:config.rulesVersion>=7?4:config.rulesVersion>=6?3:config.rulesVersion>=5?2:1)};this.members=new Map();this.storyEngine=new StoryEngine();this.observers=new Map();this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));this.fauna=new Fauna(config.seed,config.wildlife||{},this.edits,this.config.contentVersion);this.living=new Living(config.seed,config.living||{},this.edits,this.config.contentVersion);this.living.restorePending();this.fauna.dynamicCells=this.living.cells;}
+  constructor(config,edits=[],savedPlayers=[]) {this.config={...config,contentVersion:config.contentVersion??(config.rulesVersion>=13?8:config.rulesVersion>=10?7:config.rulesVersion>=9?6:config.rulesVersion>=8?5:config.rulesVersion>=7?4:config.rulesVersion>=6?3:config.rulesVersion>=5?2:1)};this.members=new Map();this.storyEngine=new StoryEngine();this.observers=new Map();this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));this.fauna=new Fauna(config.seed,config.wildlife||{},this.edits,this.config.contentVersion);this.living=new Living(config.seed,config.living||{},this.edits,this.config.contentVersion);this.living.restorePending();this.fauna.dynamicCells=this.living.cells;}
   setMembers(peers){this.members=new Map(peers.map(p=>[p.id,p]));const connected=new Set(peers.map(p=>p.playerKey)),ackKey=this.config.story?`${this.config.story.stage}:${this.config.story.line}`:'';for(const key of this.storyEngine.ready)if(!connected.has(key))this.storyEngine.ready.delete(key);this.storyEngine.acks=new Set(peers.filter(p=>p.storyAckKey===ackKey&&ackKey!=='').map(p=>p.playerKey));for(const p of peers){if(p.storyReady)this.storyEngine.ready.add(p.playerKey);if(p.lastStoryHit)this.storyEngine.hits.set(p.playerKey,p.lastStoryHit);}}
 
   // Keep the established lunar transition and its public signature unchanged.
@@ -87,10 +89,11 @@ export class RoomState {
   igniteVerifiedSolar(peer,now,to,persist=()=>{}){
     if(this.config.shuttleSeats?.[0]!==peer?.playerKey||this.members.get(peer.id)!==peer)
       throw Error('Only the connected seated pilot may ignite');
-    if(!flightBodies.includes(to)||!integer(this.config.dimension)||
-       this.config.dimension<0||this.config.dimension>=flightBodies.length)
+    const bodies=allowedFlightBodies(this.config.contentVersion);
+    if(!bodies.includes(to)||!integer(this.config.dimension)||
+       this.config.dimension<0||this.config.dimension>=bodies.length)
       throw Error('Invalid solar route');
-    const from=flightBodies[this.config.dimension];
+    const from=bodies[this.config.dimension];
     if(from===to)throw Error('Invalid solar route');
     const check=preflight(this.config,[...this.members.values()],now);
     if(!check.ready)throw Error('Preflight refused: '+check.issues.join('; '));
@@ -105,7 +108,7 @@ export class RoomState {
   }
 
   clock(now=Date.now()){return 420+Math.max(0,(now-(this.config.startedAt||now))/1000);}
-  lobbyState(){return {clock:this.clock(),type:'lobby',started:!!this.config.started,hostId:[...this.members.values()].find(p=>p.playerKey===this.config.ownerKey)?.id||'',players:[...this.members.values()].map(publicPeer),story:this.config.story,serverNow:Date.now()};}
+  lobbyState(){return {clock:this.clock(),type:'lobby',started:!!this.config.started,hostId:[...this.members.values()].find(p=>p.playerKey===this.config.ownerKey)?.id||'',players:[...this.members.values()].filter(p=>!p.inDream).map(publicPeer),story:this.config.story,serverNow:Date.now()};}
   disconnect(peer,persist=()=>{}){this.members.delete(peer.id);this.observers.delete(peer.id);this.storyEngine.ready.delete(peer.playerKey);this.storyEngine.acks.delete(peer.playerKey);this.storyEngine.hits.delete(peer.playerKey);let next=this.config;
     // A disconnected rider cannot strand the only platform forever; it continues its
     // current path empty. No person is moved by this cleanup or by a new connection.
@@ -116,7 +119,7 @@ export class RoomState {
   welcome(peer,peers) {
     this.setMembers([...peers.filter(p=>p.id!==peer.id),peer]);
     const {wildlife,ownerKey,living,spaceVisit,spaceMission,launchLift,padVisited,shuttleSeats,...publicConfig}=this.config,save=this.savedPlayers.get(peer.playerKey)||null;
-    return {seats:(shuttleSeats||[null,null]).map(key=>[...this.members.values()].find(m=>m.playerKey===key)?.id||''),hatchOpen:!!this.config.launchHatch,lift:this.config.launchSite?.active?liftSnapshot(launchLift||emptyLift(),Date.now(),[...this.members.values()]):undefined,space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey,seatIndex:spaceMission.crew.indexOf(peer.playerKey)}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{active:true,dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
+    return {seats:(shuttleSeats||[null,null]).map(key=>[...this.members.values()].find(m=>m.playerKey===key)?.id||''),hatchOpen:!!this.config.launchHatch,lift:this.config.launchSite?.active?liftSnapshot(launchLift||emptyLift(),Date.now(),[...this.members.values()]):undefined,space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey,seatIndex:spaceMission.crew.indexOf(peer.playerKey)}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{active:true,dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peer.inDream?[]:peers.filter(p=>p.id!==peer.id&&p.positioned&&!p.inDream).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
   }
   handle(peer,raw,now,persistEdit,persistPlayer=()=>{},persistFauna=()=>{}) {
     if(!consumeRate(peer,now))throw new Error('Rate limit');
@@ -126,13 +129,24 @@ export class RoomState {
       const next={...this.config,started:true,startedAt:now,story:this.config.story?{...this.config.story,bossMax:180+90*Math.max(0,this.members.size-1)}:null};persistFauna(next);this.config=next;return {...this.lobbyState(),type:'lobby_start',serverNow:now};
     }
     if(this.config.lobby&&!this.config.started)throw Error('Wait for host to start the lobby');
+    if(p.type==='dream_state'){
+      const entering=Boolean(p.on??p.dream);
+      peer.inDream=entering;
+      if(entering){
+        this.observers.delete(peer.id);
+        return {type:'leave',id:peer.id,dreamIsolated:true};
+      }
+      return {type:'dream_woke',id:peer.id};
+    }
+    if(peer.inDream&&p.type!=='state')
+      throw Error('Dream anomaly isolates player from world and multiplayer interactions');
     // Creative blueprints place the approved pad AND the approved shuttle as one
     // operational complex. The click is only a ground-point request: never accept
     // a client-provided pad altitude, arbitrary launch state or mission switch.
     if(p.type==='space_site_place'){
       if(this.config.rulesVersion<12)throw Error('Make a new rules-12 creative room to place the shared shuttle');
       if(now-(peer.lastSiteAction||0)<3000)throw Error('Wait before relocating the launch site');
-      if(this.config.mode!==2||this.config.rulesVersion<RULES_VERSION||
+      if(this.config.mode!==2||this.config.rulesVersion<12||
          !this.config.launchSite?.active||this.config.runEnded||this.config.spaceMission||
          this.config.spaceVisit||!['pad','shuttle'].includes(p.action)||
          !integer(p.x)||!integer(p.y)||!integer(p.z)||!peer.positioned||
@@ -234,7 +248,7 @@ export class RoomState {
 
       const to=p.to===undefined?p.target:p.to;
       const dest=to===undefined?'moon':to;
-      if(!flightBodies.includes(dest))throw Error('Invalid solar route');
+      if(!allowedFlightBodies(this.config.contentVersion).includes(dest))throw Error('Invalid solar route');
 
       // Omitted destinations retain exactly the established lunar route on
       // Earth, including duration, countdown and mission construction.
@@ -281,7 +295,7 @@ export class RoomState {
     if(p.type==='space_complete_landing') {
       const m=this.config.spaceMission,key=peer.playerKey;
       if(!m||!m.crew?.includes(key)||!m.landed)throw Error('Mission has not landed yet');
-      const nextDim=flightBodies.indexOf(m.to);
+      const nextDim=allowedFlightBodies(this.config.contentVersion).indexOf(m.to);
       if(nextDim<0)throw Error('Invalid landed body');
       const next={...this.config,dimension:nextDim,spaceMission:undefined,launchHatch:false};
       persistFauna(next);this.config=next;
@@ -363,7 +377,7 @@ export class RoomState {
          now-(peer.lastStationTrade||0)<350)throw Error('Station trade replay or cooldown');
       const previous=this.savedPlayers.get(key);
       if(!previous||previous.survival?.health<=0)throw Error('No healthy saved player');
-      const save=validatePlayerSave(previous,true,true,true);
+      const save=validatePlayerSave(previous,true,true,true,this.config.contentVersion>=8);
       const updated=stationTrade(visit.dock,{crewVerified:true,local:visit.positions[key],role:p.role,save});
       // Persist replay marker and inventory atomically before acknowledging. A reconnect
       // cannot resubmit the same request, and a full bag never consumes payment.
@@ -374,7 +388,7 @@ export class RoomState {
     }
     if(p.type==='living_action') {
       if(this.config.contentVersion<6||this.config.runEnded||!Number.isInteger(p.requestId)||p.requestId<1||p.requestId<= (peer.lastLivingRequest||0)||now-(peer.lastLivingAction||0)<350)throw Error('Living interaction unavailable / cooldown');
-      const save=validatePlayerSave(p.save,true,true,true),previous=this.savedPlayers.get(peer.playerKey);
+      const save=validatePlayerSave(p.save,true,true,true,this.config.contentVersion>=8),previous=this.savedPlayers.get(peer.playerKey);
       if(previous&&save.inventory.revision<previous.inventory.revision)throw Error('Stale inventory');
       if((save.claimedStoryRewards&~(this.config.story?.rewards||0))!==0||((previous?.claimedStoryRewards||0)&~save.claimedStoryRewards)!==0)throw Error('Invalid story claims');
       for(const id of save.claimedAnimalLoot)if(!this.fauna.loot.some(l=>l.id===id&&l.key===peer.playerKey))throw Error('Unknown loot claim');
@@ -394,15 +408,15 @@ export class RoomState {
     if(p.type==='edit') {
       if(this.config.story&&protectedSite(p.x,p.z))throw Error('This story landmark is protected');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
-      const edit=validateEdit(p,peer,this.edits,now,this.config.contentVersion>=7?53:this.config.contentVersion>=5?48:this.config.contentVersion>=2?46:18,this.config.contentVersion>=4?384:64),record={x:edit.x,y:edit.y,z:edit.z,block:edit.block,rev:this.config.rev+1};
+      const edit=validateEdit(p,peer,this.edits,now,this.config.contentVersion>=8?69:this.config.contentVersion>=7?53:this.config.contentVersion>=5?48:this.config.contentVersion>=2?46:18,this.config.contentVersion>=4?384:64),record={x:edit.x,y:edit.y,z:edit.z,block:edit.block,rev:this.config.rev+1};
       // Persistence succeeds before acknowledgement/broadcast and memory mutation.
       let candidate=null,next={...this.config,rev:record.rev};if(this.config.contentVersion>=6){candidate=new Living(this.config.seed,this.living.save(),this.edits,this.config.contentVersion);candidate.queue=this.living.queue.map(p=>({...p}));candidate.queued=new Set(this.living.queued);candidate.last=this.living.last;candidate.flow=this.living.flow;candidate.fluidPass=this.living.fluidPass;const before=this.living.block(edit.x,edit.y,edit.z);candidate.edited(edit);if(edit.block===0&&before>0&&before!==7&&before!==8&&this.config.mode!==2&&!candidate.drop(toolDrop(before),1,0,edit.x+.5,edit.y+.5,edit.z+.5))throw Error('Dropped item limit');next.living=candidate.save();}persistEdit(record,next);this.config=next;if(candidate){this.living=candidate;this.fauna.dynamicCells=candidate.cells;}this.config.rev=record.rev;this.edits.set(edit.key,record);peer.lastEdit=now;
       return {type:'edit',...record,id:peer.id,living:candidate?candidate.save():undefined};
     }
     if(p.type==='state') {
-      if(![2,3,4,5,6,7,8,9,10,11,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
+      if(![2,3,4,5,6,7,8,9,10,11,12,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
-      const save=validatePlayerSave(p.save,this.config.contentVersion>=2,this.config.contentVersion>=4,this.config.contentVersion>=5);if((save.claimedStoryRewards&~(this.config.story?.rewards||0))!==0||((this.savedPlayers.get(peer.playerKey)?.claimedStoryRewards||0)&~save.claimedStoryRewards)!==0)throw Error("Invalid story rewards / rollback");const dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
+      const save=validatePlayerSave(p.save,this.config.contentVersion>=2,this.config.contentVersion>=4,this.config.contentVersion>=5,this.config.contentVersion>=8);if((save.claimedStoryRewards&~(this.config.story?.rewards||0))!==0||((this.savedPlayers.get(peer.playerKey)?.claimedStoryRewards||0)&~save.claimedStoryRewards)!==0)throw Error("Invalid story rewards / rollback");const dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
       if(previous&&save.inventory.revision<previous.inventory.revision)throw Error('Stale inventory after confirmed transaction');
       for(const id of save.claimedAnimalLoot){if(!this.fauna.loot.some(l=>l.id===id&&l.key===peer.playerKey))throw Error('Unknown animal loot claim');}
       for(const id of previous?.claimedAnimalLoot||[])if(!save.claimedAnimalLoot.includes(id))throw Error('Animal loot claims cannot be rolled back');
@@ -419,10 +433,10 @@ export class RoomState {
   }
 }
 
-export function validatePlayerSave(save,expanded=true,chapter=false,expedition=false) {
+export function validatePlayerSave(save,expanded=true,chapter=false,expedition=false,eraExpansion=false) {
   if(!save||typeof save!=='object'||!save.inventory||!save.survival)throw new Error('Invalid player save');
   const maxStack=id=>(id>=150&&id<=164)?1:((id>=100&&id<=108)||(id>=130&&id<=132))?1:[110,111,112,135,138].includes(id)?32:64;
-  const validItem=id=>integer(id)&&(id===0||(expedition&&((id>=149&&id<=165)||id===47||id===48))||(chapter&&id===148)||(id>=1&&id<=17)||(expanded&&id>=19&&id<=46)||(expanded&&id>=49&&id<=53)||(id>=100&&id<=108)||(id>=130&&id<=132)||(id>=110&&id<=114)||(id>=120&&id<=123)||(expanded&&[135,136,138,139,140,141,142,143,144,145,146,147].includes(id))||(id>=170&&id<=177));
+  const validItem=id=>integer(id)&&(id===0||(expedition&&((id>=149&&id<=165)||id===47||id===48))||(chapter&&id===148)||(id>=1&&id<=17)||(expanded&&id>=19&&id<=46)||(expanded&&id>=49&&id<=53)||(eraExpansion&&id>=54&&id<=69)||(id>=100&&id<=108)||(id>=130&&id<=132)||(id>=110&&id<=114)||(id>=120&&id<=123)||(expanded&&[135,136,138,139,140,141,142,143,144,145,146,147].includes(id))||(id>=170&&id<=177));
   const cleanStack=s=>{
     if(!s||!validItem(s.item)||!integer(s.count)||s.count<0||s.count>maxStack(s.item)||!integer(s.durability)||s.durability<0||s.durability>1500||(s.item===0)!==(s.count===0))throw new Error('Invalid item stack');
     const life={150:450,151:1500,...Object.fromEntries(Object.entries(weapons).map(([id])=>[id,({152:380,153:1100,154:260,155:800,156:340,157:1050,158:420,159:1200,160:500,161:1400,162:450,163:1300,164:400})[id]])),100:60,101:140,102:120,103:160,105:180,106:260,107:220,108:180};if(s.durability>(life[s.item]||0))throw new Error('Invalid tool durability');
@@ -431,13 +445,13 @@ export function validatePlayerSave(save,expanded=true,chapter=false,expedition=f
   const empty=()=>({item:0,count:0,durability:0});
   const extras=(value,length)=>{if(value===undefined)return Array.from({length},empty);if(!Array.isArray(value)||value.length!==length)throw new Error('Invalid crafting/storage size');return value.map(cleanStack);};
   const inv=save.inventory;
-  const offhand=cleanStack(inv.offhand||empty());if(offhand.count&&(offhand.item!==148||offhand.count!==1||!chapter))throw Error("Invalid offhand slot");
+  const offhand=cleanStack(inv.offhand||empty());if(offhand.count&&((offhand.item!==148&&offhand.item!==54)||offhand.count!==1||!chapter))throw Error("Invalid offhand slot");
   const claimedStoryRewards=save.claimedStoryRewards||0;if(!integer(claimedStoryRewards)||claimedStoryRewards<0||claimedStoryRewards>15)throw Error("Invalid story claims");
   if(!Array.isArray(inv.slots)||inv.slots.length!==45||!integer(inv.selected)||inv.selected<0||inv.selected>8)throw new Error('Expected 45 inventory slots and selected hotbar 0..8');
   const equipment=extras(inv.equipment,8);validateEquipmentIds(equipment.map(s=>s.count?s.item:0));
   const slots=inv.slots.map(cleanStack),grid=extras(inv.grid,9),cursor=cleanStack(inv.cursor||empty());
   const raw=inv.furnace||{},furnace={input:cleanStack(raw.input||empty()),fuel:cleanStack(raw.fuel||empty()),output:cleanStack(raw.output||empty())};
-  for(const [key,min,max] of [['burn',0,40],['progress',0,8],['recipe',0,147],['x',chapter?-384:-64,chapter?383:63],['y',0,255],['z',chapter?-384:-64,chapter?383:63],['realm',0,4]]){
+  for(const [key,min,max] of [['burn',0,40],['progress',0,8],['recipe',0,147],['x',chapter?-384:-64,chapter?383:63],['y',0,255],['z',chapter?-384:-64,chapter?383:63],['realm',0,13]]){
     const value=raw[key]===undefined?0:raw[key];if(!finite(value)||value<min||value>max||(!['burn','progress'].includes(key)&&!integer(value)))throw new Error('Invalid furnace '+key);furnace[key]=value;
   }
   let grave=[],graveExtras=[];
@@ -454,7 +468,7 @@ export function validatePlayerSave(save,expanded=true,chapter=false,expedition=f
   const body=v.body===undefined?{hp:Array(6).fill(v.health),trauma:0}:v.body;
   if(!body||!Array.isArray(body.hp)||body.hp.length!==6||body.hp.some(h=>!finite(h)||h<0||h>100)||!finite(body.trauma)||body.trauma<0||body.trauma>120)throw Error('Invalid body injuries');
   if(v.health>0&&(body.hp[0]===0||body.hp[1]===0))throw Error('Vital injury must be fatal');
-  return {claimedStoryRewards,claimedAnimalLoot:[...claimedAnimalLoot],grave,graveExtras,graveX:grave.length?save.graveX:0,graveY:grave.length?save.graveY:0,graveZ:grave.length?save.graveZ:0,milestones:integer(save.milestones)?save.milestones&3:0,inventory:{slots,grid,cursor,furnace,equipment,offhand,selected:inv.selected,revision:integer(inv.revision)?inv.revision:0},survival:{body:{hp:[...body.hp],trauma:body.trauma},health:v.health,hunger:v.hunger,stamina:v.stamina,temperature:v.temperature,wetness:v.wetness,air,dead:v.health<=0},equippedCoat:save.equippedCoat===true&&slots.some(s=>s.item===104&&s.count===1)};
+  return {claimedStoryRewards,claimedAnimalLoot:[...claimedAnimalLoot],grave,graveExtras,graveX:grave.length?save.graveX:0,graveY:grave.length?save.graveY:0,graveZ:grave.length?save.graveZ:0,hasBedRespawn:save.hasBedRespawn===true,bedX:integer(save.bedX)&&Math.abs(save.bedX)<=4096?save.bedX:0,bedY:integer(save.bedY)&&save.bedY>=0&&save.bedY<=255?save.bedY:0,bedZ:integer(save.bedZ)&&Math.abs(save.bedZ)<=4096?save.bedZ:0,dreamVisits:integer(save.dreamVisits)&&save.dreamVisits>=0?save.dreamVisits:0,milestones:integer(save.milestones)?save.milestones&3:0,inventory:{slots,grid,cursor,furnace,equipment,offhand,selected:inv.selected,revision:integer(inv.revision)?inv.revision:0},survival:{body:{hp:[...body.hp],trauma:body.trauma},health:v.health,hunger:v.hunger,stamina:v.stamina,temperature:v.temperature,wetness:v.wetness,air,dead:v.health<=0},equippedCoat:save.equippedCoat===true&&slots.some(s=>s.item===104&&s.count===1)};
 }
 
 export function validateEquipmentIds(ids){
@@ -463,7 +477,7 @@ export function validateEquipmentIds(ids){
 }
 
 // New content must never reach a pre-expansion client (unknown IDs would become air).
-export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.rulesVersion>=12?12:config.launchSite?.active?11:config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
+export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.rulesVersion>=13?13:config.rulesVersion>=12?12:config.launchSite?.active?11:config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
 
 export function packetError(raw,error){let p={};try{if(typeof raw==='string'&&raw.length<=MAX_MESSAGE)p=JSON.parse(raw)||{};}catch{}return {type:'error',message:error.message,code:typeof p.type==='string'?p.type:'',requestId:Number.isInteger(p.requestId)?p.requestId:0};}
 

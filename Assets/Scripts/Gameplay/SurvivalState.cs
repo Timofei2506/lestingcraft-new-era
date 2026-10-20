@@ -6,7 +6,7 @@ namespace LestingCraft.Gameplay
     [Serializable] public sealed class SurvivalState
     {
         public BodyHealth body=new BodyHealth();
-        public float health=100,hunger=100,stamina=100,temperature=37,wetness,air=100;public bool dead;
+        public float health=100,hunger=100,stamina=100,temperature=37,wetness,air=100,comfort=80;public bool dead;
         public void Step(float seconds,GameMode mode,float air,float precipitation,bool sheltered,bool nearFire,bool sprinting,float insulation)
         {
             if(seconds<=0||dead||mode==GameMode.Creative)return;seconds=Mathf.Min(seconds,2);
@@ -59,14 +59,17 @@ namespace LestingCraft.Gameplay
     [Serializable] public sealed class PlayerSave
     {
         public int claimedStoryRewards;public string[] claimedAnimalLoot=Array.Empty<string>();public Inventory inventory=new Inventory();public SurvivalState survival=new SurvivalState();public bool equippedCoat;public int milestones;public ItemStack[] graveExtras=Array.Empty<ItemStack>();public ItemStack[] grave=Array.Empty<ItemStack>();public float graveX,graveY,graveZ;
+        public bool hasBedRespawn;public int bedX,bedY,bedZ;public int dreamsExperienced;
+        public int dreamVisits{get=>dreamsExperienced;set=>dreamsExperienced=value;}
         public void Normalize(){if(claimedAnimalLoot==null)claimedAnimalLoot=Array.Empty<string>();if(claimedAnimalLoot.Length>256)Array.Resize(ref claimedAnimalLoot,256);if(graveExtras==null)graveExtras=Array.Empty<ItemStack>();if(graveExtras.Length!=0&&graveExtras.Length!=13&&graveExtras.Length!=21&&graveExtras.Length!=22)graveExtras=Array.Empty<ItemStack>();for(int i=0;i<graveExtras.Length;i++)graveExtras[i]=Inventory.Clean(graveExtras[i]);if(grave==null)grave=Array.Empty<ItemStack>();if(grave.Length>0){var graveInventory=new Inventory{slots=grave};graveInventory.Normalize();grave=graveInventory.slots;}if(inventory==null)inventory=new Inventory();inventory.Normalize();if(equippedCoat&&inventory.equipment[1].count==0){int coat=Array.FindIndex(inventory.slots,s=>s.item==104&&s.count>0);if(coat>=0)Equipment.Equip(inventory,coat);}equippedCoat=false;if(survival==null)survival=new SurvivalState();survival.Normalize();}
     }
     [Serializable] public sealed class SessionSave
     {
         public LivingSave living=new LivingSave();
-        public int schema=3,contentVersion=7,seed,mode;public LestingCraft.Story.StoryState story;public WildlifeSave wildlife=new WildlifeSave();public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
+        public int schema=3,contentVersion=8,seed,mode;public LestingCraft.Story.StoryState story;public WildlifeSave wildlife=new WildlifeSave();public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
         public bool launchPlaced;public int launchX,launchZ;
         public int activeDimension,defeatedPlanetBossMask;public bool dockedAtStation;
+        public int activeGalaxy,activeSystem;
         public SavedBlock[] blocks=Array.Empty<SavedBlock>();
     }
     [Serializable] public sealed class SavedBlock {public int realm,x,y,z,block;}
@@ -82,16 +85,16 @@ namespace LestingCraft.Gameplay
                 if(data==null||(data.schema!=2&&data.schema!=3)||!GameRules.IsValid(data.mode))return null;
                 if(data.schema==3&&!raw.Contains("\"contentVersion\""))return null;
                 if(data.schema==2){data.contentVersion=1;data.schema=3;}
-                if(data.contentVersion<1||data.contentVersion>7)return null;
+                if(data.contentVersion<1||data.contentVersion>8)return null;
                 if(data.player==null)return null;
                 if(data.launchPlaced&&(data.launchX < -320||data.launchX > 320||data.launchZ < -260||data.launchZ > 320))return null;
-                data.activeDimension=Mathf.Clamp(data.activeDimension,0,4);
+                data.activeDimension=Mathf.Clamp(data.activeDimension,0,12);
                 data.player.Normalize();
                 if(data.campaign==null)data.campaign=new CampaignProgress();
                 if(data.blocks==null)data.blocks=Array.Empty<SavedBlock>();
                 if(data.blocks.Length>8192)return null;
-                int maxBlock=data.contentVersion>=7?53:data.contentVersion>=5?48:46;
-                foreach(var b in data.blocks)if(b==null||b.realm<0||b.realm>4||b.y<=0||b.y>=256||Math.Abs((long)b.x)>=32000||Math.Abs((long)b.z)>=32000||b.block<0||b.block>maxBlock||b.block==9)return null;
+                int maxBlock=data.contentVersion>=8?69:data.contentVersion>=7?53:data.contentVersion>=5?48:46;
+                foreach(var b in data.blocks)if(b==null||b.realm<0||b.realm>12||b.y<=0||b.y>=256||Math.Abs((long)b.x)>=32000||Math.Abs((long)b.z)>=32000||b.block<0||b.block>maxBlock||b.block==9)return null;
                 return data;
             }catch{return null;}
         }

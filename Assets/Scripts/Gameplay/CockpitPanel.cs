@@ -31,6 +31,11 @@ namespace LestingCraft.Gameplay
 
         readonly LaunchControl ctl;
 
+        public CockpitPanel() : this(new LaunchControl())
+        {
+            ctl.Cabin.Board(0, 1);
+        }
+
         public CockpitPanel(LaunchControl control)
         {
             if (control == null) throw new ArgumentNullException("control");
@@ -38,6 +43,10 @@ namespace LestingCraft.Gameplay
         }
 
         public LaunchControl Control { get { return ctl; } }
+        public bool MainBus { get { return ctl.IsOn(PanelSwitch.MainBus); } }
+        public bool FuelFeed { get { return ctl.IsOn(PanelSwitch.FuelFeed); } }
+        public bool Arm { get { return ctl.IsOn(PanelSwitch.Arm); } }
+        public bool HatchSealed { get { return !ctl.HatchOpen; } }
 
         static string Label(PanelControl c)
         {

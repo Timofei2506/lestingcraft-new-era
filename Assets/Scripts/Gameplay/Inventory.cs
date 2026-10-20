@@ -100,7 +100,11 @@ namespace LestingCraft.Gameplay
             return Add(stack.item,stack.count);
         }
         public bool ToggleOffhand()
-        {if(offhand.count>0){if(!AddStack(offhand))return false;offhand=new ItemStack();revision++;return true;}if(Active.item!=Items.Torch||Active.count<1)return false;offhand=new ItemStack{item=Items.Torch,count=1};Active.count--;if(Active.count==0){Active.item=0;Active.durability=0;}revision++;return true;}
+        {
+            if(offhand.count>0){if(!AddStack(offhand))return false;offhand=new ItemStack();revision++;return true;}
+            if((Active.item!=Items.Torch&&Active.item!=54)||Active.count<1)return false;
+            offhand=new ItemStack{item=Active.item,count=1};Active.count--;if(Active.count==0){Active.item=0;Active.durability=0;}revision++;return true;
+        }
         public int RecoverStacks(ItemStack[] remaining)
         {
             int recovered=0;if(remaining==null)return 0;
@@ -120,7 +124,7 @@ namespace LestingCraft.Gameplay
             if(equipment==null||equipment.Length!=Equipment.Count)equipment=new ItemStack[Equipment.Count];
             for(int i=0;i<Equipment.Count;i++){equipment[i]=Clean(equipment[i]);if(equipment[i].count>0&&!Equipment.Accept(i,equipment[i].item)){if(!AddStack(equipment[i]))throw new InvalidOperationException("Неверный слот экипировки: нет места для восстановления предмета");equipment[i]=new ItemStack();}}
             if(grid==null||grid.Length!=9)grid=new ItemStack[9];for(int i=0;i<9;i++)grid[i]=Clean(grid[i]);cursor=Clean(cursor);if(furnace==null)furnace=new FurnaceState();furnace.Normalize();
-            offhand=Clean(offhand);if(offhand.count>0&&(offhand.item!=Items.Torch||offhand.count!=1)){if(!AddStack(offhand))throw new InvalidOperationException("Неверная левая рука: нет места для восстановления");offhand=new ItemStack();}
+            offhand=Clean(offhand);if(offhand.count>0&&((offhand.item!=Items.Torch&&offhand.item!=54)||offhand.count!=1)){if(!AddStack(offhand))throw new InvalidOperationException("Неверная левая рука: нет места для восстановления");offhand=new ItemStack();}
             selected=Math.Max(0,Math.Min(8,selected));
         }
     }

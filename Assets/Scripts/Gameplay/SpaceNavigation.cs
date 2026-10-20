@@ -11,6 +11,7 @@ namespace LestingCraft.Gameplay
         public static SpaceVector operator -(SpaceVector a,SpaceVector b)=>new SpaceVector(a.X-b.X,a.Y-b.Y,a.Z-b.Z);
         public static SpaceVector operator *(SpaceVector a,double s)=>new SpaceVector(a.X*s,a.Y*s,a.Z*s);
         public double Length=>Math.Sqrt(X*X+Y*Y+Z*Z);
+        public double Magnitude=>Length;
         public SpaceVector Normalized=>Length>0?this*(1/Length):new SpaceVector(0,0,0);
         public static double Distance(SpaceVector a,SpaceVector b)=>(a-b).Length;
     }
@@ -107,7 +108,8 @@ namespace LestingCraft.Gameplay
         }
         public bool Land()
         {
-            if(Stage!=FlightStage.LandingReady||LandingBurn<20||SpaceVector.Distance(Position,Target)>1000000)return false;
+            double landingRadius=Math.Max(1000000.0,Target.Length*1e-9);
+            if(Stage!=FlightStage.LandingReady||LandingBurn<20||SpaceVector.Distance(Position,Target)>landingRadius)return false;
             Stage=FlightStage.Landed;return true;
         }
     }

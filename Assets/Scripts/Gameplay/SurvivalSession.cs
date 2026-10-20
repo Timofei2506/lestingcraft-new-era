@@ -47,8 +47,18 @@ namespace LestingCraft.Gameplay
             return sealedArmor&&airSupply;
         }
 
+        public bool InDream=>Game&&Game.Dream!=null&&Game.Dream.IsActive;
+        public static ushort PlaceableBlockForItem(int itemId,int contentVersion)
+        {
+            var def=Items.Get(itemId);
+            if(def.Block>0)return def.Block;
+            if(itemId==Items.Torch&&contentVersion>=8)return BlockRegistry.TorchBlockId;
+            return 0;
+        }
+
         public void Mine(Vector3Int cell,float dt)
         {
+            if(InDream||World.Dimension==Dimension.Dream){ResetMining();Notice="Во сне руки не слушаются — взаимодействие с миром невозможно";return;}
             if(pending||Vitals.dead||Data.campaign.runEnded){ResetMining();return;}
             ushort block=World.GetBlock(cell.x,cell.y,cell.z);if(block==0||block==9||block==7||block==8||cell.y==0){ResetMining();return;}
             if(!Creative&&ExpandedContent.NeedsPick(block)&&!Items.IsPick(Inventory.Active.item)){Notice="Для этого материала нужна кирка";ResetMining();return;}
@@ -64,22 +74,25 @@ namespace LestingCraft.Gameplay
         public void ResetMining(){mineTime=0;MiningProgress=0;}
         public void Place(Vector3Int cell)
         {
+            if(InDream||World.Dimension==Dimension.Dream){Notice="Во сне нельзя ставить или использовать предметы";return;}
             if(pending||Vitals.dead||Data.campaign.runEnded)return;var item=Items.Get(Inventory.Active.item);
-            if(World.Online&&World.ContentVersion<5&&item.Block>=47){Notice="Нужен новый мир версии 5";return;}if(item.Block==0||Inventory.Active.count<=0)return;if(World.Online&&World.ContentVersion<2&&item.Block>18){Notice="Новые материалы доступны в комнате новой версии";return;}if(Living&&Living.Overlaps(cell)){Notice="Здесь житель или кот";return;}if(Animals&&Animals.Overlaps(cell)){Notice="Здесь животное";return;}
+            ushort placeBlock=PlaceableBlockForItem(Inventory.Active.item,World.ContentVersion);
+            if(World.Online&&World.ContentVersion<8&&placeBlock>=54){Notice="Нужна новая комната версии 8";return;}
+            if(World.Online&&World.ContentVersion<5&&placeBlock>=47){Notice="Нужен новый мир версии 5";return;}if(placeBlock==0||Inventory.Active.count<=0)return;if(World.Online&&World.ContentVersion<2&&placeBlock>18){Notice="Новые материалы доступны в комнате новой версии";return;}if(Living&&Living.Overlaps(cell)){Notice="Здесь житель или кот";return;}if(Animals&&Animals.Overlaps(cell)){Notice="Здесь животное";return;}
             if(World.GetBlock(cell.x,cell.y,cell.z)!=0&&World.GetBlock(cell.x,cell.y,cell.z)!=7){Notice="Место занято";return;}
-            pending=true;pendingCell=cell;drop=0;spend=Creative?0:item.Id;toolSlot=-1;Game.RequestEdit(cell,item.Block);
+            pending=true;pendingCell=cell;drop=0;spend=Creative?0:item.Id;toolSlot=-1;Game.RequestEdit(cell,placeBlock);
         }
         public void ConfirmEdit(Vector3Int cell)
         {
             if(!pending||cell!=pendingCell)return;
             if(Living)Living.Edited(cell);
             if(drop>0){Progress.Add("mined");Progress.Add("mine_"+harvestBlock);if(World.ContentVersion<6)Inventory.Add(drop,1);else if(!Game.Online)Living.SpawnDrop(drop,1,0,(Vector3)cell+Vector3.one*.5f,Vector3.up*2);if(drop==122&&UnityEngine.Random.value<.25f)Inventory.Add(110,1);if(harvestBlock==3&&UnityEngine.Random.value<.45f)Inventory.Add(113,1);}
-            if(spend>0){Progress.Add("placed");Progress.Add("place_"+Items.Get(spend).Block);Inventory.Remove(spend,1);}
+            if(spend>0){Progress.Add("placed");Progress.Add("place_"+PlaceableBlockForItem(spend,World.ContentVersion));Inventory.Remove(spend,1);}
             if(toolSlot>=0&&!Creative){int selected=Inventory.selected;Inventory.selected=toolSlot;Inventory.WearTool();Inventory.selected=selected;}
             pending=false;drop=spend=0;Notice="";
         }
         public void RejectEdit(string message){pending=false;Notice=message;ResetMining();}
-        public bool CanInteract=>!(Living&&Living.Pending)&&!pending&&!Vitals.dead&&!Data.campaign.runEnded;
+        public bool CanInteract=>!InDream&&World.Dimension!=Dimension.Dream&&!(Living&&Living.Pending)&&!pending&&!Vitals.dead&&!Data.campaign.runEnded;
         public bool StationNearby(int id,Vector3Int cell)=>CanInteract&&Vector3.Distance(Player.Camera.transform.position,(Vector3)cell+Vector3.one*.5f)<=6.5f&&World.GetBlock(cell.x,cell.y,cell.z)==id;
         public bool Craft(int index)
         {
@@ -123,13 +136,18 @@ namespace LestingCraft.Gameplay
         public void Respawn()
         {
             if(Mode==GameMode.Hardcore||Data.campaign.runEnded||Living&&Living.Pending)return;
-            Vitals.Respawn();wasDead=false;Player.TeleportSpawn();Game.Resume();Checkpoint();
+            Vitals.Respawn();wasDead=false;
+            if(Data.player.hasBedRespawn&&World.Dimension==Dimension.Lestingia)
+                Player.TeleportTo(new Vector3(Data.player.bedX+.5f,Data.player.bedY+1.15f,Data.player.bedZ+.5f),true);
+            else Player.TeleportSpawn();
+            Game.Resume();Checkpoint();
         }
         void Update()
         {
             if(Data==null||!World||!Player||(!World.Ready&&!Game.DockedAtOrbitalStation))return;
             if(!Game.Online&&Game.Paused&&!Game.InventoryOpen&&!Game.StationTradeOpen)return;
             Data.clock+=Time.deltaTime;if(Game.StoryLocked)return;
+            if(InDream||World.Dimension==Dimension.Dream)return;
             tick+=Time.deltaTime;saveTime+=Time.unscaledDeltaTime;
             if(tick>=1)
             {
@@ -161,13 +179,14 @@ namespace LestingCraft.Gameplay
                 var sample=pressurized||HasFullSpaceSuit()
                     ? new WeatherSample(WeatherKind.Clear,0,20,0,0)
                     : WeatherSample.At(Data.seed,(int)World.Dimension,Data.clock);
-                Vitals.Step(elapsed,Mode,sample.Air+(World.ContentVersion>=7&&World.Dimension==Dimension.Lestingia?BiomeGenerator.TemperatureOffset(BiomeGenerator.At(Mathf.FloorToInt(Player.transform.position.x),Mathf.FloorToInt(Player.transform.position.z),Data.seed)):0),sample.Precipitation,Sheltered,warm,Player.Sprinting,Equipment.Insulation(Inventory));
+                Vitals.Step(elapsed,Mode,sample.Air+(World.ContentVersion>=7&&World.Dimension==Dimension.Lestingia?BiomeGenerator.TemperatureOffset(BiomeGenerator.At(Mathf.FloorToInt(Player.transform.position.x),Mathf.FloorToInt(Player.transform.position.z),Data.seed,World.ContentVersion)):0),sample.Precipitation,Sheltered,warm,Player.Sprinting,Equipment.Insulation(Inventory));
                 if(!Game.DockedAtOrbitalStation)
                 {
                     var feet=Vector3Int.FloorToInt(Player.transform.position+Vector3.up*.1f);
                     if(World.GetBlock(feet.x,feet.y,feet.z)==8){DamagePart(elapsed*12,BodyPart.LeftLeg);DamagePart(elapsed*12,BodyPart.RightLeg);}
                 }
                 if(!Game.Online)Data.campaign.milestones|=Data.player.milestones;
+                if(!Creative&&!pressurized&&Game&&Game.TryTriggerExhaustionDream(Data.seed,Data.clock,Vitals.stamina,Vitals.hunger))return;
             }
             if(Vitals.dead&&!wasDead)
             {

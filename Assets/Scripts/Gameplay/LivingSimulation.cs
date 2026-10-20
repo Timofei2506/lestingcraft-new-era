@@ -24,11 +24,39 @@ namespace LestingCraft.Gameplay
   bool Clear(float x,float y,float z,float r,float h){for(int ax=Mathf.FloorToInt(x-r);ax<=Mathf.FloorToInt(x+r);ax++)for(int az=Mathf.FloorToInt(z-r);az<=Mathf.FloorToInt(z+r);az++)for(int ay=Mathf.FloorToInt(y+.015f);ay<=Mathf.FloorToInt(y+h-.01f);ay++)if(Solid(ax,ay,az))return false;return true;}
   public void Spawn(float px,float pz)
   {
-   if(!sites.Contains("story-village")&&Vector2.Distance(new Vector2(px,pz),new Vector2(96,48))<75){sites.Add("story-village");int y=LestingCraft.Story.StoryWorld.Floor(seed)+1;int[] xx={82,109,82,110,96},zz={36,35,61,62,67};for(int i=0;i<5;i++){float x=xx[i]+.5f,z=zz[i]+.5f;if(Actors.Count<96&&Clear(x,y,z,i==4?.19f:.29f,i==4?.5f:1.8f))Actors.Add(new LivingActor{id="v:story:"+i,kind=i==4?1:0,job=i%3,x=x,y=y,z=z,hx=x,hy=y,hz=z});}}
+   if(!sites.Contains("story-village")&&Vector2.Distance(new Vector2(px,pz),new Vector2(96,48))<75)
+   {
+    sites.Add("story-village");
+    int y=LestingCraft.Story.StoryWorld.Floor(seed)+1;
+    int[] xx={82,109,82,110,96,90,103,96,88,104};
+    int[] zz={36,35,61,62,67,44,44,53,56,56};
+    for(int i=0;i<xx.Length;i++)
+    {
+     bool isCat=i==4||i==9;
+     int job=i<4?i:(i%TradeOffer.ProfessionCount);
+     float x=xx[i]+.5f,z=zz[i]+.5f;
+     if(Actors.Count<96&&Clear(x,y,z,isCat?.19f:.29f,isCat?.5f:1.8f))
+      Actors.Add(new LivingActor{id="v:story:"+i,kind=isCat?1:0,job=job,x=x,y=y,z=z,hx=x,hy=y,hz=z});
+    }
+   }
    int cx=Mathf.FloorToInt(px/192),cz=Mathf.FloorToInt(pz/192);
    for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++)
-   {int a=cx+dx,b=cz+dz;uint hash=TerrainGenerator.Hash(a,0,b,seed^71839);int x=a*192+64+(int)(hash%64),z=b*192+64+(int)((hash>>8)%64);string key=a+":"+b;if(sites.Contains(key)||sites.Count>=256||Actors.Count>90||Vector2.Distance(new Vector2(px,pz),new Vector2(x,z))>92)continue;var col=ExpeditionGenerator.At(x,z,seed);if(!col.Surface||col.Kind!=0)continue;sites.Add(key);int rot=(int)((hash>>26)%4);
-    for(int i=0;i<5;i++){int lx=i%2==0?-15:14,lz=i<2?-15:14;if(i==4){lx=6;lz=-5;}int rx=rot==0?lx:rot==1?-lz:rot==2?-lx:lz,rz=rot==0?lz:rot==1?lx:rot==2?-lz:-lx;float fx=x+rx+.5f,fz=z+rz+.5f,fy=col.Base+1;if(!Clear(fx,fy,fz,i==4?.19f:.29f,i==4?.5f:1.8f))continue;Actors.Add(new LivingActor{id="v:"+key+":"+i,kind=i==4?1:0,job=i%3,x=fx,y=fy,z=fz,hx=fx,hy=fy,hz=fz});}
+   {
+    int a=cx+dx,b=cz+dz;uint hash=TerrainGenerator.Hash(a,0,b,seed^71839);int x=a*192+64+(int)(hash%64),z=b*192+64+(int)((hash>>8)%64);string key=a+":"+b;
+    if(sites.Contains(key)||sites.Count>=256||Actors.Count>86||Vector2.Distance(new Vector2(px,pz),new Vector2(x,z))>92)continue;
+    var col=ExpeditionGenerator.At(x,z,seed);if(!col.Surface||col.Kind!=0)continue;sites.Add(key);int rot=(int)((hash>>26)%4);
+    int[] lxs={-15,14,-15,14,6,-6,0,0};
+    int[] lzs={-15,-15,14,14,-5,5,-10,10};
+    for(int i=0;i<lxs.Length;i++)
+    {
+     bool isCat=i==4;
+     int lx=lxs[i],lz=lzs[i];
+     int rx=rot==0?lx:rot==1?-lz:rot==2?-lx:lz,rz=rot==0?lz:rot==1?lx:rot==2?-lz:-lx;
+     float fx=x+rx+.5f,fz=z+rz+.5f,fy=col.Base+1;
+     if(!Clear(fx,fy,fz,isCat?.19f:.29f,isCat?.5f:1.8f))continue;
+     int job=(int)((i+(hash>>12))%TradeOffer.ProfessionCount);
+     Actors.Add(new LivingActor{id="v:"+key+":"+i,kind=isCat?1:0,job=job,x=fx,y=fy,z=fz,hx=fx,hy=fy,hz=fz});
+    }
    }
   }
   public WorldDrop Drop(int item,int count,int durability,Vector3 p,Vector3 velocity){if(Drops.Count>=128)return null;var d=new WorldDrop{id="d:"+(++serial),item=item,count=count,durability=durability,x=p.x,y=p.y,z=p.z,vx=velocity.x,vy=velocity.y,vz=velocity.z};Drops.Add(d);return d;}
@@ -46,7 +74,6 @@ namespace LestingCraft.Gameplay
    }
   }
   float Ground(float x,float z,float y,float h){for(int yy=Mathf.FloorToInt(y)+1;yy>=Mathf.FloorToInt(y)-2;yy--)if(Solid(Mathf.FloorToInt(x),yy-1,Mathf.FloorToInt(z))&&Clear(x,yy,z,.28f,h))return yy;return float.NaN;}
-  // Bounded A*: walkers can enter doorways instead of steering directly through house walls.
   Vector3 Waypoint(LivingActor a,Vector3 goal)
   {
    var start=new Vector3Int(Mathf.FloorToInt(a.x),Mathf.RoundToInt(a.y),Mathf.FloorToInt(a.z));var open=new List<Vector3Int>{start};var cost=new Dictionary<Vector3Int,int>{{start,0}};var from=new Dictionary<Vector3Int,Vector3Int>();Vector3Int best=start;float bestH=float.MaxValue;float height=a.kind==1?.5f:1.8f;
@@ -62,14 +89,15 @@ namespace LestingCraft.Gameplay
    float hour=(float)(clock%1200)/50;bool night=hour<5.5f||hour>19;
    foreach(var a in Actors){if(a.kind==1&&a.owner==owner&&!a.sitting&&new Vector2(a.x-px,a.z-pz).sqrMagnitude>576){for(int k=0;k<4;k++){float tx=px+(k%2==0?-2:2),tz=pz+(k<2?-2:2),ty=Ground(tx,tz,py-1.58f,.5f);if(!float.IsNaN(ty)){a.x=tx;a.y=ty;a.z=tz;a.vy=0;break;}}}if(a.health<=0||Mathf.Abs(a.x-px)>96||Mathf.Abs(a.z-pz)>96)continue;float h=a.kind==1?.5f:1.8f,r=a.kind==1?.19f:.29f;a.timer-=dt;Vector3 home=new Vector3(a.hx,a.hy,a.hz),goal=home;
     if(a.kind==1&&a.owner==owner&&!a.sitting){if(Vector2.Distance(new Vector2(a.x,a.z),new Vector2(px,pz))<2)goal=new Vector3(a.x,a.y,a.z);else goal=new Vector3(px,py-1.6f,pz);}
-    else if(!night&&!a.sitting){double phase=clock/18+(a.job+1)*2;goal=home+new Vector3(Mathf.Sin((float)phase)*5,0,Mathf.Cos((float)phase*.73f)*5);}
-    a.working=a.kind==0&&!night&&Math.Sin(clock*.12+a.job)>.25;
+    else if(a.job==7&&night&&!a.sitting){double patrol=clock/12.0+a.hx;goal=home+new Vector3(Mathf.Sin((float)patrol)*9,0,Mathf.Cos((float)patrol)*9);}
+    else if(!night&&!a.sitting){double phase=clock/18+(a.job+1)*2;goal=home+new Vector3(Mathf.Sin((float)phase)*(4+(a.job%3)*2),0,Mathf.Cos((float)phase*.73f)*(4+(a.job%2)*3));}
+    a.working=a.kind==0&&(!night||a.job==3)&&Math.Sin(clock*.12+a.job)>.25;
     if(a.working)goal=home;Vector3 waypoint;if(a.timer<=0||!waypoints.TryGetValue(a.id,out waypoint)){waypoint=Waypoint(a,goal);waypoints[a.id]=waypoint;a.timer=.65f;}else waypoint=waypoints[a.id];
-    Vector3 velocity=Vector3.ClampMagnitude(new Vector3(waypoint.x-a.x,0,waypoint.z-a.z),1)*(a.kind==1?2.6f:1.05f);if(a.sitting||a.working)velocity=Vector3.zero;
+    Vector3 velocity=Vector3.ClampMagnitude(new Vector3(waypoint.x-a.x,0,waypoint.z-a.z),1)*(a.kind==1?2.6f:a.job==7?1.3f:1.05f);if(a.sitting||a.working)velocity=Vector3.zero;
     float nx=a.x+velocity.x*dt,nz=a.z+velocity.z*dt;foreach(var b in Actors)if(b!=a&&b.health>0&&Mathf.Abs(b.y-a.y)<1&&new Vector2(nx-b.x,nz-b.z).sqrMagnitude<(r+(b.kind==1?.19f:.29f))*(r+(b.kind==1?.19f:.29f))){nx=a.x;nz=a.z;break;}
     if(new Vector2(nx-px,nz-pz).sqrMagnitude<(r+.3f)*(r+.3f)&&Mathf.Abs(py-1.6f-a.y)<1.8f){nx=a.x;nz=a.z;}
     if(Clear(nx,a.y,nz,r,h)){a.x=nx;a.z=nz;}else if(Clear(nx,a.y+1,nz,r,h)&&Mathf.Abs(a.vy)<.1f)a.vy=6.8f;
-    a.vy=Mathf.Max(-24,a.vy-dt*20);float ny=a.y+a.vy*dt;if(Clear(a.x,ny,a.z,r,h))a.y=ny;else{if(a.vy< -11)a.health=Mathf.Max(0,a.health-(-a.vy-11)*3);if(a.vy<0)a.y=Mathf.Floor(a.y+.01f);a.vy=0;}if(velocity.sqrMagnitude>.01f)a.yaw=Mathf.Atan2(velocity.x,velocity.z)*Mathf.Rad2Deg;
+    a.vy=Mathf.Max(-24,a.vy-dt*20);float ny=a.y+a.vy*dt;if(Clear(a.x,ny,a.z,r,h))a.y=ny;else{if(a.vy< -11)a.health=Math.Max(0,a.health-(-a.vy-11)*3);if(a.vy<0)a.y=Mathf.Floor(a.y+.01f);a.vy=0;}if(velocity.sqrMagnitude>.01f)a.yaw=Mathf.Atan2(velocity.x,velocity.z)*Mathf.Rad2Deg;
     if(get(Mathf.FloorToInt(a.x),Mathf.FloorToInt(a.y+.1f),Mathf.FloorToInt(a.z))==8)a.health=Mathf.Max(0,a.health-dt*24);
    }
   }

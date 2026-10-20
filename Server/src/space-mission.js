@@ -16,8 +16,21 @@ export const BODY_POSITIONS = Object.freeze({
     mars:Object.freeze([227939200000,0,0]),
     venus:Object.freeze([108208000000,0,0]),
     mercury:Object.freeze([57909000000,0,0]),
+    europa:Object.freeze([779241000000,0,0]),
+    titan:Object.freeze([1434222000000,0,0]),
+    pluto:Object.freeze([5906380000000,0,0]),
+    proxima_b:Object.freeze([4.01e16,0,0]),
+    trappist_1e:Object.freeze([3.73e17,0,0]),
+    kepler_452b:Object.freeze([1.32e19,0,0]),
+    andromeda_prime:Object.freeze([2.40e22,0,0]),
+    somnia:Object.freeze([2.41e22,0,0]),
 });
-export const PLANET_SECONDS = Object.freeze({mars:7200,venus:5400,mercury:8100});
+export const PLANET_SECONDS = Object.freeze({
+    mars:7200,venus:5400,mercury:8100,
+    europa:9600,titan:10800,pluto:12600,
+    proxima_b:14400,trappist_1e:15600,kepler_452b:16800,
+    andromeda_prime:18000,somnia:19200
+});
 
 const finite = n => typeof n === 'number' && Number.isFinite(n);
 const validVec = p => Array.isArray(p) && p.length === 3 && p.every(finite);
@@ -115,8 +128,9 @@ export function advanceMission(m,now,{player,heading,landingThrottle=0}={}) {
 }
 
 export function landMission(m,player,now) {
+    const landingRadius = Math.max(1000000, distance([0,0,0], m.target) * 1e-9);
     if(!m.crew.includes(player) || player!==m.pilot || m.landed || phase(m,now)!=='landing-ready' ||
-        m.landingBurn<20 || distance(m.position,m.target)>1000000)throw Error('Manual landing checks not satisfied');
+        m.landingBurn<20 || distance(m.position,m.target)>landingRadius)throw Error('Manual landing checks not satisfied');
     return {...m,landed:true,lastAt:now};
 }
 

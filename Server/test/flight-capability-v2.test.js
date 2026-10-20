@@ -64,7 +64,7 @@ function fixture() {
 }
 
 test('flight negotiation does not increment rules version',()=>{
-  assert.equal(RULES_VERSION,12);
+  assert.equal(RULES_VERSION,13);
 });
 
 test('createConfig cannot enable flight through client configuration',()=>{

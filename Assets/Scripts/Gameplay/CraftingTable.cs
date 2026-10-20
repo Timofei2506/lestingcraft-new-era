@@ -41,10 +41,17 @@ new GridRecipe(132,1,3,139,0,139,139,0,139),
             new GridRecipe(49,1,3,140,121,140,140,123,140,140,121,140),new GridRecipe(50,1,3,140,140,140,140,17,140,140,140,140),
             new GridRecipe(51,1,3,11,140,11,140,0,140,11,140,11),new GridRecipe(52,1,3,140,0,140,140,123,140,140,0,140),
             new GridRecipe(53,1,3,123,140,123,0,121,0,123,140,123),
+            new GridRecipe(54,2,1,148,121),
+            new GridRecipe(55,1,3,122,122,122,120,120,120),
+            new GridRecipe(56,2,3,0,140,0,140,148,140,0,140,0),
+            new GridRecipe(57,1,3,120,120,120,139,139,139,120,120,120),
+            new GridRecipe(58,4,2,4,120,120,4),
+            new GridRecipe(59,4,2,42,42,33,33),
+            new GridRecipe(66,4,2,140,145,145,140),
 new GridRecipe(150,1,3,140,140,140,0,121,0,0,121,0),new GridRecipe(151,1,3,149,149,149,0,121,0,0,121,0),new GridRecipe(48,1,3,149,149,149,149,149,149,149,149,149),new GridRecipe(149,9,1,48),new GridRecipe(164,1,3,0,121,122,121,0,122,0,121,122),new GridRecipe(165,4,1,1,121,122),new GridRecipe(152,1,1,140,140,121),new GridRecipe(153,1,1,149,149,121),new GridRecipe(154,1,2,140,0,121,122),new GridRecipe(155,1,2,149,0,121,122),new GridRecipe(156,1,3,0,0,140,0,121,0,121,0,0),new GridRecipe(157,1,3,0,0,149,0,121,0,121,0,0),new GridRecipe(158,1,2,140,140,140,121,0,121),new GridRecipe(159,1,2,149,149,149,121,0,121),new GridRecipe(160,1,3,140,140,140,140,121,140,0,121,0),new GridRecipe(161,1,3,149,149,149,149,121,149,0,121,0),new GridRecipe(162,1,3,0,140,0,140,140,140,0,121,0),new GridRecipe(163,1,3,0,149,0,149,149,149,0,121,0)
         };
-        /// <summary>Room content version needed to craft an output: 7 for stations 49..53, 5 for 48 and 149+, else 0.</summary>
-        public static int RoomVersionFor(int output)=>output>=49&&output<=53?7:output>=149||output==48?5:0;
+        /// <summary>Room content version needed to craft an output: 8 for 54..69, 7 for stations 49..53, 5 for 48 and 149+, else 0.</summary>
+        public static int RoomVersionFor(int output)=>output>=54&&output<=69?8:output>=49&&output<=53?7:output>=149||output==48?5:0;
         public static GridRecipe Match(ItemStack[] grid,int size)
         {
             if(grid==null||grid.Length!=9||(size!=2&&size!=3))return null;
@@ -101,7 +108,7 @@ new GridRecipe(150,1,3,140,140,140,0,121,0,0,121,0),new GridRecipe(151,1,3,149,1
         public static ItemStack Get(Inventory inv,int slot)=>slot==66?inv.offhand:slot>=58&&slot<66?inv.equipment[slot-58]:slot<45?inv.slots[slot]:slot<54?inv.grid[slot-45]:slot==54?inv.furnace.input:slot==55?inv.furnace.fuel:inv.furnace.output;
         static void Set(Inventory inv,int slot,ItemStack s)
         {if(slot==66)inv.offhand=s;else if(slot>=58&&slot<66)inv.equipment[slot-58]=s;else if(slot<45)inv.slots[slot]=s;else if(slot<54)inv.grid[slot-45]=s;else if(slot==54)inv.furnace.input=s;else if(slot==55)inv.furnace.fuel=s;else inv.furnace.output=s;}
-        static bool Accept(int slot,int item)=>slot==66?item==Items.Torch:slot>=58?Equipment.Accept(slot-58,item):slot!=56&&(slot!=54||FurnaceState.Result(item)>0)&&(slot!=55||FurnaceState.FuelSeconds(item)>0);
+        static bool Accept(int slot,int item)=>slot==66?(item==Items.Torch||item==54):slot>=58?Equipment.Accept(slot-58,item):slot!=56&&(slot!=54||FurnaceState.Result(item)>0)&&(slot!=55||FurnaceState.FuelSeconds(item)>0);
         public static void Click(Inventory inv,int slot,bool right,bool shift)
         {
             if(slot<0||slot==57||slot>66)return;var a=Get(inv,slot);var held=inv.cursor;

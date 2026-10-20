@@ -143,8 +143,11 @@ namespace LestingCraft.Runtime
         }
         public void Edit(int x, int y, int z, ushort block)
         {
-            if (!Contains(x, y, z) || y == 0 || block == BlockRegistry.BedrockId ||
-                block > (Online && ContentVersion < 2 ? 18 : ContentVersion >= 5 ? 48 : 46)) return;
+            int maxAllowed = Online && ContentVersion < 2 ? 18 :
+                ContentVersion >= 8 ? LestingCraft.Gameplay.ExpandedContent.MaxBlock :
+                ContentVersion >= 7 ? 53 :
+                ContentVersion >= 5 ? 48 : 46;
+            if (!Contains(x, y, z) || y == 0 || block == BlockRegistry.BedrockId || block > maxAllowed) return;
             var pos = new Vector3Int(x, y, z);
             if (!CanAcceptEdit(pos)) return;
             edits[pos] = block;
@@ -155,7 +158,7 @@ namespace LestingCraft.Runtime
             {
                 var local = new Vector3Int(x - key.x * 16, y, z - key.y * 16);
                 view.Data.SetBlock(local.x, y, local.z, block);
-                if (block == 15 || block == 11) view.SpecialCells[local] = block;
+                if (BlockRegistry.IsCustomPlacedModel(block)) view.SpecialCells[local] = block;
                 else view.SpecialCells.Remove(local);
                 view.SpecialsDirty = true;
             }
@@ -348,7 +351,7 @@ namespace LestingCraft.Runtime
                     for (int x = 0; x < 16; x++)
                     {
                         ushort id = data.GetBlock(x, y, z);
-                        if (id == 15 || id == 11) v.SpecialCells[new Vector3Int(x, y, z)] = id;
+                        if (BlockRegistry.IsCustomPlacedModel(id)) v.SpecialCells[new Vector3Int(x, y, z)] = id;
                     }
                 if (BudgetExpired) yield return null;
             }
@@ -357,7 +360,7 @@ namespace LestingCraft.Runtime
                 {
                     var local = new Vector3Int(edit.Key.x - key.x * 16, edit.Key.y, edit.Key.z - key.y * 16);
                     data.SetBlock(local.x, local.y, local.z, edit.Value);
-                    if (edit.Value == 15 || edit.Value == 11) v.SpecialCells[local] = edit.Value;
+                    if (BlockRegistry.IsCustomPlacedModel(edit.Value)) v.SpecialCells[local] = edit.Value;
                     else v.SpecialCells.Remove(local);
                 }
             if (BudgetExpired) yield return null;
@@ -468,6 +471,23 @@ namespace LestingCraft.Runtime
                 {
                     LestingCraft.Presentation.PlacedVoxelModel.Create(15, v.Specials.transform, p, objectMaterial);
                     v.Fires.Add(new Vector3(key.x * 16 + p.x + .5f, p.y + .42f, key.y * 16 + p.z + .5f));
+                }
+                else if (pair.Value == BlockRegistry.TorchBlockId || pair.Value == BlockRegistry.BedBlockId || pair.Value == BlockRegistry.LanternBlockId)
+                {
+                    var placedObj = LestingCraft.Presentation.PlacedVoxelModel.Create(pair.Value, v.Specials.transform, p, objectMaterial);
+                    if (pair.Value == BlockRegistry.TorchBlockId || pair.Value == BlockRegistry.LanternBlockId)
+                    {
+                        var lampGo = new GameObject(pair.Value == BlockRegistry.LanternBlockId ? "LanternLight" : "TorchLight");
+                        lampGo.transform.SetParent(placedObj.transform, false);
+                        lampGo.transform.localPosition = new Vector3(0, .62f, 0);
+                        var light = lampGo.AddComponent<Light>();
+                        light.type = LightType.Point;
+                        light.color = pair.Value == BlockRegistry.LanternBlockId ? new Color(1f, .84f, .52f) : new Color(1f, .72f, .34f);
+                        light.intensity = pair.Value == BlockRegistry.LanternBlockId ? 1.55f : 1.25f;
+                        light.range = pair.Value == BlockRegistry.LanternBlockId ? 10.5f : 8.5f;
+                        light.shadows = LightShadows.None;
+                        v.Fires.Add(new Vector3(key.x * 16 + p.x + .5f, p.y + .6f, key.y * 16 + p.z + .5f));
+                    }
                 }
                 else
                 {

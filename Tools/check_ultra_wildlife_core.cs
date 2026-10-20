@@ -14,13 +14,15 @@ class CheckUltraWildlifeCore
     {
         int assertions = 0;
 
-        // 1. Verify SurfaceLayers has 72 distinct surface names with all 12 species coats
-        Assert(SurfaceLayers.Names.Length == 72, "Expected 72 SurfaceLayers, got " + SurfaceLayers.Names.Length);
+        // 1. Verify SurfaceLayers has 88 distinct surface names with all 20 species coats
+        Assert(SurfaceLayers.Names.Length == 88, "Expected 88 SurfaceLayers, got " + SurfaceLayers.Names.Length);
         assertions++;
         string[] expectedCoats = {
             "deer-fur", "hare-fur", "boar-bristles",
             "wolf-fur", "bear-fur", "fox-fur", "bison-fur", "goat-fur", "lynx-fur", "beaver-fur",
-            "frog-skin", "eagle-feathers"
+            "frog-skin", "eagle-feathers",
+            "owl-feathers", "penguin-plumage", "camel-coat", "scorpion-chitin",
+            "turtle-shell", "moose-fur", "capybara-fur", "voidray-skin"
         };
         var layerSet = new HashSet<string>(SurfaceLayers.Names);
         foreach (string coat in expectedCoats)

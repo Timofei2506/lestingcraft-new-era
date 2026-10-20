@@ -17,12 +17,16 @@ namespace LestingCraft.Presentation
         public static readonly string[] SpeciesFurNames =
         {
             "deer-fur","hare-fur","boar-bristles","wolf-fur","bear-fur","fox-fur",
-            "bison-fur","goat-fur","lynx-fur","beaver-fur","frog-skin","eagle-feathers"
+            "bison-fur","goat-fur","lynx-fur","beaver-fur","frog-skin","eagle-feathers",
+            "owl-feathers","penguin-plumage","camel-coat","scorpion-chitin",
+            "turtle-shell","moose-fur","capybara-fur","voidray-skin"
         };
         public static readonly string[] SpeciesNames =
         {
             "Олень","Заяц","Кабан","Волк","Бурый медведь","Лисица",
-            "Зубр","Горный козёл","Рысь","Бобр","Жаба","Орёл"
+            "Зубр","Горный козёл","Рысь","Бобр","Жаба","Орёл",
+            "Полярная сова","Северный пингвин","Верблюд","Песчаный скорпион",
+            "Болотная черепаха","Северный лось","Капибара","Эфирный скат"
         };
 
         static readonly Vector3[] D =
@@ -186,11 +190,12 @@ namespace LestingCraft.Presentation
             rig = new GameObject("Articulated wildlife").transform;
             rig.SetParent(transform, false);
 
-            float[] widths = { .48f, .3f, .62f, .48f, 1.12f, .32f, 1.2f, .43f, .47f, .55f, .62f, .4f };
-            float[] lengths = { 1.05f, .45f, 1.08f, 1.15f, 1.6f, .83f, 1.85f, .85f, .88f, .8f, .61f, .65f };
-            float[] bodyHeights = { .55f, .3f, .55f, .48f, 1.05f, .36f, 1.05f, .54f, .47f, .43f, .25f, .4f };
-            float[] bodyYs = { .94f, .24f, .52f, .72f, .98f, .46f, 1.08f, .78f, .61f, .32f, .22f, .4f };
+            float[] widths =      { .48f, .3f, .62f, .48f, 1.12f, .32f, 1.2f, .43f, .47f, .55f, .62f, .4f,   .38f, .42f, .72f, .52f, .68f, .92f, .54f, .96f };
+            float[] lengths =     { 1.05f,.45f,1.08f,1.15f,1.6f,  .83f, 1.85f,.85f, .88f, .8f,  .61f, .65f,  .46f, .40f, 1.55f,.76f, .78f, 1.75f,.94f, 1.15f };
+            float[] bodyHeights = { .55f, .3f, .55f, .48f, 1.05f, .36f, 1.05f,.54f, .47f, .43f, .25f, .4f,   .42f, .68f, .74f, .22f, .38f, .88f, .50f, .20f };
+            float[] bodyYs =      { .94f, .24f,.52f, .72f, .98f,  .46f, 1.08f,.78f, .61f, .32f, .22f, .4f,   .38f, .48f, 1.18f,.24f, .28f, 1.26f,.42f, .34f };
             float width = widths[kind], length = lengths[kind], bh = bodyHeights[kind], by = bodyYs[kind];
+
             body = Attach("Body", rig, Vector3.zero, p =>
             {
                 Box(p, 0, by, 0, width, bh, length);
@@ -240,129 +245,113 @@ namespace LestingCraft.Presentation
                         Mark(p, (i % 2 == 0 ? -1 : 1) * .22f, .36f, -.22f + i / 2 * .12f,
                             .08f, .035f, .075f, dark, fur);
                 }
-                if (kind == 11)
+                if (kind == 11 || kind == 12)
                 {
-                    Box(p, 0, .55f, .15f, .33f, .4f, .39f);
-                    Mark(p, 0, .31f, .14f, .3f, .2f, .42f, cream * .65f, underfur);
+                    Box(p, 0, .52f, .12f, .34f, .38f, .36f);
+                    Mark(p, 0, .31f, .14f, .3f, .22f, .38f, Color.white, underfur);
+                }
+                if (kind == 13) // Penguin white belly bib
+                {
+                    Mark(p, 0, .46f, .17f, .32f, .58f, .10f, Color.white, underfur);
+                }
+                if (kind == 14) // Camel twin humps + arched neck column
+                {
+                    Box(p, 0, 1.72f, .32f, .52f, .42f, .46f);
+                    Box(p, 0, 1.70f, -.34f, .50f, .40f, .44f);
+                    Box(p, 0, 1.48f, .78f, .30f, .68f, .30f);
+                }
+                if (kind == 15) // Scorpion armored pincer arms
+                {
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        Mark(p, side * .34f, .26f, .44f, .14f, .11f, .36f, dark, keratin);
+                        Mark(p, side * .38f, .26f, .72f, .22f, .14f, .26f, new Color(.35f, .20f, .10f), keratin);
+                    }
+                }
+                if (kind == 16) // Turtle domed hexagonal shell rim
+                {
+                    Box(p, 0, .48f, 0, .54f, .18f, .60f);
+                    Mark(p, 0, .14f, 0, .74f, .08f, .84f, new Color(.45f, .38f, .20f), keratin);
+                }
+                if (kind == 17) // Moose towering shoulder hump + dewlap
+                {
+                    Box(p, 0, 1.76f, .44f, .68f, .44f, .62f);
+                }
+                if (kind == 19) // VoidRay cosmic dorsal crest
+                {
+                    Mark(p, 0, .46f, 0, .28f, .08f, .88f, new Color(.22f, .92f, 1f), fur);
                 }
             });
 
-            float[] headYs = { 1.4f, .38f, .62f, .98f, 1.31f, .65f, 1.17f, 1.1f, .82f, .43f, .29f, .68f };
-            float[] headWidths = { .25f, .25f, .42f, .32f, .62f, .25f, .69f, .26f, .37f, .39f, .68f, .28f };
-            float[] headHeights = { .3f, .23f, .35f, .32f, .48f, .26f, .6f, .32f, .31f, .28f, .2f, .28f };
-            headPosition = new Vector3(0, headYs[kind], length * .48f);
+            float[] headYs =      { 1.4f, .38f, .62f, .98f, 1.31f, .65f, 1.17f, 1.1f, .82f, .43f, .29f, .68f,  .66f, .90f, 1.88f, .26f, .28f, 1.72f, .56f, .35f };
+            float[] headWidths =  { .25f, .25f, .42f, .32f, .62f,  .25f, .69f,  .26f, .37f, .39f, .68f, .28f,  .36f, .30f, .34f,  .32f, .24f, .42f,  .34f, .52f };
+            float[] headHeights = { .3f,  .23f, .35f, .32f, .48f,  .26f, .6f,   .32f, .31f, .28f, .2f,  .28f,  .32f, .28f, .34f,  .18f, .20f, .46f,  .34f, .18f };
+            headPosition = new Vector3(0, headYs[kind], length * (kind == 14 ? .58f : .48f));
             float hw = headWidths[kind], hh = headHeights[kind];
             Head = Attach("Head", rig, headPosition, p =>
             {
-                Box(p, 0, 0, 0, hw, hh, kind == 10 ? .39f : .38f);
-                if (kind == 11)
+                Box(p, 0, 0, 0, hw, hh, .38f);
+                if (kind == 11 || kind == 12 || kind == 13)
                 {
-                    Mark(p, 0, -.01f, .24f, .15f, .13f, .23f, new Color(.82f, .61f, .2f), keratin);
-                    Mark(p, 0, -.095f, .33f, .09f, .14f, .09f, dark, keratin);
+                    Mark(p, 0, -.02f, .24f, .14f, .12f, kind == 13 ? .28f : .19f,
+                        kind == 13 ? new Color(.95f, .50f, .12f) : new Color(.82f, .61f, .2f), keratin);
+                    if (kind == 12) // Owl ear tufts & luminous amber eyes
+                        for (int side = -1; side <= 1; side += 2)
+                        {
+                            Box(p, side * .14f, .21f, -.02f, .08f, .14f, .08f);
+                            Mark(p, side * .10f, .03f, .195f, .095f, .095f, .02f, new Color(1f, .78f, .14f), keratin);
+                        }
                 }
-                else if (kind != 10)
+                else if (kind == 17) // Moose broad palmate antlers + bell dewlap
                 {
-                    float snout = kind == 3 || kind == 5 ? .32f : kind == 2 ? .29f : .2f;
-                    Box(p, 0, -.055f, .23f, hw * .63f, hh * .48f, snout);
+                    Box(p, 0, -.08f, .28f, .30f, .30f, .36f);
+                    Box(p, 0, -.30f, .08f, .10f, .28f, .14f);
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        Mark(p, side * .38f, .28f, -.04f, .52f, .09f, .32f, cream * .78f, keratin);
+                        for (int tine = 0; tine < 4; tine++)
+                            Mark(p, side * (.24f + tine * .11f), .40f, -.14f + tine * .09f, .06f, .20f, .06f, cream * .82f, keratin);
+                    }
+                }
+                else if (kind != 10 && kind != 19)
+                {
+                    float snout = kind == 18 ? .30f : kind == 3 || kind == 5 ? .32f : kind == 2 ? .29f : .2f;
+                    Box(p, 0, -.055f, .23f, hw * (kind == 18 ? .86f : .63f), hh * (kind == 18 ? .76f : .48f), snout);
                     Mark(p, 0, -.035f, .23f + snout * .5f, hw * .46f, hh * .27f, .035f,
                         kind == 2 ? cream * .7f : dark, keratin);
                 }
                 for (int side = -1; side <= 1; side += 2)
                 {
-                    if (kind == 10)
-                    {
-                        Box(p, side * .23f, .13f, .04f, .18f, .18f, .21f);
-                        Mark(p, side * .23f, .15f, .153f, .13f, .12f, .018f, cream, keratin);
-                        Mark(p, side * .23f, .15f, .165f, .07f, .095f, .012f, Color.black, keratin);
-                        Mark(p, side * .21f, .18f, .175f, .025f, .027f, .01f, Color.white, keratin);
-                    }
-                    else
-                    {
-                        float ex = hw * .51f;
-                        Mark(p, side * ex, hh * .17f, .095f, .025f, .065f, .075f,
-                            new Color(.69f, .5f, .2f), keratin);
-                        Mark(p, side * (ex + .014f), hh * .17f, .105f, .012f, .046f, .04f, Color.black, keratin);
-                        Mark(p, side * (ex + .022f), hh * .17f + .014f, .116f, .008f, .015f, .017f, Color.white, keratin);
-                    }
-                    if (kind != 10 && kind != 11)
-                    {
-                        float earHeight = kind == 1 ? .35f : kind == 3 || kind == 5 ? .23f : .14f;
-                        float earWidth = kind == 0 ? .19f : kind == 4 ? .19f : .11f;
-                        float ex = hw * .4f;
-                        Box(p, side * ex, hh * .5f + earHeight * .3f, -.06f, earWidth, earHeight, .11f);
-                        Mark(p, side * ex, hh * .5f + earHeight * .3f, .002f, earWidth * .55f,
-                            earHeight * .7f, .015f, kind == 1 ? new Color(1, .82f, .8f) : cream, underfur);
-                        if (kind == 3 || kind == 5 || kind == 8)
-                            Box(p, side * ex, hh * .5f + earHeight * .8f, -.06f, earWidth * .5f, .075f, .08f);
-                        if (kind == 4 || kind == 9)
-                            Box(p, side * ex, hh * .5f + earHeight * .82f, -.06f, earWidth * .65f, .045f, .08f);
-                    }
+                    float ex = hw * .51f;
+                    Mark(p, side * ex, hh * .17f, .095f, .025f, .065f, .075f,
+                        kind == 19 ? new Color(.2f, .95f, 1f) : new Color(.69f, .5f, .2f), keratin);
+                    Mark(p, side * (ex + .014f), hh * .17f, .105f, .012f, .046f, .04f, Color.black, keratin);
                     if (kind == 0)
                     {
                         Mark(p, side * .09f, .36f, -.1f, .045f, .45f, .045f, cream * .65f, keratin);
                         Mark(p, side * .17f, .49f, -.1f, .2f, .04f, .04f, cream * .7f, keratin);
-                        for (int i = 0; i < 3; i++)
-                            Mark(p, side * (.09f + i * .08f), .59f + i * .035f, -.1f,
-                                .035f, .19f, .035f, cream * .7f, keratin);
                     }
-                    if (kind == 2)
-                    {
-                        Mark(p, side * .17f, -.065f, .32f, .055f, .19f, .055f, cream, keratin);
-                        Mark(p, side * .17f, .025f, .29f, .045f, .055f, .1f, cream, keratin);
-                    }
-                    if (kind == 6)
-                    {
-                        Mark(p, side * .4f, .2f, -.08f, .25f, .1f, .12f, cream, keratin);
-                        Mark(p, side * .52f, .29f, -.08f, .09f, .24f, .1f, cream, keratin);
-                        Mark(p, side * .49f, .41f, -.08f, .12f, .07f, .08f, dark, keratin);
-                    }
-                    if (kind == 7)
-                        for (int i = 0; i < 5; i++)
-                            Mark(p, side * (.1f + i * .012f), .24f + i * .065f, -.08f - i * .065f,
-                                .07f - i * .009f, .12f, .13f, cream * .65f, keratin);
-                    if (kind == 8)
-                    {
-                        Mark(p, side * .15f, .38f, -.06f, .035f, .18f, .035f, dark, fur);
-                        Box(p, side * .2f, -.06f, -.02f, .17f, .16f, .22f);
-                    }
-                    if (kind == 9)
-                        Mark(p, side * .045f, -.14f, .34f, .07f, .15f, .035f,
-                            new Color(1, .52f, .12f), keratin);
+                    if (kind == 18) // Capybara tiny rounded ears on top-back of head
+                        Box(p, side * .13f, hh * .55f, -.08f, .07f, .09f, .08f);
                 }
-                if (kind == 6 || kind == 7)
-                    Box(p, 0, -hh * .5f - .13f, .12f, kind == 6 ? .3f : .13f, .29f, .19f);
-                if (kind == 10)
-                    Mark(p, 0, -.06f, .204f, .53f, .018f, .02f, dark, keratin);
             });
 
-            int legCount = kind == 11 ? 2 : 4;
-            float[] legLengths = { .65f, .19f, .36f, .53f, .58f, .32f, .64f, .56f, .43f, .19f, .16f, .2f };
+            int legCount = kind == 19 ? 0 : (kind == 11 || kind == 12 || kind == 13 ? 2 : (kind == 15 ? 6 : 4));
+            float[] legLengths = { .65f, .19f, .36f, .53f, .58f, .32f, .64f, .56f, .43f, .19f, .16f, .2f, .18f, .16f, .86f, .18f, .14f, .88f, .22f, 0f };
             float ll = legLengths[kind];
             for (int i = 0; i < legCount; i++)
             {
                 int legIndex = i;
-                bool rear = i < 2;
-                float thick = kind == 4 || kind == 6 ? .24f : kind == 0 || kind == 7 ? .095f : .12f;
-                Vector3 position = new Vector3((i % 2 == 0 ? -1 : 1) * width * .35f,
-                    ll, kind == 11 ? .08f : (rear ? -1 : 1) * length * .32f);
+                bool rear = i < legCount / 2;
+                float thick = kind == 4 || kind == 6 || kind == 17 ? .22f : kind == 0 || kind == 7 ? .095f : .12f;
+                float zOff = legCount == 2 ? .06f : legCount == 6 ? (-length * .34f + (i / 2) * length * .34f) : (rear ? -1 : 1) * length * .32f;
+                Vector3 position = new Vector3((i % 2 == 0 ? -1 : 1) * width * .36f, ll, zOff);
                 Transform leg = Attach("Leg" + i, rig, position, p =>
                 {
-                    Box(p, 0, -ll * .42f, 0, thick, ll * .8f, thick * 1.25f);
-                    if ((kind == 1 || kind == 10) && rear)
-                    {
-                        Box(p, 0, -ll * .2f, -.05f, thick * 1.9f, ll * .85f, .25f);
-                        Box(p, 0, -ll * .65f, .06f, thick, .08f, .29f);
-                    }
-                    Mark(p, 0, -ll * .9f, .045f, thick * 1.22f, .08f,
-                        kind == 1 || kind == 10 ? .27f : .18f, kind == 1 ? cream : coat,
-                        kind == 1 ? underfur : keratin);
-                    if (kind == 4 || kind == 8 || kind == 9 || kind == 10 || kind == 11)
-                        for (int toe = 0; toe < 3; toe++)
-                            Mark(p, (toe - 1) * thick * .34f, -ll * .93f, .15f,
-                                .025f, .035f, kind == 11 ? .19f : .09f,
-                                kind == 11 ? new Color(.8f, .6f, .2f) : dark, keratin);
-                    if (kind == 3 || kind == 5)
-                        Mark(p, 0, -ll * .75f, .015f, thick * 1.05f, ll * .24f, .15f, dark, fur);
+                    Box(p, 0, -ll * .42f, 0, thick, ll * .82f, thick * 1.25f);
+                    Mark(p, 0, -ll * .9f, .045f, thick * 1.25f, .08f,
+                        kind == 13 ? .26f : .18f,
+                        kind == 13 ? new Color(.95f, .50f, .12f) : dark, keratin);
                 });
                 leg.name = "Articulated leg " + legIndex;
                 Legs.Add(leg);
@@ -371,65 +360,52 @@ namespace LestingCraft.Presentation
 
             tail = Attach("Tail", rig, new Vector3(0, by, -length * .5f), p =>
             {
-                switch (kind)
+                if (kind == 15) // Scorpion curved segmented tail + stinger
                 {
-                    case 0: Box(p, 0, 0, -.1f, .12f, .1f, .23f); break;
-                    case 1: Mark(p, 0, 0, -.1f, .19f, .17f, .19f, Color.white, underfur); break;
-                    case 2:
-                        Box(p, 0, .02f, -.14f, .045f, .05f, .28f);
-                        Box(p, .05f, .07f, -.27f, .13f, .05f, .05f);
-                        Box(p, .1f, .11f, -.23f, .04f, .12f, .05f);
-                        break;
-                    case 3:
-                    case 5:
-                        Box(p, 0, -.07f, -.27f, kind == 5 ? .24f : .2f, .24f, .58f);
-                        Mark(p, 0, -.1f, -.6f, .19f, .2f, .2f, kind == 5 ? Color.white : dark,
-                            kind == 5 ? underfur : fur);
-                        break;
-                    case 4: Box(p, 0, -.02f, -.08f, .18f, .17f, .18f); break;
-                    case 6:
-                        Box(p, 0, -.22f, -.08f, .075f, .48f, .08f);
-                        Box(p, 0, -.48f, -.08f, .18f, .22f, .17f);
-                        break;
-                    case 7: Box(p, 0, .05f, -.12f, .13f, .17f, .24f); break;
-                    case 8:
-                        Box(p, 0, -.03f, -.1f, .16f, .16f, .2f);
-                        Mark(p, 0, -.03f, -.22f, .15f, .15f, .07f, dark, fur);
-                        break;
-                    case 9:
-                        Mark(p, 0, -.17f, -.36f, .4f, .075f, .65f, dark, keratin);
-                        for (int i = 0; i < 6; i++)
-                            Mark(p, 0, -.128f, -.13f - i * .09f, .36f, .012f, .018f, cream * .3f, keratin);
-                        break;
-                    case 10: Box(p, 0, -.03f, -.035f, .24f, .13f, .12f); break;
-                    case 11:
-                        for (int i = 0; i < 5; i++)
-                            Box(p, (i - 2) * .095f, -.035f, -.2f - (2 - Math.Abs(i - 2)) * .035f,
-                                .09f, .055f, .46f);
-                        break;
+                    for (int seg = 0; seg < 5; seg++)
+                        Box(p, 0, .08f + seg * .10f, -.08f - seg * .05f + (seg > 2 ? (seg - 2) * .11f : 0), .12f, .12f, .14f);
+                    Mark(p, 0, .58f, .02f, .08f, .10f, .18f, new Color(.85f, .22f, .12f), keratin);
+                }
+                else if (kind == 19) // VoidRay long luminous whip tail
+                {
+                    Mark(p, 0, 0, -.55f, .08f, .06f, 1.10f, new Color(.22f, .88f, 1f), fur);
+                }
+                else if (kind == 9)
+                {
+                    Mark(p, 0, -.17f, -.36f, .4f, .075f, .65f, dark, keratin);
+                }
+                else if (kind == 11 || kind == 12)
+                {
+                    for (int i = 0; i < 5; i++)
+                        Box(p, (i - 2) * .085f, -.035f, -.18f, .085f, .05f, .38f);
+                }
+                else
+                {
+                    Box(p, 0, -.03f, -.12f, .14f, .14f, .24f);
                 }
             });
 
-            if (kind == 11)
+            if (kind == 11 || kind == 12 || kind == 13 || kind == 19)
+            {
                 for (int side = -1; side <= 1; side += 2)
                 {
                     int wingSide = side;
-                    Transform wing = Attach("Wing" + side, rig, new Vector3(side * .18f, .51f, .03f), p =>
+                    float wy = kind == 13 ? .54f : kind == 19 ? .35f : .48f;
+                    float span = kind == 13 ? .14f : kind == 19 ? .95f : .58f;
+                    Transform wing = Attach("Wing" + side, rig, new Vector3(side * width * .45f, wy, .03f), p =>
                     {
-                        Box(p, wingSide * .31f, 0, -.03f, .65f, .095f, .44f);
-                        for (int i = 0; i < 5; i++)
-                            Box(p, wingSide * (.08f + i * .12f), -.025f, -.24f, .115f, .055f, .33f);
+                        Box(p, wingSide * span * .5f, kind == 13 ? -.16f : 0, -.02f,
+                            kind == 13 ? .08f : span, kind == 13 ? .38f : .08f, kind == 19 ? .85f : .38f);
                     });
-                    Transform tip = Attach("WingTip" + side, wing, new Vector3(side * .62f, 0, -.02f), p =>
+                    Transform tip = Attach("WingTip" + side, wing, new Vector3(side * span, 0, -.02f), p =>
                     {
-                        Box(p, wingSide * .2f, 0, -.03f, .43f, .07f, .32f);
-                        for (int i = 0; i < 6; i++)
-                            Mark(p, wingSide * (.16f + i * .095f), -.01f, -.13f - i * .035f,
-                                .085f, .045f, .42f - i * .035f, cream * .45f, fur);
+                        Mark(p, wingSide * .22f, 0, -.03f, .44f, .06f, kind == 19 ? .55f : .28f,
+                            kind == 19 ? new Color(.25f, .95f, 1f) : cream * .55f, fur);
                     });
                     Wings.Add(wing);
                     wingTips.Add(tip);
                 }
+            }
 
             ResetMotion();
         }
@@ -442,8 +418,6 @@ namespace LestingCraft.Presentation
             if (rig) { rig.localPosition = Vector3.zero; rig.localScale = Vector3.one; }
         }
 
-        // Geometry shrinks only in the outer culling band; the authoritative
-        // collision root never changes scale. Animation is throttled, not AI.
         public void SetViewDistance(float distance)
         {
             if (!rig) return;
@@ -468,33 +442,36 @@ namespace LestingCraft.Presentation
             gait += step * Mathf.Clamp(filteredSpeed * 6, 0, 18);
             float amplitude = Mathf.Min(34, filteredSpeed * 12);
             bool hopper = species == 1 || species == 10;
+            bool flyer = species == 11 || species == 12 || species == 19;
             float hop = hopper ? Mathf.Max(0, Mathf.Sin(gait)) * (species == 10 ? .2f : .13f) * Mathf.Clamp01(filteredSpeed) : 0;
             rig.localPosition = new Vector3(0, hop, 0);
             for (int i = 0; i < Legs.Count; i++)
             {
-                float phase = hopper ? (i < 2 ? 0 : .65f) : i == 0 || i == 3 ? 0 : Mathf.PI;
-                float angle = species == 11 ? -27 : Mathf.Sin(gait + phase) * amplitude;
+                float phase = hopper ? (i < 2 ? 0 : .65f) : i % 2 == 0 ? 0 : Mathf.PI;
+                float angle = flyer ? -27 : Mathf.Sin(gait + phase) * amplitude;
                 Legs[i].localPosition = legPositions[i];
                 Legs[i].localRotation = Quaternion.Euler(angle, 0, 0);
             }
-            body.localRotation = Quaternion.Euler(hopper ? Mathf.Sin(gait) * amplitude * .12f : 0, 0, 0);
+            float waddleRoll = species == 13 ? Mathf.Sin(gait) * 7f * Mathf.Clamp01(filteredSpeed) : 0;
+            body.localRotation = Quaternion.Euler(hopper ? Mathf.Sin(gait) * amplitude * .12f : 0, 0, waddleRoll);
             Head.localPosition = headPosition;
             Head.localRotation = Quaternion.Euler(Mathf.Sin(elapsed * .7f) * 3,
-                Mathf.Sin(elapsed * .4f + headPosition.y) * 7, 0);
+                Mathf.Sin(elapsed * .4f + headPosition.y) * (species == 12 ? 22f : 7f), 0);
             float tailPitch = species == 3 || species == 5 ? 22 : species == 9 ? -8 : 0;
             tail.localRotation = Quaternion.Euler(tailPitch, Mathf.Sin(elapsed * 2.1f) * (species == 10 ? 0 : 8), 0);
-            if (species == 11)
+            if (Wings.Count > 0)
             {
-                float flapWeight = Mathf.SmoothStep(0, 1, (Mathf.Sin(elapsed * .65f) + .2f) * 1.2f);
-                float flap = Mathf.Sin(elapsed * 5.2f) * 27 * flapWeight;
+                float rate = species == 19 ? 1.8f : species == 13 ? 4.0f : 5.2f;
+                float flapWeight = species == 13 ? Mathf.Clamp01(filteredSpeed) :
+                    Mathf.SmoothStep(0, 1, (Mathf.Sin(elapsed * .65f) + .35f) * 1.1f);
+                float flap = Mathf.Sin(elapsed * rate) * (species == 19 ? 16 : 27) * flapWeight;
                 for (int i = 0; i < Wings.Count; i++)
                 {
                     float side = i == 0 ? -1 : 1;
                     Wings[i].localRotation = Quaternion.Euler(0, -side * 5, side * (7 + flap));
                     wingTips[i].localRotation = Quaternion.Euler(0, side * 8,
-                        side * (Mathf.Sin(elapsed * 5.2f - .65f) * 18 * flapWeight));
+                        side * (Mathf.Sin(elapsed * rate - .65f) * 16 * flapWeight));
                 }
-                body.localRotation = Quaternion.Euler(Mathf.Sin(elapsed * .8f) * 5, 0, 0);
             }
         }
 

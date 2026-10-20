@@ -52,7 +52,12 @@ class StationsCheck
         }
         Check(!FuelStations.Has(48)&&!FuelStations.Has(54),"station range is exactly 49..53");
         for(int id=170;id<=177;id++)Check(Array.IndexOf(Items.CatalogIds,id)>=0,"fuel item in creative catalog "+id);
-        Check(ExpandedContent.Blocks.Length==35&&ExpandedContent.MaxBlock==53,"35 expanded blocks, MaxBlock 53");
+        for(int id=54;id<=69;id++)
+        {
+            Check(Items.Exists(id)&&Items.Get(id).Block==id,"placeable v8 block item "+id);
+            Check(CraftingTable.RoomVersionFor(id)==8,"room version 8 for block "+id);
+        }
+        Check(ExpandedContent.Blocks.Length==51&&ExpandedContent.MaxBlock==69,"51 expanded blocks, MaxBlock 69");
 
         // Recipes: each station grid matches exactly its own recipe at any offset and mirror.
         int[][] shapes=

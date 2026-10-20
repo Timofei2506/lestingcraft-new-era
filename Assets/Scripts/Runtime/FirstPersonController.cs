@@ -46,18 +46,61 @@ namespace LestingCraft.Runtime
             if(Game.StoryLocked){if(keyboard.escapeKey.wasPressedThisFrame)Game.TogglePause();Sprinting=false;HasTarget=false;return;}
             if(Game.ChatOpen){Sprinting=false;HasTarget=false;if(keyboard.escapeKey.wasPressedThisFrame)Game.CloseChat();else if(keyboard.enterKey.wasPressedThisFrame)Game.SubmitChat();return;}
 
-            // When seated in shuttle, T toggles 30x Time Warp instead of opening chat! Enter still opens chat anytime.
+            // When seated in shuttle, T toggles 30x Time Warp instead of opening chat! Enter still opens chat anytime (unless isolated in Dream).
             bool seatedInShuttle=(Game.ShuttleDemo&&Game.ShuttleDemo.IsPlayerSeated)||Game.ShuttleSeated;
-            if(!Game.Paused&&World.Ready&&(keyboard.enterKey.wasPressedThisFrame||(!seatedInShuttle&&keyboard.tKey.wasPressedThisFrame)))
+            bool inDream=Game.InDreamDimension;
+            if(!inDream&&!Game.Paused&&World.Ready&&(keyboard.enterKey.wasPressedThisFrame||(!seatedInShuttle&&keyboard.tKey.wasPressedThisFrame)))
             {Game.OpenChat();Game.Session.ResetMining();HasTarget=false;return;}
 
             if(keyboard.escapeKey.wasPressedThisFrame)
             {
+                if(Game.CockpitMouseMode){Game.SetCockpitMouseMode(false);return;}
                 if(Game.StationTradeOpen){Game.CloseStationTrade();return;}
                 if(Game.InventoryOpen){Game.ToggleInventory();return;}
                 Game.TogglePause();return;
             }
             if(Game.Paused&&Game.EditingText)return;
+
+            // === DREAM ANOMALY: SLEEP PARALYSIS -> WALKABLE LIMINAL NIGHTMARE (ZERO INTERACTION) ===
+            if(inDream)
+            {
+                Sprinting=false;HasTarget=false;
+                if(Game.Session)Game.Session.ResetMining();
+                if(!Active||!World.Ready)return;
+
+                if(Game.Dream.IsParalyzed)
+                {
+                    // Immobilized in bed/threshold: panicked micro-tremor only, heavy breathing sway
+                    var pDelta=mouse.delta.ReadValue()*0.08f;
+                    pitch=Mathf.Clamp(pitch-pDelta.y,-22f,-4f);
+                    float tremor=Mathf.Sin(Time.time*11.5f)*0.55f*(float)Game.Dream.ParalysisTremor;
+                    Camera.transform.localRotation=Quaternion.Euler(pitch+tremor,Mathf.Sin(Time.time*7.3f)*1.4f,tremor*0.6f);
+                    vertical=0f;
+                    return;
+                }
+
+                // Walkable Nightmare phase: full movement & camera look, STRICT ZERO item/block/multiplayer interaction
+                var dLook=mouse.delta.ReadValue();
+                pitch=Mathf.Clamp(pitch-dLook.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
+                transform.Rotate(0,dLook.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);
+                Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
+
+                var dMove=new Vector2((keyboard.dKey.isPressed?1:0)-(keyboard.aKey.isPressed?1:0),(keyboard.wKey.isPressed?1:0)-(keyboard.sKey.isPressed?1:0));
+                if(dMove.sqrMagnitude>1)dMove.Normalize();
+                bool dreamSprint=keyboard.leftShiftKey.isPressed&&dMove.sqrMagnitude>0;
+                Sprinting=dreamSprint;
+                float dSpeed=dreamSprint?6.2f:4.1f;
+                float dGrav=Mathf.Clamp(GravityScale,.12f,2.0f);
+                if(controller.isGrounded&&vertical<0)vertical=-2;
+                if(controller.isGrounded&&keyboard.spaceKey.wasPressedThisFrame)vertical=7.4f;
+                vertical=Mathf.Max(vertical-22f*dGrav*Time.deltaTime,-40f*dGrav);
+                Vector3 dVel=(transform.right*dMove.x+transform.forward*dMove.y)*dSpeed;
+                PlayerCapsule.UpdateStep(controller,dVel);
+                controller.Move((dVel+Vector3.up*vertical)*Time.deltaTime);
+                if(transform.position.y<12f){TeleportTo(new Vector3(0.5f,45.2f,0.5f));}
+                return;
+            }
+
             if(!Game.Paused&&Active&&Game.ShuttleDemo&&keyboard.leftShiftKey.wasPressedThisFrame&&Game.ShuttleDemo.IsPlayerSeated)
             {
                 string note;Game.ShuttleDemo.StandFromSeat(out note);Game.Session.Notice=note;return;
@@ -72,7 +115,12 @@ namespace LestingCraft.Runtime
                 Game.QuickPlaceCosmodromeNearPlayer();
                 return;
             }
-            if(keyboard.eKey.wasPressedThisFrame)
+            if(!Game.Paused&&Active&&keyboard.kKey.wasPressedThisFrame)
+            {
+                Game.ReadNextStoryCodex();
+                return;
+            }
+            if(keyboard.eKey.wasPressedThisFrame&&!(seatedInShuttle&&Game.SpaceHelm.Active))
             {
                 if(Game.StationTradeOpen){Game.CloseStationTrade();return;}
                 string note;
@@ -84,14 +132,26 @@ namespace LestingCraft.Runtime
             }
             if(!Active||!World.Ready){Sprinting=false;HasTarget=false;if(Game.Session)Game.Session.ResetMining();return;}
 
-            var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
-            transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
-
+            // Seated in shuttle: allow toggling Free Mouse Cursor [M] / holding [Tab] to click/drag/scroll 3D switches, throttle, stick & MFD!
             if(seatedInShuttle)
             {
+                if(keyboard.mKey.wasPressedThisFrame)
+                    Game.SetCockpitMouseMode(!Game.CockpitMouseMode);
+                bool cursorFree=Game.CockpitMouseMode||keyboard.tabKey.isPressed;
+                if(!cursorFree)
+                {
+                    var sDelta=mouse.delta.ReadValue();
+                    pitch=Mathf.Clamp(pitch-sDelta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
+                    transform.Rotate(0,sDelta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);
+                    Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
+                }
+                Game.HandleSeatedCockpitMouse(Camera,mouse,cursorFree);
                 Game.HandleSeatedShuttleInput(keyboard);
                 Sprinting=false;HasTarget=false;vertical=0;return;
             }
+
+            var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
+            transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
 
             var cabin=Game.LaunchSite?Game.LaunchSite.Cabin:null;
             float climb=keyboard.spaceKey.isPressed?1f:keyboard.leftCtrlKey.isPressed?-1f:0f;
@@ -144,7 +204,7 @@ namespace LestingCraft.Runtime
             if(Game.Session.Living.Pending){Game.Session.ResetMining();return;}
             if(Game.Story&&mouse.leftButton.isPressed&&Game.Story.Attack(new Ray(Camera.transform.position,Camera.transform.forward),6)){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
             if(mouse.leftButton.wasPressedThisFrame&&Game.TryAttackPlanetaryBoss(new Ray(Camera.transform.position,Camera.transform.forward))){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
-            Selected=Items.Get(Game.Session.Inventory.Active.item).Block;
+            Selected=SurvivalSession.PlaceableBlockForItem(Game.Session.Inventory.Active.item,World.ContentVersion);
             HasTarget=VoxelRaycast.Trace(Camera.transform.position,Camera.transform.forward,6,World.GetBlock,out var target);
             Target=target;
             if(Game.LaunchPlacementArmed&&mouse.rightButton.wasPressedThisFrame)
@@ -162,6 +222,7 @@ namespace LestingCraft.Runtime
                 if(!keyboard.leftShiftKey.isPressed&&HasTarget)
                 {
                     int station=World.GetBlock(target.Cell.x,target.Cell.y,target.Cell.z);
+                    if(station==BlockRegistry.BedBlockId){Game.UseBed(target.Cell);return;}
                     if(station==16||station==17){Game.OpenStation(station,target.Cell);return;}
                     if(FuelStations.Has(station)){Game.UseStation(station,target.Cell);return;}
                 }
