@@ -68,13 +68,16 @@ namespace LestingCraft.Runtime
 
         public bool SyncMoonFlight(NetSpaceMission mission)
         {
-            if(!ShuttleRoot)return false;
+            if(!ShuttleRoot||mission==null||!mission.active)return false;
+            if(double.IsNaN(mission.elapsed)||double.IsInfinity(mission.elapsed)||
+               mission.position==null||mission.position.Length!=3||
+               Array.Exists(mission.position,v=>double.IsNaN(v)||double.IsInfinity(v)))return false;
             if(TryMoonFlightOffset(mission,out var offset))
             {
                 ShuttleRoot.localPosition=groundedOrbiterLocal+offset;
                 return true;
             }
-            if(mission!=null&&mission.active&&mission.seconds>0)
+            if(mission.seconds>0)
             {
                 double p=Math.Max(0d,Math.Min(1d,mission.elapsed/mission.seconds));
                 float alt=p<.35?Mathf.Lerp(0f,1260f,(float)(p/.35)):

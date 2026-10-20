@@ -133,6 +133,35 @@ static class GreedyAndSpaceFullCoreCheck
         var meadowMesh = ChunkMesher.Build(meadow, -16, 32, (x, y, z) => 0, 2506, true);
         Check(meadowMesh.DetailTriangles.Count > 0 && meadowMesh.DetailTriangles.Count < 10000, $"Meadow detail triangles within budget: {meadowMesh.DetailTriangles.Count}");
 
+        var gMed = new ChunkMeshData();
+        var gUltra = new ChunkMeshData();
+        for (int x = 0; x < 8; x++)
+        {
+            LestingCraft.Presentation.SurfaceDetailMesher.AddGrass(gMed, x, 10, 0, 0, 0, 2506, 0);
+            LestingCraft.Presentation.SurfaceDetailMesher.AddGrass(gUltra, x, 10, 0, 0, 0, 2506, 1);
+        }
+        Check(gMed.Vertices.Count > 100 && gUltra.Vertices.Count > gMed.Vertices.Count * 2, $"Ultra grass vertices {gUltra.Vertices.Count} > 2 * medium {gMed.Vertices.Count} (>100)");
+
+        var padRoot = new GameObject("PadNaNTest");
+        var padVis = LaunchSiteVisual.Create(padRoot.transform, new Vector3Int(168, 70, 168), 2506);
+        var validSnap = new LestingCraft.Networking.NetSpaceMission { active = true, from = "earth", to = "moon", seconds = 1800, elapsed = 720, position = new[] { 149797870700d, 0d, 2000000d }, crewCount = 2 };
+        Check(padVis.SyncMoonFlight(validSnap), "valid moon snapshot syncs");
+        var beforeNaN = padVis.ShuttleRoot.position;
+        validSnap.position[0] = double.NaN;
+        Check(!padVis.SyncMoonFlight(validSnap) && padVis.ShuttleRoot.position == beforeNaN, "NaN snapshot rejected without moving hull");
+
+        var found12 = new System.Collections.Generic.HashSet<int>();
+        foreach (int surf in new[] { 3, 6, 14, 27, 33 })
+            for (int ring = -4; ring <= 4; ring++)
+            {
+                var fullSim = new WildlifeSimulation(20261020 + ring * 17, null, 7) { SurfaceAt = (x, z) => surf };
+                fullSim.Spawn(
+                    new AnimalObserver { id = "p", x = ring * 128f, y = 52f, z = surf * 96f, alive = true },
+                    (x, z, y, r, h) => 50f);
+                foreach (var a in fullSim.Animals) found12.Add(a.species);
+            }
+        Check(found12.Count == 12, $"All 12 wildlife species discovered across biome substrates (got {found12.Count})");
+
         var vs = new LestingCraft.Presentation.VisualSettings();
         Check(vs.ShadowResolution == 2048 && Math.Abs(vs.RenderScale - 1f) < 1e-4f && vs.PostEffects, "VisualSettings default contract");
         vs.RenderScale = .2f; vs.ViewDistance = 999; vs.Clamp();

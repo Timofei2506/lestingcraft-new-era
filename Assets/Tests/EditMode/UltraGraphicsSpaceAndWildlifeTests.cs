@@ -68,13 +68,17 @@ namespace LestingCraft.Tests
             }
             Assert.AreEqual(12, coatLayers.Count);
 
-            var sim = new WildlifeSimulation(20261020, null, 7);
-            for (int ring = -4; ring <= 4; ring++)
-                for (int ringZ = -4; ringZ <= 4; ringZ++)
-                    sim.Spawn(new AnimalObserver { id = "p", x = ring * 96f, y = 52f, z = ringZ * 96f, alive = true }, (x, z, y, r, h) => 50f);
-
             var found = new HashSet<int>();
-            foreach (var a in sim.Animals) found.Add(a.species);
+            int[] surfaces = { 3, 6, 14, 27, 33 };
+            foreach (int surf in surfaces)
+                for (int ring = -4; ring <= 4; ring++)
+                {
+                    var sim = new WildlifeSimulation(20261020 + ring * 17, null, 7) { SurfaceAt = (x, z) => surf };
+                    sim.Spawn(
+                        new AnimalObserver { id = "p", x = ring * 128f, y = 52f, z = surf * 96f, alive = true },
+                        (x, z, y, r, h) => 50f);
+                    foreach (var a in sim.Animals) found.Add(a.species);
+                }
             Assert.AreEqual(12, found.Count);
         }
 

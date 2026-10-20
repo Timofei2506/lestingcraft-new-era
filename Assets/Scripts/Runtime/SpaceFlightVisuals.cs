@@ -992,7 +992,8 @@ namespace LestingCraft.Runtime
                     new ItemStack { item = 123, count = 12 },                                          // Слитки металла
                     new ItemStack { item = 111, count = 6 }                                            // Провизия
                 };
-                Destroy(gameObject, 0.1f);
+                if (Application.isPlaying) Destroy(gameObject, 0.1f);
+                else DestroyImmediate(gameObject);
             }
             return true;
         }
@@ -1000,7 +1001,11 @@ namespace LestingCraft.Runtime
         void OnDestroy()
         {
             for (int i = 0; i < bossMaterials.Count; i++)
-                if (bossMaterials[i]) Destroy(bossMaterials[i]);
+                if (bossMaterials[i])
+                {
+                    if (Application.isPlaying) Destroy(bossMaterials[i]);
+                    else DestroyImmediate(bossMaterials[i]);
+                }
             bossMaterials.Clear();
         }
     }

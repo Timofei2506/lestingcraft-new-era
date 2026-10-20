@@ -9,9 +9,8 @@ namespace LestingCraft.Presentation
         {
             uint hash = TerrainGenerator.Hash(ox + x, y, oz + z, seed ^ 9371);
             if (hash % 7 == 0) return;
-            // Ultra spends its vertex budget on curvature, not additional overdraw.
-            // At most 9216 index entries on a full 16x16 Ultra meadow.
-            int count = quality > 0 ? 2 : 3 + (int)(hash % 2);
+            // Ultra increases blade density AND curvature while keeping full 16x16 quality-0 meadow well below 10,000 indices.
+            int count = quality > 0 ? 5 + (int)(hash % 2) : 2 + (int)(hash % 2);
             int segments = quality > 0 ? 3 : 2;
             for (int blade = 0; blade < count; blade++)
             {
