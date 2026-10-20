@@ -15,7 +15,7 @@ namespace LestingCraft.Tests.EditMode
         }
         [Test] public void ShipMustActuallyMeetPortAndComeToRest()
         {
-            var dock=new StationDocking();var normal=new SpaceVector(1,0,0),forward=new SpaceVector(-1,0,0);
+            var dock=new StationDocking();var normal=new SpaceVector(1,0,0);var forward=new SpaceVector(-1,0,0);
             Assert.IsFalse(dock.TryLatch(OrbitalStation.Port+new SpaceVector(3,0,0),new SpaceVector(0,0,0),forward,normal,true,true));
             Assert.IsFalse(dock.TryLatch(OrbitalStation.Port,new SpaceVector(.36,0,0),forward,normal,true,true));
             Assert.IsFalse(dock.TryLatch(OrbitalStation.Port,new SpaceVector(0,0,0),normal,normal,true,true));
@@ -59,7 +59,7 @@ namespace LestingCraft.Tests.EditMode
             var looks=new HashSet<string>();
             for(int i=0;i<24;i++)
             {
-                string id="v:story:"+i;var a=SettlerAppearance.For(id,i%3),b=SettlerAppearance.For(id,i%3);
+                string id="v:story:"+i;var a=SettlerAppearance.For(id,i%3);var b=SettlerAppearance.For(id,i%3);
                 Assert.AreEqual(a.Skin,b.Skin);Assert.AreEqual(a.Coat,b.Coat);
                 Assert.AreEqual(a.Hair,b.Hair);Assert.AreEqual(a.Headwear,b.Headwear);
                 looks.Add(a.Skin+":"+a.Coat+":"+a.Hair+":"+a.Headwear+":"+a.Detail);

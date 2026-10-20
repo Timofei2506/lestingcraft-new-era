@@ -45,9 +45,11 @@ namespace LestingCraft.Runtime
             // The source exterior stays unmodified. Mesh collision includes its physical hull,
             // while the fitted deck provides a continuous walk through its hollow central axis.
             SpaceVoxelVisual.Create("Station",transform,true);
-            var hull=Mat(new Color(.84f,.88f,.91f)),deck=Mat(new Color(.26f,.35f,.42f),true),
-                frame=Mat(new Color(.14f,.20f,.27f),true),accent=Mat(new Color(.23f,.70f,.76f)),
-                window=Mat(new Color(.08f,.29f,.43f));
+            Material hull=Mat(new Color(.84f,.88f,.91f));
+            Material deck=Mat(new Color(.26f,.35f,.42f),true);
+            Material frame=Mat(new Color(.14f,.20f,.27f),true);
+            Material accent=Mat(new Color(.23f,.70f,.76f));
+            Material window=Mat(new Color(.08f,.29f,.43f));
             for(int x=-44;x<20;x+=4)
             {
                 int span=Math.Min(4,20-x);

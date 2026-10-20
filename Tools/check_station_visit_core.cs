@@ -10,7 +10,7 @@ class StationVisitCheck
         var looks=new HashSet<string>();
         for(int i=0;i<24;i++)
         {
-            var a=SettlerAppearance.For("v:story:"+i,i%3),b=SettlerAppearance.For("v:story:"+i,i%3);
+            var a=SettlerAppearance.For("v:story:"+i,i%3);var b=SettlerAppearance.For("v:story:"+i,i%3);
             Check(a.Skin==b.Skin&&a.Coat==b.Coat&&a.Hair==b.Hair&&a.Headwear==b.Headwear,"Appearance changed across sessions");
             looks.Add(a.Skin+":"+a.Coat+":"+a.Hair+":"+a.Headwear+":"+a.Detail);
         }
