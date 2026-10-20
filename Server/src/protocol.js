@@ -6,10 +6,11 @@ import {Living,ownerTag,transact,toolDrop} from './living.js';
 import {stationWalk,stationTrade} from './station-visit.js';
 import {beginMoonMission,advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
 import {launchSite} from './launch-site.js';
+import {height as terrainHeight} from './terrain-legacy.js';
 import {emptyLift,liftAt,liftSnapshot,operateLift} from './shuttle-lift.js';
 import {preflight} from './shuttle-preflight.js';
 export const VERSION = 1;
-export const RULES_VERSION = 11;
+export const RULES_VERSION = 12;
 export const MAX_MESSAGE = 16384;
 export const MAX_PLAYERS = 8;
 export const MAX_EDITS = 4096;
@@ -22,10 +23,10 @@ const finite = v => typeof v === 'number' && Number.isFinite(v);
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
     throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
-  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
-  if([2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
+  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,11,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
+  if([2,3,4,5,6,7,8,9,10,11,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
-  return {launchSite:value.rulesVersion>=RULES_VERSION?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=RULES_VERSION?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
+  return {launchSite:value.rulesVersion>=11?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=11?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,11,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
 const safeMission=(m,now)=>{const v=missionView(m,now);return {active:true,from:v.from,to:v.to,seconds:v.seconds,phase:v.phase,elapsed:v.elapsed,position:v.position,autopilot:v.autopilot,landingBurn:v.landingBurn,crewCount:v.crew.length,ignitionAt:m.ignitionAt};};
 export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
@@ -97,6 +98,36 @@ export class RoomState {
       const next={...this.config,started:true,startedAt:now,story:this.config.story?{...this.config.story,bossMax:180+90*Math.max(0,this.members.size-1)}:null};persistFauna(next);this.config=next;return {...this.lobbyState(),type:'lobby_start',serverNow:now};
     }
     if(this.config.lobby&&!this.config.started)throw Error('Wait for host to start the lobby');
+    // Creative blueprints place the approved pad AND the approved shuttle as one
+    // operational complex. The click is only a ground-point request: never accept
+    // a client-provided pad altitude, arbitrary launch state or mission switch.
+    if(p.type==='space_site_place'){
+      if(this.config.rulesVersion<12)throw Error('Make a new rules-12 creative room to place the shared shuttle');
+      if(now-(peer.lastSiteAction||0)<3000)throw Error('Wait before relocating the launch site');
+      if(this.config.mode!==2||this.config.rulesVersion<RULES_VERSION||
+         !this.config.launchSite?.active||this.config.runEnded||this.config.spaceMission||
+         this.config.spaceVisit||!['pad','shuttle'].includes(p.action)||
+         !integer(p.x)||!integer(p.y)||!integer(p.z)||!peer.positioned||
+         now-peer.lastPosition>1500||Math.hypot(peer.x-(p.x+.5),peer.z-(p.z+.5))>7)
+        throw Error('Creative site needs a nearby ground point in an active room');
+      const ground=terrainHeight(p.x,p.z,this.config.seed);
+      if(Math.abs(p.y-ground)>2||peer.y<ground||peer.y>ground+7)
+        throw Error('Aim at natural ground, not a structure or a hill');
+      const old=this.config.launchSite;
+      if(this.config.padVisited?.length||this.config.shuttleSeats?.some(Boolean)||
+         this.config.launchHatch||this.config.launchLift?.riderKey||
+         this.members.size>0&&[...this.members.values()].some(m=>m.positioned&&
+           Math.abs(m.x-old.x)<49&&m.z>old.z-112&&m.z<old.z+47&&m.y>old.y+3))
+        throw Error('The old site has a crew on it; relocation is locked');
+      const site=launchSite(this.config.seed,p.x+20,p.z+110);
+      if(site.y<40||site.y>140)throw Error('No safe launch altitude at this ground point');
+      if(site.x===old.x&&site.z===old.z)return {type:'space_site_place',id:peer.id,launchSite:old,lift:liftSnapshot(this.config.launchLift,now,[...this.members.values()])};
+      const next={...this.config,launchSite:site,launchLift:emptyLift(),padVisited:[],
+        shuttleSeats:[null,null],launchHatch:false};
+      persistFauna(next);this.config=next;peer.lastSiteAction=now;
+      return {type:'space_site_place',id:peer.id,launchSite:site,
+        lift:liftSnapshot(next.launchLift,now,[...this.members.values()])};
+    }
     // A room owns the lift. The command supplies an action, never a height, crew key,
     // timestamp or teleported position. Position is the latest server-recorded sample.
     if(p.type==='space_lift'){
@@ -274,7 +305,7 @@ export class RoomState {
       return {type:'edit',...record,id:peer.id,living:candidate?candidate.save():undefined};
     }
     if(p.type==='state') {
-      if(![2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
+      if(![2,3,4,5,6,7,8,9,10,11,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
       const save=validatePlayerSave(p.save,this.config.contentVersion>=2,this.config.contentVersion>=4,this.config.contentVersion>=5);if((save.claimedStoryRewards&~(this.config.story?.rewards||0))!==0||((this.savedPlayers.get(peer.playerKey)?.claimedStoryRewards||0)&~save.claimedStoryRewards)!==0)throw Error("Invalid story rewards / rollback");const dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
       if(previous&&save.inventory.revision<previous.inventory.revision)throw Error('Stale inventory after confirmed transaction');
@@ -337,7 +368,7 @@ export function validateEquipmentIds(ids){
 }
 
 // New content must never reach a pre-expansion client (unknown IDs would become air).
-export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.launchSite?.active?11:config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
+export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.rulesVersion>=12?12:config.launchSite?.active?11:config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
 
 export function packetError(raw,error){let p={};try{if(typeof raw==='string'&&raw.length<=MAX_MESSAGE)p=JSON.parse(raw)||{};}catch{}return {type:'error',message:error.message,code:typeof p.type==='string'?p.type:'',requestId:Number.isInteger(p.requestId)?p.requestId:0};}
 

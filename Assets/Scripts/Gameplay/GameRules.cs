@@ -4,10 +4,10 @@ namespace LestingCraft.Gameplay
     public enum GameMode { Survival=0,Hardcore=1,Creative=2,Story=3 }
     public static class GameRules
     {
-        public const int Version=11;
+        public const int Version=12;
         public static readonly string[] ModeNames={"Выживание","Хардкор","Творческий","Сюжет"};
         public static readonly string[] ModeDescriptions={"Свободное выживание и добровольная история.\nПосле вступления выбирайте свой путь.","Одна жизнь на команду.\nЛюбая смерть завершает забег.","Свободное строительство.\nБез голода, холода и урона.","Глава I: Пока горит последний дом.\nОбщие диалоги, загадки и Страж корней."};
-        public static bool AcceptsRoom(int roomRules,int serverRules)=>serverRules>=Version&&(roomRules==Version||roomRules==10||roomRules==9||roomRules==8||roomRules==3||roomRules==4||roomRules==5||roomRules==6||roomRules==7);
+        public static bool AcceptsRoom(int roomRules,int serverRules)=>serverRules>=Version&&(roomRules==Version||roomRules==11||roomRules==10||roomRules==9||roomRules==8||roomRules==3||roomRules==4||roomRules==5||roomRules==6||roomRules==7);
         public static bool IsValid(int mode)=>mode>=0&&mode<4;
         public static bool CanDie(GameMode mode)=>mode!=GameMode.Creative;
         public static readonly string[] ChapterNames={"Пока горит последний дом","Под пеплом","Выше облаков","Память камня","Сердце разлома"};

@@ -24,7 +24,7 @@ namespace LestingCraft.Presentation
    Clear(Page.Creative);LayoutWidth(1280);Header("Творческий · каталог",false);stationKind=0;inventoryViews.Clear();equipmentStatus=null;craftOutput=null;stoveStatus=null;
    Box(content.transform,16,119,1248,765,new Color(.025f,.043f,.05f,.98f),false);
    Button("Рюкзак / экипировка",424,28,244,52,ShowCreativeBag);
-   for(int i=0;i<CreativeCatalog.Categories.Length;i++){int category=i;Button(CreativeCatalog.Categories[i],32+i*174,133,168,43,()=>{catalogCategory=category;catalogPage=0;ShowCreativeCatalog();},i==catalogCategory);}
+   for(int i=0;i<CreativeCatalog.Categories.Length;i++){int category=i;Button(CreativeCatalog.Categories[i],32+i*152,133,146,43,()=>{catalogCategory=category;catalogPage=0;ShowCreativeCatalog();},i==catalogCategory);}
    Input("Поиск по названию или ID",catalogSearch,"Например: стекло, алмаз, меч…",32,183,1042,v=>{catalogSearch=v;catalogPage=0;RefreshCatalog();});
    Button("Очистить",1090,217,158,58,()=>{catalogSearch="";catalogPage=0;ShowCreativeCatalog();});
    catalogGrid=Rect("Creative catalog grid",content.transform,32,290,1216,428);
@@ -41,6 +41,16 @@ namespace LestingCraft.Presentation
   {
    if(!catalogGrid||page!=Page.Creative)return;HideItemTooltip();
    for(int i=catalogGrid.childCount-1;i>=0;i--){var child=catalogGrid.GetChild(i).gameObject;child.SetActive(false);Destroy(child);}
+   if(catalogCategory==7)
+   {
+    string query=(catalogSearch??"").Trim();int choices=0;
+    if(query.Length==0||"Стартовый стол".IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0||"космодром".IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0)
+    {Button("СТАРТОВЫЙ СТОЛ + ШАТТЛ\nПоставить комплекс",24,18,555,154,()=>{game.ArmLaunchPlacement("pad");game.ToggleInventory();},true,catalogGrid);choices++;}
+    if(query.Length==0||"Шаттл".IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0||"ракета".IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0)
+    {Button("ШАТТЛ + СТАРТОВЫЙ СТОЛ\nПоставить комплекс",610,18,555,154,()=>{game.ArmLaunchPlacement("shuttle");game.ToggleInventory();},true,catalogGrid);choices++;}
+    Label(catalogGrid,"Оба чертежа создают один действующий комплекс: платформа, рампа, лифт и кабина.\nПрицелитесь в землю у начала рампы и нажмите ПКМ. Старт полёта пока заблокирован.",32,208,1140,126,21,Muted,false,TextAnchor.MiddleCenter);
+    CatalogVisibleCount=choices;catalogSummary.text=choices+" чертежа · по одному комплексу на мир";return;
+   }
    int[] ids=CreativeCatalog.Query(catalogSearch,catalogCategory);int pages=Mathf.Max(1,(ids.Length+31)/32);catalogPage=Mathf.Clamp(catalogPage,0,pages-1);CatalogVisibleCount=0;
    for(int i=catalogPage*32;i<Mathf.Min(ids.Length,(catalogPage+1)*32);i++)
    {

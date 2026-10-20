@@ -89,6 +89,9 @@ namespace LestingCraft.Runtime
             Selected=Items.Get(Game.Session.Inventory.Active.item).Block;
             HasTarget=VoxelRaycast.Trace(Camera.transform.position,Camera.transform.forward,6,World.GetBlock,out var target);
             Target=target;
+            if(Game.LaunchPlacementArmed&&mouse.rightButton.wasPressedThisFrame)
+            {Game.Session.ResetMining();if(HasTarget)Game.PlaceLaunchAt(target.Cell);
+             else Game.Session.Notice="Наведите прицел на землю рядом с вами";return;}
             if(Game.Session.Creative&&HasTarget&&mouse.middleButton.wasPressedThisFrame){int id=World.GetBlock(target.Cell.x,target.Cell.y,target.Cell.z);Game.Session.Inventory.slots[Game.Session.Inventory.selected]=new ItemStack{item=id==18?120:id,count=64};Game.Session.Inventory.revision++;}
             if(Game.Session.Living.Interact(new Ray(Camera.transform.position,Camera.transform.forward),HasTarget?target.Distance:6,mouse.rightButton.wasPressedThisFrame,mouse.leftButton.wasPressedThisFrame)){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
             if(Game.Session.Inventory.Active.item==164&&!mouse.rightButton.wasPressedThisFrame){HasTarget=false;Game.Session.ResetMining();if(mouse.leftButton.wasPressedThisFrame)Game.Session.Bow.Fire();return;}

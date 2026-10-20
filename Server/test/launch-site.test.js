@@ -29,8 +29,48 @@ test('room chooses site, ignores client supplied coordinates and preserves it on
   assert.deepEqual(publicConfig(config).launchSite,config.launchSite);
   assert.deepEqual(new RoomState(JSON.parse(JSON.stringify(config))).welcome(peer,[]).launchSite,config.launchSite);
   const old=createConfig({version:1,seed:2506,dimension:0,mode:2,rulesVersion:10,ownerKey:owner});
+  assert.deepEqual(createConfig({version:1,seed:2506,dimension:0,mode:2,rulesVersion:11,ownerKey:owner}).launchSite,config.launchSite,'old ground rooms keep their fixed pad');
   assert.equal(old.launchSite,undefined,'old rules10 room topology is unchanged');
   assert.equal(acceptsClient(config,10),false,'older clients cannot join a visible site they cannot render');
   assert.equal(acceptsClient(config,11),true);
   assert.equal(acceptsClient(old,10),true,'old rooms remain joinable');
+});
+
+test('creative ground blueprint relocates one real pad and shuttle, persists atomically for both peers',()=>{
+  const config=createConfig({version:1,seed:2506,dimension:0,mode:2,rulesVersion:12,ownerKey:owner});
+  config.started=true;
+  const room=new RoomState(config),now=100000;
+  const ground=height(0,0,2506),one=newPeer('one','Builder',owner),two=newPeer('two','Friend','b'.repeat(32));
+  Object.assign(one,{x:.5,y:ground+2.58,z:.5,positioned:true,lastPosition:now-100});
+  room.setMembers([one,two]);
+  let saved;
+  const result=room.handle(one,JSON.stringify({type:'space_site_place',action:'pad',x:0,y:ground,z:0}),now,()=>{},()=>{},value=>{saved=JSON.parse(JSON.stringify(value));});
+  assert.deepEqual(result.launchSite,launchSite(2506,20,110));
+  assert.deepEqual(result.launchSite,room.config.launchSite);
+  assert.deepEqual(saved.launchSite,result.launchSite);
+  assert.deepEqual(room.welcome(two,[one]).launchSite,result.launchSite);
+  assert.deepEqual(new RoomState(saved).welcome(two,[one]).launchSite,result.launchSite,'reconnect and durable rehydration use the same approved location');
+  assert.equal(result.lift.height,0);
+  assert.equal(acceptsClient(room.config,11),false,'ground-only Windows 11 build must not see a relocated pad');
+  assert.equal(acceptsClient(room.config,12),true);
+});
+
+test('creative placement rejects forged altitude, distance, mode and occupied relocation',()=>{
+  const config=createConfig({version:1,seed:2506,dimension:0,mode:2,rulesVersion:12,ownerKey:owner});
+  config.started=true;
+  const room=new RoomState(config),now=100000,ground=height(0,0,2506),peer=newPeer('one','Builder',owner);
+  Object.assign(peer,{x:.5,y:ground+2.58,z:.5,positioned:true,lastPosition:now-100});room.setMembers([peer]);
+  const send=(p,t=now)=>room.handle(peer,JSON.stringify({type:'space_site_place',action:'shuttle',x:0,y:ground,z:0,...p}),t,()=>{},()=>{},()=>{});
+  assert.throws(()=>send({x:100}),/nearby ground/);
+  assert.throws(()=>send({y:ground+15}),/natural ground/);
+  assert.throws(()=>send({action:'launch'}),/nearby ground/);
+  assert.throws(()=>send({z:300}),/nearby ground/);
+  assert.throws(()=>send({},now+2000),/nearby ground/);
+  assert.deepEqual(room.config.launchSite,launchSite(2506),'failed requests cannot move the existing stack');
+  const survival=createConfig({version:1,seed:2506,dimension:0,mode:0,rulesVersion:12,ownerKey:owner});survival.started=true;
+  assert.throws(()=>new RoomState(survival).handle(peer,JSON.stringify({type:'space_site_place',action:'pad',x:0,y:ground,z:0}),now,()=>{},()=>{},()=>{}),/nearby ground/);
+  room.config.padVisited=['another'];
+  assert.throws(()=>send({}),/relocation is locked/);
+  assert.deepEqual(room.config.launchSite,launchSite(2506));
+  assert.throws(()=>launchSite(2506,321,110),/outside room/);
 });

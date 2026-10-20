@@ -15,24 +15,27 @@ namespace LestingCraft.Runtime
         public const int PadX=168,PadZ=168,LiftWorldX=148,RampStartZ=58,RampEndZ=140;
         readonly List<Material> materials=new List<Material>();
         Vector3 groundedOrbiterLocal;
+        int siteX,siteZ;
         public Transform ShuttleRoot {get;private set;}
         public VerticalShuttleInteriorVisual Cabin {get;private set;}
-        public static Vector3Int OfflineSite(int seed)
+        public static Vector3Int OfflineSite(int seed)=>OfflineSite(seed,PadX,PadZ);
+        public static Vector3Int OfflineSite(int seed,int x,int z)
         {
+            if(x < -320||x > 320||z < -260||z > 320)throw new ArgumentException("Launch site outside room");
             int highest=0;
-            for(int x=PadX-47;x<=PadX+46;x++)for(int z=PadZ-45;z<=PadZ+44;z++)
-                highest=Math.Max(highest,TerrainGenerator.Height(x,z,seed,Dimension.Lestingia));
-            for(int x=LiftWorldX-2;x<=LiftWorldX+2;x++)for(int z=RampStartZ;z<=PadZ+3;z++)
-                highest=Math.Max(highest,TerrainGenerator.Height(x,z,seed,Dimension.Lestingia));
-            return new Vector3Int(PadX,highest+4,PadZ);
+            for(int px=x-47;px<=x+46;px++)for(int pz=z-45;pz<=z+44;pz++)
+                highest=Math.Max(highest,TerrainGenerator.Height(px,pz,seed,Dimension.Lestingia));
+            for(int px=x-22;px<=x-18;px++)for(int pz=z-110;pz<=z+3;pz++)
+                highest=Math.Max(highest,TerrainGenerator.Height(px,pz,seed,Dimension.Lestingia));
+            return new Vector3Int(x,highest+4,z);
         }
         public static LaunchSiteVisual Create(Transform parent,Vector3Int site,int seed)
         {
-            if(site.x!=PadX||site.z!=PadZ||site.y<40||site.y>140)
+            if(site.x < -320||site.x > 320||site.z < -260||site.z > 320||site.y<40||site.y>140)
                 throw new ArgumentException("Invalid server-owned launch site");
             var node=new GameObject("Shared physical launch site · flight not active yet");
             node.transform.SetParent(parent,false);node.transform.position=site;
-            var visual=node.AddComponent<LaunchSiteVisual>();
+            var visual=node.AddComponent<LaunchSiteVisual>();visual.siteX=site.x;visual.siteZ=site.z;
             SpaceVoxelVisual.CreateWalkableLaunchPad(node.transform);
             var shuttle=new GameObject("Approved upright Shuttle · pad offset +2 m");
             shuttle.transform.SetParent(node.transform,false);
@@ -81,22 +84,23 @@ namespace LestingCraft.Runtime
         }
         void BuildAccess(int seed,int siteY)
         {
+            int padX=siteX,padZ=siteZ,liftWorldX=siteX-20,rampStartZ=siteZ-110,rampEndZ=siteZ-28;
             var shader=Shader.Find("Universal Render Pipeline/Lit")??Shader.Find("Standard");
             if(!shader)throw new InvalidOperationException("Missing launch site shader");
             var rampMaterial=new Material(shader){name="Approach ramp · steel",color=new Color(.38f,.47f,.52f)};
             var supportMaterial=new Material(shader){name="Foundation supports · steel",color=new Color(.25f,.33f,.39f)};
             materials.Add(rampMaterial);materials.Add(supportMaterial);
-            const int count=RampEndZ-RampStartZ;
+            int count=rampEndZ-rampStartZ;
             var top=new float[count+1];
             float start=0;
-            for(int x=LiftWorldX-2;x<=LiftWorldX+2;x++)
-                start=Mathf.Max(start,TerrainGenerator.Height(x,RampStartZ,seed,Dimension.Lestingia)+1);
+            for(int x=liftWorldX-2;x<=liftWorldX+2;x++)
+                start=Mathf.Max(start,TerrainGenerator.Height(x,rampStartZ,seed,Dimension.Lestingia)+1);
             float end=siteY+5;
             for(int i=0;i<=count;i++)
             {
-                int z=RampStartZ+i;
+                int z=rampStartZ+i;
                 float surface=0;
-                for(int x=LiftWorldX-2;x<=LiftWorldX+2;x++)
+                for(int x=liftWorldX-2;x<=liftWorldX+2;x++)
                     surface=Mathf.Max(surface,TerrainGenerator.Height(x,z,seed,Dimension.Lestingia)+1);
                 top[i]=Mathf.Max(surface,Mathf.Lerp(start,end,(float)i/count));
             }
@@ -109,22 +113,22 @@ namespace LestingCraft.Runtime
             {
                 float a=top[i]-siteY,b=top[i+1]-siteY,delta=b-a;
                 var segment=Box("Walkable ramp "+i,
-                    new Vector3(LiftWorldX-PadX,(a+b)*.5f-.12f,RampStartZ+i+.5f-PadZ),
+                    new Vector3(liftWorldX-padX,(a+b)*.5f-.12f,rampStartZ+i+.5f-padZ),
                     new Vector3(3.8f,.24f,Mathf.Sqrt(1+delta*delta)+.04f),rampMaterial);
                 segment.localRotation=Quaternion.Euler(-Mathf.Atan(delta)*Mathf.Rad2Deg,0,0);
-                if(i%8==0)Support("Ramp stilt "+i,LiftWorldX,RampStartZ+i,top[i]-.25f,seed,supportMaterial);
+                if(i%8==0)Support("Ramp stilt "+i,liftWorldX,rampStartZ+i,top[i]-.25f,seed,supportMaterial);
             }
             // Support the elevated pad at its edges instead of erasing the terrain.
-            for(int x=PadX-40;x<=PadX+40;x+=10)
-                for(int zIndex=0;zIndex<2;zIndex++)Support("Pad edge support",x,zIndex==0?PadZ-37:PadZ+37,siteY+1,seed,supportMaterial);
-            for(int z=PadZ-27;z<=PadZ+27;z+=9)
-                for(int xIndex=0;xIndex<2;xIndex++)Support("Pad side support",xIndex==0?PadX-40:PadX+40,z,siteY+1,seed,supportMaterial);
+            for(int x=padX-40;x<=padX+40;x+=10)
+                for(int zIndex=0;zIndex<2;zIndex++)Support("Pad edge support",x,zIndex==0?padZ-37:padZ+37,siteY+1,seed,supportMaterial);
+            for(int z=padZ-27;z<=padZ+27;z+=9)
+                for(int xIndex=0;xIndex<2;xIndex++)Support("Pad side support",xIndex==0?padX-40:padX+40,z,siteY+1,seed,supportMaterial);
         }
         void Support(string label,int x,int z,float top,int seed,Material material)
         {
             float natural=TerrainGenerator.Height(x,z,seed,Dimension.Lestingia)+1;
             if(top<=natural+.2f)return;
-            Box(label,new Vector3(x-PadX,(natural+top)*.5f-transform.position.y, z-PadZ),
+            Box(label,new Vector3(x-siteX,(natural+top)*.5f-transform.position.y, z-siteZ),
                 new Vector3(.32f,top-natural,.32f),material);
         }
         void OnDestroy(){foreach(var material in materials)if(material){if(Application.isPlaying)Destroy(material);else DestroyImmediate(material);}}

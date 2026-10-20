@@ -67,6 +67,7 @@ namespace LestingCraft.Gameplay
     {
         public LivingSave living=new LivingSave();
         public int schema=3,contentVersion=7,seed,mode;public LestingCraft.Story.StoryState story;public WildlifeSave wildlife=new WildlifeSave();public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
+        public bool launchPlaced;public int launchX,launchZ;
         public SavedBlock[] blocks=Array.Empty<SavedBlock>();
     }
     [Serializable] public sealed class SavedBlock {public int realm,x,y,z,block;}
@@ -76,7 +77,7 @@ namespace LestingCraft.Gameplay
         public static void Store(SessionSave save){PlayerPrefs.SetString(Key,JsonUtility.ToJson(save));PlayerPrefs.Save();}
         public static SessionSave Load()
         {
-            try{string raw=PlayerPrefs.GetString(PlayerPrefs.HasKey(Key)?Key:LegacyKey,"");var data=JsonUtility.FromJson<SessionSave>(raw);if(data==null||(data.schema!=2&&data.schema!=3)||!GameRules.IsValid(data.mode))return null;if(data.schema==3&&!raw.Contains("\"contentVersion\""))return null;if(data.schema==2){data.contentVersion=1;data.schema=3;}if(data.contentVersion!=1&&data.contentVersion!=2&&data.contentVersion!=3&&data.contentVersion!=4&&data.contentVersion!=5&&data.contentVersion!=6&&data.contentVersion!=7)return null;if(data.player==null)return null;data.player.Normalize();if(data.campaign==null)data.campaign=new CampaignProgress();if(data.blocks==null)data.blocks=Array.Empty<SavedBlock>();if(data.blocks.Length>8192)return null;foreach(var b in data.blocks)if(b==null||b.realm<0||b.realm>4||b.y<=0||b.y>=256||Math.Abs((long)b.x)>=32000||Math.Abs((long)b.z)>=32000||b.block<0||b.block>(data.contentVersion>=5?48:46)||b.block==9)return null;return data;}catch{return null;}
+            try{string raw=PlayerPrefs.GetString(PlayerPrefs.HasKey(Key)?Key:LegacyKey,"");var data=JsonUtility.FromJson<SessionSave>(raw);if(data==null||(data.schema!=2&&data.schema!=3)||!GameRules.IsValid(data.mode))return null;if(data.schema==3&&!raw.Contains("\"contentVersion\""))return null;if(data.schema==2){data.contentVersion=1;data.schema=3;}if(data.contentVersion!=1&&data.contentVersion!=2&&data.contentVersion!=3&&data.contentVersion!=4&&data.contentVersion!=5&&data.contentVersion!=6&&data.contentVersion!=7)return null;if(data.player==null)return null;if(data.launchPlaced&&(data.mode!=2||data.launchX < -320||data.launchX > 320||data.launchZ < -260||data.launchZ > 320))return null;data.player.Normalize();if(data.campaign==null)data.campaign=new CampaignProgress();if(data.blocks==null)data.blocks=Array.Empty<SavedBlock>();if(data.blocks.Length>8192)return null;foreach(var b in data.blocks)if(b==null||b.realm<0||b.realm>4||b.y<=0||b.y>=256||Math.Abs((long)b.x)>=32000||Math.Abs((long)b.z)>=32000||b.block<0||b.block>(data.contentVersion>=5?48:46)||b.block==9)return null;return data;}catch{return null;}
         }
         public static bool Exists=>PlayerPrefs.HasKey(Key)||PlayerPrefs.HasKey(LegacyKey);
     }

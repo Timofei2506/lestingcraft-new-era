@@ -78,6 +78,25 @@ namespace LestingCraft.Tests.EditMode
             }
             finally {Object.DestroyImmediate(root);}
         }
+        [Test] public void CreativePlacementMovesEntirePhysicalComplexAndRampToChosenGround()
+        {
+            var root=new GameObject("creative site location test");
+            try
+            {
+                var site=LaunchSiteVisual.OfflineSite(2506,20,110);
+                var visual=LaunchSiteVisual.Create(root.transform,site,2506);
+                Assert.AreEqual(20,visual.transform.position.x);
+                Assert.AreEqual(110,visual.transform.position.z);
+                var ramp=visual.transform.Find("Walkable ramp 0");
+                Assert.IsNotNull(ramp.GetComponent<BoxCollider>());
+                Assert.AreEqual(-20,ramp.localPosition.x,.001f);
+                Assert.AreEqual(-109.5f,ramp.localPosition.z,.001f);
+                Assert.AreEqual((Vector3)site,visual.Cabin.transform.position-new Vector3(0,2,0));
+                Assert.IsNotNull(visual.Cabin.transform.Find("Crew seat 0 cushion"));
+                Assert.Throws<System.ArgumentException>(()=>LaunchSiteVisual.Create(root.transform,new Vector3Int(321,70,110),2506));
+            }
+            finally {Object.DestroyImmediate(root);}
+        }
         [Test] public void LocalSiteCalculationUsesTheSameSeedAndIsWithinWorldHeight()
         {
             var a=LaunchSiteVisual.OfflineSite(2506);

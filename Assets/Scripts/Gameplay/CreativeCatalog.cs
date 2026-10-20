@@ -4,7 +4,7 @@ namespace LestingCraft.Gameplay
 {
  public static class CreativeCatalog
  {
-  public static readonly string[] Categories={"Все","Блоки","Инструменты","Оружие","Экипировка","Еда","Материалы"};
+  public static readonly string[] Categories={"Все","Блоки","Инструменты","Оружие","Экипировка","Еда","Материалы","Космос"};
   public static int Category(int id)
   {var item=Items.Get(id);if(item.Block>0)return 1;if(Items.IsPick(id)||id==102)return 2;if(id==103||id>=152&&id<=165)return 3;if(Equipment.Slot(id)>=0)return 4;if(item.Food>0||id==113||id==114)return 5;return 6;}
   public static int[] Query(string text,int category)

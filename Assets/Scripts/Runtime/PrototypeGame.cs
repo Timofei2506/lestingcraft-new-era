@@ -102,13 +102,14 @@ namespace LestingCraft.Runtime
         public void OpenTrade(string actor){if(!Session||StoryLocked||Session.Vitals.dead||!Session.Living.TryTrader(actor,out var trader))return;Session.Notice="";Session.Living.Hint="";paused=true;SetCursor(false);ui.ShowTrade(actor);}
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
-        Vector3Int? sharedLaunchSite;LaunchSiteVisual launchVisual;
+        Vector3Int? sharedLaunchSite;LaunchSiteVisual launchVisual;string launchBlueprint;bool offlineShuttleSeat;
         NetShuttleLift liftSnapshot;bool hatchOpen;string[] shuttleSeats=new string[2];float lastLiftRequest=-10f;
         NetSpaceMission flightSnapshot;int flightSeatIndex=-1;float lastFlightHeartbeat,lastFlightControl;
-        public bool ShuttleSeated=>flightSnapshot!=null&&flightSnapshot.active||
+        public bool ShuttleSeated=>offlineShuttleSeat||flightSnapshot!=null&&flightSnapshot.active||
             !string.IsNullOrEmpty(selfId)&&Array.Exists(shuttleSeats,id=>id==selfId);
         public void RequestShuttlePreflight()
         {
+            if(offlineShuttleSeat&&!online&&Session){Session.Notice="Полёт ещё не готов: старт в офлайн-мире заблокирован";return;}
             if(flightSnapshot!=null&&flightSnapshot.active||!ShuttleSeated||!online||!client||!client.Connected||!Session)return;
             client.Send(new NetPacket{type="space_preflight"});
             Session.Notice="Запрашиваю проверку экипажа. Запуск в этой сборке заблокирован.";
@@ -199,7 +200,8 @@ namespace LestingCraft.Runtime
         /// <summary>E near the real lift asks the room, never moves the lift locally.</summary>
         public bool TryInteractLaunch()
         {
-            if(!online||!client||!client.Connected||!player||!launchVisual||!launchVisual.Cabin||
+            if(!online)return TryInteractOfflineLaunch();
+            if(!client||!client.Connected||!player||!launchVisual||!launchVisual.Cabin||
                liftSnapshot==null||!liftSnapshot.active||!Session)return false;
             if(flightSnapshot!=null&&flightSnapshot.active)
             {Session.Notice="Экипаж в полёте: выход откроется после посадки на поверхность";return true;}
@@ -240,11 +242,42 @@ namespace LestingCraft.Runtime
                 action="exit";
             }
             else if(cabin.Lift.State==ElevatorState.Ground&&ground)action="up";
+            else if(cabin.Lift.State==ElevatorState.Top&&top)action="down";
             else if(cabin.Lift.State==ElevatorState.Top&&ground)action="recall";
             else {Session.Notice="Войдите на платформу лифта";return true;}
             lastLiftRequest=Time.unscaledTime;client.Send(new NetPacket{type="space_lift",action=action});
-            Session.Notice=action=="up"?"Запрос подъёма лифта":action=="exit"?"Выход с лифта — проходите пешком":
-                "Возврат пустого лифта для следующего игрока";
+            Session.Notice=action=="up"?"Запрос подъёма лифта":action=="down"?"Запрос спуска лифта":
+                action=="exit"?"Выход с лифта — проходите пешком":"Возврат пустого лифта для следующего игрока";
+            return true;
+        }
+        // The offline creative world uses the same colliding cabin and 25 m
+        // mechanical lift, but never fabricates a server flight or a Moon arrival.
+        bool TryInteractOfflineLaunch()
+        {
+            if(!player||!launchVisual||!launchVisual.Cabin||!Session||!Session.Creative)return false;
+            var cabin=launchVisual.Cabin;
+            var local=cabin.transform.InverseTransformPoint(player.transform.position);
+            for(int i=0;i<VerticalShuttleWalk.SeatCount;i++)
+            {
+                double sx,sy,sz;VerticalShuttleWalk.Seat(i,out sx,out sy,out sz);
+                if(Mathf.Abs(local.x-(float)sx)>1f||Mathf.Abs(local.z-(float)sz)>1f||Mathf.Abs(local.y-(float)sy)>1.3f)continue;
+                offlineShuttleSeat=!offlineShuttleSeat;
+                Session.Notice=offlineShuttleSeat?"Вы в кабине. Полёт пока заблокирован. E — встать.":"Вы встали с кресла";
+                return true;
+            }
+            if(Mathf.Abs(local.x+9)<3.5f&&Mathf.Abs(local.z-3)<1.3f&&Mathf.Abs(local.y-28)<2)
+            {cabin.SyncHatch(!cabin.HatchOpen);Session.Notice=cabin.HatchOpen?"Люк открыт — проходите пешком":"Люк закрыт";return true;}
+            if(Mathf.Abs(local.x-VerticalShuttleWalk.LiftX)>1.5f||Mathf.Abs(local.z-3)>1.5f)return false;
+            if(cabin.Lift.IsMoving){Session.Notice="Лифт движется";return true;}
+            bool ground=Mathf.Abs(local.y-VerticalShuttleWalk.LiftGroundY)<1.15f;
+            bool top=Mathf.Abs(local.y-(VerticalShuttleWalk.LiftGroundY+VerticalShuttleWalk.LiftTravel))<1.15f;
+            if(!ground&&!top)return false;
+            if(cabin.Lift.Occupied)
+            {cabin.Lift.Exit();Session.Notice="Выйдите с платформы пешком";return true;}
+            bool ok=ground&&cabin.Lift.State==ElevatorState.Ground?cabin.RequestUp(player):
+                top&&cabin.Lift.State==ElevatorState.Top?cabin.RequestDown(player):
+                ground&&cabin.Lift.State==ElevatorState.Top&&cabin.RecallEmptyLift();
+            Session.Notice=ok?"Лифт в пути — стойте на платформе":"Войдите на свободную платформу";
             return true;
         }
         public bool IsConnecting=>busy;
@@ -258,6 +291,46 @@ namespace LestingCraft.Runtime
         public int PlayerCount=>avatars.Count+1;
         public int ChunkCount=>world?world.LoadedChunks:0;
         public bool WorldReady=>world&&world.Ready;
+        public bool LaunchPlacementArmed=>!string.IsNullOrEmpty(launchBlueprint);
+        public void ArmLaunchPlacement(string blueprint)
+        {
+            if(Session==null||!Session.Creative||IsSurfacePreview||
+               (blueprint!="pad"&&blueprint!="shuttle"))return;
+            launchBlueprint=blueprint;
+            Session.Notice="Чертёж комплекса: ПКМ по земле в начале будущей рампы (стол и шаттл ставятся вместе).";
+        }
+        public void PlaceLaunchAt(Vector3Int ground)
+        {
+            if(!LaunchPlacementArmed||!Session||!Session.Creative||!world||!world.Ready||IsSurfacePreview)return;
+            int natural=TerrainGenerator.Height(ground.x,ground.z,world.Seed,Dimension.Lestingia);
+            if(Mathf.Abs(ground.y-natural)>2||Mathf.Abs(player.transform.position.y-(natural+1))>6)
+            {Session.Notice="Выберите землю вблизи персонажа, не постройку и не дерево";return;}
+            int x=ground.x+20,z=ground.z+110;
+            if(x < -320||x > 320||z < -260||z > 320)
+            {Session.Notice="Недостаточно места для платформы и рампы: выберите другое место";return;}
+            if(online)
+            {
+                if(!client||!client.Connected){Session.Notice="Нет соединения с комнатой";return;}
+                client.Send(new NetPacket{type="space_site_place",action=launchBlueprint,x=ground.x,y=ground.y,z=ground.z});
+                Session.Notice="Сервер проверяет точку постройки…";
+            }
+            else
+            {
+                var site=LaunchSiteVisual.OfflineSite(world.Seed,x,z);
+                if(site.y<40||site.y>140){Session.Notice="Высота для безопасной платформы здесь недоступна";return;}
+                SetLaunchSite(site);
+                Session.Data.launchPlaced=true;Session.Data.launchX=x;Session.Data.launchZ=z;
+                Session.Checkpoint();Session.Notice="Общий чертёж установлен: идите по рампе к шаттлу. Полёт пока заблокирован.";
+            }
+            launchBlueprint=null;
+        }
+        void SetLaunchSite(Vector3Int site)
+        {
+            if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
+            sharedLaunchSite=site;offlineShuttleSeat=false;
+            // A relocated pad must not retain the old hatch/lift/cockpit state.
+            hatchOpen=false;liftSnapshot=null;shuttleSeats=new string[2];
+        }
         public bool HasSharedLaunchSite=>sharedLaunchSite.HasValue;
         public bool InMoonFlight=>flightSnapshot!=null&&flightSnapshot.active;
         public string MoonFlightStatus=>flightSnapshot==null?"":
@@ -348,9 +421,12 @@ namespace LestingCraft.Runtime
             if(multiplayer)IsSurfacePreview=false;
             realm=multiplayer||!IsSurfacePreview||realm<1||realm>4?0:realm;
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
-            sharedLaunchSite=multiplayer&&realm==0&&approvedSite!=null&&approvedSite.active&&approvedSite.x==LaunchSiteVisual.PadX&&
-                approvedSite.z==LaunchSiteVisual.PadZ&&approvedSite.y>=40&&approvedSite.y<=140?
+            sharedLaunchSite=multiplayer&&realm==0&&approvedSite!=null&&approvedSite.active&&
+                approvedSite.x>=-320&&approvedSite.x<=320&&approvedSite.z>=-260&&approvedSite.z<=320&&
+                approvedSite.y>=40&&approvedSite.y<=140?
                 new Vector3Int(approvedSite.x,approvedSite.y,approvedSite.z):(Vector3Int?)null;
+            if(!multiplayer&&realm==0&&!IsSurfacePreview&&resumeSave!=null&&resumeSave.launchPlaced)
+                sharedLaunchSite=LaunchSiteVisual.OfflineSite(seed,resumeSave.launchX,resumeSave.launchZ);
             var camera=Camera.main;camera.backgroundColor=new Color(.42f,.66f,.78f);
             RenderSettings.fogColor=camera.backgroundColor;
             var obj=new GameObject("Player");
@@ -432,6 +508,14 @@ namespace LestingCraft.Runtime
                 case "animal_hit":if(Session){Session.Animals.Apply(packet);}break;
                 case "chat":AddChat(packet);break;
                 case "player":if(Session)Session.Living.Apply(packet);if(Story&&packet.story!=null)Story.Apply(packet.story,packet.serverNow);if(Session)Session.Animals.Apply(packet);ApplyLift(packet.lift);SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw,offhand=packet.offhand,weapon=packet.weapon,equipment=packet.equipment});break;
+                case "space_site_place":
+                    if(packet.launchSite!=null&&packet.launchSite.active&&
+                       packet.launchSite.x>=-320&&packet.launchSite.x<=320&&
+                       packet.launchSite.z>=-260&&packet.launchSite.z<=320&&
+                       packet.launchSite.y>=40&&packet.launchSite.y<=140&&world)
+                    {SetLaunchSite(new Vector3Int(packet.launchSite.x,packet.launchSite.y,packet.launchSite.z));
+                     ApplyLift(packet.lift);if(Session)Session.Notice="Комплекс установлен в общей комнате: рампа, стол и шаттл. Полёт пока заблокирован.";}
+                    break;
                 case "space_lift":ApplyLift(packet.lift);break;
                 case "space_hatch":ApplyHatch(packet.hatchOpen);break;
                 case "space_seat":ApplySeats(packet.seats);break;
@@ -526,7 +610,7 @@ namespace LestingCraft.Runtime
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
             if(ShuttleDemo){Destroy(ShuttleDemo.gameObject);ShuttleDemo=null;}
             if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
-            client=null;world=null;player=null;sharedLaunchSite=null;launchVisual=null;liftSnapshot=null;hatchOpen=false;
+            client=null;world=null;player=null;launchBlueprint=null;offlineShuttleSeat=false;sharedLaunchSite=null;launchVisual=null;liftSnapshot=null;hatchOpen=false;
             shuttleSeats=new string[2];flightSnapshot=null;flightSeatIndex=-1;lastFlightHeartbeat=0;lastFlightControl=0;
             online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }
