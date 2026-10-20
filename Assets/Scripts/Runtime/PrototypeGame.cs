@@ -254,7 +254,7 @@ namespace LestingCraft.Runtime
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
                     // Never show a docked crew or a flying ship as if it had reappeared on Earth.
                     // The space rendering/physical-boarding client is not connected yet.
-                    if(packet.space!=null||packet.station!=null)
+                    if(packet.space!=null&&packet.space.active||packet.station!=null&&packet.station.active)
                     {Fail("Космический экипаж в полёте или на станции: эта сборка пока не умеет восстанавливать корабль. Не запускайте публичный релиз.");Destroy(client.gameObject);busy=false;return;}
                     if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Несовместимые правила комнаты. Обновите сервер; для нового содержимого нужна новая комната");Destroy(client.gameObject);return;}
                     if(packet.contentVersion>7||packet.contentVersion<0||packet.rulesVersion>=10&&packet.contentVersion!=7||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
