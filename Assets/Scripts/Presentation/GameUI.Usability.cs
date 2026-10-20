@@ -8,8 +8,13 @@ namespace LestingCraft.Presentation
 {
  public sealed partial class GameUI
  {
-  Text interactionHUD,biomeHUD;
-  void BuildUsabilityHUD(){interactionHUD=Label(content.transform,"",400,494,480,58,18,White,false,TextAnchor.MiddleCenter);biomeHUD=Label(content.transform,"",26,814,230,36,17,Muted);}
+  Text interactionHUD,biomeHUD,padHUD;
+  void BuildUsabilityHUD()
+  {
+   interactionHUD=Label(content.transform,"",400,494,480,58,18,White,false,TextAnchor.MiddleCenter);
+   biomeHUD=Label(content.transform,"",26,814,230,36,17,Muted);
+   padHUD=Label(content.transform,"",834,30,425,64,15,Accent,false,TextAnchor.UpperRight);
+  }
   bool creativeBag;string catalogSearch="",traderId="";int catalogCategory,catalogPage;RectTransform catalogGrid;Text catalogSummary,tradeSummary;Button tradeButton;
   public int CatalogVisibleCount{get;private set;}public string OpenTraderId=>page==Page.Trade?traderId:"";
   void ShowCreativeBag(){creativeBag=true;ShowInventory();creativeBag=false;}
@@ -77,7 +82,22 @@ namespace LestingCraft.Presentation
   }
   void UpdateUsability()
   {
-   if(page==Page.HUD&&game.Session){if(interactionHUD)interactionHUD.text=game.Session.Living.Hint;if(biomeHUD)biomeHUD.text=game.Session.World.ContentVersion>=7&&game.Session.World.Dimension==LestingCraft.World.Dimension.Lestingia?LestingCraft.World.BiomeGenerator.Name(LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(game.Session.Player.transform.position.x),Mathf.FloorToInt(game.Session.Player.transform.position.z),game.Session.World.Seed)):"";return;}
+   if(page==Page.HUD&&game.Session)
+   {
+    if(interactionHUD)interactionHUD.text=game.Session.Living.Hint;
+    var position=game.Session.Player.transform.position;
+    if(biomeHUD)biomeHUD.text=game.Session.World.ContentVersion>=7&&game.Session.World.Dimension==LestingCraft.World.Dimension.Lestingia?LestingCraft.World.BiomeGenerator.Name(LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(position.x),Mathf.FloorToInt(position.z),game.Session.World.Seed)):"";
+    if(padHUD)
+    {
+     if(!game.Online||!game.HasSharedLaunchSite)padHUD.text="";
+     else if(Mathf.Abs(position.x-168)<50&&Mathf.Abs(position.z-168)<40)
+      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЛифт: X 148 · Z 171 · E — взаимодействие";
+     else if(Mathf.Abs(position.x-148)<22&&position.z>45&&position.z<183)
+      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nПо эстакаде к лифту: X 148 · Z 171";
+     else padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nИдите к началу эстакады: X 148 · Z 58";
+    }
+    return;
+   }
    if(page==Page.Trade){RefreshTrade();return;}
    if(page!=Page.Creative)return;
    foreach(var cell in inventoryViews)if(cell.Index<9)cell.Icon.transform.parent.GetComponent<Image>().color=cell.Index==game.Session.Inventory.selected?new Color(.36f,.49f,.30f,.97f):Panel;

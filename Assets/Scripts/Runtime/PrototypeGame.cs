@@ -189,6 +189,7 @@ namespace LestingCraft.Runtime
         public int PlayerCount=>avatars.Count+1;
         public int ChunkCount=>world?world.LoadedChunks:0;
         public bool WorldReady=>world&&world.Ready;
+        public bool HasSharedLaunchSite=>sharedLaunchSite.HasValue;
         public ushort SelectedBlock=>Session?Items.Get(Session.Inventory.Active.item).Block:(ushort)1;
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
         public void PlayOffline()

@@ -37,11 +37,11 @@ public static class BuildScript
             if(!array||array.depth!=LestingCraft.Presentation.SurfaceLayers.Names.Length||array.width!=512||array.height!=512)
                 throw new InvalidOperationException("Incomplete current PBR array: "+layer);
         }
-        if(LestingCraft.Gameplay.GameRules.Version!=10)throw new InvalidOperationException("Expected current rules10 build");
+        if(LestingCraft.Gameplay.GameRules.Version!=11)throw new InvalidOperationException("Expected current rules11 cooperative pad build");
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
         // Developer playtest build from the space branch; not a public release until Unity smoke passes.
-        PlayerSettings.bundleVersion = "0.3.3-space-preview";
+        PlayerSettings.bundleVersion = "0.3.4-ground-coop-test";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");

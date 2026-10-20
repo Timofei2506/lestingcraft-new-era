@@ -85,7 +85,7 @@ namespace LestingCraft.Runtime
              var renderers=actor.GetComponentsInChildren<MeshRenderer>();if(renderers.Length<5){Fail("Incomplete native settler mesh: "+kind);yield break;}
              foreach(var renderer in renderers)if(!renderer.sharedMaterial||!renderer.sharedMaterial.shader.isSupported){Fail("Unsupported settler material");yield break;}}
             Destroy(modelProbe);
-            Debug.Log("[Smoke] LIVING6: rules10, content7, complete PBR arrays="+SurfaceLayers.Names.Length+", mandatory opening, six saved body zones, native villager/cat meshes and materials loaded");
+            Debug.Log("[Smoke] LIVING6: rules11, content7, complete PBR arrays="+SurfaceLayers.Names.Length+", mandatory opening, six saved body zones, native villager/cat meshes and materials loaded");
             var player=game.Session.Player;player.enabled=false;
             // Exercise REAL Unity objects, not only the pure C# shuttle checks: cabin walls, moving lift,
             // interactive doors, six 3D chairs and two instrument text screens. Keep it off-camera.
