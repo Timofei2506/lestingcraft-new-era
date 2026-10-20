@@ -332,6 +332,7 @@ namespace LestingCraft.Runtime
             hatchOpen=false;liftSnapshot=null;shuttleSeats=new string[2];
         }
         public bool HasSharedLaunchSite=>sharedLaunchSite.HasValue;
+        public Vector3Int? LaunchSitePosition=>sharedLaunchSite;
         public bool InMoonFlight=>flightSnapshot!=null&&flightSnapshot.active;
         public string MoonFlightStatus=>flightSnapshot==null?"":
             "ЛУНА · "+flightSnapshot.phase+" · "+flightSnapshot.elapsed.ToString("0")+" / 1800 с\n"+

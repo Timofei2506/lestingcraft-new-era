@@ -99,13 +99,15 @@ namespace LestingCraft.Presentation
     if(biomeHUD)biomeHUD.text=game.Session.World.ContentVersion>=7&&game.Session.World.Dimension==LestingCraft.World.Dimension.Lestingia?LestingCraft.World.BiomeGenerator.Name(LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(position.x),Mathf.FloorToInt(position.z),game.Session.World.Seed)):"";
     if(padHUD)
     {
+     var site=game.LaunchSitePosition;
      if(game.InMoonFlight)padHUD.text=game.MoonFlightStatus;
-     else if(!game.Online||!game.HasSharedLaunchSite)padHUD.text="";
-     else if(Mathf.Abs(position.x-168)<50&&Mathf.Abs(position.z-168)<40)
-      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЛифт: X 148 · Z 171 · E — взаимодействие";
-     else if(Mathf.Abs(position.x-148)<22&&position.z>45&&position.z<183)
-      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nПо эстакаде к лифту: X 148 · Z 171";
-     else padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nИдите к началу эстакады: X 148 · Z 58";
+     else if(game.LaunchPlacementArmed)padHUD.text="ЧЕРТЁЖ КОСМОДРОМА\nПрицельтесь в землю рядом и нажмите ПКМ";
+     else if(!site.HasValue)padHUD.text="";
+     else if(Mathf.Abs(position.x-site.Value.x)<50&&Mathf.Abs(position.z-site.Value.z)<40)
+      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЛифт: X {site.Value.x-20} · Z {site.Value.z+3} · E — взаимодействие";
+     else if(Mathf.Abs(position.x-(site.Value.x-20))<22&&position.z>site.Value.z-123&&position.z<site.Value.z+15)
+      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nПо эстакаде к лифту: X {site.Value.x-20} · Z {site.Value.z+3}";
+     else padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nИдите к началу эстакады: X {site.Value.x-20} · Z {site.Value.z-110}";
     }
     return;
    }
