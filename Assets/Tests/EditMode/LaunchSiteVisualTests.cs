@@ -32,7 +32,9 @@ namespace LestingCraft.Tests.EditMode
                 var guide=visual.transform.Find("Lift guide rear 3");
                 Assert.IsNotNull(platform);Assert.IsNotNull(bridge);Assert.IsNotNull(guide);
                 Assert.AreEqual(visual.transform,platform.parent);
-                var platformWorld=platform.position,bridgeWorld=bridge.position,guideWorld=guide.position;
+                var platformWorld=platform.position;
+                var bridgeWorld=bridge.position;
+                var guideWorld=guide.position;
                 var orbiterWorld=visual.Cabin.transform.position;
                 visual.ShuttleRoot.position+=Vector3.up*6;
                 Assert.AreEqual(platformWorld,platform.position,"Platform stays with ground");
