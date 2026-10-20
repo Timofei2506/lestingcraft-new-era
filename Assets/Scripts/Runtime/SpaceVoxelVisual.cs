@@ -45,6 +45,19 @@ namespace LestingCraft.Runtime
             var visual=obj.AddComponent<SpaceVoxelVisual>();visual.Build(data,true);
             return visual;
         }
+        /// <summary>Colliding launch pad with a derived lift well and pass-through in
+        /// the tower partition. Approved pad bytes remain unchanged; not yet spawned
+        /// into a production room or aligned with the game terrain.</summary>
+        public static SpaceVoxelVisual CreateWalkableLaunchPad(Transform parent)
+        {
+            var resource=Resources.Load<TextAsset>("Space/LaunchPad");
+            if(!resource)throw new InvalidOperationException("Missing approved launch pad model");
+            var data=LaunchPadLiftOpening.Make(SpaceVoxelAsset.Read(resource.bytes));
+            var obj=new GameObject("Approved LaunchPad · lift well and tower doorway");
+            obj.transform.SetParent(parent,false);
+            var visual=obj.AddComponent<SpaceVoxelVisual>();visual.Build(data,true);
+            return visual;
+        }
         void Build(SpaceVoxelAsset data,bool collision)
         {
             var vertices=new List<Vector3>();var normals=new List<Vector3>();

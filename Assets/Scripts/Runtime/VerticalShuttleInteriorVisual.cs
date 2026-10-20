@@ -56,8 +56,8 @@ namespace LestingCraft.Runtime
             // The source hull's voxel at Y=27 is solid; an even collider at Y=28 provides
             // a continuous foot plane through the freshly carved 2 m tower-side opening.
             Box("Physical tower-to-airlock walkway",new Vector3(-5.5f,27.88f,3),new Vector3(7f,.24f,1.90f),floor);
-            // Meet the platform at the upper stop; neither rider needs to jump a gap.
-            Box("Tower lift exit bridge",new Vector3(-10.8f,27.88f,3),new Vector3(3.6f,.24f,1.90f),floor);
+            // A short bridge meets the pad deck at the upper stop, without sealing the lift shaft.
+            Box("Tower lift exit bridge",new Vector3(-18.3f,27.88f,3),new Vector3(1.1f,.24f,1.90f),floor);
             Box("Lower crew deck",new Vector3(.5f,27.88f,3.5f),new Vector3(4.85f,.24f,4.85f),floor);
             Box("Lower deck equipment left",new Vector3(-1.62f,28.7f,1.18f),new Vector3(.48f,1.22f,.26f),dark);
             Box("Lower deck equipment right",new Vector3(2.56f,28.7f,1.18f),new Vector3(.48f,1.22f,.26f),dark);
@@ -90,16 +90,16 @@ namespace LestingCraft.Runtime
             Box("Overhead main bus and ignition switches",new Vector3(.5f,44.93f,4.73f),new Vector3(1.45f,.16f,.68f),amber);
             hatch=Box("Closed pressure hatch · server controlled",new Vector3(-9.14f,29.43f,3),new Vector3(.18f,2.86f,1.94f),wall);
             hatchCollider=hatch.GetComponent<BoxCollider>();
-            // Platform starts at pad ground Y=-2 in shuttle coordinates and arrives flush
-            // with the cabin entry Y=28. No seated/standing player is ever teleported.
-            liftPlatform=Box("Moving 30 m crew lift",new Vector3(-12.5f,-2.14f,3),new Vector3(1.9f,.28f,1.9f),floor);
-            Box("Lift safety back",new Vector3(-13.43f,-1.14f,3),new Vector3(.08f,1.9f,1.88f),dark).SetParent(liftPlatform,true);
-            Box("Lift safety port",new Vector3(-12.5f,-1.35f,2.08f),new Vector3(1.9f,1.45f,.08f),dark).SetParent(liftPlatform,true);
-            Box("Lift safety starboard",new Vector3(-12.5f,-1.35f,3.92f),new Vector3(1.9f,1.45f,.08f),dark).SetParent(liftPlatform,true);
-            for(int y=-2;y<=28;y+=5)
+            // Platform starts at pad walking surface Y=0 and arrives flush
+            // with cabin entry Y=28, clearing the approved booster. No teleport occurs.
+            liftPlatform=Box("Moving crew lift",new Vector3(VerticalShuttleWalk.LiftX,-.14f,3),new Vector3(1.9f,.28f,1.9f),floor);
+            Box("Lift safety back",new Vector3(VerticalShuttleWalk.LiftX-.93f,.86f,3),new Vector3(.08f,1.9f,1.88f),dark).SetParent(liftPlatform,true);
+            Box("Lift safety port",new Vector3(VerticalShuttleWalk.LiftX,.65f,2.08f),new Vector3(1.9f,1.45f,.08f),dark).SetParent(liftPlatform,true);
+            Box("Lift safety starboard",new Vector3(VerticalShuttleWalk.LiftX,.65f,3.92f),new Vector3(1.9f,1.45f,.08f),dark).SetParent(liftPlatform,true);
+            for(int y=0;y<=28;y+=5)
             {
-                Box("Lift guide rear "+y,new Vector3(-13.49f,y+.5f,2.02f),new Vector3(.09f,4.8f,.09f),wall);
-                Box("Lift guide front "+y,new Vector3(-13.49f,y+.5f,3.98f),new Vector3(.09f,4.8f,.09f),wall);
+                Box("Lift guide rear "+y,new Vector3(VerticalShuttleWalk.LiftX-.99f,y+.5f,2.02f),new Vector3(.09f,4.8f,.09f),wall);
+                Box("Lift guide front "+y,new Vector3(VerticalShuttleWalk.LiftX-.99f,y+.5f,3.98f),new Vector3(.09f,4.8f,.09f),wall);
             }
             SyncHatch(false);
         }
@@ -109,8 +109,8 @@ namespace LestingCraft.Runtime
         {
             if(!player||Lift.IsMoving||Lift.Occupied)return false;
             var p=transform.InverseTransformPoint(player.transform.position);
-            if(Mathf.Abs(p.x+12.5f)>.85f||Mathf.Abs(p.z-3f)>.85f||
-               Mathf.Abs(p.y-(-2f+Lift.Height))>1f||!Lift.Board())return false;
+            if(Mathf.Abs(p.x-VerticalShuttleWalk.LiftX)>.85f||Mathf.Abs(p.z-3f)>.85f||
+               Mathf.Abs(p.y-Lift.Height)>1f||!Lift.Board())return false;
             liftRider=player;return true;
         }
         public bool RequestUp(FirstPersonController player)
@@ -129,15 +129,15 @@ namespace LestingCraft.Runtime
             if(!liftPlatform)return;
             Lift.Advance(Time.unscaledDeltaTime);
             float height=Lift.Height,delta=height-lastLiftHeight;
-            liftPlatform.localPosition=new Vector3(-12.5f,height-2.14f,3);
+            liftPlatform.localPosition=new Vector3(VerticalShuttleWalk.LiftX,height-.14f,3);
             if(liftRider&&Lift.Occupied&&Mathf.Abs(delta)>.0001f)
                 liftRider.CarryByPlatform(transform.up*delta);
             lastLiftHeight=height;
             if(liftRider&&Lift.Occupied&&!Lift.IsMoving)
             {
                 var p=transform.InverseTransformPoint(liftRider.transform.position);
-                if(Mathf.Abs(p.x+12.5f)>1.15f||Mathf.Abs(p.z-3f)>1.15f||
-                   Mathf.Abs(p.y-(-2f+Lift.Height))>1.35f)
+                if(Mathf.Abs(p.x-VerticalShuttleWalk.LiftX)>1.15f||Mathf.Abs(p.z-3f)>1.15f||
+                   Mathf.Abs(p.y-Lift.Height)>1.35f)
                 {Lift.Exit();liftRider=null;}
             }
         }

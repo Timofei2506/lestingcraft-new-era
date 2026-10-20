@@ -10,7 +10,8 @@ namespace LestingCraft.Tests.EditMode
         [Test] public void ApprovedExteriorIsUntouchedExceptSixDoorwayCells()
         {
             var resource=Resources.Load<TextAsset>("Space/Shuttle");Assert.IsNotNull(resource);
-            var approved=SpaceVoxelAsset.Read(resource.bytes),fitted=ShuttleCabinCarving.Make(approved);
+            var approved=SpaceVoxelAsset.Read(resource.bytes);
+            var fitted=ShuttleCabinCarving.Make(approved);
             Assert.AreEqual(13929,approved.SolidCount);
             Assert.Less(fitted.SolidCount,approved.SolidCount-200);
             Assert.Greater(fitted.SolidCount,approved.SolidCount-400);
@@ -56,14 +57,14 @@ namespace LestingCraft.Tests.EditMode
                 Assert.IsTrue(VerticalShuttleWalk.Inside(x,y,z));
             }
         }
-        [Test] public void ThirtyMetreLiftCarriesOneRiderThenReturnsEmptyForSecond()
+        [Test] public void PadHeightLiftCarriesOneRiderThenReturnsEmptyForSecond()
         {
             var lift=new ShuttleElevator(VerticalShuttleWalk.LiftTravel);
             Assert.IsFalse(lift.RequestUp());
             Assert.IsTrue(lift.Board());Assert.IsTrue(lift.RequestUp());
-            lift.Advance(3);Assert.AreEqual(15f,lift.Height,.001f);
+            lift.Advance(3);Assert.AreEqual(14f,lift.Height,.001f);
             Assert.IsFalse(lift.Exit());lift.Advance(3);
-            Assert.AreEqual(30f,lift.Height,.001f);
+            Assert.AreEqual(28f,lift.Height,.001f);
             Assert.IsTrue(lift.Exit());Assert.IsFalse(lift.RequestDown());
             Assert.IsTrue(lift.ReturnEmpty());lift.Advance(6);
             Assert.AreEqual(ElevatorState.Ground,lift.State);
@@ -78,12 +79,12 @@ namespace LestingCraft.Tests.EditMode
                 Assert.IsNotNull(visual.GetComponentInChildren<SpaceVoxelVisual>());
                 Assert.Greater(visual.GetComponentsInChildren<BoxCollider>().Length,10);
                 Assert.IsNotNull(visual.transform.Find("Lower crew deck").GetComponent<BoxCollider>());
-                var lift=visual.transform.Find("Moving 30 m crew lift");
+                var lift=visual.transform.Find("Moving crew lift");
                 var bridge=visual.transform.Find("Tower lift exit bridge");
                 Assert.IsNotNull(lift.GetComponent<BoxCollider>());
                 Assert.IsNotNull(bridge.GetComponent<BoxCollider>());
                 Assert.LessOrEqual(bridge.localPosition.x-bridge.localScale.x/2,
-                                   lift.localPosition.x+lift.localScale.x/2); // no gap at top
+                                   lift.localPosition.x+lift.localScale.x/2+.01f); // no gap at top
                 Assert.IsNotNull(visual.transform.Find("Cockpit forward bridge").GetComponent<BoxCollider>());
                 Assert.IsNotNull(visual.transform.Find("Cockpit ladder landing").GetComponent<BoxCollider>());
                 for(int i=0;i<VerticalShuttleWalk.SeatCount;i++)
@@ -95,6 +96,40 @@ namespace LestingCraft.Tests.EditMode
                 Assert.Greater(door.localPosition.y,33);
                 visual.SyncHatch(false);
                 Assert.IsTrue(door.GetComponent<BoxCollider>().enabled);
+            }
+            finally {Object.DestroyImmediate(root);}
+        }
+        [Test] public void LaunchPadDerivedWellAndDoorPreserveApprovedSource()
+        {
+            var approved=SpaceVoxelAsset.Read(Resources.Load<TextAsset>("Space/LaunchPad").bytes);
+            var fitted=LaunchPadLiftOpening.Make(approved);
+            Assert.AreEqual(27813,approved.SolidCount);
+            Assert.AreEqual(27803,fitted.SolidCount);
+            int changed=0;
+            for(int x=0;x<approved.X;x++)for(int y=0;y<approved.Y;y++)for(int z=0;z<approved.Z;z++)
+                if(approved.At(x,y,z)!=fitted.At(x,y,z))
+                {
+                    changed++;
+                    Assert.IsTrue(LaunchPadLiftOpening.Remove(x-47,y,z-45));
+                    Assert.AreEqual(0,fitted.At(x,y,z));
+                }
+            Assert.AreEqual(10,changed); // six deck cells, four in tower partition
+            Assert.AreNotEqual(0,approved.At(27,29,48));
+            Assert.AreEqual(0,fitted.At(27,29,48));
+            Assert.AreNotEqual(0,approved.At(34,30,48));
+            Assert.AreEqual(0,fitted.At(34,30,48));
+            Assert.AreNotEqual(0,approved.At(27,1,48)); // ground top Y=2
+            Assert.AreNotEqual(0,approved.At(33,29,48)); // deck top Y=30
+        }
+        [Test] public void DerivedPadHasPhysicalCollidingDeckAndOpenWell()
+        {
+            var root=new GameObject("walkable pad test");
+            try
+            {
+                var visual=SpaceVoxelVisual.CreateWalkableLaunchPad(root.transform);
+                Assert.IsNotNull(visual.GetComponent<MeshCollider>());
+                Assert.IsNotNull(visual.GetComponent<MeshCollider>().sharedMesh);
+                Assert.Greater(visual.GetComponent<MeshFilter>().sharedMesh.vertexCount,10000);
             }
             finally {Object.DestroyImmediate(root);}
         }

@@ -39,9 +39,11 @@ namespace LestingCraft.Gameplay
     public static class VerticalShuttleWalk
     {
         public const int SeatCount=2;
-        // Shuttle model is 2 m above the pad origin: pad ground is shuttle-local Y=-2,
-        // and the carved airlock floor is Y=28. A visible platform must travel 30 m.
-        public const float LiftTravel=30f;
+        // Pad walking surface is Y=2 and deck top Y=30; placing the shuttle origin
+        // at pad Y=2 puts ground at shuttle-local Y=0 and cabin entry at Y=28.
+        // X=-19.8 avoids the approved orbiter's mid-height booster (X>=-18).
+        public const float LiftTravel=28f;
+        public const float LiftX=-19.8f;
         public static bool Inside(double x,double y,double z)
         {
             if(double.IsNaN(x)||double.IsNaN(y)||double.IsNaN(z))return false;

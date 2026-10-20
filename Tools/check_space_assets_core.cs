@@ -33,6 +33,22 @@ class SpaceAssetCheck
                        VerticalShuttleWalk.CanStep(-9.2,29,3,-8.8,29,3,true),"Hatch physically gates short steps");
                 Check(!VerticalShuttleWalk.CanStep(-10,29,3,0,43,3,true),"No boarding teleport");
             }
+            if(names[j]=="LaunchPad")
+            {
+                var fitted=LaunchPadLiftOpening.Make(model);
+                Check(model.SolidCount==27813&&fitted.SolidCount==27803,"Approved pad unchanged; ten functional cells removed in memory");
+                int changes=0;
+                for(int x=0;x<model.X;x++)for(int y=0;y<model.Y;y++)for(int z=0;z<model.Z;z++)
+                    if(model.At(x,y,z)!=fitted.At(x,y,z))
+                    {
+                        changes++;
+                        Check(fitted.At(x,y,z)==0&&LaunchPadLiftOpening.Remove(x-47,y,z-45),"Only well and tower door removed");
+                    }
+                Check(changes==10,"Six lift deck cells and four tower partition cells");
+                Check(model.At(27,1,48)!=0&&model.At(27,2,48)==0,"Pad ground walking surface at Y=2");
+                Check(model.At(33,29,48)!=0&&model.At(33,30,48)==0,"Pad deck walking surface at Y=30");
+                Check(fitted.At(34,30,48)==0,"Walk-through in tower wall");
+            }
             Check(model.X>=60&&model.Y>=38&&model.Z>=34,names[j]+" is full size");
             Check(model.At(-1,0,0)==0&&model.At(model.X,0,0)==0&&model.At(0,-1,0)==0,"safe outside volume");
             int faces=0;for(int x=0;x<model.X;x++)for(int y=0;y<model.Y;y++)for(int z=0;z<model.Z;z++)
