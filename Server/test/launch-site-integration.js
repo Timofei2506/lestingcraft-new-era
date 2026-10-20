@@ -2,15 +2,17 @@
 // seconds. This checks transport/persistence, NOT a Unity/Windows physical playthrough.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
+import {height} from '../src/terrain-legacy.js';
+const placeCreative=process.env.TEST_CREATIVE_SITE==='1';
 const endpoint=process.env.TEST_ENDPOINT||'http://127.0.0.1:8787';
 const a='a'.repeat(32),b='b'.repeat(32);
 const create=await fetch(endpoint+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({version:1,rulesVersion:11,seed:2506,dimension:0,mode:2,ownerKey:a})});
+  body:JSON.stringify({version:1,rulesVersion:placeCreative?12:11,seed:2506,dimension:0,mode:2,ownerKey:a})});
 assert.equal(create.status,201);
 const {code}=await create.json();
 const sockets=[];
 function connect(key,name){return new Promise((resolve,reject)=>{
-  const ws=new WebSocket(endpoint.replace(/^http/,'ws')+'/api/rooms/'+code+'/ws?name='+name+'&key='+key+'&clientRules=11');
+  const ws=new WebSocket(endpoint.replace(/^http/,'ws')+'/api/rooms/'+code+'/ws?name='+name+'&key='+key+'&clientRules='+(placeCreative?12:11));
   const messages=[],waiters=[];
   ws.on('error',reject);
   ws.on('message',buf=>{const packet=JSON.parse(buf.toString());messages.push(packet);
@@ -32,7 +34,21 @@ try{
   p.send({type:'lobby_start'});
   await p.wait(v=>v.type==='lobby_start');
   await q.wait(v=>v.type==='lobby_start');
-  const site=wp.launchSite,foot=progress=>({type:'position',
+  let site=wp.launchSite;
+  if(placeCreative){
+    const ground=height(0,0,2506);
+    p.send({type:'position',x:.5,y:ground+2.58,z:.5,yaw:0});
+    await p.wait(v=>v.type==='player'&&v.id===wp.id);
+    p.send({type:'space_site_place',action:'shuttle',x:0,y:ground,z:0});
+    const placed=await p.wait(v=>v.type==='space_site_place'&&v.id===wp.id);
+    const shared=await q.wait(v=>v.type==='space_site_place'&&v.id===wp.id);
+    assert.deepEqual(placed.launchSite,shared.launchSite);
+    assert.equal(placed.launchSite.x,20);assert.equal(placed.launchSite.z,110);
+    site=placed.launchSite;
+    console.log('Two WebSocket clients received the same placed creative complex');
+    await new Promise(resolve=>setTimeout(resolve,120)); // room position updates are rate-limited
+  }
+  const foot=progress=>({type:'position',
     x:site.x-19.8,y:site.y+5+progress*25+1.58,z:site.z+3,yaw:0});
   p.send(foot(0));await p.wait(v=>v.type==='player'&&v.id===wp.id&&v.lift?.active);
   q.send(foot(0));await q.wait(v=>v.type==='player'&&v.id===wq.id&&v.lift?.active);

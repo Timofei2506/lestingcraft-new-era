@@ -73,4 +73,8 @@ test('creative placement rejects forged altitude, distance, mode and occupied re
   assert.throws(()=>send({}),/relocation is locked/);
   assert.deepEqual(room.config.launchSite,launchSite(2506));
   assert.throws(()=>launchSite(2506,321,110),/outside room/);
+  const original=room.config.launchSite;
+  room.config.padVisited=[];
+  assert.throws(()=>room.handle(peer,JSON.stringify({type:'space_site_place',action:'pad',x:0,y:ground,z:0}),now,()=>{},()=>{},()=>{throw Error('storage unavailable');}),/storage unavailable/);
+  assert.deepEqual(room.config.launchSite,original,'failed persistence cannot relocate an occupied client');
 });
