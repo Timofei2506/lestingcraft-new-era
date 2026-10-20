@@ -45,7 +45,8 @@ jobs:
     needs: check-secrets
     if: needs.check-secrets.outputs.has == 'true'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    # A genuine 30-minute lunar smoke mission plus editor installation cannot fit in 60 minutes.
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -136,7 +137,7 @@ jobs:
           $args = @("-force-d3d11", "-force-driver-type-warp", "-screen-fullscreen", "0", "-screen-width", "1280", "-screen-height", "720", "-lc-smoke-test", "-logFile", $log)
           $process = Start-Process -FilePath $exe -ArgumentList $args -PassThru
           $null = $process.Handle
-          if (-not $process.WaitForExit(1800000)) {
+          if (-not $process.WaitForExit(3600000)) {
             Stop-Process -Id $process.Id -Force
             if (Test-Path $log) { Get-Content $log -Tail 100 }
             throw "Windows smoke test timed out"
@@ -174,7 +175,7 @@ jobs:
         with:
           name: Windows-visual-screenshots
           path: Builds/StandaloneWindows64/SmokeResults
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Upload Unity build logs
         uses: actions/upload-artifact@v4
@@ -200,6 +201,26 @@ jobs:
           cd artifacts
           for d in build-*; do (cd "$d" && zip -qr "../$d.zip" .); done
           ls -la *.zip
+
+      # A public tag is NOT permission to ship an unfinished space demo. Require
+      # screenshots from the actual smoke-tested EXE, not Blender or concept art.
+      - name: Require and pack executable space screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          shots=artifacts/Windows-visual-screenshots
+          for name in menu elevator launch flight-cruise lunar-landing moon-surface mars-surface venus-surface mercury-surface station; do
+            test -s "$shots/$name.png" || { echo "Missing EXE screenshot: $name.png" >&2; exit 1; }
+            python3 - "$shots/$name.png" <<'PY'
+          import struct,sys
+          with open(sys.argv[1],'rb') as f: header=f.read(24)
+          if len(header)<24 or header[:8]!=b'\x89PNG\r\n\x1a\n' or header[12:16]!=b'IHDR': raise SystemExit('Invalid PNG screenshot: '+sys.argv[1])
+          width,height=struct.unpack('>II',header[16:24])
+          if width<640 or height<360: raise SystemExit('Screenshot too small: '+sys.argv[1])
+          PY
+          done
+          (cd "$shots" && zip -q ../../LestingCraft-Screenshots.zip menu.png elevator.png launch.png flight-cruise.png lunar-landing.png moon-surface.png mars-surface.png venus-surface.png mercury-surface.png station.png)
+          mv LestingCraft-Screenshots.zip artifacts/
 
       - name: Create release
         uses: softprops/action-gh-release@v2
