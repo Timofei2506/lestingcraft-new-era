@@ -5,8 +5,8 @@ using Unity.Mathematics;
 
 namespace LestingCraft.World
 {
-    // Only the main dimension remains. Other dimensions are removed and will return stage by stage.
-    public enum Dimension { Lestingia }
+    // Network rooms remain Lestingia-only. Planet surfaces are generated for the offline travel slice.
+    public enum Dimension { Lestingia = 0, Moon = 1, Mars = 2, Venus = 3, Mercury = 4 }
 
     // Pure integer hash + smooth value noise. Generation version 1 is part of the network protocol.
     public static class TerrainGenerator
@@ -32,6 +32,7 @@ namespace LestingCraft.World
         }
         public static int Height(int x, int z, int seed, Dimension dimension)
         {
+            if (dimension != Dimension.Lestingia) return PlanetTerrain.Column(x,z,seed,(PlanetBody)dimension).Height;
             float broad = Noise(x / 55f, z / 55f, seed), fine = Noise(x / 13f, z / 13f, seed ^ 731);
             return 30 + (int)(broad * 32 + fine * 9);
         }
@@ -47,6 +48,7 @@ namespace LestingCraft.World
         }
         public static ushort SampleColumn(int x, int y, int z, int seed, Dimension d, int height, bool island)
         {
+            if (d != Dimension.Lestingia) return PlanetTerrain.Block(y,new PlanetColumn {Height=height,Surface=PlanetTerrain.Column(x,z,seed,(PlanetBody)d).Surface},(PlanetBody)d);
             if (!island) return BlockRegistry.AirId;
             int floor = 0;
             if (y < floor) return BlockRegistry.AirId;
@@ -115,6 +117,12 @@ namespace LestingCraft.World
         {
             int x = column % ChunkData.SizeX, z = column / ChunkData.SizeX;
             int wx = OriginX + x, wz = OriginZ + z;
+            if(Dimension!=Dimension.Lestingia)
+            {
+                var surface=PlanetTerrain.Column(wx,wz,Seed,(PlanetBody)Dimension);
+                for(int y=0;y<ChunkData.SizeY;y++)Blocks[ChunkData.IndexOf(x,y,z)]=PlanetTerrain.Block(y,surface,(PlanetBody)Dimension);
+                return;
+            }
             int h = TerrainGenerator.Height(wx, wz, Seed, Dimension);
             bool island = TerrainGenerator.Island(wx, wz, Seed, Dimension);
             if(ContentVersion>=3&&Dimension==Dimension.Lestingia)

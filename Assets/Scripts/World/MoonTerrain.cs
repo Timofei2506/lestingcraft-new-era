@@ -2,7 +2,7 @@ using System;
 
 namespace LestingCraft.World
 {
-    /// <summary>Surface material of a Moon column. Block ids are assigned when the dimension is wired.</summary>
+    /// <summary>Surface material of a Moon column. PlanetTerrain maps it to existing block IDs.</summary>
     public enum MoonSurface : byte { Regolith = 0, Mare = 1, Ejecta = 2 }
 
     public struct MoonColumn

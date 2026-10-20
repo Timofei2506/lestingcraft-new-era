@@ -17,7 +17,7 @@ namespace LestingCraft.Runtime
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap(){if(!FindAnyObjectByType<PrototypeGame>())new GameObject("LestingCraft").AddComponent<PrototypeGame>();}
-        readonly string[] dimensions={"Лестингия"};
+        readonly string[] dimensions={"Лестингия","Луна","Марс","Венера","Меркурий"};
         readonly Dictionary<string,GameObject> avatars=new Dictionary<string,GameObject>();
         readonly Dictionary<string,Vector3> targets=new Dictionary<string,Vector3>();
         string endpoint="",code="",playerName="Player",seedText="2506",status="",selfId="",lastError="";
