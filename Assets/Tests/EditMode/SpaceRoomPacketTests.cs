@@ -32,6 +32,11 @@ namespace LestingCraft.Tests.EditMode
             var ordinary=JsonUtility.FromJson<NetPacket>("{\"type\":\"welcome\",\"seed\":2506}");
             Assert.IsFalse(ordinary.space!=null&&ordinary.space.active);
             Assert.IsFalse(ordinary.station!=null&&ordinary.station.active);
+            var withPad=JsonUtility.FromJson<NetPacket>("{\"type\":\"welcome\",\"launchSite\":{\"active\":true,\"x\":168,\"y\":70,\"z\":168}}");
+            Assert.IsNotNull(withPad.launchSite);
+            Assert.IsTrue(withPad.launchSite.active);
+            Assert.AreEqual(70,withPad.launchSite.y);
+            Assert.IsFalse(ordinary.launchSite!=null&&ordinary.launchSite.active);
         }
     }
 }

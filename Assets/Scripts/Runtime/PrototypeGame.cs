@@ -101,6 +101,8 @@ namespace LestingCraft.Runtime
         public void OpenTrade(string actor){if(!Session||StoryLocked||Session.Vitals.dead||!Session.Living.TryTrader(actor,out var trader))return;Session.Notice="";Session.Living.Hint="";paused=true;SetCursor(false);ui.ShowTrade(actor);}
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
+        Vector3Int? sharedLaunchSite;LaunchSiteVisual launchVisual;
+        public LaunchSiteVisual LaunchSite=>launchVisual;
         long revision; float lastPosition,previousYaw,lastHeartbeat;Vector3 previousPosition;bool sentPosition;int previousEquipment;
         Material avatarMaterial;
         GameUI ui;bool leaving,saveAcknowledged;
@@ -190,12 +192,15 @@ namespace LestingCraft.Runtime
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
         }
-        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0)
+        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null)
         {
             // Multiplayer and persisted worlds remain on Lestingia; planet inspection is explicitly offline and unsaved.
             if(multiplayer)IsSurfacePreview=false;
             realm=multiplayer||!IsSurfacePreview||realm<1||realm>4?0:realm;
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
+            sharedLaunchSite=multiplayer&&realm==0&&approvedSite!=null&&approvedSite.active&&approvedSite.x==LaunchSiteVisual.PadX&&
+                approvedSite.z==LaunchSiteVisual.PadZ&&approvedSite.y>=40&&approvedSite.y<=140?
+                new Vector3Int(approvedSite.x,approvedSite.y,approvedSite.z):(Vector3Int?)null;
             var camera=Camera.main;camera.backgroundColor=new Color(.42f,.66f,.78f);
             RenderSettings.fogColor=camera.backgroundColor;
             var obj=new GameObject("Player");obj.transform.position=FindSpawn(seed,(Dimension)realm,world.ContentVersion);
@@ -277,7 +282,7 @@ namespace LestingCraft.Runtime
         }
         void BeginNetworkWorld(NetPacket packet)
         {
-            InLobby=false;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock,packet.contentVersion<=0?1:packet.contentVersion,packet.story,packet.serverNow);revision=packet.rev;Session.Animals.Apply(packet);
+            InLobby=false;StartWorld(packet.seed,packet.dimension,true,packet.save,packet.clock,packet.contentVersion<=0?1:packet.contentVersion,packet.story,packet.serverNow,packet.launchSite);revision=packet.rev;Session.Animals.Apply(packet);
             if(packet.campaign!=null)Session.Data.campaign=packet.campaign;if(packet.runEnded){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;OpenDeathScreen();}
             if(packet.edits!=null)foreach(var edit in packet.edits)world.Edit(edit.x,edit.y,edit.z,(ushort)edit.block);Session.Living.Apply(packet);if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);status="Комната подключена • "+code;
         }
@@ -298,6 +303,12 @@ namespace LestingCraft.Runtime
         {
             foreach(var peerAvatar in avatars.Values)if(peerAvatar)peerAvatar.SetActive(!StoryLocked);
             if(world&&world.Ready&&status=="Генерируется мир…")status="Мир готов — нажми «Продолжить»";
+            // Only the server-chosen site is placed. Both peers reconstruct the same
+            // approved, colliding geometry as they approach; no launch is enabled yet.
+            if(sharedLaunchSite.HasValue&&!launchVisual&&world&&world.Ready&&player&&
+               new Vector2(player.transform.position.x-sharedLaunchSite.Value.x,
+                           player.transform.position.z-sharedLaunchSite.Value.z).sqrMagnitude<140f*140f)
+                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed);
             foreach(var pair in avatars)if(pair.Value&&targets.TryGetValue(pair.Key,out var target))
             {pair.Value.transform.position=Vector3.Lerp(pair.Value.transform.position,target,Time.deltaTime*12);}
             if(online&&client&&client.Connected&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
@@ -319,7 +330,7 @@ namespace LestingCraft.Runtime
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
             if(ShuttleDemo){Destroy(ShuttleDemo.gameObject);ShuttleDemo=null;}
             if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
-            client=null;world=null;player=null;online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
+            client=null;world=null;player=null;sharedLaunchSite=null;launchVisual=null;online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }
         static Vector3 FindSpawn(int seed,Dimension realm,int contentVersion)
         {
