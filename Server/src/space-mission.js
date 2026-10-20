@@ -1,5 +1,5 @@
-// Server-owned cooperative journey core. Not connected to a room yet: no client command
-// may create a mission until boarding, cabin physics, persistence and landing are wired.
+// Server-owned cooperative journey core. A room has a guarded, default-off
+// ignition transition; the live lunar client and landing surface are unfinished.
 // Distances are double-precision metres. The 30-minute trip uses fictional propulsion.
 export const MOON_SECONDS = 1800;
 export const ASCENT_SECONDS = 630;

@@ -50,6 +50,34 @@ namespace LestingCraft.Tests.EditMode
             }
             finally {Object.DestroyImmediate(root);}
         }
+        [Test] public void AuthoritativeMoonProjectionMovesHullAndAttachedCrewNotPadOrLift()
+        {
+            var root=new GameObject("flight projection test");
+            try
+            {
+                var visual=LaunchSiteVisual.Create(root.transform,new Vector3Int(168,70,168),2506);
+                var pad=visual.transform.Find("Moving crew lift");
+                var bridge=visual.transform.Find("Tower lift exit bridge");
+                var padBefore=pad.position;var bridgeBefore=bridge.position;
+                var crew=new GameObject("seated crew stand-in");
+                crew.transform.SetParent(visual.ShuttleRoot,false);
+                crew.transform.localPosition=new Vector3(-.4f,42,5.35f);
+                var seatLocal=crew.transform.localPosition;
+                var state=new LestingCraft.Networking.NetSpaceMission{
+                    active=true,from="earth",to="moon",seconds=1800,elapsed=720,
+                    position=new[]{149797870700d,0d,2000000d},crewCount=2};
+                Assert.IsTrue(visual.SyncMoonFlight(state));
+                Assert.AreEqual(new Vector3(200,1262,2),visual.ShuttleRoot.position-(Vector3)new Vector3Int(168,70,168));
+                Assert.AreEqual(seatLocal,crew.transform.localPosition,"Passengers stay seated in the real hull");
+                Assert.AreEqual(padBefore,pad.position,"Pad lift cannot fly to the Moon");
+                Assert.AreEqual(bridgeBefore,bridge.position,"Tower bridge remains terrestrial");
+                var before=visual.ShuttleRoot.position;
+                state.position[0]=double.NaN;
+                Assert.IsFalse(visual.SyncMoonFlight(state));
+                Assert.AreEqual(before,visual.ShuttleRoot.position,"Corrupt network snapshot cannot move the hull");
+            }
+            finally {Object.DestroyImmediate(root);}
+        }
         [Test] public void LocalSiteCalculationUsesTheSameSeedAndIsWithinWorldHeight()
         {
             var a=LaunchSiteVisual.OfflineSite(2506);

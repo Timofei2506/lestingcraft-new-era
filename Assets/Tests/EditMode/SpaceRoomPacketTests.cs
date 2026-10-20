@@ -44,6 +44,11 @@ namespace LestingCraft.Tests.EditMode
             Assert.AreEqual("up",withLift.lift.direction);
             Assert.AreEqual("peer-a",withLift.lift.riderId);
             Assert.IsFalse(ordinary.lift!=null&&ordinary.lift.active);
+            var flight=JsonUtility.FromJson<NetPacket>(
+                "{\"type\":\"welcome\",\"serverNow\":1792478562000,\"space\":{\"active\":true,\"phase\":\"countdown\",\"ignitionAt\":1792478572000,\"seatIndex\":1,\"crewCount\":2,\"position\":[149597870700,0,0]}}");
+            Assert.AreEqual(1,flight.space.seatIndex);
+            Assert.AreEqual(1792478572000L,flight.space.ignitionAt);
+            Assert.AreEqual(1792478562000L,flight.serverNow);
             var opened=JsonUtility.FromJson<NetPacket>("{\"type\":\"space_hatch\",\"hatchOpen\":true}");
             Assert.IsTrue(opened.hatchOpen);
             Assert.IsFalse(ordinary.hatchOpen);

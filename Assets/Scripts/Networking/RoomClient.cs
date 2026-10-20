@@ -18,7 +18,7 @@ namespace LestingCraft.Networking
     [Serializable] public class NetShuttleLift
     {public bool active,moving,occupied;public float progress,height;public string direction,riderId;public long serverNow;}
     [Serializable] public class NetSpaceMission
-    {public bool active;public string from,to,phase;public double elapsed,seconds,landingBurn;public double[] position;public bool pilot,autopilot;public int crewCount;}
+    {public bool active;public string from,to,phase;public double elapsed,seconds,landingBurn;public double[] position;public bool pilot,autopilot;public int crewCount,seatIndex;public long ignitionAt;}
     [Serializable] public class NetStationDock
     {public bool latched,hatchOpen;public long latchedAt;}
     [Serializable] public class NetStationVisit

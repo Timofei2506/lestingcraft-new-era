@@ -90,3 +90,36 @@ test('trusted ignition fails when seat claims are stale, a crew member leaves or
   assert.throws(()=>room.igniteVerifiedMoon(pilot,t+2700),/Preflight refused/);
   assert.equal(room.config.spaceMission,undefined);
 });
+
+test('network ignition fails closed until BOTH current seated clients negotiate a released flight protocol',()=>{
+  const {room,pilot,copilot,send,seat}=crew();
+  assert.throws(()=>send(pilot,'space_ignite',t+400),/not released/);
+  assert.equal(room.config.spaceMission,undefined);
+  room.config.flightEnabled=true; // trusted server-only feature gate, never accepted in createConfig
+  assert.throws(()=>send(pilot,'space_ignite',t+400),/Both crew clients/);
+  assert.throws(()=>send(copilot,'space_flight_ready',t+400,{protocol:22}),/Flight client/);
+  assert.equal(send(pilot,'space_flight_ready',t+500,{protocol:1}).seatIndex,0);
+  assert.throws(()=>send(pilot,'space_ignite',t+600),/Both crew clients/);
+  assert.equal(send(copilot,'space_flight_ready',t+600,{protocol:1}).seatIndex,1);
+  assert.throws(()=>send(copilot,'space_ignite',t+700),/pilot/);
+  const result=send(pilot,'space_ignite',t+800);
+  assert.equal(result.space.phase,'countdown');assert.equal(result.space.crewCount,2);
+  assert.deepEqual(room.config.spaceMission.crew,[a,b]);
+  assert(!JSON.stringify(result).includes(a));assert(!JSON.stringify(result).includes(b));
+  assert.throws(()=>send(pilot,'space_ignite',t+900),/Both crew clients|not released|Preflight refused/);
+});
+
+test('reconnect, missing second client, out-of-seat position and stale capability never ignite',()=>{
+  const {room,pilot,copilot,send,seat}=crew();room.config.flightEnabled=true;
+  send(pilot,'space_flight_ready',t+400,{protocol:1});
+  send(copilot,'space_flight_ready',t+500,{protocol:1});
+  assert.throws(()=>send(pilot,'space_ignite',t+2100),/Both crew clients/);
+  seat(pilot,0,t+2200);seat(copilot,1,t+2300);
+  send(pilot,'space_flight_ready',t+2400,{protocol:1});
+  send(copilot,'position',t+2500,{x:room.config.launchSite.x+3,y:room.config.launchSite.y+45.58,z:room.config.launchSite.z+5.35,yaw:0});
+  send(copilot,'space_flight_ready',t+2600,{protocol:1});
+  assert.throws(()=>send(pilot,'space_ignite',t+2700),/Preflight refused/);
+  seat(copilot,1,t+2800);room.disconnect(copilot,()=>{});
+  assert.throws(()=>send(pilot,'space_ignite',t+2900),/Both crew clients/);
+  assert.equal(room.config.spaceMission,undefined);
+});

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using LestingCraft.World;
+using LestingCraft.Networking;
 
 namespace LestingCraft.Runtime
 {
@@ -13,6 +14,7 @@ namespace LestingCraft.Runtime
     {
         public const int PadX=168,PadZ=168,LiftWorldX=148,RampStartZ=58,RampEndZ=140;
         readonly List<Material> materials=new List<Material>();
+        Vector3 groundedOrbiterLocal;
         public Transform ShuttleRoot {get;private set;}
         public VerticalShuttleInteriorVisual Cabin {get;private set;}
         public static Vector3Int OfflineSite(int seed)
@@ -36,10 +38,38 @@ namespace LestingCraft.Runtime
             shuttle.transform.SetParent(node.transform,false);
             shuttle.transform.localPosition=new Vector3(0,2,0);
             visual.ShuttleRoot=shuttle.transform;
+            visual.groundedOrbiterLocal=shuttle.transform.localPosition;
             visual.Cabin=VerticalShuttleInteriorVisual.Create(shuttle.transform);
             if(!visual.Cabin.AnchorLiftToPad(node.transform))throw new InvalidOperationException("Pad infrastructure anchor failed");
             visual.BuildAccess(seed,site.y);
             return visual;
+        }
+        /// <summary>A bounded visual projection of the authoritative double-precision
+        /// Earth-Moon position. There is one continuous coordinate frame; metres are
+        /// scaled for the camera, never replaced with unrelated sector coordinates.
+        /// Ground geometry is NOT parented to ShuttleRoot. The lunar surface still
+        /// needs a separate physically walkable client before launch is enabled.</summary>
+        public static bool TryMoonFlightOffset(NetSpaceMission mission,out Vector3 offset)
+        {
+            offset=Vector3.zero;
+            if(mission==null||!mission.active||mission.from!="earth"||mission.to!="moon"||
+               mission.seconds!=1800||mission.position==null||mission.position.Length!=3||
+               double.IsNaN(mission.elapsed)||double.IsInfinity(mission.elapsed)||
+               mission.elapsed<0||mission.elapsed>mission.seconds||
+               Array.Exists(mission.position,v=>double.IsNaN(v)||double.IsInfinity(v)))return false;
+            double x=(mission.position[0]-149597870700d)/1000000d;
+            double z=mission.position[2]/1000000d;
+            if(Math.Abs(x)>1000||Math.Abs(z)>1000||Math.Abs(mission.position[1])>1000000000d)return false;
+            float altitude=2f*Mathf.Min((float)mission.elapsed,630f);
+            if(mission.elapsed>1620)altitude*=Mathf.Clamp01((float)((1800-mission.elapsed)/180d));
+            offset=new Vector3((float)x,altitude,(float)z);
+            return true;
+        }
+        public bool SyncMoonFlight(NetSpaceMission mission)
+        {
+            if(!ShuttleRoot||!TryMoonFlightOffset(mission,out var offset))return false;
+            ShuttleRoot.localPosition=groundedOrbiterLocal+offset;
+            return true;
         }
         Transform Box(string name,Vector3 pos,Vector3 size,Material material)
         {

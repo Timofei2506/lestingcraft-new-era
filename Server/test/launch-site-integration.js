@@ -118,6 +118,12 @@ try{
     assert(!JSON.stringify(checked).includes(a));assert(!JSON.stringify(checked).includes(b));
     p.send({type:'space_launch'});
     await p.wait(v=>v.type==='error'&&v.code==='space_launch');
-    console.log('PASS: two WebSocket clients ride, walk through hatch, climb, claim both seats and pass read-only preflight');
+    p.send({type:'space_flight_ready',protocol:1});
+    await p.wait(v=>v.type==='space_flight_ready'&&v.id===wp.id&&v.seatIndex===0);
+    q.send({type:'space_flight_ready',protocol:1});
+    await q.wait(v=>v.type==='space_flight_ready'&&v.id===wq.id&&v.seatIndex===1);
+    p.send({type:'space_ignite'});
+    await p.wait(v=>v.type==='error'&&v.code==='space_ignite'&&/not released/.test(v.message));
+    console.log('PASS: two WebSocket clients ride, walk, sit and preflight; unreleased flight cannot strand a room');
   }finally{clearInterval(heartbeat);}
 }finally{for(const c of sockets)c.ws.close();}

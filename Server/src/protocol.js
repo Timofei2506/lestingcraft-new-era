@@ -27,7 +27,7 @@ export function createConfig(value) {
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
   return {launchSite:value.rulesVersion>=RULES_VERSION?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=RULES_VERSION?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
-const safeMission=(m,now)=>{const v=missionView(m,now);return {active:true,from:v.from,to:v.to,seconds:v.seconds,phase:v.phase,elapsed:v.elapsed,position:v.position,autopilot:v.autopilot,landingBurn:v.landingBurn,crewCount:v.crew.length};};
+const safeMission=(m,now)=>{const v=missionView(m,now);return {active:true,from:v.from,to:v.to,seconds:v.seconds,phase:v.phase,elapsed:v.elapsed,position:v.position,autopilot:v.autopilot,landingBurn:v.landingBurn,crewCount:v.crew.length,ignitionAt:m.ignitionAt};};
 export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
 export function publicPeer(p) {return {id:p.id,name:p.name,x:p.x,y:p.y,z:p.z,yaw:p.yaw,weapon:p.weapon||0,offhand:p.offhand||0,equipment:p.equipment||Array(8).fill(0)};}
 export function consumeRate(peer, now) {
@@ -87,7 +87,7 @@ export class RoomState {
   welcome(peer,peers) {
     this.setMembers([...peers.filter(p=>p.id!==peer.id),peer]);
     const {wildlife,ownerKey,living,spaceVisit,spaceMission,launchLift,padVisited,shuttleSeats,...publicConfig}=this.config,save=this.savedPlayers.get(peer.playerKey)||null;
-    return {seats:(shuttleSeats||[null,null]).map(key=>[...this.members.values()].find(m=>m.playerKey===key)?.id||''),hatchOpen:!!this.config.launchHatch,lift:this.config.launchSite?.active?liftSnapshot(launchLift||emptyLift(),Date.now(),[...this.members.values()]):undefined,space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{active:true,dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
+    return {seats:(shuttleSeats||[null,null]).map(key=>[...this.members.values()].find(m=>m.playerKey===key)?.id||''),hatchOpen:!!this.config.launchHatch,lift:this.config.launchSite?.active?liftSnapshot(launchLift||emptyLift(),Date.now(),[...this.members.values()]):undefined,space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey,seatIndex:spaceMission.crew.indexOf(peer.playerKey)}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{active:true,dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
   }
   handle(peer,raw,now,persistEdit,persistPlayer=()=>{},persistFauna=()=>{}) {
     if(!consumeRate(peer,now))throw new Error('Rate limit');
@@ -137,14 +137,30 @@ export class RoomState {
       const next={...this.config,shuttleSeats:nextSeats};persistFauna(next);this.config=next;
       return {type:'space_seat',id:peer.id,seats:nextSeats.map(k=>[...this.members.values()].find(m=>m.playerKey===k)?.id||'')};
     }
-    // Pilot can ask the server for a read-only check, not an ignition command.
-    // Never install a mission until the Unity client implements shared ship flight.
+    // Explicit capability negotiation: the shipped ground-only client never sends
+    // this packet, so it cannot ignite a mission it cannot render or restore.
+    if(p.type==='space_flight_ready'){
+      const index=this.config.shuttleSeats?.indexOf(peer.playerKey)??-1;
+      if(p.protocol!==1||index<0||!this.config.launchSite?.active||
+         !peer.positioned||now-peer.lastPosition>1500||this.config.spaceMission)
+        throw Error('Flight client must be seated with a recent position');
+      peer.flightReadyAt=now;
+      return {type:'space_flight_ready',id:peer.id,seatIndex:index};
+    }
     if(p.type==='space_preflight'){
       if(!this.config.launchSite?.active||this.config.shuttleSeats?.[0]!==peer.playerKey)
         throw Error('Only the seated pilot can request preflight');
       return {type:'space_preflight',id:peer.id,...preflight(this.config,[...this.members.values()],now)};
     }
-    // Only trusted physical-boarding code may install a mission; no network launch packet.
+    if(p.type==='space_ignite'){
+      // Default-off server gate: not settable by createConfig/client packets. Enable
+      // only after the matching Unity flight and lunar landing client is released.
+      if(this.config.flightEnabled!==true)throw Error('Shared flight client is not released for this room');
+      const crew=this.config.shuttleSeats?.map(key=>[...this.members.values()].find(m=>m.playerKey===key));
+      if(!crew||crew.length!==2||crew.some(m=>!m||now-(m.flightReadyAt||0)>1500))
+        throw Error('Both crew clients must support and acknowledge shared flight');
+      return this.igniteVerifiedMoon(peer,now,persistFauna);
+    }
     // All flight updates below use the server clock and stable crew identities.
     if(['space_heartbeat','space_control','space_autopilot','space_land'].includes(p.type)) {
       const m=this.config.spaceMission,key=peer.playerKey;
@@ -158,7 +174,7 @@ export class RoomState {
       else nextMission=landMission(advanceMission(m,now),key,now);
       const next={...this.config,spaceMission:nextMission};
       persistFauna(next);this.config=next;
-      return {type:'space_mission',id:peer.id,space:safeMission(nextMission,now)};
+      return {type:'space_mission',id:peer.id,space:safeMission(nextMission,now),serverNow:now};
     }
     // A docked crew is not simultaneously standing in the terrestrial voxel world.
     // Old client packets cannot mine, trade with villagers or overwrite station inventory.
