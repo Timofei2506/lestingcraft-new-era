@@ -169,7 +169,7 @@ namespace LestingCraft.Gameplay
         }
         public void Checkpoint()
         {
-            if(Data==null||!World)return;
+            if(Data==null||!World||Game.IsSurfacePreview)return;
             if(Game.Online){if(!ServerRunEnded)Game.SendSave(Data.player);}
             else {Data.living=Living.Save();Data.blocks=World.ExportEdits();if(Animals)Data.wildlife=Animals.Save();LocalSave.Store(Data);}
         }

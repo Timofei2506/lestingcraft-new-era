@@ -40,6 +40,12 @@ namespace LestingCraft.Gameplay
         public WeatherSample(WeatherKind kind,float rain,float air,float clouds,float wind){Kind=kind;Precipitation=rain;Air=air;Clouds=clouds;Wind=wind;}
         public static WeatherSample At(int seed,int realm,double clock)
         {
+            // Surface-preview climates: no terrestrial rain or snow on other planets.
+            // These temperatures are environmental samples, not a finished life-support model.
+            if(realm==1)return new WeatherSample(WeatherKind.Clear,0,-110,0,0);
+            if(realm==2)return new WeatherSample(WeatherKind.Clear,0,-55,.08f,.22f);
+            if(realm==3)return new WeatherSample(WeatherKind.Cloudy,0,460,.90f,.16f);
+            if(realm==4)return new WeatherSample(WeatherKind.Clear,0,-85,0,0);
             double cycle=clock/1200.0;float hour=(float)(cycle-Math.Floor(cycle))*24;
             uint h=unchecked((uint)(seed^((int)(clock/180)*1597334677)^realm*381201));h^=h>>16;h*=2246822519u;h^=h>>13;
             float chance=(h&65535)/65535f;float baseline=18;

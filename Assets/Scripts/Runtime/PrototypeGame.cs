@@ -58,9 +58,23 @@ namespace LestingCraft.Runtime
         void ExecuteCommand(string text)
         {
             if(!Session)return;
+            if(text.StartsWith("/planet-preview ",StringComparison.OrdinalIgnoreCase))
+            {
+                if(online||IsSurfacePreview||!Session.Creative||!world||!world.Ready)
+                {Session.Notice="Осмотр планеты: только из готового офлайн-мира в творческом режиме";return;}
+                string name=text.Substring("/planet-preview ".Length).Trim().ToLowerInvariant();
+                int realm=name=="moon"?1:name=="mars"?2:name=="venus"?3:name=="mercury"?4:-1;
+                if(realm<0){Session.Notice="Укажите moon, mars, venus или mercury";return;}
+                int originalSeed=world.Seed;double originalClock=Session.Data.clock;
+                // QA-only instant inspection. This is NOT a space journey; save the origin before leaving.
+                Leave();IsSurfacePreview=true;
+                StartWorld(originalSeed,realm,false,null,originalClock);
+                Session.Notice="ОСМОТР ПЛАНЕТЫ: временный мир без сохранения. Это НЕ космический перелёт. Основное сохранение доступно через меню.";
+                return;
+            }
             if(text=="/shuttle-demo")
             {
-                if(online||!Session.Creative||!world||!world.Ready){Session.Notice="Демонстрация кабины: только в готовом офлайн-мире в творческом режиме";return;}
+                if(online||IsSurfacePreview||!Session.Creative||!world||!world.Ready){Session.Notice="Демонстрация кабины: только в готовом офлайн-мире Лестингии в творческом режиме";return;}
                 if(ShuttleDemo){Session.Notice="Демонстрационная кабина уже создана";return;}
                 var node=new GameObject("Space · walkable Discovery prototype");
                 node.transform.position=player.transform.position+player.transform.forward*6f;
@@ -92,6 +106,7 @@ namespace LestingCraft.Runtime
         GameUI ui;bool leaving,saveAcknowledged;
         public ShuttleInteriorPreview ShuttleDemo {get;private set;}
         public bool InWorld=>world;
+        public bool IsSurfacePreview {get;private set;}
         public bool Paused=>paused;
         public bool Online=>online;public string LocalPeerId=>selfId;
         public void SendAnimalHit(string animal,int weapon,int requestId){if(client&&client.Connected)client.Send(new NetPacket{type="animal_hit",animal=animal,weapon=weapon,requestId=requestId});}
@@ -108,12 +123,12 @@ namespace LestingCraft.Runtime
         public ushort SelectedBlock=>Session?Items.Get(Session.Inventory.Active.item).Block:(ushort)1;
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
         public void PlayOffline()
-        {if(busy||world)return;int seed=Array.IndexOf(Environment.GetCommandLineArgs(),"-lc-smoke-test")>=0?2506:Guid.NewGuid().GetHashCode();seedText=seed.ToString();StartWorld(seed,0,false);}
+        {if(busy||world)return;IsSurfacePreview=false;int seed=Array.IndexOf(Environment.GetCommandLineArgs(),"-lc-smoke-test")>=0?2506:Guid.NewGuid().GetHashCode();seedText=seed.ToString();StartWorld(seed,0,false);}
         public void ContinueOffline()
         {
             if(busy||world)return;resumeSave=LocalSave.Load();if(resumeSave==null){Fail("Сохранение повреждено");return;}
             if(resumeSave.campaign.runEnded){resumeSave=null;Fail("Хардкорный забег завершён. Создайте новый.");return;}
-            selectedMode=resumeSave.mode;StartWorld(resumeSave.seed,0,false);
+            IsSurfacePreview=false;selectedMode=resumeSave.mode;StartWorld(resumeSave.seed,0,false);
         }
         public void ToggleInventory()
         {
@@ -177,8 +192,9 @@ namespace LestingCraft.Runtime
         }
         void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0)
         {
-            // Only the main dimension exists. Saves from removed dimensions open in the main one; their blocks stay unused.
-            realm=0;
+            // Multiplayer and persisted worlds remain on Lestingia; planet inspection is explicitly offline and unsaved.
+            if(multiplayer)IsSurfacePreview=false;
+            realm=multiplayer||!IsSurfacePreview||realm<1||realm>4?0:realm;
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
             var camera=Camera.main;camera.backgroundColor=new Color(.42f,.66f,.78f);
             RenderSettings.fogColor=camera.backgroundColor;

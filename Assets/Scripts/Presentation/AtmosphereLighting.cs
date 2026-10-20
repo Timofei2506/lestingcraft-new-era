@@ -35,6 +35,29 @@ namespace LestingCraft.Presentation
             AmbientSky=Color.Lerp(new Color(.035f,.055f,.095f),Color.Lerp(daySky,dayHorizon,.62f)*.82f,Daylight);
             AmbientEquator=Color.Lerp(new Color(.018f,.026f,.043f),Color.Lerp(dayHorizon,new Color(.19f,.22f,.18f),.66f),Daylight);
             AmbientGround=Color.Lerp(new Color(.009f,.013f,.022f),new Color(.075f,.085f,.063f),Daylight);
+            if(realm==Dimension.Moon||realm==Dimension.Mercury)
+            {
+                // No blue atmosphere even in full sunlight. Black sky, exposed sun and low bounce light.
+                Zenith=new Color(.001f,.002f,.006f);Horizon=new Color(.002f,.003f,.008f);
+                SunColor=new Color(1,.96f,.86f);DirectIntensity=MoonIsPrimary?.02f:1.85f*daylightBeam;
+                AmbientSky=new Color(.018f,.022f,.031f);AmbientEquator=AmbientSky;AmbientGround=new Color(.009f,.011f,.014f);
+            }
+            else if(realm==Dimension.Mars)
+            {
+                Zenith=Color.Lerp(nightSky,new Color(.36f,.26f,.22f),Daylight);
+                Horizon=Color.Lerp(nightHorizon,new Color(.73f,.38f,.24f),Daylight);
+                SunColor=MoonIsPrimary?new Color(.25f,.26f,.35f):new Color(1,.72f,.49f);
+                DirectIntensity*=.77f;AmbientSky=Color.Lerp(AmbientSky,new Color(.53f,.30f,.23f),Daylight*.68f);
+                AmbientEquator=Color.Lerp(AmbientEquator,Horizon,Daylight*.52f);
+            }
+            else if(realm==Dimension.Venus)
+            {
+                Zenith=Color.Lerp(nightSky,new Color(.58f,.36f,.12f),Daylight);
+                Horizon=Color.Lerp(nightHorizon,new Color(.76f,.54f,.23f),Daylight);
+                SunColor=new Color(.99f,.74f,.44f);DirectIntensity*=.30f;
+                AmbientSky=Color.Lerp(AmbientSky,new Color(.58f,.40f,.23f),Daylight*.85f);
+                AmbientEquator=Color.Lerp(AmbientEquator,Horizon,Daylight*.75f);
+            }
         }
         public static AtmosphereLighting At(double clock,Dimension realm,float clouds,float precipitation)
             =>new AtmosphereLighting(clock,realm,Mathf.Clamp01(clouds),Mathf.Clamp01(precipitation));
