@@ -23,7 +23,9 @@ test('public room creation cannot create a flight or reveal passenger keys',()=>
 test('two members see one server-timed position, pilot alone steers; terrain packets blocked midflight',()=>{
  const {room,p,q}=fixture();let writes=0;
  let msg=send(room,q,{type:'space_heartbeat',now:ignition+900000},ignition+630000,()=>{writes++;});
- assert.equal(msg.space.phase,'cruise');assert.equal(msg.space.crewCount,2);assert(!JSON.stringify(msg).includes(passenger));
+ assert.equal(msg.space.phase,'cruise');assert.equal(msg.space.crewCount,2);
+ assert.equal(msg.space.from,'earth');assert.equal(msg.space.to,'moon');assert.equal(msg.space.seconds,MOON_SECONDS);
+ assert(!JSON.stringify(msg).includes(passenger));
  assert.equal(writes,1);assert.equal(room.config.spaceMission.position[0],msg.space.position[0]);
  assert.throws(()=>send(room,q,{type:'space_control',heading:[0,0,1]},ignition+631000),/pilot/);
  assert.throws(()=>send(room,p,{type:'position',x:0,y:52,z:0,yaw:0},ignition+631000),/In-flight crew/);

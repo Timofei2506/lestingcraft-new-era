@@ -9,9 +9,12 @@ namespace LestingCraft.Tests.EditMode
         [Test] public void RoomMissionSnapshotsParseWithoutConfusingTerrestrialPosition()
         {
             var welcome=JsonUtility.FromJson<NetPacket>(
-                "{\"type\":\"welcome\",\"space\":{\"active\":true,\"phase\":\"cruise\",\"position\":[149990000000.25,40,2],\"pilot\":true,\"crewCount\":2,\"elapsed\":720},\"stationRequestId\":3}");
+                "{\"type\":\"welcome\",\"space\":{\"active\":true,\"from\":\"earth\",\"to\":\"moon\",\"seconds\":1800,\"phase\":\"cruise\",\"position\":[149990000000.25,40,2],\"pilot\":true,\"crewCount\":2,\"elapsed\":720},\"stationRequestId\":3}");
             Assert.IsNotNull(welcome.space);
             Assert.AreEqual("cruise",welcome.space.phase);
+            Assert.AreEqual("earth",welcome.space.from);
+            Assert.AreEqual("moon",welcome.space.to);
+            Assert.AreEqual(1800,welcome.space.seconds);
             Assert.IsTrue(welcome.space.pilot);
             Assert.AreEqual(2,welcome.space.crewCount);
             Assert.AreEqual(149990000000.25,welcome.space.position[0],.1);

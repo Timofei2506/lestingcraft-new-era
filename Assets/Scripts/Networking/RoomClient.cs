@@ -15,7 +15,7 @@ namespace LestingCraft.Networking
     [Serializable] public class NetBlock {public int x,y,z,block;public long rev;}
     [Serializable] public class NetPlayer {public int offhand,weapon;public string id,name;public float x,y,z,yaw;public int[] equipment;}
     [Serializable] public class NetSpaceMission
-    {public bool active;public string phase;public double elapsed,landingBurn;public double[] position;public bool pilot,autopilot;public int crewCount;}
+    {public bool active;public string from,to,phase;public double elapsed,seconds,landingBurn;public double[] position;public bool pilot,autopilot;public int crewCount;}
     [Serializable] public class NetStationDock
     {public bool latched,hatchOpen;public long latchedAt;}
     [Serializable] public class NetStationVisit
