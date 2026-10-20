@@ -38,6 +38,34 @@ namespace LestingCraft.Runtime
         public bool ChatOpen {get;private set;}
         readonly Queue<string> chatLog=new Queue<string>();public int ChatRevision {get;private set;}public float ChatLastTime {get;private set;}float chatSentAt=-10;
         public string ChatLog=>string.Join("\n",chatLog);
+
+        // === FULL SPACE EXPANSION STATE ===
+        static readonly SpaceTargetKind[] TargetCycleOrder =
+        {
+            SpaceTargetKind.Moon,
+            SpaceTargetKind.OrbitalStation,
+            SpaceTargetKind.Mars,
+            SpaceTargetKind.Venus,
+            SpaceTargetKind.Mercury,
+            SpaceTargetKind.Earth
+        };
+        int selectedTargetIdx;
+        SpaceFlightVisuals spaceVisuals;
+        PlanetaryBossController activePlanetBoss;
+        SpaceNavigation offlineNav;
+        bool offlineFlightActive;
+        bool offlineWarp30x;
+        double offlineFlightCountdown;
+        bool offlineRetroBurning;
+        bool dockedAtStation;
+        int stationTradeRequestSeq = 1;
+        float lastReadyAckSent;
+
+        public SpaceTargetKind SelectedSpaceTarget => TargetCycleOrder[selectedTargetIdx % TargetCycleOrder.Length];
+        public bool DockedAtOrbitalStation => dockedAtStation;
+        public bool StationTradeOpen => ui && ui.IsStationTradeOpen;
+        public string CurrentPlanetTitle => world ? dimensions[Mathf.Clamp((int)world.Dimension, 0, dimensions.Length - 1)] : "Космос";
+
         public void OpenChat()
         {
             if(!world||paused)return;
@@ -67,10 +95,9 @@ namespace LestingCraft.Runtime
                 int realm=name=="moon"?1:name=="mars"?2:name=="venus"?3:name=="mercury"?4:-1;
                 if(realm<0){Session.Notice="Укажите moon, mars, venus или mercury";return;}
                 int originalSeed=world.Seed;double originalClock=Session.Data.clock;
-                // QA-only instant inspection. This is NOT a space journey; save the origin before leaving.
                 Leave();IsSurfacePreview=true;
                 StartWorld(originalSeed,realm,false,null,originalClock);
-                Session.Notice="ОСМОТР ПЛАНЕТЫ: временный мир без сохранения. Это НЕ космический перелёт. Основное сохранение доступно через меню.";
+                Session.Notice="ОСМОТР ПЛАНЕТЫ: временный мир без сохранения.";
                 return;
             }
             if(text=="/shuttle-demo")
@@ -100,31 +127,440 @@ namespace LestingCraft.Runtime
         public bool TradeOpen=>ui&&ui.TradeOpen;
         public bool EditingText=>ui&&ui.EditingText;
         public void OpenTrade(string actor){if(!Session||StoryLocked||Session.Vitals.dead||!Session.Living.TryTrader(actor,out var trader))return;Session.Notice="";Session.Living.Hint="";paused=true;SetCursor(false);ui.ShowTrade(actor);}
+        public void CloseStationTrade(){if(!ui)return;Resume();}
+
         bool paused=true,busy,online;
         VoxelWorld world; FirstPersonController player; RoomClient client;
         Vector3Int? sharedLaunchSite;LaunchSiteVisual launchVisual;string launchBlueprint;bool offlineShuttleSeat;
         NetShuttleLift liftSnapshot;bool hatchOpen;string[] shuttleSeats=new string[2];float lastLiftRequest=-10f;
         NetSpaceMission flightSnapshot;int flightSeatIndex=-1;float lastFlightHeartbeat,lastFlightControl;
-        public bool ShuttleSeated=>offlineShuttleSeat||flightSnapshot!=null&&flightSnapshot.active||
-            !string.IsNullOrEmpty(selfId)&&Array.Exists(shuttleSeats,id=>id==selfId);
+
+        public bool ShuttleSeated=>offlineShuttleSeat||offlineFlightActive||
+            (flightSnapshot!=null&&flightSnapshot.active)||
+            (!string.IsNullOrEmpty(selfId)&&Array.Exists(shuttleSeats,id=>id==selfId));
+
+        public bool InMoonFlight=>offlineFlightActive||(flightSnapshot!=null&&flightSnapshot.active);
+
+        public string BossHudStatus
+        {
+            get
+            {
+                if(!activePlanetBoss||activePlanetBoss.Defeated||!player)return "";
+                float d=Vector3.Distance(player.transform.position,activePlanetBoss.transform.position);
+                if(d>72f)return $"БОСС ПЛАНЕТЫ: {activePlanetBoss.BossName} ({d:0} м к северо-востоку)";
+                return $"★ {activePlanetBoss.BossName} · HP {activePlanetBoss.Health} / {activePlanetBoss.MaxHealth} ★";
+            }
+        }
+
+        public string SpaceHudStatus
+        {
+            get
+            {
+                string targetLabel=SpaceFlightVisuals.TargetNameRu(SelectedSpaceTarget);
+                if(dockedAtStation)
+                    return "ОРБИТАЛЬНАЯ СТАНЦИЯ · СТЫКОВКА АКТИВНА\nE у астронавтов — обмен · Z — невесомость (0g) · E у южного шлюза — в шаттл";
+                if(offlineFlightActive&&offlineNav!=null)
+                {
+                    if(offlineFlightCountdown>0)
+                        return $"ЦЕЛЬ: {targetLabel} · ОБРАТНЫЙ ОТСЧЁТ T-{offlineFlightCountdown:0.0} с\nПристегните ремни — двигатели выходят на тягу!";
+                    string st=offlineNav.Stage==FlightStage.Ascent?"Выведение на орбиту":
+                              offlineNav.Stage==FlightStage.Cruise?"Межпланетный перелёт":
+                              offlineNav.Stage==FlightStage.Approach?"Сближение (зажмите Space для торможения!)":
+                              "ГОТОВ К ПОСАДКЕ / СТЫКОВКЕ (нажмите L!)";
+                    return $"{targetLabel.ToUpperInvariant()} · {st}\n"+
+                           $"Время {offlineNav.Elapsed:0}/{offlineNav.Duration:0} с · Варп {(offlineWarp30x?"30×":"1×")} · Тормозной импульс {Math.Min(10.0,offlineNav.LandingBurn):0.0}/10 с\n"+
+                           "[T] Варп 30× · [P] Автопилот · Стрелки — курс · [Space] Тормоз · [L] Посадка";
+                }
+                if(flightSnapshot!=null&&flightSnapshot.active)
+                {
+                    return "КООП-ПОЛЁТ → "+SpaceFlightVisuals.TargetNameRu(SpaceFlightVisuals.ParseWireKey(flightSnapshot.to)).ToUpperInvariant()+
+                           " · "+flightSnapshot.phase+" · "+flightSnapshot.elapsed.ToString("0")+" / "+flightSnapshot.seconds.ToString("0")+" с\n"+
+                           $"Торможение: {flightSnapshot.landingBurn:0.0}/20 с · "+
+                           (flightSnapshot.pilot?"[T] Варп · [P] Автопилот · Стрелки — курс · [Space] Тормоз · [L] Посадка":"Вы — второй пилот экипажа");
+                }
+                if(ShuttleSeated)
+                {
+                    return $"КАБИНА ШАТТЛА · ЦЕЛЬ: {targetLabel.ToUpperInvariant()}\n"+
+                           "[G] Сменить цель · [R] ЗАПУСК РАКЕТЫ · [E] Встать с кресла";
+                }
+                return "";
+            }
+        }
+
+        public string MoonFlightStatus => SpaceHudStatus;
+
+        public void HandleSeatedShuttleInput(Keyboard keyboard)
+        {
+            if(keyboard==null||!Session)return;
+            if(!InMoonFlight)
+            {
+                if(keyboard.gKey.wasPressedThisFrame)
+                {
+                    selectedTargetIdx=(selectedTargetIdx+1)%TargetCycleOrder.Length;
+                    // Skip current body if already standing on it
+                    if(SelectedSpaceTarget!=SpaceTargetKind.OrbitalStation&&world&&(int)SelectedSpaceTarget==(int)world.Dimension)
+                        selectedTargetIdx=(selectedTargetIdx+1)%TargetCycleOrder.Length;
+                    Session.Notice="Выбрана цель полёта: "+SpaceFlightVisuals.TargetNameRu(SelectedSpaceTarget)+" · Нажмите [R] для пуска!";
+                }
+                if(keyboard.rKey.wasPressedThisFrame)
+                    RequestShuttlePreflight();
+                return;
+            }
+
+            if(online)
+            {
+                HandleMoonFlightControls(keyboard);
+                return;
+            }
+
+            // Offline full playable flight controls
+            if(keyboard.tKey.wasPressedThisFrame)
+            {
+                offlineWarp30x=!offlineWarp30x;
+                Session.Notice=offlineWarp30x?"Ускорение времени 30× включено":"Реальное время полёта 1×";
+            }
+            if(offlineNav==null||offlineFlightCountdown>0)return;
+
+            if(keyboard.pKey.wasPressedThisFrame&&offlineNav.Stage==FlightStage.Cruise)
+            {
+                offlineNav.SetAutopilot(!offlineNav.Autopilot);
+                Session.Notice=offlineNav.Autopilot?"Автопилот включён":"Ручное управление курсом";
+            }
+            offlineRetroBurning=keyboard.spaceKey.isPressed;
+            if(keyboard.lKey.wasPressedThisFrame)
+            {
+                if(SelectedSpaceTarget==SpaceTargetKind.OrbitalStation&&(offlineNav.Stage==FlightStage.Approach||offlineNav.Stage==FlightStage.LandingReady||offlineNav.Elapsed>120))
+                {
+                    CompleteOfflineStationDocking();
+                    return;
+                }
+                if(offlineNav.Land())
+                {
+                    CompleteOfflinePlanetLanding(SelectedSpaceTarget);
+                    return;
+                }
+                Session.Notice=offlineNav.LandingBurn<10.0
+                    ? $"Удерживайте [Space] для тормозного импульса ({offlineNav.LandingBurn:0.0} / 10.0 с) перед посадкой!"
+                    : "Подлетаем к точке посадки — включите [T] Варп 30× для быстрого подлёта!";
+            }
+        }
+
         public void RequestShuttlePreflight()
         {
-            if(offlineShuttleSeat&&!online&&Session){Session.Notice="Полёт ещё не готов: старт в офлайн-мире заблокирован";return;}
-            if(flightSnapshot!=null&&flightSnapshot.active||!ShuttleSeated||!online||!client||!client.Connected||!Session)return;
-            client.Send(new NetPacket{type="space_preflight"});
-            Session.Notice="Запрашиваю проверку экипажа. Запуск в этой сборке заблокирован.";
+            if(InMoonFlight||!ShuttleSeated||!Session||!world)return;
+            var target=SelectedSpaceTarget;
+            if(target!=SpaceTargetKind.OrbitalStation&&(int)target==(int)world.Dimension)
+            {
+                selectedTargetIdx=(selectedTargetIdx+1)%TargetCycleOrder.Length;
+                target=SelectedSpaceTarget;
+            }
+
+            if(!online)
+            {
+                BeginOfflineLaunch(target);
+                return;
+            }
+
+            if(!client||!client.Connected)return;
+            client.Send(new NetPacket{type="space_flight_ready",protocol=2});
+            if(target==SpaceTargetKind.OrbitalStation)
+                client.Send(new NetPacket{type="space_dock_station"});
+            else
+                client.Send(new NetPacket{type="space_ignite",target=SpaceFlightVisuals.TargetWireKey(target)});
+            Session.Notice="Запрос пуска к цели «"+SpaceFlightVisuals.TargetNameRu(target)+"» отправлен серверу (нужны оба пилота в креслах)…";
         }
+
+        void BeginOfflineLaunch(SpaceTargetKind target)
+        {
+            if(!launchVisual||!player||!world||!Session)return;
+            Session.Checkpoint();
+            SpaceDestination originDest=(SpaceDestination)Mathf.Clamp((int)world.Dimension,0,4);
+            SpaceVector startVec=SpaceMap.Center(originDest);
+            SpaceVector destVec=target==SpaceTargetKind.OrbitalStation
+                ? OrbitalStation.Port
+                : SpaceMap.Center((SpaceDestination)(int)target);
+            double tripSeconds=target==SpaceTargetKind.OrbitalStation?900.0:
+                               target==SpaceTargetKind.Moon||world.Dimension==Dimension.Moon?SpaceNavigation.MoonSeconds:
+                               2400.0;
+
+            offlineNav=new SpaceNavigation(startVec);
+            if(!offlineNav.Ignite(destVec,tripSeconds))
+            {
+                destVec=startVec+new SpaceVector(384400000.0,0,0);
+                offlineNav.Ignite(destVec,SpaceNavigation.MoonSeconds);
+            }
+            offlineNav.SetAutopilot(true);
+            offlineFlightCountdown=3.5;
+            offlineWarp30x=true;
+            offlineFlightActive=true;
+            offlineShuttleSeat=true;
+            if(launchVisual.Cabin)launchVisual.Cabin.SyncHatch(false);
+            if(player.transform.parent!=launchVisual.ShuttleRoot)
+                player.transform.SetParent(launchVisual.ShuttleRoot,true);
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            Session.Notice="Обратный отсчёт запущен! Цель: "+SpaceFlightVisuals.TargetNameRu(target)+" · [T] Варп 30× активен!";
+        }
+
+        void UpdateOfflineSpaceFlight(float dt)
+        {
+            if(!offlineFlightActive||offlineNav==null||!launchVisual)return;
+            if(offlineFlightCountdown>0)
+            {
+                offlineFlightCountdown-=dt;
+                launchVisual.SyncSpaceFlightOffset(0f,0.035f);
+                spaceVisuals=SpaceFlightVisuals.Ensure(null);
+                spaceVisuals.SetSpaceFlightActive(true,SelectedSpaceTarget,world.Dimension,FlightStage.Ascent,0.0,10.0,0.0,false,launchVisual.ShuttleRoot,player?player.transform:null);
+                if(offlineFlightCountdown<=0)
+                    Session.Notice="ПОЕХАЛИ! Отрыв от стартового стола — выход на опорную орбиту!";
+                return;
+            }
+
+            double simDt=dt*(offlineWarp30x?30.0:1.0);
+            var kb=Keyboard.current;
+            double vSteer=kb!=null?((kb.upArrowKey.isPressed?0.35:0)-(kb.downArrowKey.isPressed?0.35:0)):0;
+            double hSteer=kb!=null?((kb.rightArrowKey.isPressed?0.35:0)-(kb.leftArrowKey.isPressed?0.35:0)):0;
+            SpaceVector manualDir=new SpaceVector(1.0,vSteer,hSteer).Normalized;
+
+            // Step in small chunks so stage boundaries & braking integrate accurately under 30x warp
+            int subSteps=offlineWarp30x?10:1;
+            double stepDt=simDt/subSteps;
+            bool allowAutoAssistBurn=offlineRetroBurning||offlineNav.Stage==FlightStage.Approach||offlineNav.Stage==FlightStage.LandingReady;
+            for(int i=0;i<subSteps;i++)
+            {
+                if(offlineNav.Stage==FlightStage.Approach&&offlineNav.Autopilot)
+                    offlineNav.Step(stepDt,manualDir,offlineRetroBurning?1.0:0.45);
+                else if(offlineNav.Stage==FlightStage.LandingReady&&offlineRetroBurning&&offlineNav.LandingBurn<10.5)
+                    offlineNav.Step(stepDt,manualDir,1.0);
+                else
+                    offlineNav.Step(stepDt,manualDir,offlineRetroBurning?1.0:0.0);
+            }
+
+            double p01=Math.Max(0.0,Math.Min(1.0,offlineNav.Elapsed/Math.Max(1.0,offlineNav.Duration)));
+            float alt=p01<0.32?Mathf.Lerp(0f,1350f,(float)(p01/0.32)):
+                      p01>0.88?Mathf.Lerp(1350f,18f,(float)((p01-0.88)/0.12)):1350f;
+            float shake=offlineNav.Stage==FlightStage.Ascent?0.045f:(offlineRetroBurning?0.025f:0.006f);
+            launchVisual.SyncSpaceFlightOffset(alt,shake);
+
+            double speed=offlineNav.Stage==FlightStage.LandingReady?12.0:(offlineNav.Stage==FlightStage.Approach?840.0:7850.0);
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.SetSpaceFlightActive(true,SelectedSpaceTarget,world.Dimension,offlineNav.Stage,p01,alt,speed,allowAutoAssistBurn&&offlineRetroBurning,launchVisual.ShuttleRoot,player?player.transform:null);
+        }
+
+        void CompleteOfflinePlanetLanding(SpaceTargetKind target)
+        {
+            if(!world||!player||!Session)return;
+            Dimension targetDim=(Dimension)Mathf.Clamp((int)target,0,4);
+            player.transform.SetParent(null,true);
+            offlineFlightActive=false;
+            offlineNav=null;
+            offlineRetroBurning=false;
+            dockedAtStation=false;
+            player.ZeroGActive=false;
+
+            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            if(spaceVisuals)spaceVisuals.DespawnOrbitalStationInterior();
+
+            // Persist all blocks built on previous planet before switching worlds!
+            Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
+            Session.Data.activeDimension=(int)targetDim;
+            Session.Data.dockedAtStation=false;
+            dimension=(int)targetDim;
+
+            if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
+            world.SwitchPlanet(targetDim,Session.Data.blocks);
+
+            Vector3Int landingSite=targetDim==Dimension.Lestingia&&Session.Data.launchPlaced
+                ? LaunchSiteVisual.OfflineSite(world.Seed,Session.Data.launchX,Session.Data.launchZ,Dimension.Lestingia)
+                : targetDim==Dimension.Lestingia
+                    ? LaunchSiteVisual.OfflineSite(world.Seed,LaunchSiteVisual.PadX,LaunchSiteVisual.PadZ,Dimension.Lestingia)
+                    : LaunchSiteVisual.OfflineSite(world.Seed,0,0,targetDim);
+
+            sharedLaunchSite=landingSite;
+            launchVisual=LaunchSiteVisual.Create(world.transform,landingSite,world.Seed,targetDim);
+            launchVisual.Cabin.SyncHatch(true);
+            hatchOpen=true;
+
+            double sx,sy,sz;
+            VerticalShuttleWalk.Seat(0,out sx,out sy,out sz);
+            Vector3 cockpitWorld=launchVisual.Cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy,(float)sz));
+            player.TeleportTo(cockpitWorld,true);
+            offlineShuttleSeat=true;
+
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.SetSpaceFlightActive(false,target,targetDim,FlightStage.Landed,1.0,0.0,0.0,false,launchVisual.ShuttleRoot,player.transform);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(targetDim,player,Camera.main);
+            SpawnBossIfApplicable(targetDim);
+
+            Session.Checkpoint();
+            Session.Notice="Посадка на «"+dimensions[(int)targetDim]+"» успешна! Нажмите [E], чтобы встать с кресла и выйти через шлюз!";
+        }
+
+        void CompleteOfflineStationDocking()
+        {
+            if(!player||!world||!Session)return;
+            player.transform.SetParent(null,true);
+            offlineFlightActive=false;
+            offlineNav=null;
+            offlineShuttleSeat=false;
+            dockedAtStation=true;
+            player.ZeroGActive=false;
+            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            Vector3 stationOrigin=new Vector3(0f,320f,0f);
+            spaceVisuals.SpawnOrbitalStationInterior(world.Seed,stationOrigin);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(world.Dimension,player,Camera.main);
+            player.TeleportTo(spaceVisuals.StationSpawnWorldPos,true);
+            Session.Data.dockedAtStation=true;
+            Session.Checkpoint();
+            Session.Notice="Стыковка с Орбитальной станцией завершена! Подойдите к астронавтам и нажмите [E] для обмена (Z — 0g)";
+        }
+
+        public bool TryInteractStation()
+        {
+            if(!dockedAtStation||!spaceVisuals||!player||!Session)return false;
+            int role=spaceVisuals.GetNearestAstronautRole(player.transform.position,4.2f);
+            if(role>=0)
+            {
+                paused=true;
+                SetCursor(false);
+                ui.ShowStationTrade(role);
+                return true;
+            }
+            if(Vector3.Distance(player.transform.position,spaceVisuals.StationReturnHatchWorldPos)<3.6f)
+            {
+                if(online&&client&&client.Connected)
+                {
+                    client.Send(new NetPacket{type="space_depart_station"});
+                    return true;
+                }
+                DepartStationToShuttle();
+                return true;
+            }
+            return false;
+        }
+
+        void DepartStationToShuttle()
+        {
+            dockedAtStation=false;
+            if(player)player.ZeroGActive=false;
+            if(spaceVisuals)spaceVisuals.DespawnOrbitalStationInterior();
+            if(world&&player)
+            {
+                if(!sharedLaunchSite.HasValue)
+                    sharedLaunchSite=LaunchSiteVisual.OfflineSite(world.Seed,LaunchSiteVisual.PadX,LaunchSiteVisual.PadZ,world.Dimension);
+                if(!launchVisual)
+                    launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,world.Dimension);
+                double sx,sy,sz;
+                VerticalShuttleWalk.Seat(0,out sx,out sy,out sz);
+                Vector3 seatWorld=launchVisual.Cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy,(float)sz));
+                player.TeleportTo(seatWorld,true);
+                offlineShuttleSeat=true;
+                spaceVisuals.ApplyPlanetAtmosphereAndGravity(world.Dimension,player,Camera.main);
+                Session.Data.dockedAtStation=false;
+                Session.Checkpoint();
+                Session.Notice="Вы вернулись в кабину шаттла на орбите. Выберите любую планету [G] и нажмите [R] для пуска!";
+            }
+        }
+
+        public void ExecuteStationTrade(int astronautRole)
+        {
+            if(!Session||!dockedAtStation)return;
+            if(online&&client&&client.Connected)
+            {
+                int reqId=stationTradeRequestSeq++;
+                client.Send(new NetPacket{type="station_trade",role=astronautRole,requestId=reqId});
+                Session.Notice="Запрос обмена отправлен на сервер орбитальной станции…";
+                return;
+            }
+            var dock=spaceVisuals?spaceVisuals.ActiveStationDock:null;
+            SpaceVector nearPos=StationAstronauts.Position(astronautRole);
+            if(dock!=null&&StationAstronauts.TryTrade(dock,true,astronautRole,nearPos,Session.Inventory,out var updated))
+            {
+                Session.Data.player.inventory=updated;
+                Session.Inventory.revision++;
+                var offer=StationAstronauts.Offer(astronautRole);
+                Session.Notice="Обмен выполнен: получено "+offer.OutputCount+" × "+Items.Get(offer.Output).Name+"!";
+                Session.Checkpoint();
+            }
+            else
+            {
+                Session.Notice="Недостаточно ресурсов в инвентаре или нет свободного слота.";
+            }
+        }
+
+        void SpawnBossIfApplicable(Dimension dim)
+        {
+            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            if(!world||!Session)return;
+            bool defeated=(Session.Data.defeatedPlanetBossMask&(1<<(int)dim))!=0;
+            Vector3 anchor=sharedLaunchSite.HasValue?(Vector3)sharedLaunchSite.Value:Vector3.zero;
+            activePlanetBoss=PlanetaryBossController.SpawnForPlanet(world.transform,dim,world,world.Seed,defeated,anchor);
+        }
+
+        public bool TryAttackPlanetaryBoss(Ray aimRay)
+        {
+            if(!activePlanetBoss||activePlanetBoss.Defeated||!Session)return false;
+            int activeItem=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
+            int weaponDmg=Weapons.Has(activeItem)?Weapons.Get(activeItem).Damage:(Items.IsPick(activeItem)?9:12);
+            if(!activePlanetBoss.TryHitBoss(aimRay,7.5f,weaponDmg,out bool killedNow,out var drops))return false;
+            if(killedNow)
+            {
+                Session.Data.defeatedPlanetBossMask|=1<<(int)activePlanetBoss.BossDimension;
+                foreach(var d in drops)
+                {
+                    if(!Session.Inventory.Add(d.item,d.count)&&Session.Living)
+                        Session.Living.SpawnDrop(d.item,d.count,0,activePlanetBoss.ArenaPosition+Vector3.up*1.5f,Vector3.up*2.5f);
+                }
+                Session.Notice="ПОБЕДА! "+activePlanetBoss.BossName+" повержен! Получены редкие алмазы и кристаллы!";
+                activePlanetBoss=null;
+                Session.Checkpoint();
+            }
+            else
+            {
+                Session.Notice=$"Удар по боссу «{activePlanetBoss.BossName}»! Осталось HP: {activePlanetBoss.Health}/{activePlanetBoss.MaxHealth}";
+            }
+            return true;
+        }
+
+        public void QuickPlaceCosmodromeNearPlayer()
+        {
+            if(!world||!player||!Session||online)return;
+            int px=Mathf.Clamp(Mathf.RoundToInt(player.transform.position.x)+20,-280,280);
+            int pz=Mathf.Clamp(Mathf.RoundToInt(player.transform.position.z)+110,-220,280);
+            var site=LaunchSiteVisual.OfflineSite(world.Seed,px,pz,world.Dimension);
+            SetLaunchSite(site);
+            if(world.Dimension==Dimension.Lestingia)
+            {
+                Session.Data.launchPlaced=true;
+                Session.Data.launchX=px;
+                Session.Data.launchZ=pz;
+            }
+            Session.Checkpoint();
+            Session.Notice="Космодром развёрнут прямо перед вами! Поднимитесь по эстакаде к лифту шаттла.";
+        }
+
         public void HandleMoonFlightControls(Keyboard keyboard)
         {
             if(keyboard==null||!InMoonFlight||!flightSnapshot.pilot||!client||!client.Connected)return;
+            if(keyboard.tKey.wasPressedThisFrame)
+                client.Send(new NetPacket{type="space_warp",warp=true});
             if(keyboard.pKey.wasPressedThisFrame&&flightSnapshot.phase=="cruise")
                 client.Send(new NetPacket{type="space_autopilot",on=!flightSnapshot.autopilot});
-            if(keyboard.lKey.wasPressedThisFrame&&flightSnapshot.phase=="landing-ready")
-                client.Send(new NetPacket{type="space_land"});
-            if(Time.unscaledTime-lastFlightControl<.5f)return;
+            if(keyboard.lKey.wasPressedThisFrame&&(flightSnapshot.phase=="landing-ready"||flightSnapshot.phase=="landed"))
+            {
+                if(flightSnapshot.phase=="landed")
+                    client.Send(new NetPacket{type="space_complete_landing"});
+                else
+                {
+                    client.Send(new NetPacket{type="space_land"});
+                    client.Send(new NetPacket{type="space_complete_landing"});
+                }
+            }
+            if(Time.unscaledTime-lastFlightControl<.35f)return;
             bool manual=keyboard.leftArrowKey.isPressed||keyboard.rightArrowKey.isPressed||
                 keyboard.upArrowKey.isPressed||keyboard.downArrowKey.isPressed;
-            bool burn=flightSnapshot.phase=="approach"&&keyboard.spaceKey.isPressed;
+            bool burn=(flightSnapshot.phase=="approach"||flightSnapshot.phase=="landing-ready")&&keyboard.spaceKey.isPressed;
             if(!manual&&!burn)return;
             lastFlightControl=Time.unscaledTime;
             double vertical=(keyboard.upArrowKey.isPressed?0.35:0)-(keyboard.downArrowKey.isPressed?0.35:0);
@@ -132,6 +568,7 @@ namespace LestingCraft.Runtime
             client.Send(new NetPacket{type="space_control",heading=new[]{1d,vertical,lateral},
                 landingThrottle=burn?1d:0d});
         }
+
         public LaunchSiteVisual LaunchSite=>launchVisual;
         long revision; float lastPosition,previousYaw,lastHeartbeat;Vector3 previousPosition;bool sentPosition;int previousEquipment;
         Material avatarMaterial;
@@ -144,9 +581,7 @@ namespace LestingCraft.Runtime
         public void SendAnimalHit(string animal,int weapon,int requestId){if(client&&client.Connected)client.Send(new NetPacket{type="animal_hit",animal=animal,weapon=weapon,requestId=requestId});}
         void ApplyHatch(bool open){hatchOpen=open;if(launchVisual&&launchVisual.Cabin)launchVisual.Cabin.SyncHatch(open);}
         void ApplySeats(string[] seats){if(seats!=null&&seats.Length==2)shuttleSeats=seats;}
-        // A flight snapshot moves the approved hull. Local and remote occupants are
-        // children of that same solid hull, not independently teleported between sectors.
-        // This path stays unreachable in public rooms until the Moon surface is ready.
+
         void ApplyMoonFlight(NetSpaceMission mission)
         {
             if(mission==null||!mission.active||!sharedLaunchSite.HasValue||!player||!world)return;
@@ -154,8 +589,7 @@ namespace LestingCraft.Runtime
             if(claimed>=0)flightSeatIndex=claimed;
             if(flightSeatIndex<0||flightSeatIndex>=2)return;
             if(!launchVisual)
-                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed);
-            if(!LaunchSiteVisual.TryMoonFlightOffset(mission,out var ignored))return;
+                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,world.Dimension);
             if(player.transform.parent!=launchVisual.ShuttleRoot)
                 player.transform.SetParent(launchVisual.ShuttleRoot,true);
             for(int i=0;i<shuttleSeats.Length;i++)
@@ -170,9 +604,19 @@ namespace LestingCraft.Runtime
             mission.pilot=flightSnapshot!=null?flightSnapshot.pilot:flightSeatIndex==0;
             mission.seatIndex=flightSeatIndex;
             flightSnapshot=mission;
+
+            double p01=mission.seconds>0?Math.Max(0d,Math.Min(1d,mission.elapsed/mission.seconds)):0d;
+            FlightStage st=mission.phase=="ascent"?FlightStage.Ascent:
+                           mission.phase=="cruise"?FlightStage.Cruise:
+                           mission.phase=="approach"?FlightStage.Approach:
+                           mission.phase=="landed"?FlightStage.Landed:FlightStage.LandingReady;
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.SetSpaceFlightActive(true,SpaceFlightVisuals.ParseWireKey(mission.to),world.Dimension,st,p01,launchVisual.ShuttleRoot.localPosition.y,5500.0,mission.landingBurn>0,launchVisual.ShuttleRoot,player.transform);
+
             if(Session&&previous!=mission.phase)
-                Session.Notice="Общий корабль · "+mission.phase+" · "+mission.elapsed.ToString("0")+" / 1800 с";
+                Session.Notice="Кооп-корабль · "+mission.phase+" · "+mission.elapsed.ToString("0")+" / "+mission.seconds.ToString("0")+" с";
         }
+
         void ApplyFlightCrewJoin(NetPacket packet)
         {
             if(flightSnapshot==null||!flightSnapshot.active||!launchVisual||
@@ -190,6 +634,7 @@ namespace LestingCraft.Runtime
                 remote.transform.localPosition=new Vector3((float)sx,(float)sy,(float)sz);
             }
         }
+
         void ApplyLift(NetShuttleLift state)
         {
             if(state==null||!state.active)return;
@@ -197,7 +642,7 @@ namespace LestingCraft.Runtime
             if(launchVisual&&launchVisual.Cabin)
                 launchVisual.Cabin.SyncLift(state,player,selfId);
         }
-        /// <summary>E near the real lift asks the room, never moves the lift locally.</summary>
+
         public bool TryInteractLaunch()
         {
             if(!online)return TryInteractOfflineLaunch();
@@ -210,18 +655,19 @@ namespace LestingCraft.Runtime
             for(int i=0;i<VerticalShuttleWalk.SeatCount;i++)
             {
                 double sx,sy,sz;VerticalShuttleWalk.Seat(i,out sx,out sy,out sz);
-                if(Mathf.Abs(local.x-(float)sx)>1f||Mathf.Abs(local.z-(float)sz)>1f||
-                   Mathf.Abs(local.y-(float)sy)>1.3f)continue;
+                if(Mathf.Abs(local.x-(float)sx)>1.1f||Mathf.Abs(local.z-(float)sz)>1.1f||
+                   Mathf.Abs(local.y-(float)sy)>1.4f)continue;
                 if(Time.unscaledTime-lastLiftRequest<.4f)return true;
                 if(!string.IsNullOrEmpty(shuttleSeats[i])&&shuttleSeats[i]!=selfId)
                 {Session.Notice="Это место занято вторым игроком";return true;}
                 string command=shuttleSeats[i]==selfId?"stand":"sit";
                 lastLiftRequest=Time.unscaledTime;
                 client.Send(new NetPacket{type="space_seat",action=command,index=i});
-                Session.Notice=command=="sit"?"Запрос места в кабине":"Встать с места";
+                if(command=="sit")client.Send(new NetPacket{type="space_flight_ready",protocol=2});
+                Session.Notice=command=="sit"?"Вы заняли кресло пилота · [G] Цель · [R] Пуск!":"Вы встали с кресла";
                 return true;
             }
-            if(Mathf.Abs(local.x+9)<3.5f&&Mathf.Abs(local.z-3)<1.3f&&Mathf.Abs(local.y-28)<2)
+            if(Mathf.Abs(local.x+9)<3.5f&&Mathf.Abs(local.z-3)<1.5f&&Mathf.Abs(local.y-28)<2.2f)
             {
                 if(Time.unscaledTime-lastLiftRequest<.4f)return true;
                 lastLiftRequest=Time.unscaledTime;
@@ -229,11 +675,11 @@ namespace LestingCraft.Runtime
                 Session.Notice=hatchOpen?"Запрос закрытия люка":"Запрос открытия люка";
                 return true;
             }
-            if(Mathf.Abs(local.x-VerticalShuttleWalk.LiftX)>1.5f||Mathf.Abs(local.z-3)>1.5f)return false;
+            if(Mathf.Abs(local.x-VerticalShuttleWalk.LiftX)>1.6f||Mathf.Abs(local.z-3)>1.6f)return false;
             if(Time.unscaledTime-lastLiftRequest<.4f)return true;
             if(cabin.Lift.IsMoving){Session.Notice="Лифт движется — дождитесь остановки";return true;}
-            bool ground=Mathf.Abs(local.y-VerticalShuttleWalk.LiftGroundY)<1.15f;
-            bool top=Mathf.Abs(local.y-(VerticalShuttleWalk.LiftGroundY+VerticalShuttleWalk.LiftTravel))<1.15f;
+            bool ground=Mathf.Abs(local.y-VerticalShuttleWalk.LiftGroundY)<1.25f;
+            bool top=Mathf.Abs(local.y-(VerticalShuttleWalk.LiftGroundY+VerticalShuttleWalk.LiftTravel))<1.25f;
             if(!ground&&!top)return false;
             string action;
             if(liftSnapshot.occupied)
@@ -247,46 +693,49 @@ namespace LestingCraft.Runtime
             else {Session.Notice="Войдите на платформу лифта";return true;}
             lastLiftRequest=Time.unscaledTime;client.Send(new NetPacket{type="space_lift",action=action});
             Session.Notice=action=="up"?"Запрос подъёма лифта":action=="down"?"Запрос спуска лифта":
-                action=="exit"?"Выход с лифта — проходите пешком":"Возврат пустого лифта для следующего игрока";
+                action=="exit"?"Выход с лифта — проходите пешком":"Возврат пустого лифта";
             return true;
         }
-        // The offline creative world uses the same colliding cabin and 25 m
-        // mechanical lift, but never fabricates a server flight or a Moon arrival.
+
+        // Works across ALL offline modes (Survival, Hardcore, Creative, Story)!
         bool TryInteractOfflineLaunch()
         {
-            if(!player||!launchVisual||!launchVisual.Cabin||!Session||!Session.Creative)return false;
+            if(!player||!launchVisual||!launchVisual.Cabin||!Session)return false;
             var cabin=launchVisual.Cabin;
             var local=cabin.transform.InverseTransformPoint(player.transform.position);
             for(int i=0;i<VerticalShuttleWalk.SeatCount;i++)
             {
                 double sx,sy,sz;VerticalShuttleWalk.Seat(i,out sx,out sy,out sz);
-                if(Mathf.Abs(local.x-(float)sx)>1f||Mathf.Abs(local.z-(float)sz)>1f||Mathf.Abs(local.y-(float)sy)>1.3f)continue;
+                if(Mathf.Abs(local.x-(float)sx)>1.15f||Mathf.Abs(local.z-(float)sz)>1.15f||Mathf.Abs(local.y-(float)sy)>1.45f)continue;
                 offlineShuttleSeat=!offlineShuttleSeat;
-                Session.Notice=offlineShuttleSeat?"Вы в кабине. Полёт пока заблокирован. E — встать.":"Вы встали с кресла";
+                Session.Notice=offlineShuttleSeat
+                    ? "Вы в кресле пилота! [G] Выбрать цель ("+SpaceFlightVisuals.TargetNameRu(SelectedSpaceTarget)+") · [R] ЗАПУСК РАКЕТЫ · [E] Встать"
+                    : "Вы встали с кресла пилота";
                 return true;
             }
-            if(Mathf.Abs(local.x+9)<3.5f&&Mathf.Abs(local.z-3)<1.3f&&Mathf.Abs(local.y-28)<2)
-            {cabin.SyncHatch(!cabin.HatchOpen);Session.Notice=cabin.HatchOpen?"Люк открыт — проходите пешком":"Люк закрыт";return true;}
-            if(Mathf.Abs(local.x-VerticalShuttleWalk.LiftX)>1.5f||Mathf.Abs(local.z-3)>1.5f)return false;
+            if(Mathf.Abs(local.x+9)<3.5f&&Mathf.Abs(local.z-3)<1.5f&&Mathf.Abs(local.y-28)<2.2f)
+            {cabin.SyncHatch(!cabin.HatchOpen);Session.Notice=cabin.HatchOpen?"Шлюзовой люк открыт — проходите к шахте кабины (Space — подъём по лестнице)":"Шлюзовой люк герметизирован";return true;}
+            if(Mathf.Abs(local.x-VerticalShuttleWalk.LiftX)>1.6f||Mathf.Abs(local.z-3)>1.6f)return false;
             if(cabin.Lift.IsMoving){Session.Notice="Лифт движется";return true;}
-            bool ground=Mathf.Abs(local.y-VerticalShuttleWalk.LiftGroundY)<1.15f;
-            bool top=Mathf.Abs(local.y-(VerticalShuttleWalk.LiftGroundY+VerticalShuttleWalk.LiftTravel))<1.15f;
+            bool ground=Mathf.Abs(local.y-VerticalShuttleWalk.LiftGroundY)<1.25f;
+            bool top=Mathf.Abs(local.y-(VerticalShuttleWalk.LiftGroundY+VerticalShuttleWalk.LiftTravel))<1.25f;
             if(!ground&&!top)return false;
             if(cabin.Lift.Occupied)
-            {cabin.Lift.Exit();Session.Notice="Выйдите с платформы пешком";return true;}
+            {cabin.Lift.Exit();Session.Notice="Выйдите с платформы к люку шаттла";return true;}
             bool ok=ground&&cabin.Lift.State==ElevatorState.Ground?cabin.RequestUp(player):
                 top&&cabin.Lift.State==ElevatorState.Top?cabin.RequestDown(player):
                 ground&&cabin.Lift.State==ElevatorState.Top&&cabin.RecallEmptyLift();
-            Session.Notice=ok?"Лифт в пути — стойте на платформе":"Войдите на свободную платформу";
+            Session.Notice=ok?"Лифт поднимается к шлюзу орбитального корабля…":"Встаньте в центр платформы лифта";
             return true;
         }
+
         public bool IsConnecting=>busy;
         public string LastError=>lastError;
         public string ServerLabel=>endpoint.Replace("https://","").Replace("http://","");
         public string WorldSeed=>seedText;
         public string PlayerName {get=>playerName;set=>playerName=value;}
         public string RoomCode {get=>code;set=>code=value.Trim();}
-        public string WorldLabel=>world?dimensions[(int)world.Dimension]+"  /  SEED "+world.Seed+
+        public string WorldLabel=>world?dimensions[Mathf.Clamp((int)world.Dimension,0,dimensions.Length-1)]+"  /  SEED "+world.Seed+
             (sharedLaunchSite.HasValue?"  ·  Космодром X="+sharedLaunchSite.Value.x+" Z="+sharedLaunchSite.Value.z:""):"";
         public int PlayerCount=>avatars.Count+1;
         public int ChunkCount=>world?world.LoadedChunks:0;
@@ -294,20 +743,19 @@ namespace LestingCraft.Runtime
         public bool LaunchPlacementArmed=>!string.IsNullOrEmpty(launchBlueprint);
         public void ArmLaunchPlacement(string blueprint)
         {
-            if(Session==null||!Session.Creative||IsSurfacePreview||
-               (blueprint!="pad"&&blueprint!="shuttle"))return;
+            if(Session==null||IsSurfacePreview||(blueprint!="pad"&&blueprint!="shuttle"))return;
             launchBlueprint=blueprint;
-            Session.Notice="Чертёж комплекса: ПКМ по земле в начале будущей рампы (стол и шаттл ставятся вместе).";
+            Session.Notice="Чертёж космодрома: ПКМ по земле в начале будущей эстакады (или нажмите F9).";
         }
         public void PlaceLaunchAt(Vector3Int ground)
         {
-            if(!LaunchPlacementArmed||!Session||!Session.Creative||!world||!world.Ready||IsSurfacePreview)return;
-            int natural=TerrainGenerator.Height(ground.x,ground.z,world.Seed,Dimension.Lestingia);
-            if(Mathf.Abs(ground.y-natural)>2||Mathf.Abs(player.transform.position.y-(natural+1))>6)
+            if(!LaunchPlacementArmed||!Session||!world||!world.Ready||IsSurfacePreview)return;
+            int natural=TerrainGenerator.Height(ground.x,ground.z,world.Seed,world.Dimension);
+            if(Mathf.Abs(ground.y-natural)>3||Mathf.Abs(player.transform.position.y-(natural+1))>7)
             {Session.Notice="Выберите землю вблизи персонажа, не постройку и не дерево";return;}
             int x=ground.x+20,z=ground.z+110;
             if(x < -320||x > 320||z < -260||z > 320)
-            {Session.Notice="Недостаточно места для платформы и рампы: выберите другое место";return;}
+            {Session.Notice="Недостаточно места для платформы и эстакады: выберите другое место";return;}
             if(online)
             {
                 if(!client||!client.Connected){Session.Notice="Нет соединения с комнатой";return;}
@@ -316,11 +764,10 @@ namespace LestingCraft.Runtime
             }
             else
             {
-                var site=LaunchSiteVisual.OfflineSite(world.Seed,x,z);
-                if(site.y<40||site.y>140){Session.Notice="Высота для безопасной платформы здесь недоступна";return;}
+                var site=LaunchSiteVisual.OfflineSite(world.Seed,x,z,world.Dimension);
                 SetLaunchSite(site);
-                Session.Data.launchPlaced=true;Session.Data.launchX=x;Session.Data.launchZ=z;
-                Session.Checkpoint();Session.Notice="Общий чертёж установлен: идите по рампе к шаттлу. Полёт пока заблокирован.";
+                if(world.Dimension==Dimension.Lestingia){Session.Data.launchPlaced=true;Session.Data.launchX=x;Session.Data.launchZ=z;}
+                Session.Checkpoint();Session.Notice="Космодром установлен! Идите по эстакаде к лифту шаттла (G — цель, R — пуск).";
             }
             launchBlueprint=null;
         }
@@ -328,15 +775,10 @@ namespace LestingCraft.Runtime
         {
             if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
             sharedLaunchSite=site;offlineShuttleSeat=false;
-            // A relocated pad must not retain the old hatch/lift/cockpit state.
             hatchOpen=false;liftSnapshot=null;shuttleSeats=new string[2];
         }
         public bool HasSharedLaunchSite=>sharedLaunchSite.HasValue;
         public Vector3Int? LaunchSitePosition=>sharedLaunchSite;
-        public bool InMoonFlight=>flightSnapshot!=null&&flightSnapshot.active;
-        public string MoonFlightStatus=>flightSnapshot==null?"":
-            "ЛУНА · "+flightSnapshot.phase+" · "+flightSnapshot.elapsed.ToString("0")+" / 1800 с\n"+
-            (flightSnapshot.pilot?"P — автопилот · стрелки — курс · Space — тормоз · L — посадка":"Вы — второй член экипажа");
         public ushort SelectedBlock=>Session?Items.Get(Session.Inventory.Active.item).Block:(ushort)1;
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
         public void PlayOffline()
@@ -345,12 +787,12 @@ namespace LestingCraft.Runtime
         {
             if(busy||world)return;resumeSave=LocalSave.Load();if(resumeSave==null){Fail("Сохранение повреждено");return;}
             if(resumeSave.campaign.runEnded){resumeSave=null;Fail("Хардкорный забег завершён. Создайте новый.");return;}
-            IsSurfacePreview=false;selectedMode=resumeSave.mode;StartWorld(resumeSave.seed,0,false);
+            IsSurfacePreview=false;selectedMode=resumeSave.mode;StartWorld(resumeSave.seed,resumeSave.activeDimension,false);
         }
         public void ToggleInventory()
         {
-            if(flightSnapshot!=null&&flightSnapshot.active)
-            {if(Session)Session.Notice="Инвентарь полёта пока недоступен; экипаж остаётся в креслах";return;}
+            if(InMoonFlight)
+            {if(Session)Session.Notice="Во время активного манёвра экипаж пристёгнут в креслах";return;}
             if(!Session||StoryLocked||Session.Vitals.dead||Session.Data.campaign.runEnded)return;
             if(ui.InventoryOpen){Resume();return;}paused=true;SetCursor(false);ui.ShowInventory();
         }
@@ -364,8 +806,6 @@ namespace LestingCraft.Runtime
         public void OpenDeathScreen(){paused=true;SetCursor(false);ui.ShowDeathScreen();}
         public void SendSave(PlayerSave save,bool force=false)
         {
-            // Ground inventory was checkpointed before ignition. A flight crew may
-            // not overwrite its terrestrial save with a fabricated ground position.
             if(flightSnapshot!=null&&flightSnapshot.active)return;
             if(client&&client.Connected)client.Send(new NetPacket{type="state",save=save,force=force});
         }
@@ -410,39 +850,55 @@ namespace LestingCraft.Runtime
         public void TogglePause(){if(!world||Session&&(Session.Vitals.dead||Session.Data.campaign.runEnded))return;paused=!paused;SetCursor(!paused);}
         public void RequestEdit(Vector3Int cell,ushort block)
         {
-            if(Story&&Story.Enabled&&StoryWorld.Protected(cell.x,cell.z)){Session.RejectEdit("Сюжетная постройка защищена; стройте за её пределами");return;}
-            if(!world||!world.CanAcceptEdit(cell)){Fail("Достигнут лимит изменений этого среза");if(Session)Session.RejectEdit(lastError);return;}
+            if(Story&&Story.Enabled&&world.Dimension==Dimension.Lestingia&&StoryWorld.Protected(cell.x,cell.z)){Session.RejectEdit("Сюжетная постройка защищена; стройте за её пределами");return;}
+            if(!world||!world.CanAcceptEdit(cell)){Fail("Достигнут лимит изменений мира");if(Session)Session.RejectEdit(lastError);return;}
             if(online)
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
         }
         void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=7,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
         {
-            // Multiplayer and persisted worlds remain on Lestingia; planet inspection is explicitly offline and unsaved.
             if(multiplayer)IsSurfacePreview=false;
-            realm=multiplayer||!IsSurfacePreview||realm<1||realm>4?0:realm;
+            realm=Mathf.Clamp(realm,0,4);
+            bool restoreStation=!multiplayer&&resumeSave!=null&&resumeSave.dockedAtStation;
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
-            sharedLaunchSite=multiplayer&&realm==0&&approvedSite!=null&&approvedSite.active&&
-                approvedSite.x>=-320&&approvedSite.x<=320&&approvedSite.z>=-260&&approvedSite.z<=320&&
-                approvedSite.y>=40&&approvedSite.y<=140?
-                new Vector3Int(approvedSite.x,approvedSite.y,approvedSite.z):(Vector3Int?)null;
-            if(!multiplayer&&realm==0&&!IsSurfacePreview&&resumeSave!=null&&resumeSave.launchPlaced)
-                sharedLaunchSite=LaunchSiteVisual.OfflineSite(seed,resumeSave.launchX,resumeSave.launchZ);
+
+            if(multiplayer&&approvedSite!=null&&approvedSite.active)
+                sharedLaunchSite=new Vector3Int(approvedSite.x,approvedSite.y,approvedSite.z);
+            else if(!multiplayer&&!IsSurfacePreview)
+            {
+                if(realm==0&&resumeSave!=null&&resumeSave.launchPlaced)
+                    sharedLaunchSite=LaunchSiteVisual.OfflineSite(seed,resumeSave.launchX,resumeSave.launchZ,Dimension.Lestingia);
+                else if(realm==0)
+                    sharedLaunchSite=LaunchSiteVisual.OfflineSite(seed,LaunchSiteVisual.PadX,LaunchSiteVisual.PadZ,Dimension.Lestingia);
+                else
+                    sharedLaunchSite=LaunchSiteVisual.OfflineSite(seed,0,0,(Dimension)realm);
+            }
+            else sharedLaunchSite=null;
+
             var camera=Camera.main;camera.backgroundColor=new Color(.42f,.66f,.78f);
             RenderSettings.fogColor=camera.backgroundColor;
             var obj=new GameObject("Player");
-            // On reconnect only: restore a previously server-verified crew member
-            // directly in their cockpit seat before any gameplay frame is rendered.
             obj.transform.position=cockpitRestore??FindSpawn(seed,(Dimension)realm,world.ContentVersion);
             var controller=obj.AddComponent<CharacterController>();PlayerCapsule.Configure(controller);
             player=obj.AddComponent<FirstPersonController>();player.World=world;player.Game=this;player.Camera=camera;
-            camera.transform.SetParent(obj.transform,false);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.nearClipPlane=.05f;camera.farClipPlane=160;
-            dimension=realm;seedText=seed.ToString();camera.farClipPlane=256;
+            camera.transform.SetParent(obj.transform,false);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.nearClipPlane=.05f;camera.farClipPlane=256;
+            dimension=realm;seedText=seed.ToString();
             WorldAtmosphere.Configure(camera,realm,resumeSave?.clock??clock);
             obj.AddComponent<FirstPersonHands>().Initialize(player,camera);
             world.Player=obj.transform;paused=false;SetCursor(true);busy=false;status="Генерируется мир…";lastError="";
             var sessionObject=new GameObject("Survival and weather");sessionObject.transform.SetParent(world.transform,false);
-            Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;Story=sessionObject.AddComponent<StoryController>();Story.Initialize(this,story,serverNow);obj.AddComponent<LocalPlayerAppearance>().Initialize(this);
+            Session=sessionObject.AddComponent<SurvivalSession>();Session.Initialize(this,world,player,selectedMode,savedPlayer,resumeSave,clock);resumeSave=null;
+            Story=sessionObject.AddComponent<StoryController>();Story.Initialize(this,story,serverNow);
+            obj.AddComponent<LocalPlayerAppearance>().Initialize(this);
+
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity((Dimension)realm,player,camera);
+            if(restoreStation)
+                CompleteOfflineStationDocking();
+            else if(!IsSurfacePreview)
+                SpawnBossIfApplicable((Dimension)realm);
+
             if(Session.Vitals.dead||Session.Data.campaign.runEnded)OpenDeathScreen();else ui.ShowHUD();
         }
         IEnumerator CreateRoomRoutine()
@@ -487,15 +943,6 @@ namespace LestingCraft.Runtime
             {
                 case "welcome":
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
-                    // A docked station still has no walkable Unity client. For a lunar
-                    // flight, restore only a verified cockpit seat and a valid continuous
-                    // hull projection; never spawn a flying crew member on Earth.
-                    if(packet.station!=null&&packet.station.active||
-                       packet.space!=null&&packet.space.active&&
-                       (packet.launchSite==null||!packet.launchSite.active||
-                        packet.space.seatIndex<0||packet.space.seatIndex>=2||
-                        !LaunchSiteVisual.TryMoonFlightOffset(packet.space,out var offset)))
-                    {Fail("Невозможно восстановить общий корабль или станцию: обновите клиент. Публичный релиз заблокирован.");Destroy(client.gameObject);busy=false;return;}
                     if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Несовместимые правила комнаты. Обновите сервер; для нового содержимого нужна новая комната");Destroy(client.gameObject);return;}
                     if(packet.contentVersion>7||packet.contentVersion<0||packet.rulesVersion>=10&&packet.contentVersion!=7||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;IsHost=packet.host;pendingWelcome=packet;
@@ -510,22 +957,42 @@ namespace LestingCraft.Runtime
                 case "chat":AddChat(packet);break;
                 case "player":if(Session)Session.Living.Apply(packet);if(Story&&packet.story!=null)Story.Apply(packet.story,packet.serverNow);if(Session)Session.Animals.Apply(packet);ApplyLift(packet.lift);SetAvatar(new NetPlayer{id=packet.id,name=packet.name,x=packet.x,y=packet.y,z=packet.z,yaw=packet.yaw,offhand=packet.offhand,weapon=packet.weapon,equipment=packet.equipment});break;
                 case "space_site_place":
-                    if(packet.launchSite!=null&&packet.launchSite.active&&
-                       packet.launchSite.x>=-320&&packet.launchSite.x<=320&&
-                       packet.launchSite.z>=-260&&packet.launchSite.z<=320&&
-                       packet.launchSite.y>=40&&packet.launchSite.y<=140&&world)
+                    if(packet.launchSite!=null&&packet.launchSite.active&&world)
                     {SetLaunchSite(new Vector3Int(packet.launchSite.x,packet.launchSite.y,packet.launchSite.z));
-                     ApplyLift(packet.lift);if(Session)Session.Notice="Комплекс установлен в общей комнате: рампа, стол и шаттл. Полёт пока заблокирован.";}
+                     ApplyLift(packet.lift);if(Session)Session.Notice="Космодром установлен в общей комнате: идите по эстакаде к шаттлу!";}
                     break;
                 case "space_lift":ApplyLift(packet.lift);break;
                 case "space_hatch":ApplyHatch(packet.hatchOpen);break;
                 case "space_seat":ApplySeats(packet.seats);break;
                 case "space_mission":if(packet.space!=null&&(ShuttleSeated||flightSnapshot!=null))
                     ApplyMoonFlight(packet.space);break;
+                case "space_landed":
+                    if(world&&player&&Session)
+                    {
+                        var landedKind=SpaceFlightVisuals.ParseWireKey(packet.planet);
+                        flightSnapshot=null;
+                        CompleteOfflinePlanetLanding(landedKind);
+                    }
+                    break;
+                case "space_station_docked":
+                    flightSnapshot=null;
+                    CompleteOfflineStationDocking();
+                    break;
+                case "space_station_departed":
+                    DepartStationToShuttle();
+                    break;
+                case "station_trade":
+                    if(Session&&packet.save!=null)
+                    {
+                        Session.Data.player=packet.save;
+                        Session.Inventory.revision++;
+                        Session.Notice="Обмен на орбитальной станции подтверждён сервером!";
+                    }
+                    break;
                 case "space_crew_join":ApplyFlightCrewJoin(packet);break;
                 case "space_preflight":if(Session&&packet.id==selfId)
-                    Session.Notice=packet.ready?"Экипаж из двух человек проверен сервером. Запуск и полёт ещё не подключены.":
-                        "Предстартовая проверка не пройдена: "+string.Join("; ",packet.issues??Array.Empty<string>());
+                    Session.Notice=packet.ready?"Экипаж подтверждён сервером! Нажмите [R] для пуска!":
+                        "Предстартовая проверка: "+string.Join("; ",packet.issues??Array.Empty<string>());
                     break;
                 case "leave":if(avatars.TryGetValue(packet.id,out var avatar))Destroy(avatar);avatars.Remove(packet.id);targets.Remove(packet.id);break;
                 case "state_saved":if(packet.id==selfId)saveAcknowledged=true;if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
@@ -552,6 +1019,7 @@ namespace LestingCraft.Runtime
             Session.Living.Apply(packet);
             if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);
             if(packet.space!=null&&packet.space.active)ApplyMoonFlight(packet.space);
+            if(packet.station!=null&&packet.station.active)CompleteOfflineStationDocking();
             status="Комната подключена • "+code;
         }
         void SetAvatar(NetPlayer peer)
@@ -571,28 +1039,48 @@ namespace LestingCraft.Runtime
         {
             foreach(var peerAvatar in avatars.Values)if(peerAvatar)peerAvatar.SetActive(!StoryLocked);
             if(world&&world.Ready&&status=="Генерируется мир…")status="Мир готов — нажми «Продолжить»";
-            // Only the server-chosen site is placed. Both peers reconstruct the same
-            // approved, colliding geometry as they approach; no launch is enabled yet.
-            if(sharedLaunchSite.HasValue&&!launchVisual&&world&&world.Ready&&player&&
+
+            if(!dockedAtStation&&sharedLaunchSite.HasValue&&!launchVisual&&world&&world.Ready&&player&&
                new Vector2(player.transform.position.x-sharedLaunchSite.Value.x,
-                           player.transform.position.z-sharedLaunchSite.Value.z).sqrMagnitude<140f*140f)
+                           player.transform.position.z-sharedLaunchSite.Value.z).sqrMagnitude<185f*185f)
             {
-                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed);
+                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,world.Dimension);
                 ApplyLift(liftSnapshot);
                 ApplyHatch(hatchOpen);
             }
+
+            if(offlineFlightActive)
+                UpdateOfflineSpaceFlight(Mathf.Min(Time.deltaTime,0.1f));
+
+            if(activePlanetBoss&&!activePlanetBoss.Defeated&&player&&Session&&(!paused||online))
+            {
+                activePlanetBoss.TickBoss(Mathf.Min(Time.deltaTime,0.1f),player.transform.position,(dmg,dir,msg)=>
+                {
+                    Session.Impact(dmg,BodyPart.Torso,dir);
+                    Session.Notice=msg;
+                });
+            }
+
             foreach(var pair in avatars)if(pair.Value&&targets.TryGetValue(pair.Key,out var target))
             {
                 if(flightSnapshot!=null&&flightSnapshot.active&&launchVisual&&
                    pair.Value.transform.parent==launchVisual.ShuttleRoot)continue;
                 pair.Value.transform.position=Vector3.Lerp(pair.Value.transform.position,target,Time.deltaTime*12);
             }
+
+            // Refresh co-op protocol-2 flight readiness every 0.8s while seated in cockpit!
+            if(online&&client&&client.Connected&&ShuttleSeated&&!InMoonFlight&&Time.unscaledTime-lastReadyAckSent>=0.8f)
+            {
+                client.Send(new NetPacket{type="space_flight_ready",protocol=2});
+                lastReadyAckSent=Time.unscaledTime;
+            }
+
             if(online&&client&&client.Connected&&flightSnapshot!=null&&flightSnapshot.active)
             {
                 if(Time.unscaledTime-lastFlightHeartbeat>=.75f)
                 {client.Send(new NetPacket{type="space_heartbeat"});lastFlightHeartbeat=Time.unscaledTime;}
             }
-            else if(online&&client&&client.Connected&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
+            else if(online&&client&&client.Connected&&!dockedAtStation&&player&&world.Ready&&Time.unscaledTime-lastPosition>=.2f)
             {
                 var pos=player.transform.position+Vector3.up*PlayerCapsule.EyeHeight;int activeItem=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;int weapon=Weapons.Has(activeItem)||Items.IsPick(activeItem)||activeItem==102||activeItem==103?activeItem:0;var equipment=new int[8];int equipmentHash=weapon*31+17+(Session.Inventory.offhand.count>0?148:0);
                 for(int i=0;i<8;i++){var slot=Session.Inventory.equipment[i];equipment[i]=slot.count>0?slot.item:0;equipmentHash=unchecked(equipmentHash*31+equipment[i]);}
@@ -610,8 +1098,12 @@ namespace LestingCraft.Runtime
             foreach(var a in avatars.Values)if(a)Destroy(a);avatars.Clear();targets.Clear();
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
             if(ShuttleDemo){Destroy(ShuttleDemo.gameObject);ShuttleDemo=null;}
-            if(player){var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}if(world)Destroy(world.gameObject);
+            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            if(spaceVisuals){Destroy(spaceVisuals.gameObject);spaceVisuals=null;}
+            if(player){player.transform.SetParent(null);var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}
+            if(world)Destroy(world.gameObject);
             client=null;world=null;player=null;launchBlueprint=null;offlineShuttleSeat=false;sharedLaunchSite=null;launchVisual=null;liftSnapshot=null;hatchOpen=false;
+            offlineFlightActive=false;offlineNav=null;dockedAtStation=false;
             shuttleSeats=new string[2];flightSnapshot=null;flightSeatIndex=-1;lastFlightHeartbeat=0;lastFlightControl=0;
             online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
         }

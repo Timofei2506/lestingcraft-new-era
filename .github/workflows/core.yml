@@ -50,6 +50,8 @@ jobs:
           mono /tmp/expanded-check.exe
           mcs -langversion:7.2 -out:/tmp/skylight-check.exe Assets/Scripts/Gameplay/ExpandedContent.cs Assets/Scripts/World/BlockRegistry.cs Assets/Scripts/World/ChunkData.cs Assets/Scripts/World/VoxelSkylight.cs Tools/check_skylight_core.cs
           mono /tmp/skylight-check.exe
+          mcs -langversion:7.2 -out:/tmp/ultra-wildlife-check.exe Assets/Scripts/Gameplay/Weapons.cs Assets/Scripts/Gameplay/BodyPart.cs Assets/Scripts/Gameplay/ExpandedContent.cs Assets/Scripts/Gameplay/WildlifeSimulation.cs Assets/Scripts/Presentation/SurfaceLayers.cs Tools/check_ultra_wildlife_core.cs
+          mono /tmp/ultra-wildlife-check.exe
       - name: Validate complete material / block / icon catalog
         run: |
           python -m pip install --quiet Pillow numpy

@@ -18,22 +18,35 @@ namespace LestingCraft.Gameplay
         public Inventory Inventory=>Data.player.inventory;public SurvivalState Vitals=>Data.player.survival;
         public string Notice="";public bool Pending=>pending||(Living&&Living.Pending);public float MiningProgress {get;private set;}
         public bool ServerRunEnded;bool pending,wasDead;Vector3Int pendingCell,miningCell;int drop,spend,toolSlot,harvestBlock;float mineTime,saveTime,tick;GameObject grave;
+
         public void Initialize(PrototypeGame game,VoxelWorld world,FirstPersonController player,int mode,PlayerSave restored=null,SessionSave local=null,double clock=420)
         {
-            Game=game;World=world;Player=player;Data=local??new SessionSave{seed=world.Seed,mode=mode,clock=clock,contentVersion=world.ContentVersion};
+            Game=game;World=world;Player=player;Data=local??new SessionSave{seed=world.Seed,mode=mode,clock=clock,contentVersion=world.ContentVersion,activeDimension=(int)world.Dimension};
             if(restored!=null)Data.player=restored;Data.player.Normalize();
             if(local==null&&restored==null)
             {
                 if(Creative){foreach(int id in new[]{1,3,4,5,6,44,15,16,17})Inventory.Add(id,Items.Get(id).MaxStack);}
                 else if((mode!=3||world.ContentVersion<4)&&!(world.ContentVersion>=5&&mode!=2)){Inventory.Add(110,6);Inventory.Add(111,2);}
             }
-            if(local!=null)foreach(var e in Data.blocks)if(e.realm==(int)World.Dimension)World.Edit(e.x,e.y,e.z,(ushort)e.block);
+            if(local!=null&&Data.blocks!=null)
+                foreach(var e in Data.blocks)
+                    if(e!=null&&e.realm==(int)World.Dimension)World.Edit(e.x,e.y,e.z,(ushort)e.block);
             Living=gameObject.AddComponent<LivingWorld>();Living.Initialize(this);
             Bow=gameObject.AddComponent<BowCombat>();Bow.Session=this;
             Progress=gameObject.AddComponent<ProfileTracker>();Progress.Initialize(this);
             Animals=gameObject.AddComponent<WildlifeManager>();Animals.Initialize(this);
             Weather=gameObject.AddComponent<DynamicWeather>();Weather.Initialize(this,player.Camera);wasDead=Vitals.dead;UpdateGrave();
         }
+
+        public bool HasFullSpaceSuit()
+        {
+            if(Inventory==null||Inventory.equipment==null||Inventory.equipment.Length<8)return false;
+            bool sealedArmor=Inventory.equipment[4].count>0&&Inventory.equipment[5].count>0&&
+                             Inventory.equipment[6].count>0&&Inventory.equipment[7].count>0;
+            bool airSupply=Inventory.Count(FuelChain.CompressedAir)>0||Inventory.Count(FuelChain.LiquidOxygen)>0;
+            return sealedArmor&&airSupply;
+        }
+
         public void Mine(Vector3Int cell,float dt)
         {
             if(pending||Vitals.dead||Data.campaign.runEnded){ResetMining();return;}
@@ -114,25 +127,46 @@ namespace LestingCraft.Gameplay
         }
         void Update()
         {
-            if(Data==null||!World||!Player||!World.Ready)return;
-            if(!Game.Online&&Game.Paused&&!Game.InventoryOpen)return;
+            if(Data==null||!World||!Player||(!World.Ready&&!Game.DockedAtOrbitalStation))return;
+            if(!Game.Online&&Game.Paused&&!Game.InventoryOpen&&!Game.StationTradeOpen)return;
             Data.clock+=Time.deltaTime;if(Game.StoryLocked)return;
             tick+=Time.deltaTime;saveTime+=Time.unscaledDeltaTime;
             if(tick>=1)
             {
                 float elapsed=Mathf.Min(2,tick);tick=0;
                 var stove=Inventory.furnace;var stoveCell=new Vector3Int(stove.x,stove.y,stove.z);
-                if(!Living.Pending&&stove.realm==(int)World.Dimension&&World.GetBlock(stove.x,stove.y,stove.z)==17&&Vector3.Distance(Player.transform.position,(Vector3)stoveCell+Vector3.one*.5f)<=6.5f)
-                    {int before=stove.output.count;if(stove.Step(elapsed))Inventory.revision++;int made=stove.output.count-before;if(made>0){Progress.Add("smelt",made);Progress.Add("smelt_"+stove.output.item,made);}}
-                var eye=Vector3Int.FloorToInt(Player.Camera.transform.position);var bodyCell=Vector3Int.FloorToInt(Player.transform.position+Vector3.up*.8f);
-                Vitals.StepWater(elapsed,Mode,World.InFluid(Player.Camera.transform.position,7),World.InFluid(Player.transform.position+Vector3.up*.8f,7));
-                Sheltered=Physics.Raycast(Player.Camera.transform.position,Vector3.up,out var hit,16)&&hit.collider.transform.parent==World.transform;
-                bool warm=World.NearCampfire(Player.transform.position);if(warm&&Sheltered)Data.player.milestones|=2;
-                
-                var sample=WeatherSample.At(Data.seed,(int)World.Dimension,Data.clock);
+                if(!Game.DockedAtOrbitalStation&&!Living.Pending&&stove.realm==(int)World.Dimension&&World.GetBlock(stove.x,stove.y,stove.z)==17&&Vector3.Distance(Player.transform.position,(Vector3)stoveCell+Vector3.one*.5f)<=6.5f)
+                {int before=stove.output.count;if(stove.Step(elapsed))Inventory.revision++;int made=stove.output.count-before;if(made>0){Progress.Add("smelt",made);Progress.Add("smelt_"+stove.output.item,made);}}
+
+                bool pressurized=Game.ShuttleSeated||Game.InMoonFlight||Game.DockedAtOrbitalStation||
+                    (Game.LaunchSite&&Vector3.Distance(Player.transform.position,Game.LaunchSite.transform.position)<46f);
+
+                if(World.Dimension!=Dimension.Lestingia&&!pressurized&&!HasFullSpaceSuit())
+                {
+                    Vitals.StepWater(elapsed,Mode,true,false);
+                    if(!Creative&&string.IsNullOrEmpty(Notice))
+                        Notice="Внимание: вакуум / экстремальная среда! Наденьте скафандр или вернитесь к шлюзу шаттла";
+                }
+                else
+                {
+                    bool underwater=!Game.DockedAtOrbitalStation&&World.InFluid(Player.Camera.transform.position,7);
+                    bool immersed=!Game.DockedAtOrbitalStation&&World.InFluid(Player.transform.position+Vector3.up*.8f,7);
+                    Vitals.StepWater(elapsed,Mode,underwater,immersed);
+                }
+
+                Sheltered=pressurized||(Physics.Raycast(Player.Camera.transform.position,Vector3.up,out var hit,16)&&hit.collider.transform.parent==World.transform);
+                bool warm=pressurized||HasFullSpaceSuit()||World.NearCampfire(Player.transform.position);
+                if(warm&&Sheltered)Data.player.milestones|=2;
+
+                var sample=pressurized||HasFullSpaceSuit()
+                    ? new WeatherSample(WeatherKind.Clear,0,20,0,0)
+                    : WeatherSample.At(Data.seed,(int)World.Dimension,Data.clock);
                 Vitals.Step(elapsed,Mode,sample.Air+(World.ContentVersion>=7&&World.Dimension==Dimension.Lestingia?BiomeGenerator.TemperatureOffset(BiomeGenerator.At(Mathf.FloorToInt(Player.transform.position.x),Mathf.FloorToInt(Player.transform.position.z),Data.seed)):0),sample.Precipitation,Sheltered,warm,Player.Sprinting,Equipment.Insulation(Inventory));
-                var feet=Vector3Int.FloorToInt(Player.transform.position+Vector3.up*.1f);
-                if(World.GetBlock(feet.x,feet.y,feet.z)==8){DamagePart(elapsed*12,BodyPart.LeftLeg);DamagePart(elapsed*12,BodyPart.RightLeg);}
+                if(!Game.DockedAtOrbitalStation)
+                {
+                    var feet=Vector3Int.FloorToInt(Player.transform.position+Vector3.up*.1f);
+                    if(World.GetBlock(feet.x,feet.y,feet.z)==8){DamagePart(elapsed*12,BodyPart.LeftLeg);DamagePart(elapsed*12,BodyPart.RightLeg);}
+                }
                 if(!Game.Online)Data.campaign.milestones|=Data.player.milestones;
             }
             if(Vitals.dead&&!wasDead)
@@ -141,7 +175,6 @@ namespace LestingCraft.Gameplay
                 if(Mode==GameMode.Hardcore){Data.campaign.runEnded=true;Notice="Хардкор завершён: погиб участник команды";}
                 else
                 {
-                    // One personal recoverable grave; older grave items are forfeited on the next death.
                     Data.player.grave=Inventory.Clone().slots;Data.player.graveExtras=Inventory.ExtraStacks();Data.player.graveX=Player.transform.position.x;Data.player.graveZ=Player.transform.position.z;
                     Data.player.graveY=TerrainGenerator.Height(Mathf.FloorToInt(Data.player.graveX),Mathf.FloorToInt(Data.player.graveZ),Data.seed,World.Dimension)+1.2f;if(World.ContentVersion>=4)Data.player.graveY=Player.transform.position.y+.1f;
                     Data.player.inventory=new Inventory();Notice="Вещи остались у надгробия. Можно возродиться.";UpdateGrave();
@@ -151,8 +184,6 @@ namespace LestingCraft.Gameplay
             if(saveTime>20){saveTime=0;Checkpoint();}
             if(grave&&CanInteract&&!Vitals.dead&&Vector3.Distance(Player.transform.position,grave.transform.position)<2)
             {
-                // A bag + crafting/cursor/furnace may contain more than 45 stacks. Recover what fits;
-                // preserve the rest at the grave instead of requiring an impossible all-at-once transfer.
                 int recovered=Inventory.RecoverStacks(Data.player.grave)+Inventory.RecoverStacks(Data.player.graveExtras);
                 bool remaining=Array.Exists(Data.player.grave,s=>s.count>0)||Array.Exists(Data.player.graveExtras,s=>s.count>0);
                 if(!remaining){Data.player.grave=Array.Empty<ItemStack>();Data.player.graveExtras=Array.Empty<ItemStack>();Destroy(grave);grave=null;Notice="Вещи возвращены";}
@@ -170,8 +201,16 @@ namespace LestingCraft.Gameplay
         public void Checkpoint()
         {
             if(Data==null||!World||Game.IsSurfacePreview)return;
+            Data.activeDimension=(int)World.Dimension;
+            Data.dockedAtStation=Game.DockedAtOrbitalStation;
             if(Game.Online){if(!ServerRunEnded)Game.SendSave(Data.player);}
-            else {Data.living=Living.Save();Data.blocks=World.ExportEdits();if(Animals)Data.wildlife=Animals.Save();LocalSave.Store(Data);}
+            else
+            {
+                Data.living=Living.Save();
+                Data.blocks=World.ExportAllMergedEdits(Data.blocks);
+                if(Animals&&World.Dimension==Dimension.Lestingia)Data.wildlife=Animals.Save();
+                LocalSave.Store(Data);
+            }
         }
     }
 }

@@ -4,29 +4,40 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using LestingCraft.Gameplay;
+
 namespace LestingCraft.Presentation
 {
  public sealed partial class GameUI
  {
   Text interactionHUD,biomeHUD,padHUD;
+  bool stationTradeActive;
+  int stationAstronautRole;
+  Text stationTradeSummary;
+
+  public bool IsStationTradeOpen => page == Page.Trade && stationTradeActive;
+
   void BuildUsabilityHUD()
   {
-   interactionHUD=Label(content.transform,"",400,494,480,58,18,White,false,TextAnchor.MiddleCenter);
-   biomeHUD=Label(content.transform,"",26,814,230,36,17,Muted);
-   padHUD=Label(content.transform,"",834,30,425,64,15,Accent,false,TextAnchor.UpperRight);
+   interactionHUD=Label(content.transform,"",320,494,640,68,18,White,false,TextAnchor.MiddleCenter);
+   biomeHUD=Label(content.transform,"",26,814,320,36,17,Muted);
+   padHUD=Label(content.transform,"",660,24,598,108,15,Accent,false,TextAnchor.UpperRight);
   }
+
   bool creativeBag;string catalogSearch="",traderId="";int catalogCategory,catalogPage;RectTransform catalogGrid;Text catalogSummary,tradeSummary;Button tradeButton;
-  public int CatalogVisibleCount{get;private set;}public string OpenTraderId=>page==Page.Trade?traderId:"";
+  public int CatalogVisibleCount{get;private set;}
+  public string OpenTraderId=>page==Page.Trade&&!stationTradeActive?traderId:"";
   void ShowCreativeBag(){creativeBag=true;ShowInventory();creativeBag=false;}
+
   public void ShowCreativeCatalog()
   {
+   stationTradeActive=false;
    if(!game.Session||!game.Session.Creative)return;
    Clear(Page.Creative);LayoutWidth(1280);Header("Творческий · каталог",false);stationKind=0;inventoryViews.Clear();equipmentStatus=null;craftOutput=null;stoveStatus=null;
    Box(content.transform,16,119,1248,765,new Color(.025f,.043f,.05f,.98f),false);
    Button("Рюкзак / экипировка",424,28,244,52,ShowCreativeBag);
    for(int i=0;i<CreativeCatalog.Categories.Length;i++){int category=i;Button(CreativeCatalog.Categories[i],32+i*152,133,146,43,()=>{catalogCategory=category;catalogPage=0;ShowCreativeCatalog();},i==catalogCategory);}
    Input("Поиск по названию или ID",catalogSearch,"Например: стекло, алмаз, меч…",32,183,1042,v=>{catalogSearch=v;catalogPage=0;RefreshCatalog();});
-   Button("Очистить",1090,217,158,58,()=>{catalogSearch="";catalogPage=0;ShowCreativeCatalog();});
+   Button("Очистить",1090,217,158,58,()=>{catalogSearch="";catalogPage=0;RefreshCatalog();});
    catalogGrid=Rect("Creative catalog grid",content.transform,32,290,1216,428);
    catalogSummary=Label(content.transform,"",260,729,720,40,18,White,false,TextAnchor.MiddleCenter);
    Button("←",32,727,100,43,()=>{catalogPage=Mathf.Max(0,catalogPage-1);RefreshCatalog();});Button("→",140,727,100,43,()=>{catalogPage++;RefreshCatalog();});
@@ -37,6 +48,7 @@ namespace LestingCraft.Presentation
    cursorRoot=Rect("Carried creative catalog stack",content.transform,0,0,64,80);cursorImage=cursorRoot.gameObject.AddComponent<RawImage>();cursorImage.raycastTarget=false;cursorCount=Label(cursorRoot,"",0,50,62,29,15,White,false,TextAnchor.MiddleRight);
    status=null;RefreshCraftInventory();RefreshCatalog();
   }
+
   void RefreshCatalog()
   {
    if(!catalogGrid||page!=Page.Creative)return;HideItemTooltip();
@@ -48,8 +60,8 @@ namespace LestingCraft.Presentation
     {Button("СТАРТОВЫЙ СТОЛ + ШАТТЛ\nПоставить комплекс",24,18,555,154,()=>{game.ArmLaunchPlacement("pad");game.ToggleInventory();},true,catalogGrid);choices++;}
     if(query.Length==0||"Шаттл".IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0||"ракета".IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0)
     {Button("ШАТТЛ + СТАРТОВЫЙ СТОЛ\nПоставить комплекс",610,18,555,154,()=>{game.ArmLaunchPlacement("shuttle");game.ToggleInventory();},true,catalogGrid);choices++;}
-    Label(catalogGrid,"Оба чертежа создают один действующий комплекс: платформа, рампа, лифт и кабина.\nПрицелитесь в землю у начала рампы и нажмите ПКМ. Старт полёта пока заблокирован.",32,208,1140,126,21,Muted,false,TextAnchor.MiddleCenter);
-    CatalogVisibleCount=choices;catalogSummary.text=choices+" чертежа · по одному комплексу на мир";return;
+    Label(catalogGrid,"Оба чертежа создают действующий космодром: платформа, эстакада, лифт и пилотируемый шаттл.\nПрицельтесь в землю (или нажмите F9 в творческом режиме). В кабине: G — цель, R — запуск!",32,208,1140,126,21,Muted,false,TextAnchor.MiddleCenter);
+    CatalogVisibleCount=choices;catalogSummary.text=choices+" чертежа · полные полёты на Луну, Марс, Венеру, Меркурий и Станцию активны";return;
    }
    int[] ids=CreativeCatalog.Query(catalogSearch,catalogCategory);int pages=Mathf.Max(1,(ids.Length+31)/32);catalogPage=Mathf.Clamp(catalogPage,0,pages-1);CatalogVisibleCount=0;
    for(int i=catalogPage*32;i<Mathf.Min(ids.Length,(catalogPage+1)*32);i++)
@@ -61,13 +73,54 @@ namespace LestingCraft.Presentation
    catalogSummary.text=ids.Length+" предметов · страница "+(catalogPage+1)+" / "+pages;
    if(ids.Length==0)Label(catalogGrid,"Ничего не найдено. Измените запрос или категорию.",20,70,1160,60,22,Muted,false,TextAnchor.MiddleCenter);
   }
+
   public bool CatalogTake(int id,bool single,bool directHotbar)
   {
    if(page!=Page.Creative||!game.Session||!CreativeCatalog.Take(game.Session.Inventory,id,single,directHotbar,game.Session.Creative))return false;
    RefreshCraftInventory();game.Session.Checkpoint();return true;
   }
+
+  public void ShowStationTrade(int astronautRole)
+  {
+   if(!game.Session)return;
+   stationTradeActive=true;
+   stationAstronautRole=Mathf.Clamp(astronautRole,0,StationAstronauts.Count-1);
+   Clear(Page.Trade);LayoutWidth(1280);Header("Орбитальная станция · Обмен",false);inventoryViews.Clear();cursorRoot=null;
+   Box(content.transform,110,132,1060,645,new Color(.025f,.043f,.055f,.98f),false);
+   Label(content.transform,StationAstronauts.Profession(stationAstronautRole),150,154,980,46,28,Accent,true);
+   for(int r=0;r<StationAstronauts.Count;r++)
+   {
+    int roleIdx=r;
+    Button(StationAstronauts.Profession(r),150+r*250,208,236,42,()=>ShowStationTrade(roleIdx),r==stationAstronautRole);
+   }
+   var offer=StationAstronauts.Offer(stationAstronautRole);
+   Box(content.transform,150,296,980,220,Panel,false);
+   Icon(content.transform,offer.Input,220,342,108);
+   Label(content.transform,offer.InputCount+" × "+Items.Get(offer.Input).Name,175,456,310,54,21,White,false,TextAnchor.MiddleCenter);
+   Label(content.transform,"→",548,366,100,72,42,Accent,false,TextAnchor.MiddleCenter);
+   Icon(content.transform,offer.Output,752,342,108);
+   Label(content.transform,offer.OutputCount+" × "+Items.Get(offer.Output).Name,690,456,310,54,21,White,false,TextAnchor.MiddleCenter);
+   Button("Подтвердить обмен",420,548,440,62,()=>{game.ExecuteStationTrade(stationAstronautRole);RefreshStationTrade();},true);
+   stationTradeSummary=Label(content.transform,"",150,628,980,104,19,White,false,TextAnchor.MiddleCenter);
+   Button("← Вернуться на палубу станции",32,814,340,60,game.CloseStationTrade,true);
+   Label(content.transform,"Esc / E — закрыть · Z — режим невесомости (0g) · Шлюз у южной стены возвращает в кабину шаттла",396,822,852,48,17,Muted);
+   RefreshStationTrade();
+  }
+
+  void RefreshStationTrade()
+  {
+   if(!stationTradeSummary||!game.Session)return;
+   var offer=StationAstronauts.Offer(stationAstronautRole);
+   int have=game.Session.Inventory.Count(offer.Input);
+   bool ok=TradeOffer.CanTrade(game.Session.Inventory,offer);
+   string state=ok?"Обмен доступен":have<offer.InputCount?"Недостаточно предметов для обмена":"Освободите слот в инвентаре";
+   stationTradeSummary.text="У вас в рюкзаке: "+have+" / "+offer.InputCount+" ("+Items.Get(offer.Input).Name+") · "+state+
+    (string.IsNullOrEmpty(game.Session.Notice)?"":"\n"+game.Session.Notice);
+  }
+
   public void ShowTrade(string actorId)
   {
+   stationTradeActive=false;
    if(!game.Session||!game.Session.Living.TryTrader(actorId,out var actor))return;
    traderId=actorId;Clear(Page.Trade);LayoutWidth(1280);Header("Обмен с жителем",false);inventoryViews.Clear();cursorRoot=null;
    Box(content.transform,180,150,920,580,new Color(.025f,.043f,.05f,1),false);
@@ -81,37 +134,46 @@ namespace LestingCraft.Presentation
    Button("← Закрыть",32,814,230,60,game.Resume);Label(content.transform,"Esc / E — закрыть · обмен доступен только рядом с жителем",300,824,948,44,18,Muted);
    RefreshTrade();
   }
+
   void RefreshTrade()
   {
-   if(page!=Page.Trade||!tradeSummary||!game.Session)return;var living=game.Session.Living;
+   if(page!=Page.Trade||stationTradeActive||!tradeSummary||!game.Session)return;var living=game.Session.Living;
    if(!living.TryTrader(traderId,out var actor)){tradeSummary.text="Житель отошёл слишком далеко или недоступен";tradeButton.interactable=false;return;}
    var offer=TradeOffer.ForJob(actor.job);int have=game.Session.Inventory.Count(offer.Input);bool pending=living.Pending;
    bool available=TradeOffer.CanTrade(game.Session.Inventory,offer);tradeButton.interactable=!pending&&available;
    string availability=available?"Обмен доступен":have<offer.InputCount?"Не хватает ресурсов":"Нет места для результата";
    tradeSummary.text=pending?"Ожидаем подтверждение сервера…":"У вас: "+have+" / "+offer.InputCount+" · "+availability+(string.IsNullOrEmpty(game.Session.Notice)?"":"\n"+game.Session.Notice);
   }
+
   void UpdateUsability()
   {
    if(page==Page.HUD&&game.Session)
    {
-    if(interactionHUD)interactionHUD.text=game.Session.Living.Hint;
+    string bossHud=game.BossHudStatus;
+    string hint=game.Session.Living?game.Session.Living.Hint:"";
+    if(interactionHUD)interactionHUD.text=string.IsNullOrEmpty(bossHud)?hint:(bossHud+(string.IsNullOrEmpty(hint)?"":"\n"+hint));
     var position=game.Session.Player.transform.position;
-    if(biomeHUD)biomeHUD.text=game.Session.World.ContentVersion>=7&&game.Session.World.Dimension==LestingCraft.World.Dimension.Lestingia?LestingCraft.World.BiomeGenerator.Name(LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(position.x),Mathf.FloorToInt(position.z),game.Session.World.Seed)):"";
+    if(biomeHUD)
+    {
+     if(game.DockedAtOrbitalStation)biomeHUD.text="Орбитальная станция · Низкая орбита";
+     else if(game.Session.World.Dimension!=LestingCraft.World.Dimension.Lestingia)biomeHUD.text="Планета: "+game.CurrentPlanetTitle;
+     else biomeHUD.text=game.Session.World.ContentVersion>=7?LestingCraft.World.BiomeGenerator.Name(LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(position.x),Mathf.FloorToInt(position.z),game.Session.World.Seed)):"";
+    }
     if(padHUD)
     {
      var site=game.LaunchSitePosition;
-     if(game.InMoonFlight)padHUD.text=game.MoonFlightStatus;
+     if(!string.IsNullOrEmpty(game.SpaceHudStatus))padHUD.text=game.SpaceHudStatus;
      else if(game.LaunchPlacementArmed)padHUD.text="ЧЕРТЁЖ КОСМОДРОМА\nПрицельтесь в землю рядом и нажмите ПКМ";
      else if(!site.HasValue)padHUD.text="";
      else if(Mathf.Abs(position.x-site.Value.x)<50&&Mathf.Abs(position.z-site.Value.z)<40)
-      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЛифт: X {site.Value.x-20} · Z {site.Value.z+3} · E — взаимодействие";
+      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЛифт: X {site.Value.x-20} · Z {site.Value.z+3} · E — лифт/люк/кресло";
      else if(Mathf.Abs(position.x-(site.Value.x-20))<22&&position.z>site.Value.z-123&&position.z<site.Value.z+15)
       padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nПо эстакаде к лифту: X {site.Value.x-20} · Z {site.Value.z+3}";
-     else padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nИдите к началу эстакады: X {site.Value.x-20} · Z {site.Value.z-110}";
+     else padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЭстакада: X {site.Value.x-20} · Z {site.Value.z-110}"+(game.Session.Creative?" · F9 — перенести рядом":"");
     }
     return;
    }
-   if(page==Page.Trade){RefreshTrade();return;}
+   if(page==Page.Trade){if(stationTradeActive)RefreshStationTrade();else RefreshTrade();return;}
    if(page!=Page.Creative)return;
    foreach(var cell in inventoryViews)if(cell.Index<9)cell.Icon.transform.parent.GetComponent<Image>().color=cell.Index==game.Session.Inventory.selected?new Color(.36f,.49f,.30f,.97f):Panel;
    if(EditingText||Keyboard.current==null)return;

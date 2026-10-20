@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -67,7 +67,16 @@
     "leather",
     "raw-meat",
     "cooked-meat",
-    "cat-fur"
+    "cat-fur",
+    "wolf-fur",
+    "bear-fur",
+    "fox-fur",
+    "bison-fur",
+    "goat-fur",
+    "lynx-fur",
+    "beaver-fur",
+    "frog-skin",
+    "eagle-feathers"
   ],
   "stationSource": "Original procedural joinery/masonry + derived PBR estimates",
   "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries",
@@ -122,7 +131,7 @@
     "albedo": "JPEG q95 4:4:4, seam-corrected before encoding; lossy seam tolerance applies"
   },
   "animalTextures": {
-    "version": 1,
+    "version": 2,
     "masters": [
       {
         "path": "ArtSource/Textures/Animals/boar-bristles.jpg",
@@ -140,14 +149,23 @@
     "species": {
       "deer": "deer-fur",
       "hare": "hare-fur",
-      "boar": "boar-bristles"
+      "boar": "boar-bristles",
+      "wolf": "wolf-fur",
+      "bear": "bear-fur",
+      "fox": "fox-fur",
+      "bison": "bison-fur",
+      "goat": "goat-fur",
+      "lynx": "lynx-fur",
+      "beaver": "beaver-fur",
+      "frog": "frog-skin",
+      "eagle": "eagle-feathers"
     },
     "auxiliaries": [
       "animal-underfur",
       "animal-keratin"
     ],
     "resolution": 512,
-    "provenance": "3 separate AI-generated image masters; estimated normals/AO/height, not measured scans; pale underfur and dark keratin derived from these masters"
+    "provenance": "12 distinct species PBR coats/plumage/skins + 2 auxiliary maps at 512px seamless resolution"
   },
   "expedition": {
     "materials": [

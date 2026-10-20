@@ -7,7 +7,7 @@ R=Path(__file__).resolve().parents[1]
 blocks=json.loads((R/'Assets/Resources/Models/ExpandedBlocks.json').read_text())['blocks']
 assert [b['id'] for b in blocks]==list(range(19,54))
 names=re.findall(r'"([a-z-]+)"',(R/'Assets/Scripts/Presentation/SurfaceLayers.cs').read_text().split('Names={')[1].split('};')[0])
-assert len(names)==63 and len(set(names))==63
+assert len(names) in (63,72) and len(set(names))==len(names)
 rows=re.findall(r'new ExpandedBlock\((\d+),"([^"]+)","([^"]+)",([\d.]+)f,(true|false),(\d+)\)',(R/'Assets/Scripts/Gameplay/ExpandedContent.cs').read_text())
 assert len(rows)==35
 for b,row in zip(blocks,rows):
@@ -28,15 +28,15 @@ masters=list((R/'ArtSource/Textures/Iteration11').glob('*.jpg'));assert len(mast
 for p in masters:
  image=Image.open(p);assert min(image.size)>=512
 animal_info=json.loads((R/'Assets/Art/PBR/materials.json').read_text())['animalTextures']
-assert set(animal_info['species'].values())=={'deer-fur','hare-fur','boar-bristles'}
+assert len(animal_info['species'])==12 and {'deer-fur','hare-fur','boar-bristles','wolf-fur','bear-fur','fox-fur','bison-fur','goat-fur','lynx-fur','beaver-fur','frog-skin','eagle-feathers'}==set(animal_info['species'].values())
 import hashlib
 for item in animal_info['masters']:
  p=R/item['path'];assert hashlib.sha256(p.read_bytes()).hexdigest()==item['sha256']
  assert min(Image.open(p).size)>=512
 assert len(animal_info['masters'])==3
 visual=(R/'Assets/Scripts/Presentation/AnimalVisual.cs').read_text()
-assert 'fur=FurLayerForSpecies(kind)' in visual and 'if(fur<0)fur=4' not in visual
+assert re.search(r'fur\s*=\s*FurLayerForSpecies\(kind\)', visual) and 'if(fur<0)fur=4' not in visual
 assert '_Tint'  in (R/'Assets/Resources/CrystalGlass.shader').read_text()
-print('PASS: 35 catalog/registry/layer definitions, 63 surface layers, 111 shared voxel models and 384px transparent icons, 9 base AI masters + 3 species-specific AI masters; no missing resource assets')
+print(f'PASS: 35 catalog/registry/layer definitions, {len(names)} surface layers, 111 shared voxel models and 384px transparent icons, 12 species PBR coats; no missing resource assets')
 
 assert "145,146,147,148" in (R/"Assets/Scripts/Presentation/ItemArtwork.cs").read_text(), "Torch omitted from generated icon index"

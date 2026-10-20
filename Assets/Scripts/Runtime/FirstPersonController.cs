@@ -11,74 +11,131 @@ namespace LestingCraft.Runtime
         public VoxelWorld World;
         public PrototypeGame Game;
         public Camera Camera;
-        public bool Active;public bool Sprinting {get;private set;}
+        public bool Active;
+        public bool Sprinting {get;private set;}
+        public float GravityScale = 1f;
+        public bool ZeroGActive;
         public ushort Selected=BlockRegistry.StoneId;
         CharacterController controller;
-        public bool TargetingAnimal {get;private set;}public bool HasTarget {get;private set;}public VoxelRaycast.Hit Target {get;private set;}
+        public bool TargetingAnimal {get;private set;}
+        public bool HasTarget {get;private set;}
+        public VoxelRaycast.Hit Target {get;private set;}
         float pitch,vertical;
-        Vector3 spawn,impulse;
+        Vector3 spawn,impulse,zeroGVelocity;
+
         public void Knockback(Vector3 force){impulse=Vector3.ClampMagnitude(impulse+force,12);}
-        /// <summary>Move together with a physical lift; unlike TeleportTo this performs CharacterController collision checks every frame.</summary>
+
+        /// <summary>Move together with a physical lift; performs CharacterController collision checks every frame.</summary>
         public void CarryByPlatform(Vector3 delta)
         {
             if(!controller)controller=GetComponent<CharacterController>();
             if(controller.enabled)controller.Move(delta);
             vertical=0;
         }
-        public void TeleportSpawn(){if(!controller)controller=GetComponent<CharacterController>();controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;}
+
+        public void TeleportSpawn(){if(!controller)controller=GetComponent<CharacterController>();controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;zeroGVelocity=Vector3.zero;}
         public void SetCheckpoint(Vector3 p){spawn=p;}
-        public void TeleportTo(Vector3 p,bool checkpoint=false){if(!controller)controller=GetComponent<CharacterController>();controller.enabled=false;transform.position=p;controller.enabled=true;vertical=0;if(checkpoint)spawn=p;}
+        public void TeleportTo(Vector3 p,bool checkpoint=false){if(!controller)controller=GetComponent<CharacterController>();controller.enabled=false;transform.position=p;controller.enabled=true;vertical=0;zeroGVelocity=Vector3.zero;if(checkpoint)spawn=p;}
+
         void Start(){controller=GetComponent<CharacterController>();spawn=transform.position;gameObject.AddComponent<LestingCraft.Presentation.BlockFeedback>().Initialize(this);}
+
         void Update()
         {
-            TargetingAnimal=false;if(Game&&Game.Session&&Game.Session.Living)Game.Session.Living.Hint="";var keyboard=Keyboard.current;var mouse=Mouse.current;if(keyboard==null||mouse==null||World==null)return;
+            TargetingAnimal=false;if(Game&&Game.Session&&Game.Session.Living)Game.Session.Living.Hint="";
+            var keyboard=Keyboard.current;var mouse=Mouse.current;if(keyboard==null||mouse==null||World==null)return;
             if(Game.StoryLocked){if(keyboard.escapeKey.wasPressedThisFrame)Game.TogglePause();Sprinting=false;HasTarget=false;return;}
             if(Game.ChatOpen){Sprinting=false;HasTarget=false;if(keyboard.escapeKey.wasPressedThisFrame)Game.CloseChat();else if(keyboard.enterKey.wasPressedThisFrame)Game.SubmitChat();return;}
-            if(!Game.Paused&&World.Ready&&(keyboard.enterKey.wasPressedThisFrame||keyboard.tKey.wasPressedThisFrame)){Game.OpenChat();Game.Session.ResetMining();HasTarget=false;return;}
-            if(keyboard.escapeKey.wasPressedThisFrame){if(Game.InventoryOpen)Game.ToggleInventory();else Game.TogglePause();return;}
+
+            // When seated in shuttle, T toggles 30x Time Warp instead of opening chat! Enter still opens chat anytime.
+            bool seatedInShuttle=(Game.ShuttleDemo&&Game.ShuttleDemo.IsPlayerSeated)||Game.ShuttleSeated;
+            if(!Game.Paused&&World.Ready&&(keyboard.enterKey.wasPressedThisFrame||(!seatedInShuttle&&keyboard.tKey.wasPressedThisFrame)))
+            {Game.OpenChat();Game.Session.ResetMining();HasTarget=false;return;}
+
+            if(keyboard.escapeKey.wasPressedThisFrame)
+            {
+                if(Game.StationTradeOpen){Game.CloseStationTrade();return;}
+                if(Game.InventoryOpen){Game.ToggleInventory();return;}
+                Game.TogglePause();return;
+            }
             if(Game.Paused&&Game.EditingText)return;
             if(!Game.Paused&&Active&&Game.ShuttleDemo&&keyboard.leftShiftKey.wasPressedThisFrame&&Game.ShuttleDemo.IsPlayerSeated)
             {
                 string note;Game.ShuttleDemo.StandFromSeat(out note);Game.Session.Notice=note;return;
             }
+            if(!Game.Paused&&Active&&Game.DockedAtOrbitalStation&&keyboard.zKey.wasPressedThisFrame)
+            {
+                ZeroGActive=!ZeroGActive;
+                if(Game.Session)Game.Session.Notice=ZeroGActive?"Режим невесомости (0g) включён · Space / Ctrl — вверх / вниз":"Магнитные ботинки включены (ходьба по палубе станции)";
+            }
+            if(!Game.Paused&&Active&&keyboard.f9Key.wasPressedThisFrame&&Game.Session&&Game.Session.Creative)
+            {
+                Game.QuickPlaceCosmodromeNearPlayer();
+                return;
+            }
             if(keyboard.eKey.wasPressedThisFrame)
             {
+                if(Game.StationTradeOpen){Game.CloseStationTrade();return;}
                 string note;
                 if(!Game.Paused&&Active&&Game.ShuttleDemo&&Game.ShuttleDemo.TryInteract(new Ray(Camera.transform.position,Camera.transform.forward),out note))
                 {Game.Session.Notice=note;return;}
+                if(!Game.Paused&&Active&&Game.TryInteractStation())return;
                 if(!Game.Paused&&Active&&Game.TryInteractLaunch())return;
                 Game.ToggleInventory();return;
             }
             if(!Active||!World.Ready){Sprinting=false;HasTarget=false;if(Game.Session)Game.Session.ResetMining();return;}
+
             var delta=mouse.delta.ReadValue();pitch=Mathf.Clamp(pitch-delta.y*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,-85,85);
             transform.Rotate(0,delta.x*LestingCraft.Presentation.VisualSettings.Current.Sensitivity,0);Camera.transform.localRotation=Quaternion.Euler(pitch,0,0);
-            if(Game.ShuttleDemo&&Game.ShuttleDemo.IsPlayerSeated||Game.ShuttleSeated)
+
+            if(seatedInShuttle)
             {
-             if(Game.InMoonFlight)Game.HandleMoonFlightControls(keyboard);
-             else if(Game.ShuttleSeated&&keyboard.rKey.wasPressedThisFrame)Game.RequestShuttlePreflight();
-             Sprinting=false;HasTarget=false;vertical=0;return;
+                Game.HandleSeatedShuttleInput(keyboard);
+                Sprinting=false;HasTarget=false;vertical=0;return;
             }
+
             var cabin=Game.LaunchSite?Game.LaunchSite.Cabin:null;
             float climb=keyboard.spaceKey.isPressed?1f:keyboard.leftCtrlKey.isPressed?-1f:0f;
             if(climb!=0&&cabin&&cabin.TryClimb(this,climb,Mathf.Min(Time.deltaTime,.2f)))
-            {Sprinting=false;HasTarget=false;Game.Session.ResetMining();return;}
+            {Sprinting=false;HasTarget=false;vertical=0;Game.Session.ResetMining();return;}
+
             var move=new Vector2((keyboard.dKey.isPressed?1:0)-(keyboard.aKey.isPressed?1:0),(keyboard.wKey.isPressed?1:0)-(keyboard.sKey.isPressed?1:0));
             if(move.sqrMagnitude>1)move.Normalize();
-            bool swimming=World.InFluid(transform.position+Vector3.up*.8f,7);
-            Sprinting=Game.Session.Vitals.body.CanSprint&&!swimming&&keyboard.leftShiftKey.isPressed&&move.sqrMagnitude>0&&Game.Session&&Game.Session.Vitals.stamina>5;float speed=swimming?2.6f:Sprinting?8:5;
+
+            if(ZeroGActive&&Game.DockedAtOrbitalStation)
+            {
+                float thrustUp=(keyboard.spaceKey.isPressed?1f:0f)-(keyboard.leftCtrlKey.isPressed?1f:0f);
+                Vector3 wish=(Camera.transform.right*move.x+Camera.transform.forward*move.y+Vector3.up*thrustUp)*5.5f;
+                zeroGVelocity=Vector3.MoveTowards(zeroGVelocity,wish,Time.deltaTime*14f);
+                controller.Move((zeroGVelocity+impulse)*Time.deltaTime);
+                impulse=Vector3.MoveTowards(impulse,Vector3.zero,Time.deltaTime*15f);
+                vertical=0;Sprinting=false;
+                return;
+            }
+
+            bool swimming=!Game.DockedAtOrbitalStation&&World.InFluid(transform.position+Vector3.up*.8f,7);
+            Sprinting=Game.Session.Vitals.body.CanSprint&&!swimming&&keyboard.leftShiftKey.isPressed&&move.sqrMagnitude>0&&Game.Session&&Game.Session.Vitals.stamina>5;
+            float speed=swimming?2.6f:Sprinting?8:5;
             speed*=Game.Session.Vitals.body.Movement;
+            float grav=Mathf.Clamp(GravityScale,.12f,2.0f);
             if(controller.isGrounded&&vertical<0)vertical=-2;
             if(swimming)vertical=keyboard.spaceKey.isPressed?3:keyboard.leftCtrlKey.isPressed?-3:Mathf.MoveTowards(vertical,-.35f,Time.deltaTime*8);
-            else {if(controller.isGrounded&&keyboard.spaceKey.wasPressedThisFrame)vertical=8*Game.Session.Vitals.body.Movement;vertical=Mathf.Max(vertical-22*Time.deltaTime,-40);}
+            else
+            {
+                if(controller.isGrounded&&keyboard.spaceKey.wasPressedThisFrame)
+                    vertical=8f*Mathf.Lerp(1f,1.35f,1f-Mathf.Clamp01(grav))*Game.Session.Vitals.body.Movement;
+                vertical=Mathf.Max(vertical-22f*grav*Time.deltaTime,-40f*grav);
+            }
             Vector3 velocity=(transform.right*move.x+transform.forward*move.y)*speed;
             Vector3 movementTarget=transform.position+velocity*Time.deltaTime;
-            if(!World.Loaded(movementTarget)||!World.Contains(Mathf.FloorToInt(movementTarget.x),1,Mathf.FloorToInt(movementTarget.z)))velocity=Vector3.zero;
+            if(!Game.DockedAtOrbitalStation&&(!World.Loaded(movementTarget)||!World.Contains(Mathf.FloorToInt(movementTarget.x),1,Mathf.FloorToInt(movementTarget.z))))velocity=Vector3.zero;
             float impact=vertical;bool groundedBefore=controller.isGrounded;
             PlayerCapsule.UpdateStep(controller,velocity);
             controller.Move((velocity+Vector3.up*vertical+impulse)*Time.deltaTime);impulse=Vector3.MoveTowards(impulse,Vector3.zero,Time.deltaTime*15);
-            if(!groundedBefore&&controller.isGrounded&&impact< -11&&Game.Session){float hurt=(-impact-11)*1.5f;Game.Session.DamagePart(hurt,BodyPart.LeftLeg);Game.Session.DamagePart(hurt,BodyPart.RightLeg);}
-            if(transform.position.y<1||transform.position.y>240){if(Game.Session)Game.Session.Damage(10000);controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;}
-            if(!Game.Session)return;
+            float safeImpact=11f/Mathf.Sqrt(grav);
+            if(!groundedBefore&&controller.isGrounded&&impact< -safeImpact&&Game.Session){float hurt=(-impact-safeImpact)*1.5f*grav;Game.Session.DamagePart(hurt,BodyPart.LeftLeg);Game.Session.DamagePart(hurt,BodyPart.RightLeg);}
+            if(!Game.DockedAtOrbitalStation&&(transform.position.y<1||transform.position.y>250)){if(Game.Session)Game.Session.Damage(10000);controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;}
+            if(!Game.Session||Game.DockedAtOrbitalStation)return;
+
             var keys=new[]{keyboard.digit1Key,keyboard.digit2Key,keyboard.digit3Key,keyboard.digit4Key,keyboard.digit5Key,keyboard.digit6Key,keyboard.digit7Key,keyboard.digit8Key,keyboard.digit9Key};
             for(int i=0;i<keys.Length;i++)if(keys[i].wasPressedThisFrame)Game.Session.Inventory.selected=i;
             if(keyboard.hKey.wasPressedThisFrame){var inv=Game.Session.Inventory;if(inv.Count(Items.Fiber)>=3&&Game.Session.Vitals.body.Treat()){inv.Remove(Items.Fiber,3);Game.Session.Notice="Повязка: самая повреждённая часть тела обработана";Game.Session.Checkpoint();}else Game.Session.Notice="Для повязки нужны 3 волокна и повреждение";}
@@ -86,6 +143,7 @@ namespace LestingCraft.Runtime
             if(keyboard.qKey.wasPressedThisFrame)Game.Session.Living.DropActive();
             if(Game.Session.Living.Pending){Game.Session.ResetMining();return;}
             if(Game.Story&&mouse.leftButton.isPressed&&Game.Story.Attack(new Ray(Camera.transform.position,Camera.transform.forward),6)){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
+            if(mouse.leftButton.wasPressedThisFrame&&Game.TryAttackPlanetaryBoss(new Ray(Camera.transform.position,Camera.transform.forward))){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
             Selected=Items.Get(Game.Session.Inventory.Active.item).Block;
             HasTarget=VoxelRaycast.Trace(Camera.transform.position,Camera.transform.forward,6,World.GetBlock,out var target);
             Target=target;

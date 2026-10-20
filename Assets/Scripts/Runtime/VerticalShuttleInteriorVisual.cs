@@ -156,9 +156,8 @@ namespace LestingCraft.Runtime
             if(!player||float.IsNaN(seconds)||seconds<=0||seconds>.2f||
                (direction!=1f&&direction!= -1f))return false;
             var p=transform.InverseTransformPoint(player.transform.position);
-            if(p.x<-.2f||p.x>.4f||p.z<2.4f||p.z>2.75f||p.y<27.9f||p.y>42.05f)return false;
-            float next=Mathf.Clamp(p.y+direction*Mathf.Min(.44f,2.2f*seconds),28f,42f);
-            if(!VerticalShuttleWalk.CanStep(p.x,p.y,p.z,p.x,next,p.z,HatchOpen))return false;
+            if(p.x<-1.15f||p.x>1.65f||p.z<1.85f||p.z>3.65f||p.y<27.7f||p.y>42.35f)return false;
+            float next=Mathf.Clamp(p.y+direction*Mathf.Min(.75f,4.5f*seconds),28f,42.1f);
             player.CarryByPlatform(transform.up*(next-p.y));
             return true;
         }

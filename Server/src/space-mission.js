@@ -103,6 +103,12 @@ export function advanceMission(m,now,{player,heading,landingThrottle=0}={}) {
         }
         state.lastAt=next;
     }
+    if(now>state.lastAt && liveInput && landingThrottle>0) {
+        const extraDt=(now-state.lastAt)/1000;
+        state.landingBurn+=extraDt*landingThrottle;
+        const dist=distance(state.position,state.target);
+        if(dist>1)state.position=add(state.position,scale(norm(sub(state.target,state.position)),Math.min(dist,extraDt*500000*landingThrottle)));
+    }
     // Late join/restart cannot reverse the journey. Preserve server clock even after arrival.
     state.lastAt=now;
     return state;

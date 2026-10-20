@@ -4,11 +4,12 @@ import {weapons} from './weapons.js';
 import {Fauna} from './wildlife.js';
 import {Living,ownerTag,transact,toolDrop} from './living.js';
 import {stationWalk,stationTrade} from './station-visit.js';
-import {beginMoonMission,advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
+import {beginMoonMission,beginSolarMission,advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
 import {launchSite} from './launch-site.js';
 import {height as terrainHeight} from './terrain-legacy.js';
 import {emptyLift,liftAt,liftSnapshot,operateLift} from './shuttle-lift.js';
 import {preflight} from './shuttle-preflight.js';
+
 export const VERSION = 1;
 export const RULES_VERSION = 12;
 export const MAX_MESSAGE = 16384;
@@ -20,6 +21,8 @@ export const safeName = name => String(name || 'Player').replace(/[<>\x00-\x1f\x
 export const randomCode = () => crypto.randomUUID().replaceAll('-', '');
 const integer = v => typeof v === 'number' && Number.isInteger(v);
 const finite = v => typeof v === 'number' && Number.isFinite(v);
+const flightBodies = Object.freeze(['earth','moon','mars','venus','mercury']);
+
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
     throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
@@ -62,9 +65,10 @@ export function validateEdit(p,peer,edits,now,maxBlock=18,bound=64) {
 export class RoomState {
   constructor(config,edits=[],savedPlayers=[]) {this.config={...config,contentVersion:config.contentVersion??(config.rulesVersion>=10?7:config.rulesVersion>=9?6:config.rulesVersion>=8?5:config.rulesVersion>=7?4:config.rulesVersion>=6?3:config.rulesVersion>=5?2:1)};this.members=new Map();this.storyEngine=new StoryEngine();this.observers=new Map();this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));this.fauna=new Fauna(config.seed,config.wildlife||{},this.edits,this.config.contentVersion);this.living=new Living(config.seed,config.living||{},this.edits,this.config.contentVersion);this.living.restorePending();this.fauna.dynamicCells=this.living.cells;}
   setMembers(peers){this.members=new Map(peers.map(p=>[p.id,p]));const connected=new Set(peers.map(p=>p.playerKey)),ackKey=this.config.story?`${this.config.story.stage}:${this.config.story.line}`:'';for(const key of this.storyEngine.ready)if(!connected.has(key))this.storyEngine.ready.delete(key);this.storyEngine.acks=new Set(peers.filter(p=>p.storyAckKey===ackKey&&ackKey!=='').map(p=>p.playerKey));for(const p of peers){if(p.storyReady)this.storyEngine.ready.add(p.playerKey);if(p.lastStoryHit)this.storyEngine.hits.set(p.playerKey,p.lastStoryHit);}}
-  // Internal atomic ignition transition. Deliberately NOT mapped to an incoming
-  // WebSocket message while the Unity flight/landing client cannot restore a crew.
-  // It must never be called on an unverified snapshot or before persistence succeeds.
+
+  // Keep the established lunar transition and its public signature unchanged.
+  // Packet capability checks happen in handle; trusted callers must still pass
+  // the same physical boarding, pilot and preflight checks here.
   igniteVerifiedMoon(peer,now,persist=()=>{}){
     if(this.config.shuttleSeats?.[0]!==peer?.playerKey||this.members.get(peer.id)!==peer)
       throw Error('Only the connected seated pilot may ignite');
@@ -76,6 +80,30 @@ export class RoomState {
     persist(next);this.config=next;
     return {type:'space_mission',id:peer.id,space:safeMission(mission,now),serverNow:now};
   }
+
+  // Explicit solar targets use the same verified boarding and atomic persistence
+  // boundary as the legacy lunar route. The origin is server-owned dimension
+  // state; neither a client position nor a client "from" field is trusted.
+  igniteVerifiedSolar(peer,now,to,persist=()=>{}){
+    if(this.config.shuttleSeats?.[0]!==peer?.playerKey||this.members.get(peer.id)!==peer)
+      throw Error('Only the connected seated pilot may ignite');
+    if(!flightBodies.includes(to)||!integer(this.config.dimension)||
+       this.config.dimension<0||this.config.dimension>=flightBodies.length)
+      throw Error('Invalid solar route');
+    const from=flightBodies[this.config.dimension];
+    if(from===to)throw Error('Invalid solar route');
+    const check=preflight(this.config,[...this.members.values()],now);
+    if(!check.ready)throw Error('Preflight refused: '+check.issues.join('; '));
+    const mission=beginSolarMission({
+      crew:[...this.config.shuttleSeats],
+      boarded:[...this.config.padVisited],
+      pilot:peer.playerKey,now,from,to
+    });
+    const next={...this.config,spaceMission:mission};
+    persist(next);this.config=next;
+    return {type:'space_mission',id:peer.id,space:safeMission(mission,now),serverNow:now};
+  }
+
   clock(now=Date.now()){return 420+Math.max(0,(now-(this.config.startedAt||now))/1000);}
   lobbyState(){return {clock:this.clock(),type:'lobby',started:!!this.config.started,hostId:[...this.members.values()].find(p=>p.playerKey===this.config.ownerKey)?.id||'',players:[...this.members.values()].map(publicPeer),story:this.config.story,serverNow:Date.now()};}
   disconnect(peer,persist=()=>{}){this.members.delete(peer.id);this.observers.delete(peer.id);this.storyEngine.ready.delete(peer.playerKey);this.storyEngine.acks.delete(peer.playerKey);this.storyEngine.hits.delete(peer.playerKey);let next=this.config;
@@ -168,14 +196,16 @@ export class RoomState {
       const next={...this.config,shuttleSeats:nextSeats};persistFauna(next);this.config=next;
       return {type:'space_seat',id:peer.id,seats:nextSeats.map(k=>[...this.members.values()].find(m=>m.playerKey===k)?.id||'')};
     }
-    // Explicit capability negotiation: the shipped ground-only client never sends
-    // this packet, so it cannot ignite a mission it cannot render or restore.
+    // Capability is connection-local and expires quickly. Protocol 1 retains the
+    // default-off room gate. Protocol 2 is an explicit promise by every seated
+    // client that it implements the expanded flight and arrival lifecycle.
     if(p.type==='space_flight_ready'){
       const index=this.config.shuttleSeats?.indexOf(peer.playerKey)??-1;
-      if(p.protocol!==1||index<0||!this.config.launchSite?.active||
+      if(![1,2].includes(p.protocol)||index<0||!this.config.launchSite?.active||
          !peer.positioned||now-peer.lastPosition>1500||this.config.spaceMission)
         throw Error('Flight client must be seated with a recent position');
       peer.flightReadyAt=now;
+      peer.flightProtocol=p.protocol;
       return {type:'space_flight_ready',id:peer.id,seatIndex:index};
     }
     if(p.type==='space_preflight'){
@@ -184,13 +214,78 @@ export class RoomState {
       return {type:'space_preflight',id:peer.id,...preflight(this.config,[...this.members.values()],now)};
     }
     if(p.type==='space_ignite'){
-      // Default-off server gate: not settable by createConfig/client packets. Enable
-      // only after the matching Unity flight and lunar landing client is released.
-      if(this.config.flightEnabled!==true)throw Error('Shared flight client is not released for this room');
-      const crew=this.config.shuttleSeats?.map(key=>[...this.members.values()].find(m=>m.playerKey===key));
+      const crew=this.config.shuttleSeats?.map(key=>
+        [...this.members.values()].find(m=>key&&m.playerKey===key));
+      const expandedCrew=crew?.length===2&&crew.every(m=>
+        m&&m.flightProtocol===2&&finite(m.flightReadyAt)&&
+        now>=m.flightReadyAt&&now-m.flightReadyAt<=1500);
+
+      // Preserve the legacy error and its ordering: absent acknowledgements,
+      // protocol 1, mixed versions and disconnected crew cannot release a
+      // default-off room. Client packets never write config.flightEnabled.
+      if(this.config.flightEnabled!==true&&!expandedCrew)
+        throw Error('Shared flight client is not released for this room');
+
+      // Preserve the existing two-seat precondition for explicitly enabled
+      // legacy rooms. Physical boarding and pilot authorization are checked
+      // again by the verified ignition transition.
       if(!crew||crew.length!==2||crew.some(m=>!m||now-(m.flightReadyAt||0)>1500))
         throw Error('Both crew clients must support and acknowledge shared flight');
-      return this.igniteVerifiedMoon(peer,now,persistFauna);
+
+      const to=p.to===undefined?p.target:p.to;
+      const dest=to===undefined?'moon':to;
+      if(!flightBodies.includes(dest))throw Error('Invalid solar route');
+
+      // Omitted destinations retain exactly the established lunar route on
+      // Earth, including duration, countdown and mission construction.
+      if(dest==='moon'&&(this.config.dimension===0||this.config.dimension===undefined))
+        return this.igniteVerifiedMoon(peer,now,persistFauna);
+      return this.igniteVerifiedSolar(peer,now,dest,persistFauna);
+    }
+    if(p.type==='space_dock_station') {
+      if(this.config.shuttleSeats?.[0]!==peer?.playerKey||this.members.get(peer.id)!==peer)
+        throw Error('Only the connected seated pilot may dock at the station');
+      const crew=this.config.shuttleSeats?.map(key=>[...this.members.values()].find(m=>m.playerKey===key));
+      const expandedCrew=Array.isArray(crew)&&crew.length===2&&crew.every(m=>
+        m&&m.flightProtocol===2&&finite(m.flightReadyAt)&&now>=m.flightReadyAt&&now-m.flightReadyAt<=1500);
+      if(this.config.flightEnabled!==true&&!expandedCrew)
+        throw Error('Shared flight client is not released for this room');
+      const check=preflight(this.config,[...this.members.values()],now);
+      if(!check.ready)throw Error('Preflight refused: '+check.issues.join('; '));
+      const crewKeys=[...this.config.shuttleSeats];
+      const positions=Object.fromEntries(crewKeys.map((k,idx)=>[k,[5+idx*6,0,0]]));
+      const visit={dock:{latched:true,hatchOpen:true,latchedAt:now},crew:crewKeys,positions,tradeRequests:{}};
+      const next={...this.config,spaceVisit:visit,spaceMission:undefined};
+      persistFauna(next);this.config=next;
+      return {type:'space_station_docked',id:peer.id,station:{active:true,dock:{latched:true,hatchOpen:true,latchedAt:now},local:positions[peer.playerKey],crewCount:crewKeys.length},serverNow:now};
+    }
+    if(p.type==='space_depart_station') {
+      const visit=this.config.spaceVisit,key=peer.playerKey;
+      if(!visit?.dock?.latched||!visit.crew?.includes(key))throw Error('Not docked at orbital station');
+      if(visit.crew[0]!==key)throw Error('Only the pilot may undock');
+      const next={...this.config,spaceVisit:undefined};
+      persistFauna(next);this.config=next;
+      return {type:'space_station_departed',id:peer.id,serverNow:now};
+    }
+    if(p.type==='space_warp') {
+      const m=this.config.spaceMission,key=peer.playerKey;
+      if(!m||!m.crew?.includes(key)||m.pilot!==key||m.landed)throw Error('Only pilot in active flight may warp');
+      const stepped=advanceMission(m,now);
+      const jumpMs=Math.min(180000,Math.max(0,(stepped.ignitionAt+(stepped.seconds-185)*1000)-now));
+      const warped=jumpMs>0?{...stepped,ignitionAt:stepped.ignitionAt-jumpMs,lastAt:now-jumpMs}:stepped;
+      const finalMission=advanceMission(warped,now);
+      const next={...this.config,spaceMission:finalMission};
+      persistFauna(next);this.config=next;
+      return {type:'space_mission',id:peer.id,space:safeMission(finalMission,now),serverNow:now};
+    }
+    if(p.type==='space_complete_landing') {
+      const m=this.config.spaceMission,key=peer.playerKey;
+      if(!m||!m.crew?.includes(key)||!m.landed)throw Error('Mission has not landed yet');
+      const nextDim=flightBodies.indexOf(m.to);
+      if(nextDim<0)throw Error('Invalid landed body');
+      const next={...this.config,dimension:nextDim,spaceMission:undefined,launchHatch:false};
+      persistFauna(next);this.config=next;
+      return {type:'space_landed',id:peer.id,planet:m.to,dimension:nextDim,serverNow:now};
     }
     // All flight updates below use the server clock and stable crew identities.
     if(['space_heartbeat','space_control','space_autopilot','space_land'].includes(p.type)) {
@@ -250,9 +345,9 @@ export class RoomState {
       // Death, tombstone and pending loot commit atomically BEFORE health mutation / acknowledgement.
       persistFauna(next);candidate.lastTick=this.fauna.lastTick;candidate.lastPersist=now;this.fauna=candidate;this.config=next;peer.lastAnimalHit=now;if(p.weapon===164)delete peer.bowShots[p.requestId];return message;
     }
-    // Station packets are impossible in ordinary rooms. Only server-trusted flight code may
-    // install spaceVisit after physically verified docking. Never accept docking, crew lists,
-    // initial walking positions or player inventory from a network packet.
+    // Only server-trusted docking code may install spaceVisit after a verified
+    // approach. Never accept docking, crew lists, initial walking positions or
+    // station inventory from a network packet.
     if(p.type==='station_walk'||p.type==='station_trade') {
       const visit=this.config.spaceVisit,key=peer.playerKey;
       if(this.config.runEnded||!visit?.dock?.latched||!Array.isArray(visit.crew)||
