@@ -14,9 +14,17 @@ namespace LestingCraft.Networking
 {
     [Serializable] public class NetBlock {public int x,y,z,block;public long rev;}
     [Serializable] public class NetPlayer {public int offhand,weapon;public string id,name;public float x,y,z,yaw;public int[] equipment;}
+    [Serializable] public class NetSpaceMission
+    {public string phase;public double elapsed,landingBurn;public double[] position;public bool pilot,autopilot;public int crewCount;}
+    [Serializable] public class NetStationDock
+    {public bool latched,hatchOpen;public long latchedAt;}
+    [Serializable] public class NetStationVisit
+    {public NetStationDock dock;public float[] local;public int crewCount;}
     [Serializable] public class NetPacket
     {
         public LivingSave living;public string ownerTag;
+        // Private room mission snapshots are parsed, but the terrestrial client must refuse to render them as Earth.
+        public NetSpaceMission space;public NetStationVisit station;public float[] local;public int stationRequestId,role;
         public LestingCraft.Story.StoryState story;public bool lobby,started,host;public string hostId,action;public int arg,stage,line,offhand,expectedRevision;public long serverNow;public string type,id,name,message,code,animal;public int weapon,requestId,contentVersion;public AnimalState[] animals;public AnimalLoot[] loot;public AnimalDamage[] damageEvents;public int seed,dimension,version,block,maxPlayers,mode,rulesVersion,serverRulesVersion;public bool runEnded,force;public CampaignProgress campaign;public PlayerSave save;public long rev;
         public int[] equipment;public double clock;public float x,y,z,yaw;public NetBlock[] edits;public NetPlayer[] players;
     }
