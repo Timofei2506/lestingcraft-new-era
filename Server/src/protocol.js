@@ -3,6 +3,8 @@ import {protectedSite} from './story-world.js';
 import {weapons} from './weapons.js';
 import {Fauna} from './wildlife.js';
 import {Living,ownerTag,transact,toolDrop} from './living.js';
+import {stationWalk,stationTrade} from './station-visit.js';
+import {advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
 export const VERSION = 1;
 export const RULES_VERSION = 10;
 export const MAX_MESSAGE = 16384;
@@ -22,6 +24,7 @@ export function createConfig(value) {
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
   return { lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
+const safeMission=(m,now)=>{const v=missionView(m,now);return {phase:v.phase,elapsed:v.elapsed,position:v.position,autopilot:v.autopilot,landingBurn:v.landingBurn,crewCount:v.crew.length};};
 export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
 export function publicPeer(p) {return {id:p.id,name:p.name,x:p.x,y:p.y,z:p.z,yaw:p.yaw,weapon:p.weapon||0,offhand:p.offhand||0,equipment:p.equipment||Array(8).fill(0)};}
 export function consumeRate(peer, now) {
@@ -60,8 +63,8 @@ export class RoomState {
   disconnect(peer,persist=()=>{}){this.members.delete(peer.id);this.observers.delete(peer.id);this.storyEngine.ready.delete(peer.playerKey);this.storyEngine.acks.delete(peer.playerKey);this.storyEngine.hits.delete(peer.playerKey);if(this.config.lobby&&this.config.ownerKey===peer.playerKey&&this.members.size){const next={...this.config,ownerKey:this.members.values().next().value.playerKey};persist(next);this.config=next;}}
   welcome(peer,peers) {
     this.setMembers([...peers.filter(p=>p.id!==peer.id),peer]);
-    const {wildlife,ownerKey,living,...publicConfig}=this.config,save=this.savedPlayers.get(peer.playerKey)||null;
-    return {living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
+    const {wildlife,ownerKey,living,spaceVisit,spaceMission,...publicConfig}=this.config,save=this.savedPlayers.get(peer.playerKey)||null;
+    return {space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peers.filter(p=>p.id!==peer.id&&p.positioned).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
   }
   handle(peer,raw,now,persistEdit,persistPlayer=()=>{},persistFauna=()=>{}) {
     if(!consumeRate(peer,now))throw new Error('Rate limit');
@@ -71,6 +74,28 @@ export class RoomState {
       const next={...this.config,started:true,startedAt:now,story:this.config.story?{...this.config.story,bossMax:180+90*Math.max(0,this.members.size-1)}:null};persistFauna(next);this.config=next;return {...this.lobbyState(),type:'lobby_start',serverNow:now};
     }
     if(this.config.lobby&&!this.config.started)throw Error('Wait for host to start the lobby');
+    // Only trusted physical-boarding code may install a mission; no network launch packet.
+    // All flight updates below use the server clock and stable crew identities.
+    if(['space_heartbeat','space_control','space_autopilot','space_land'].includes(p.type)) {
+      const m=this.config.spaceMission,key=peer.playerKey;
+      if(!m||!m.crew?.includes(key))throw Error('No authenticated shared mission');
+      let nextMission;
+      if(p.type==='space_heartbeat')nextMission=advanceMission(m,now);
+      else if(p.type==='space_control') {
+        if(m.pilot!==key)throw Error('Only the pilot steers');
+        nextMission=advanceMission(m,now,{player:key,heading:p.heading,landingThrottle:p.landingThrottle??0});
+      } else if(p.type==='space_autopilot')nextMission=setCruiseAutopilot(m,key,p.on,now);
+      else nextMission=landMission(advanceMission(m,now),key,now);
+      const next={...this.config,spaceMission:nextMission};
+      persistFauna(next);this.config=next;
+      return {type:'space_mission',id:peer.id,space:safeMission(nextMission,now)};
+    }
+    // A docked crew is not simultaneously standing in the terrestrial voxel world.
+    // Old client packets cannot mine, trade with villagers or overwrite station inventory.
+    if((this.config.spaceVisit?.dock?.latched&&this.config.spaceVisit.crew?.includes(peer.playerKey)||
+        this.config.spaceMission&&!this.config.spaceMission.landed&&this.config.spaceMission.crew?.includes(peer.playerKey))&&
+       ['position','edit','living_action','animal_hit','arrow_shot','state'].includes(p.type))
+      throw Error('In-flight crew must use the shared ship or station, not the terrestrial world');
     if(p.type==='story_ready'||p.type==='story_action'){
       if(!this.config.story||this.config.runEnded)throw Error('Story unavailable');
       if(p.action==='hit'&&((p.weapon!==103&&!(this.config.contentVersion>=5&&weapons[p.weapon]))||!(this.config.story.rewards&4)))throw Error('A sword is required');
@@ -96,6 +121,33 @@ export class RoomState {
       const candidate=new Fauna(this.config.seed,this.fauna.save(),this.edits,this.config.contentVersion);candidate.dynamicCells=this.living.cells;const message=candidate.hit(peer,p.animal,p.weapon,now,this.config.mode===2,p.requestId),next={...this.config,wildlife:candidate.save()};
       // Death, tombstone and pending loot commit atomically BEFORE health mutation / acknowledgement.
       persistFauna(next);candidate.lastTick=this.fauna.lastTick;candidate.lastPersist=now;this.fauna=candidate;this.config=next;peer.lastAnimalHit=now;if(p.weapon===164)delete peer.bowShots[p.requestId];return message;
+    }
+    // Station packets are impossible in ordinary rooms. Only server-trusted flight code may
+    // install spaceVisit after physically verified docking. Never accept docking, crew lists,
+    // initial walking positions or player inventory from a network packet.
+    if(p.type==='station_walk'||p.type==='station_trade') {
+      const visit=this.config.spaceVisit,key=peer.playerKey;
+      if(this.config.runEnded||!visit?.dock?.latched||!Array.isArray(visit.crew)||
+         !visit.crew.includes(key)||!Array.isArray(visit.positions?.[key]))throw Error('No authenticated docked crew');
+      if(p.type==='station_walk') {
+        if(now-(peer.lastStationWalk||0)<60||!stationWalk(visit.dock,visit.positions[key],p.local))
+          throw Error('Station step or hatch invalid');
+        const next={...this.config,spaceVisit:{...visit,positions:{...visit.positions,[key]:[...p.local]}}};
+        persistFauna(next);this.config=next;peer.lastStationWalk=now;
+        return {type:'station_position',id:peer.id,local:[...p.local]};
+      }
+      if(!Number.isInteger(p.requestId)||p.requestId<1||p.requestId<= Math.max(peer.lastStationTradeRequest||0,visit.tradeRequests?.[key]||0)||
+         now-(peer.lastStationTrade||0)<350)throw Error('Station trade replay or cooldown');
+      const previous=this.savedPlayers.get(key);
+      if(!previous||previous.survival?.health<=0)throw Error('No healthy saved player');
+      const save=validatePlayerSave(previous,true,true,true);
+      const updated=stationTrade(visit.dock,{crewVerified:true,local:visit.positions[key],role:p.role,save});
+      // Persist replay marker and inventory atomically before acknowledging. A reconnect
+      // cannot resubmit the same request, and a full bag never consumes payment.
+      const next={...this.config,spaceVisit:{...visit,tradeRequests:{...visit.tradeRequests,[key]:p.requestId}}};
+      persistPlayer(key,updated,next);this.config=next;this.savedPlayers.set(key,updated);
+      peer.lastStationTradeRequest=p.requestId;peer.lastStationTrade=now;
+      return {type:'station_trade',id:peer.id,requestId:p.requestId,role:p.role,privateSave:updated};
     }
     if(p.type==='living_action') {
       if(this.config.contentVersion<6||this.config.runEnded||!Number.isInteger(p.requestId)||p.requestId<1||p.requestId<= (peer.lastLivingRequest||0)||now-(peer.lastLivingAction||0)<350)throw Error('Living interaction unavailable / cooldown');
@@ -128,6 +180,7 @@ export class RoomState {
       if(![2,3,4,5,6,7,8,9,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
       const save=validatePlayerSave(p.save,this.config.contentVersion>=2,this.config.contentVersion>=4,this.config.contentVersion>=5);if((save.claimedStoryRewards&~(this.config.story?.rewards||0))!==0||((this.savedPlayers.get(peer.playerKey)?.claimedStoryRewards||0)&~save.claimedStoryRewards)!==0)throw Error("Invalid story rewards / rollback");const dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
+      if(previous&&save.inventory.revision<previous.inventory.revision)throw Error('Stale inventory after confirmed transaction');
       for(const id of save.claimedAnimalLoot){if(!this.fauna.loot.some(l=>l.id===id&&l.key===peer.playerKey))throw Error('Unknown animal loot claim');}
       for(const id of previous?.claimedAnimalLoot||[])if(!save.claimedAnimalLoot.includes(id))throw Error('Animal loot claims cannot be rolled back');
       const forced=p.force===true;
@@ -191,4 +244,4 @@ export function acceptsClient(config,clientRules){const n=Number(clientRules),mi
 
 export function packetError(raw,error){let p={};try{if(typeof raw==='string'&&raw.length<=MAX_MESSAGE)p=JSON.parse(raw)||{};}catch{}return {type:'error',message:error.message,code:typeof p.type==='string'?p.type:'',requestId:Number.isInteger(p.requestId)?p.requestId:0};}
 
-export function publicConfig(config){const {ownerKey,wildlife,living,...safe}=config;return safe;}
+export function publicConfig(config){const {ownerKey,wildlife,living,spaceVisit,spaceMission,...safe}=config;return safe;}
