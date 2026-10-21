@@ -531,6 +531,26 @@ namespace LestingCraft.Runtime
             return mesh;
         }
 
+        Material MakePlanetVoxelMaterial(string label, Texture2D tex, Color tint, float emissionGain, float cutoff = 0.42f)
+        {
+            var sh = Shader.Find("LestingCraft/SpacePlanetVoxel");
+            if (sh != null)
+            {
+                var m = new Material(sh) { name = label, color = tint };
+                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", tint);
+                if (m.HasProperty("_EmissionGain")) m.SetFloat("_EmissionGain", emissionGain);
+                if (m.HasProperty("_Cutoff")) m.SetFloat("_Cutoff", cutoff);
+                m.mainTexture = tex;
+                ownedObjects.Add(m);
+                return m;
+            }
+            var fallback = MakeLitMaterial(label, tint, tint * emissionGain, 0.04f, 0.14f);
+            if (fallback.HasProperty("_BaseMap")) fallback.SetTexture("_BaseMap", tex);
+            fallback.mainTexture = tex;
+            return fallback;
+        }
+
         GameObject CreateAtlasBodyVisual(CelestialBodyDef body)
         {
             var go = new GameObject("Atlas_" + body.WireKey);
@@ -543,11 +563,7 @@ namespace LestingCraft.Runtime
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = BuildVoxelCubeMesh(halfExtent, "AtlasVoxelCube_" + (int)body.Id);
             var mr = go.AddComponent<MeshRenderer>();
-            var mat = MakeLitMaterial("AtlasSurface_" + body.WireKey, Color.white, body.IsStar ? cA * 2.35f : Color.white * 0.24f, 0.04f, 0.14f);
-            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
-            mat.mainTexture = tex;
-            if (!body.IsStar && mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", tex);
-            mr.sharedMaterial = mat;
+            mr.sharedMaterial = MakePlanetVoxelMaterial("AtlasSurface_" + body.WireKey, tex, Color.white, body.IsStar ? 0.95f : 0.18f, 0.05f);
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
 
@@ -562,16 +578,9 @@ namespace LestingCraft.Runtime
                     ? new Color(0.86f, 0.78f, 1.0f)
                     : body.Id == CelestialBodyId.Titan ? new Color(0.96f, 0.80f, 0.52f) : Color.white;
                 var cloudTex = BuildCloudCubeTexture((int)body.Id * 7 + 3, cloudTint);
-                clouds.AddComponent<MeshFilter>().sharedMesh = BuildVoxelCubeMesh(halfExtent * 1.065f, "CloudShell_" + body.WireKey);
+                clouds.AddComponent<MeshFilter>().sharedMesh = BuildVoxelCubeMesh(halfExtent * 1.055f, "CloudShell_" + body.WireKey);
                 var cmr = clouds.AddComponent<MeshRenderer>();
-                var cmat = MakeLitMaterial("CloudsCutout_" + body.WireKey, Color.white, cloudTint * 0.22f, 0.02f, 0.12f);
-                if (cmat.HasProperty("_BaseMap")) cmat.SetTexture("_BaseMap", cloudTex);
-                cmat.mainTexture = cloudTex;
-                if (cmat.HasProperty("_AlphaClip")) cmat.SetFloat("_AlphaClip", 1f);
-                if (cmat.HasProperty("_Cutoff")) cmat.SetFloat("_Cutoff", 0.45f);
-                cmat.EnableKeyword("_ALPHATEST_ON");
-                cmat.renderQueue = 2450;
-                cmr.sharedMaterial = cmat;
+                cmr.sharedMaterial = MakePlanetVoxelMaterial("CloudsCutout_" + body.WireKey, cloudTex, Color.white, 0.20f, 0.45f);
                 cmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
 
@@ -583,17 +592,9 @@ namespace LestingCraft.Runtime
                 var ringTex = BuildSquarePlanetaryRingTexture(cA, cB);
                 var rmf = ring.AddComponent<MeshFilter>();
                 float outerHalf = halfExtent * (float)body.RingOuterScale;
-                rmf.sharedMesh = BuildSquareRingPlateMesh(outerHalf, halfExtent * 0.055f);
+                rmf.sharedMesh = BuildSquareRingPlateMesh(outerHalf, halfExtent * 0.065f);
                 var rmr = ring.AddComponent<MeshRenderer>();
-                var rmat = MakeLitMaterial("SquareRingsCutout_" + body.WireKey, Color.white, Color.white * 0.36f, 0.04f, 0.18f);
-                if (rmat.HasProperty("_BaseMap")) rmat.SetTexture("_BaseMap", ringTex);
-                rmat.mainTexture = ringTex;
-                if (rmat.HasProperty("_EmissionMap")) rmat.SetTexture("_EmissionMap", ringTex);
-                if (rmat.HasProperty("_AlphaClip")) rmat.SetFloat("_AlphaClip", 1f);
-                if (rmat.HasProperty("_Cutoff")) rmat.SetFloat("_Cutoff", 0.35f);
-                rmat.EnableKeyword("_ALPHATEST_ON");
-                rmat.renderQueue = 2450;
-                rmr.sharedMaterial = rmat;
+                rmr.sharedMaterial = MakePlanetVoxelMaterial("SquareRingsCutout_" + body.WireKey, ringTex, Color.white, 0.30f, 0.35f);
                 rmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 rmr.receiveShadows = false;
             }

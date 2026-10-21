@@ -48,12 +48,12 @@ namespace LestingCraft.Runtime
         }
         static bool IsRuntimeWindowCutout(int lx,int y,int lz)
         {
-            // Panoramic forward & brow cockpit windshield (y=43..47, x=-2..+2, z>=5)
-            // plus port & starboard side cockpit windows (y=43..45, |x|>=3, z=3..6)
+            // Panoramic forward & brow cockpit windshield (y=43..47, x=-4..+4, z>=5)
+            // plus port & starboard side cockpit windows (y=43..46, |x|>=3, z=2..6)
             // plus starboard lower-deck crew porthole (y=30..31, x>=3, z=3..4).
-            if(y>=43&&y<=46&&lx>=-2&&lx<=2&&lz>=5)return true;
-            if(y==47&&lx>=-1&&lx<=1&&lz>=4)return true;
-            if(y>=43&&y<=45&&(lx<=-3||lx>=3)&&lz>=3&&lz<=6)return true;
+            if(y>=43&&y<=47&&lx>=-4&&lx<=4&&lz>=5)return true;
+            if(y==47&&lx>=-2&&lx<=2&&lz>=4)return true;
+            if(y>=43&&y<=46&&(lx<=-3||lx>=3)&&lz>=2&&lz<=6)return true;
             if(y>=30&&y<=31&&lx>=3&&lz>=3&&lz<=4)return true;
             return false;
         }

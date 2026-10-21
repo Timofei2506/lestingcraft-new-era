@@ -47,22 +47,16 @@ namespace LestingCraft.Runtime
             }
             materials.Add(mat);return mat;
         }
-        Material GlassMat(Color tint,float alpha)
+        Transform GlassPane(string name,Vector3 position,Vector3 size,Quaternion? rot=null)
         {
-            var shader=Shader.Find("Universal Render Pipeline/Lit")??Shader.Find("Standard");
-            var mat=new Material(shader){name="Orbiter canopy glass"};
-            Color c=new Color(tint.r,tint.g,tint.b,alpha);
-            mat.color=c;
-            if(mat.HasProperty("_BaseColor"))mat.SetColor("_BaseColor",c);
-            if(mat.HasProperty("_Surface"))mat.SetFloat("_Surface",1f);
-            if(mat.HasProperty("_ZWrite"))mat.SetFloat("_ZWrite",0f);
-            mat.SetInt("_SrcBlend",5);
-            mat.SetInt("_DstBlend",10);
-            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            mat.renderQueue=3000;
-            mat.SetFloat("_Metallic",0.08f);
-            mat.SetFloat("_Smoothness",0.90f);
-            materials.Add(mat);return mat;
+            var go=new GameObject(name);
+            go.transform.SetParent(transform,false);
+            go.transform.localPosition=position;
+            if(rot.HasValue)go.transform.localRotation=rot.Value;
+            go.transform.localScale=Vector3.one;
+            var col=go.AddComponent<BoxCollider>();
+            col.size=size;
+            return go.transform;
         }
         Transform Box(string name,Vector3 position,Vector3 size,Material material,bool collision=true,Quaternion? rot=null)
         {
@@ -102,7 +96,7 @@ namespace LestingCraft.Runtime
             var seatTrim=Mat(new Color(.88f,.48f,.12f));
             var cyanGlow=Mat(new Color(.18f,.84f,.98f),false,1.35f);
             var warmStrip=Mat(new Color(.96f,.93f,.86f),false,1.65f);
-            var glass=GlassMat(new Color(.56f,.86f,.98f),0.10f);
+            var glassEdge=Mat(new Color(.42f,.82f,.98f),true,0.55f);
 
             // =========================================================================
             // 1. TOWER ACCESS WALKWAY & LOWER MID-DECK (Clean ergonomic crew quarters)
@@ -118,8 +112,8 @@ namespace LestingCraft.Runtime
                 Box("MidDeck Avionics Locker "+bay,new Vector3(bx,29.15f,1.22f),new Vector3(1.06f,2.15f,.30f),wall);
                 Box("MidDeck Locker Trim "+bay,new Vector3(bx,29.85f,1.38f),new Vector3(.84f,.12f,.03f),bay%2==0?cyanGlow:seatTrim,false);
             }
-            // Starboard crew porthole window frame & glass (looking outside at y=30..31, x=3.0, z=3.5)
-            Box("MidDeck Porthole Glass",new Vector3(3.04f,30.95f,3.95f),new Vector3(.05f,1.55f,1.65f),glass);
+            // Starboard crew porthole window frame & crystal-clear airtight viewport
+            GlassPane("MidDeck Porthole Glass",new Vector3(3.04f,30.95f,3.95f),new Vector3(.05f,1.55f,1.65f));
             Box("MidDeck Porthole Frame Top",new Vector3(2.98f,31.76f,3.95f),new Vector3(.12f,.10f,1.80f),mullion,false);
             Box("MidDeck Porthole Frame Bot",new Vector3(2.98f,30.14f,3.95f),new Vector3(.12f,.10f,1.80f),mullion,false);
 
@@ -152,11 +146,13 @@ namespace LestingCraft.Runtime
             //    Window sill is at y=43.16 (0.48 m BELOW pilot eye height 43.64!) so the
             //    pilot & co-pilot have a wide, crystal-clear view straight ahead & outside!
             // =========================================================================
-            // Outer transparent canopy glass panes (collidable barrier keeping crew inside cabin)
-            Box("Windshield Front Glass",new Vector3(.50f,44.48f,5.96f),new Vector3(4.92f,2.68f,.04f),glass);
-            Box("Windshield Brow Overhead Glass",new Vector3(.50f,46.05f,5.12f),new Vector3(3.10f,.04f,1.72f),glass,true,Quaternion.Euler(22f,0f,0f));
-            Box("Viewport Port Glass",new Vector3(-1.98f,44.32f,4.45f),new Vector3(.04f,2.24f,3.05f),glass);
-            Box("Viewport Starboard Glass",new Vector3(2.98f,44.32f,4.45f),new Vector3(.04f,2.24f,3.05f),glass);
+            // Crystal-clear optical pressure panes (collidable barrier keeping crew inside cabin)
+            GlassPane("Windshield Front Glass",new Vector3(.50f,44.48f,5.96f),new Vector3(4.92f,2.68f,.04f));
+            GlassPane("Windshield Brow Overhead Glass",new Vector3(.50f,46.05f,5.12f),new Vector3(3.10f,.04f,1.72f),Quaternion.Euler(22f,0f,0f));
+            GlassPane("Viewport Port Glass",new Vector3(-1.98f,44.32f,4.45f),new Vector3(.04f,2.24f,3.05f));
+            GlassPane("Viewport Starboard Glass",new Vector3(2.98f,44.32f,4.45f),new Vector3(.04f,2.24f,3.05f));
+            Box("Windshield Optical Bevel Lower",new Vector3(.50f,43.21f,5.94f),new Vector3(4.92f,.022f,.025f),glassEdge,false);
+            Box("Windshield Optical Bevel Upper",new Vector3(.50f,45.74f,5.94f),new Vector3(4.92f,.022f,.025f),glassEdge,false);
 
             // Crisp dark-titanium spacecraft window frame mullions (non-blocking slim ribs)
             Box("Windshield Sill Bar",new Vector3(.50f,43.15f,5.93f),new Vector3(4.98f,.09f,.12f),mullion,false);

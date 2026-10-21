@@ -279,17 +279,19 @@ namespace LestingCraft.Runtime
                     var saturnInView = GameObject.Find("Atlas_saturn");
                     if (saturnInView)
                     {
-                        saturnInView.transform.localPosition = new Vector3(11.5f, 9.5f, 54f);
-                        saturnInView.transform.localRotation = Quaternion.Euler(22f, 36f, -12f);
-                        saturnInView.transform.localScale = Vector3.one * 1.12f;
+                        Vector3 windDir = (cabin.transform.TransformPoint(new Vector3(0.45f, 44.32f, 5.96f)) - eyeWorld).normalized;
+                        saturnInView.transform.position = eyeWorld + windDir * 54f;
+                        saturnInView.transform.rotation = cam.transform.rotation * Quaternion.Euler(24f, 38f, -14f);
+                        saturnInView.transform.localScale = Vector3.one * 1.05f;
                     }
                     var marsSide = GameObject.Find("Atlas_mars");
                     if (marsSide)
                     {
                         marsSide.SetActive(true);
-                        marsSide.transform.localPosition = new Vector3(38f, 5.5f, 28f);
-                        marsSide.transform.localRotation = Quaternion.Euler(18f, -28f, 10f);
-                        marsSide.transform.localScale = Vector3.one * 1.35f;
+                        Vector3 sideDir = (cabin.transform.TransformPoint(new Vector3(-1.95f, 44.18f, 5.15f)) - eyeWorld).normalized;
+                        marsSide.transform.position = eyeWorld + sideDir * 36f;
+                        marsSide.transform.rotation = cam.transform.rotation * Quaternion.Euler(20f, -32f, 12f);
+                        marsSide.transform.localScale = Vector3.one * 1.15f;
                     }
 
                     if (cabin.InteractiveRig)
@@ -332,17 +334,19 @@ namespace LestingCraft.Runtime
                     var saturnInView = GameObject.Find("Atlas_saturn");
                     if (saturnInView)
                     {
-                        saturnInView.transform.localPosition = new Vector3(5.0f, 10.5f, 56f);
-                        saturnInView.transform.localRotation = Quaternion.Euler(22f, 36f, -12f);
-                        saturnInView.transform.localScale = Vector3.one * 1.18f;
+                        Vector3 windDir = (cabin.transform.TransformPoint(new Vector3(0.50f, 44.46f, 5.96f)) - catwalkEye).normalized;
+                        saturnInView.transform.position = catwalkEye + windDir * 56f;
+                        saturnInView.transform.rotation = cam.transform.rotation * Quaternion.Euler(24f, 38f, -14f);
+                        saturnInView.transform.localScale = Vector3.one * 1.08f;
                     }
                     var marsPort = GameObject.Find("Atlas_mars");
                     if (marsPort)
                     {
                         marsPort.SetActive(true);
-                        marsPort.transform.localPosition = new Vector3(-34f, 6.0f, 26f);
-                        marsPort.transform.localRotation = Quaternion.Euler(18f, -28f, 10f);
-                        marsPort.transform.localScale = Vector3.one * 1.35f;
+                        Vector3 sideDir = (cabin.transform.TransformPoint(new Vector3(-1.95f, 44.20f, 3.85f)) - catwalkEye).normalized;
+                        marsPort.transform.position = catwalkEye + sideDir * 38f;
+                        marsPort.transform.rotation = cam.transform.rotation * Quaternion.Euler(18f, -28f, 10f);
+                        marsPort.transform.localScale = Vector3.one * 1.25f;
                     }
                     if (cabin.InteractiveRig)
                         cabin.InteractiveRig.RefreshVisualPoses(0.05f);
@@ -373,15 +377,23 @@ namespace LestingCraft.Runtime
                     Vector3 chaseCamPos = shipRoot.position + new Vector3(-22f, 16f, -46f);
                     player.TeleportTo(chaseCamPos, false);
                     cam.transform.position = chaseCamPos;
+                    cam.transform.LookAt(shipRoot.position + new Vector3(14f, 18f, 24f));
                     spaceVis.SetOpenSpaceFlightActive(helm, shipRoot, cam.transform);
 
                     var saturnObj = GameObject.Find("Atlas_saturn");
                     if (saturnObj)
                     {
-                        saturnObj.transform.localScale = Vector3.one * 1.42f;
-                        saturnObj.transform.localRotation = Quaternion.Euler(24f, 38f, -14f);
-                        Vector3 aim = Vector3.Lerp(shipRoot.position + new Vector3(6f, 14f, 12f), saturnObj.transform.position, 0.72f);
-                        cam.transform.LookAt(aim);
+                        saturnObj.transform.position = cam.transform.position + cam.transform.forward * 96f + cam.transform.right * 18f + cam.transform.up * 6f;
+                        saturnObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(26f, 36f, -14f);
+                        saturnObj.transform.localScale = Vector3.one * 1.32f;
+                    }
+                    var titanObj = GameObject.Find("Atlas_titan");
+                    if (titanObj)
+                    {
+                        titanObj.SetActive(true);
+                        titanObj.transform.position = cam.transform.position + cam.transform.forward * 108f - cam.transform.right * 32f + cam.transform.up * 18f;
+                        titanObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(22f, -30f, 12f);
+                        titanObj.transform.localScale = Vector3.one * 1.15f;
                     }
                 }
                 game.Session.Notice = "Открытый космос [Солнечная система]: кубический воксельный Сатурн и квадратные кольца • 18 400 м/с";
@@ -406,26 +418,27 @@ namespace LestingCraft.Runtime
                 if (shipRoot)
                 {
                     shipRoot.rotation = Quaternion.Euler(64f, -24f, 12f);
-                    Vector3 chaseCamPos = shipRoot.position + new Vector3(24f, 15f, -44f);
+                    cam.fieldOfView = 64f;
+                    cam.farClipPlane = 1200f;
+                    Vector3 chaseCamPos = shipRoot.position + new Vector3(22f, 16f, -46f);
                     player.TeleportTo(chaseCamPos, false);
                     cam.transform.position = chaseCamPos;
+                    cam.transform.LookAt(shipRoot.position + new Vector3(-14f, 18f, 24f));
                     spaceVis.SetOpenSpaceFlightActive(helm, shipRoot, cam.transform);
 
                     var primeObj = GameObject.Find("Atlas_andromeda_prime");
                     var galaxyObj = GameObject.Find("NeighborSpiralGalaxyBackdrop");
                     if (primeObj)
                     {
-                        primeObj.transform.localPosition = new Vector3(14f, 6.5f, 52f);
-                        primeObj.transform.localScale = Vector3.one * 1.62f;
-                        primeObj.transform.localRotation = Quaternion.Euler(24f, -36f, 14f);
-                        if (galaxyObj && primeObj.transform.parent == galaxyObj.transform.parent)
-                        {
-                            galaxyObj.transform.localPosition = new Vector3(-24f, 18f, 92f);
-                            galaxyObj.transform.LookAt(cam.transform.position);
-                            galaxyObj.transform.Rotate(52f, 14f, 22f, Space.Self);
-                        }
-                        Vector3 aim = Vector3.Lerp(shipRoot.position + new Vector3(-2f, 14f, 10f), primeObj.transform.position, 0.70f);
-                        cam.transform.LookAt(aim);
+                        primeObj.transform.position = cam.transform.position + cam.transform.forward * 92f - cam.transform.right * 18f + cam.transform.up * 6f;
+                        primeObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(26f, -36f, 14f);
+                        primeObj.transform.localScale = Vector3.one * 1.42f;
+                    }
+                    if (galaxyObj)
+                    {
+                        galaxyObj.SetActive(true);
+                        galaxyObj.transform.position = cam.transform.position + cam.transform.forward * 146f + cam.transform.right * 32f + cam.transform.up * 24f;
+                        galaxyObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(56f, 18f, -24f);
                     }
                 }
                 game.Session.Notice = "Галактика Андромеды (M31): система Ядра Андромеды • Планета Андромеда Прайм и спиральный рукав";
