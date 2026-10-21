@@ -81,7 +81,21 @@ namespace LestingCraft.Runtime
             // Launch deterministic survival world (seed 2506) directly on Ultra preset,
             // keeping cameras muted ONLY during background chunk streaming so CPU software
             // rasterization does not throttle VoxelWorld.LateUpdate() chunk meshing.
-            VisualSettings.Current.Ultra();
+            bool isSoftwareGpu = (SystemInfo.graphicsDeviceName ?? "").IndexOf("llvmpipe", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (isSoftwareGpu)
+            {
+                VisualSettings.Current.HighDefault();
+                VisualSettings.Current.AmbientOcclusion = false;
+                VisualSettings.Current.VolumetricQuality = 0;
+                VisualSettings.Current.Save();
+                Shader.SetGlobalFloat("_LCParallaxSteps", 3f);
+                Shader.SetGlobalFloat("_LCVolumetricSteps", 3f);
+                Shader.SetGlobalFloat("_LCCloudSteps", 6f);
+            }
+            else
+            {
+                VisualSettings.Current.Ultra();
+            }
             ui.ShowHome();
             game.ShowcaseStartFreshWorld();
             yield return null;
@@ -536,10 +550,8 @@ namespace LestingCraft.Runtime
 
         IEnumerator RenderAndCapture(Camera cam, FirstPersonHands hands, bool showHands, string fullPath, Action lockPose)
         {
-            if (cam) cam.enabled = true;
-            if (hands && hands.ViewCamera) hands.ViewCamera.enabled = showHands;
-            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
-                if (l && l.type != LightType.Directional) l.shadows = LightShadows.None;
+            Debug.Log("[Showcase] START: " + Path.GetFileName(fullPath) + " (" + Time.realtimeSinceStartup.ToString("F1") + "s)");
+            SetCamerasActive(cam, hands, false);
             for (int i = 0; i < 2; i++)
             {
                 if (lockPose != null) lockPose();
@@ -547,17 +559,23 @@ namespace LestingCraft.Runtime
             }
             foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (l && l.type != LightType.Directional) l.shadows = LightShadows.None;
+            if (cam) cam.enabled = true;
+            if (hands && hands.ViewCamera) hands.ViewCamera.enabled = showHands;
             if (lockPose != null) lockPose();
             yield return new WaitForEndOfFrame();
-            ScreenCapture.CaptureScreenshot(fullPath);
-            float deadline = Time.realtimeSinceStartup + 25f;
-            while (!ScreenshotReady(fullPath) && Time.realtimeSinceStartup < deadline)
-                yield return null;
-            yield return null;
+            var snap = ScreenCapture.CaptureScreenshotAsTexture();
             SetCamerasActive(cam, hands, false);
+            if (!snap)
+            {
+                Fail("CaptureScreenshotAsTexture returned null: " + fullPath);
+                yield break;
+            }
+            byte[] png = ImageConversion.EncodeToPNG(snap);
+            Destroy(snap);
+            File.WriteAllBytes(fullPath, png);
             if (!ScreenshotReady(fullPath))
             {
-                Fail("Timed out writing screenshot: " + fullPath);
+                Fail("Failed writing PNG screenshot: " + fullPath);
                 yield break;
             }
             Debug.Log("[Showcase] CAPTURED: " + fullPath + " (" + Time.realtimeSinceStartup.ToString("F1") + "s)");

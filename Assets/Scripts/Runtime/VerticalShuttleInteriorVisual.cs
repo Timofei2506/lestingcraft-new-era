@@ -177,12 +177,12 @@ namespace LestingCraft.Runtime
             Box("Glareshield Accent Strip",new Vector3(.50f,43.13f,5.41f),new Vector3(4.84f,.016f,.02f),cyanGlow,false);
 
             // Port & Starboard Side Consoles running cleanly along the side walls below side windows
-            Box("Port Side Console",new Vector3(-1.74f,42.48f,4.95f),new Vector3(.44f,.96f,1.85f),slate);
-            Box("Starboard Side Console",new Vector3(2.74f,42.48f,4.95f),new Vector3(.44f,.96f,1.85f),slate);
+            Box("Port Side Console",new Vector3(-1.74f,42.48f,4.95f),new Vector3(.44f,.96f,1.85f),slate,false);
+            Box("Starboard Side Console",new Vector3(2.74f,42.48f,4.95f),new Vector3(.44f,.96f,1.85f),slate,false);
 
             // Center Pedestal Console between Pilot (x=-0.40) and Co-Pilot (x=+1.40)
-            Box("Center Pedestal Base",new Vector3(.50f,42.38f,5.08f),new Vector3(.76f,.76f,1.18f),slate);
-            Box("Center Pedestal Top Deck",new Vector3(.50f,42.78f,5.08f),new Vector3(.80f,.06f,1.20f),mullion);
+            Box("Center Pedestal Base",new Vector3(.50f,42.38f,5.08f),new Vector3(.76f,.76f,1.18f),slate,false);
+            Box("Center Pedestal Top Deck",new Vector3(.50f,42.78f,5.08f),new Vector3(.80f,.06f,1.20f),mullion,false);
 
             // Overhead Systems & Caution/Warning Panel (flush above brow at y=45.88, z=4.35)
             Box("Overhead Switch Panel",new Vector3(.50f,45.86f,4.28f),new Vector3(1.90f,.10f,.78f),slate,false,Quaternion.Euler(-16f,0f,0f));
