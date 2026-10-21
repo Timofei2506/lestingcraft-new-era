@@ -423,6 +423,7 @@ namespace LestingCraft.Runtime
 
         public bool RaycastControl(Ray ray, out CockpitControlId hitId, out string label, float maxDist = 4.0f)
         {
+            Physics.SyncTransforms();
             hitId = CockpitControlId.None;
             label = string.Empty;
             RaycastHit hit;

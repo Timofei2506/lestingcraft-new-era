@@ -36,6 +36,7 @@ namespace LestingCraft.Runtime
 
         GameObject spaceDomeRoot;
         MeshRenderer domeRenderer;
+        GameObject cachedWorldAtmosphere;
         GameObject starfieldObj;
         GameObject sunObj;
         GameObject spiralGalaxyObj;
@@ -939,28 +940,43 @@ namespace LestingCraft.Runtime
             BuildCelestialRig();
             if (helm == null || !helm.Active)
             {
+                if (spaceDomeRoot) spaceDomeRoot.SetActive(false);
                 if (spaceKeyLight) spaceKeyLight.enabled = false;
                 foreach (var kv in atlasBodyObjects) if (kv.Value) kv.Value.SetActive(false);
                 if (spiralGalaxyObj) spiralGalaxyObj.SetActive(false);
                 if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
+                if (cachedWorldAtmosphere) cachedWorldAtmosphere.SetActive(true);
+                if (Camera.main) Camera.main.clearFlags = CameraClearFlags.Skybox;
                 return;
             }
 
             if (spaceDomeRoot)
             {
+                if (!cachedWorldAtmosphere) cachedWorldAtmosphere = GameObject.Find("WorldAtmosphere");
+                if (cachedWorldAtmosphere) cachedWorldAtmosphere.SetActive(false);
                 RenderSettings.fog = false;
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = new Color(0.16f, 0.18f, 0.24f);
+                if (domeRenderer) domeRenderer.enabled = false;
                 if (Camera.main && Camera.main.farClipPlane < 900f) Camera.main.farClipPlane = 900f;
-                if (spaceKeyLight) spaceKeyLight.enabled = true;
+                if (spaceKeyLight)
+                {
+                    spaceKeyLight.enabled = true;
+                    spaceKeyLight.intensity = 2.55f;
+                }
                 spaceDomeRoot.SetActive(true);
                 if (viewer) spaceDomeRoot.transform.position = viewer.position;
                 bool jumping = helm.InHyperjump;
                 Color deepSky = helm.CurrentGalaxy == GalaxyId.Andromeda
-                    ? new Color(0.018f, 0.010f, 0.038f)
-                    : new Color(0.006f, 0.010f, 0.024f);
+                    ? new Color(0.012f, 0.007f, 0.030f)
+                    : new Color(0.004f, 0.007f, 0.018f);
                 if (jumping)
                     deepSky = Color.Lerp(deepSky, new Color(0.18f, 0.42f, 0.85f), Mathf.Sin((float)helm.HyperjumpProgress * Mathf.PI));
-                if (domeRenderer && domeRenderer.sharedMaterial.HasProperty("_BaseColor"))
-                    domeRenderer.sharedMaterial.SetColor("_BaseColor", deepSky);
+                if (Camera.main)
+                {
+                    Camera.main.clearFlags = CameraClearFlags.SolidColor;
+                    Camera.main.backgroundColor = deepSky;
+                }
                 if (starfieldObj) starfieldObj.SetActive(true);
                 if (sunObj) sunObj.SetActive(false);
                 foreach (var kv in planetSpheres) if (kv.Value) kv.Value.SetActive(false);

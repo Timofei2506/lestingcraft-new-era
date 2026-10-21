@@ -415,15 +415,16 @@ namespace LestingCraft.Runtime
                     var galaxyObj = GameObject.Find("NeighborSpiralGalaxyBackdrop");
                     if (primeObj)
                     {
-                        primeObj.transform.localScale = Vector3.one * 1.48f;
-                        primeObj.transform.localRotation = Quaternion.Euler(22f, -34f, 12f);
+                        primeObj.transform.localPosition = new Vector3(14f, 6.5f, 52f);
+                        primeObj.transform.localScale = Vector3.one * 1.62f;
+                        primeObj.transform.localRotation = Quaternion.Euler(24f, -36f, 14f);
                         if (galaxyObj && primeObj.transform.parent == galaxyObj.transform.parent)
                         {
-                            galaxyObj.transform.localPosition = primeObj.transform.localPosition * 2.25f + new Vector3(-34f, 22f, 30f);
+                            galaxyObj.transform.localPosition = new Vector3(-24f, 18f, 92f);
                             galaxyObj.transform.LookAt(cam.transform.position);
                             galaxyObj.transform.Rotate(52f, 14f, 22f, Space.Self);
                         }
-                        Vector3 aim = Vector3.Lerp(shipRoot.position + new Vector3(-5f, 14f, 10f), primeObj.transform.position, 0.74f);
+                        Vector3 aim = Vector3.Lerp(shipRoot.position + new Vector3(-2f, 14f, 10f), primeObj.transform.position, 0.70f);
                         cam.transform.LookAt(aim);
                     }
                 }
