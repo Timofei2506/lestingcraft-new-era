@@ -125,6 +125,28 @@ namespace LestingCraft.Gameplay
             id == BlockRegistry.NuclearReactorId || id == BlockRegistry.ElectricFloodlightId ||
             id == BlockRegistry.PoweredRailId;
 
+        private static float ComputeGammaAttenuation(Func<int, int, int, ushort> getBlock, Vector3 src, Vector3 dst)
+        {
+            float atten = 1f;
+            int prevX = int.MinValue, prevY = int.MinValue, prevZ = int.MinValue;
+            int sx = Mathf.FloorToInt(src.x), sy = Mathf.FloorToInt(src.y), sz = Mathf.FloorToInt(src.z);
+            for (int step = 1; step <= 8; step++)
+            {
+                float t = step / 9f;
+                int bx = Mathf.FloorToInt(src.x + (dst.x - src.x) * t);
+                int by = Mathf.FloorToInt(src.y + (dst.y - src.y) * t);
+                int bz = Mathf.FloorToInt(src.z + (dst.z - src.z) * t);
+                if (bx == prevX && by == prevY && bz == prevZ) continue;
+                prevX = bx; prevY = by; prevZ = bz;
+                if (bx == sx && by == sy && bz == sz) continue;
+                ushort b = getBlock(bx, by, bz);
+                if (b == BlockRegistry.LeadShieldId) atten *= 0.10f;
+                else if (b == BlockRegistry.ReinforcedConcreteId) atten *= 0.55f;
+                else if (b == BlockRegistry.WaterId) atten *= 0.65f;
+            }
+            return atten;
+        }
+
         /// <summary>Evaluates real connected 3D electrical circuits around the player and updates reactor thermohydraulics.</summary>
         public void StepPowerAndRadiation(
             float dt,
@@ -173,9 +195,13 @@ namespace LestingCraft.Gameplay
                     }
                     if (b == BlockRegistry.UraniumOreId || b == BlockRegistry.UraniumBlockId)
                     {
-                        float dist = Mathf.Max(1.2f, Vector3.Distance(playerPos, new Vector3(x + 0.5f, y + 0.5f, z + 0.5f)));
+                        var srcPos = new Vector3(x + 0.5f, y + 0.5f, z + 0.5f);
+                        float dist = Mathf.Max(1.2f, Vector3.Distance(playerPos, srcPos));
                         if (dist < 9.5f)
-                            ambientMsvHr += (b == BlockRegistry.UraniumBlockId ? 680f : 310f) / (dist * dist);
+                        {
+                            float losAtten = ComputeGammaAttenuation(getBlock, srcPos, playerPos + new Vector3(0f, 0.5f, 0f));
+                            ambientMsvHr += losAtten * (b == BlockRegistry.UraniumBlockId ? 680f : 310f) / (dist * dist);
+                        }
                     }
                     if (IsElectricalBlock(b))
                     {
@@ -200,9 +226,13 @@ namespace LestingCraft.Gameplay
                             bool leadCased =
                                 getBlock(x + 1, y, z) == BlockRegistry.LeadShieldId &&
                                 getBlock(x - 1, y, z) == BlockRegistry.LeadShieldId;
-                            float dist = Mathf.Max(1.2f, Vector3.Distance(playerPos, new Vector3(x + 0.5f, y + 0.5f, z + 0.5f)));
+                            var reactorPos = new Vector3(x + 0.5f, y + 0.5f, z + 0.5f);
+                            float dist = Mathf.Max(1.2f, Vector3.Distance(playerPos, reactorPos));
                             if (dist < 13f)
-                                ambientMsvHr += (leadCased ? 95f : (hasWater ? 780f : 2200f)) / (dist * dist);
+                            {
+                                float losAtten = ComputeGammaAttenuation(getBlock, reactorPos, playerPos + new Vector3(0f, 0.5f, 0f));
+                                ambientMsvHr += losAtten * (leadCased ? 95f : (hasWater ? 780f : 2200f)) / (dist * dist);
+                            }
                         }
                     }
                 }
@@ -267,8 +297,8 @@ namespace LestingCraft.Gameplay
                     ambientMsvHr += Mathf.Lerp(4800f, 420f, d / Mathf.Max(1f, fz.Radius));
             }
 
-            // Lead Shield blocks around player attenuate radiation by up to 88%!
-            float shieldFactor = Mathf.Clamp(1f - leadShieldBlocksNear * 0.16f, 0.12f, 1f);
+            // Lead Shield blocks around player attenuate scattered gamma radiation by up to 88%!
+            float shieldFactor = Mathf.Clamp(1f - leadShieldBlocksNear * 0.44f, 0.12f, 1f);
             CurrentMillisievertsPerHour = ambientMsvHr * shieldFactor;
 
             if (currentDim != Dimension.Radia && PostEscapeImmunityTimer <= 0f)

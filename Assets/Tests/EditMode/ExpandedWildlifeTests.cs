@@ -11,7 +11,7 @@ namespace LestingCraft.Tests
  {
   static float Flat(float x,float z,float y,float radius,float height)=>50;
   [Test] public void ExpandedCatalogHas30PlaceableMinedAndTexturedBlocks()
-  {Assert.AreEqual(51,ExpandedContent.Blocks.Length);foreach(var b in ExpandedContent.Blocks){Assert.AreEqual(b.Id,Items.Get(b.Id).Block);Assert.AreEqual(b.Name,SurfaceLayers.DisplayName((ushort)b.Id));Assert.AreEqual(b.Layer,SurfaceLayers.ForFace((ushort)b.Id,0));Assert.IsTrue(BlockRegistry.IsSolid((ushort)b.Id));Assert.IsNotNull(ItemArtwork.Get(b.Id));}}
+  {Assert.AreEqual(71,ExpandedContent.Blocks.Length);foreach(var b in ExpandedContent.Blocks){Assert.AreEqual(b.Id,Items.Get(b.Id).Block);Assert.AreEqual(b.Name,SurfaceLayers.DisplayName((ushort)b.Id));Assert.AreEqual(b.Layer,SurfaceLayers.ForFace((ushort)b.Id,0));Assert.IsTrue(BlockRegistry.IsSolid((ushort)b.Id));Assert.IsNotNull(ItemArtwork.Get(b.Id));}}
   [Test] public void CoalOreHasActualCoalDropAndAllSevenMineralsSmelt()
   {Assert.AreEqual(147,Items.ToolDrop(19));Assert.AreEqual(40,FurnaceState.FuelSeconds(147));for(int id=20;id<=26;id++)Assert.AreEqual(id+120,FurnaceState.Result(id));Assert.AreEqual(44,FurnaceState.Result(6));Assert.AreEqual(39,FurnaceState.Result(33));Assert.AreEqual(138,FurnaceState.Result(135));}
   [Test] public void LegacyGenerationFlagPreservesEverySample()
