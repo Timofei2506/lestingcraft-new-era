@@ -158,7 +158,7 @@ namespace LestingCraft.Runtime
             yield return WaitWorldMeshed(game.Session.World, 35f);
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "01-village-houses-lantern-poles.png"), () =>
             {
-                game.Session.Data.clock = 975.0;
+                game.Session.Data.clock = 760.0;
                 game.Session.Notice = "Обновлённая деревня: черепичные крыши, кровати в домах, уличные фонари и 10 профессий жителей";
                 cam.fieldOfView = 66f;
                 cam.farClipPlane = 450f;
@@ -207,7 +207,7 @@ namespace LestingCraft.Runtime
             yield return WaitWorldMeshed(game.Session.World, 35f);
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "03-cosmodrome-orbiter-launch-complex.png"), () =>
             {
-                game.Session.Data.clock = 900.0;
+                game.Session.Data.clock = 570.0;
                 game.Session.Notice = "Космодром Лестингии: стартовый стол, кабель-мачта, лифт экипажа и вертикальный орбитальный шаттл";
                 cam.fieldOfView = 68f;
                 MoveBoth(player, cam, shot3Cam, shot3Look);
@@ -368,9 +368,9 @@ namespace LestingCraft.Runtime
                 }
                 RenderSettings.fog = true;
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogColor = new Color(0.20f, 0.16f, 0.29f);
-                RenderSettings.fogDensity = 0.042f;
-                cam.backgroundColor = new Color(0.20f, 0.16f, 0.29f);
+                RenderSettings.fogColor = new Color(0.24f, 0.20f, 0.34f);
+                RenderSettings.fogDensity = 0.020f;
+                cam.backgroundColor = new Color(0.24f, 0.20f, 0.34f);
                 cam.fieldOfView = 66f;
                 cam.farClipPlane = 240f;
                 MoveBoth(player, cam, new Vector3(dx, dy + 2.35f, dz - 3.5f), new Vector3(dx, dy + 2.45f, dz + 10.5f));
@@ -435,6 +435,8 @@ namespace LestingCraft.Runtime
             finishing = true;
             Debug.Log("[Showcase] PASS: 8 authentic 1920x1080 URP screenshots saved to " + outDir);
             Application.Quit(0);
+            yield return null;
+            Environment.Exit(0);
         }
 
         static void SetCamerasActive(Camera cam, FirstPersonHands hands, bool active)
@@ -727,8 +729,8 @@ namespace LestingCraft.Runtime
             var bl = backLightObj.AddComponent<Light>();
             bl.type = LightType.Point;
             bl.color = new Color(0.66f, 0.42f, 0.92f);
-            bl.range = 22f;
-            bl.intensity = 3.4f;
+            bl.range = 44f;
+            bl.intensity = 14.0f;
             bl.shadows = LightShadows.None;
             return mistLightRoot;
         }
