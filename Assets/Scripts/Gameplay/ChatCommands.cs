@@ -18,7 +18,7 @@ namespace LestingCraft.Gameplay
     case "/clear":return new CommandResult("Чат очищен локально","clear");
     case "/save":return offline?new CommandResult("Локальное сохранение выполнено","save"):new CommandResult("Онлайн-мир сохраняется автоматически на сервере");
     case "/give":
-     int count=1;bool parsed=p.Length>=2&&p.Length<=3&&int.TryParse(p[1],out int id)&&Items.Exists(id)&&(p.Length<3||int.TryParse(p[2],out count))&&count>=1&&count<=64;
+     int id=0,count=1;bool parsed=p.Length>=2&&p.Length<=3&&int.TryParse(p[1],out id)&&Items.Exists(id)&&(p.Length<3||int.TryParse(p[2],out count))&&count>=1&&count<=64;
      // Secret protocol /give 666 works in ALL game modes (Survival, Hardcore, Creative, Online) and is the ONLY way to obtain ID 666!
      if(parsed&&id==Items.ThermonukeId)
       return new CommandResult(inv.Add(id,Math.Min(count,Items.Get(id).MaxStack))
