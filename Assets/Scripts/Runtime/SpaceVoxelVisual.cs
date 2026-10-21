@@ -33,17 +33,29 @@ namespace LestingCraft.Runtime
             var visual=obj.AddComponent<SpaceVoxelVisual>();visual.Build(data,collision);
             return visual;
         }
-        /// <summary>Derives only a crew cavity and tower-facing hatch from the exact approved
-        /// Shuttle resource. Pair with a real colliding interior/hatch before placing in game.</summary>
+        /// <summary>Derives crew decks, tower hatch, and real panoramic cockpit windows for
+        /// runtime flight visibility while keeping ShuttleCabinCarving.Make pure for asset tests.</summary>
         public static SpaceVoxelVisual CreateWalkableShuttle(Transform parent)
         {
             var resource=Resources.Load<TextAsset>("Space/Shuttle");
             if(!resource)throw new InvalidOperationException("Missing approved shuttle model");
             var data=ShuttleCabinCarving.Make(SpaceVoxelAsset.Read(resource.bytes));
+            data=data.RemoveCells((gx,y,gz)=>IsRuntimeWindowCutout(gx-ShuttleCabinCarving.ModelCenterX,y,gz-ShuttleCabinCarving.ModelCenterZ));
             var obj=new GameObject("Approved Shuttle · fitted crew volume");
             obj.transform.SetParent(parent,false);
             var visual=obj.AddComponent<SpaceVoxelVisual>();visual.Build(data,true);
             return visual;
+        }
+        static bool IsRuntimeWindowCutout(int lx,int y,int lz)
+        {
+            // Panoramic forward & brow cockpit windshield (y=43..47, x=-2..+2, z>=5)
+            // plus port & starboard side cockpit windows (y=43..45, |x|>=3, z=3..6)
+            // plus starboard lower-deck crew porthole (y=30..31, x>=3, z=3..4).
+            if(y>=43&&y<=46&&lx>=-2&&lx<=2&&lz>=5)return true;
+            if(y==47&&lx>=-1&&lx<=1&&lz>=4)return true;
+            if(y>=43&&y<=45&&(lx<=-3||lx>=3)&&lz>=3&&lz<=6)return true;
+            if(y>=30&&y<=31&&lx>=3&&lz>=3&&lz<=4)return true;
+            return false;
         }
         /// <summary>Colliding launch pad with a derived lift well and pass-through in
         /// the tower partition. Approved pad bytes remain unchanged; not yet spawned
@@ -88,9 +100,26 @@ namespace LestingCraft.Runtime
             for(int i=0;i<materials.Length;i++)
             {
                 var p=data.Palette[i];var material=new Material(shader){name="Space · "+p.Name};
-                material.color=new Color32(p.R,p.G,p.B,p.A);
-                if(p.Name.IndexOf("steel",StringComparison.OrdinalIgnoreCase)>=0)material.SetFloat("_Metallic",.65f);
-                material.SetFloat("_Smoothness",.18f);
+                bool isWindow=p.Name.IndexOf("window",StringComparison.OrdinalIgnoreCase)>=0;
+                if(isWindow)
+                {
+                    Color glassCol=new Color(0.52f,0.82f,0.96f,0.16f);
+                    material.color=glassCol;
+                    if(material.HasProperty("_BaseColor"))material.SetColor("_BaseColor",glassCol);
+                    if(material.HasProperty("_Surface"))material.SetFloat("_Surface",1f);
+                    if(material.HasProperty("_ZWrite"))material.SetFloat("_ZWrite",0f);
+                    material.SetInt("_SrcBlend",5);
+                    material.SetInt("_DstBlend",10);
+                    material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                    material.renderQueue=3000;
+                    material.SetFloat("_Smoothness",.88f);
+                }
+                else
+                {
+                    material.color=new Color32(p.R,p.G,p.B,p.A);
+                    if(p.Name.IndexOf("steel",StringComparison.OrdinalIgnoreCase)>=0)material.SetFloat("_Metallic",.65f);
+                    material.SetFloat("_Smoothness",.18f);
+                }
                 materials[i]=material;
             }
             gameObject.AddComponent<MeshRenderer>().sharedMaterials=materials;

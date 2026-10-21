@@ -256,7 +256,7 @@ namespace LestingCraft.Runtime
             spaceKeyLight.intensity = 2.15f;
             spaceKeyLight.shadows = LightShadows.None;
 
-            var backdrop = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            var backdrop = GameObject.CreatePrimitive(PrimitiveType.Cube);
             backdrop.name = "DeepSpaceBackdrop";
             backdrop.transform.SetParent(spaceDomeRoot.transform, false);
             backdrop.transform.localScale = new Vector3(-420f, 420f, 420f);
@@ -275,14 +275,14 @@ namespace LestingCraft.Runtime
             sfRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             sfRenderer.receiveShadows = false;
 
-            sunObj = CreateCelestialBody("SolarStar", 14f, SpaceTargetKind.Mercury, true);
-            planetSpheres[SpaceTargetKind.Earth] = CreateCelestialBody("Planet_Lestingia", 9f, SpaceTargetKind.Earth, false);
-            planetSpheres[SpaceTargetKind.Moon] = CreateCelestialBody("Planet_Moon", 4.5f, SpaceTargetKind.Moon, false);
-            planetSpheres[SpaceTargetKind.Mars] = CreateCelestialBody("Planet_Mars", 6.2f, SpaceTargetKind.Mars, false);
-            planetSpheres[SpaceTargetKind.Venus] = CreateCelestialBody("Planet_Venus", 8.2f, SpaceTargetKind.Venus, false);
-            planetSpheres[SpaceTargetKind.Mercury] = CreateCelestialBody("Planet_Mercury", 4.2f, SpaceTargetKind.Mercury, false);
+            sunObj = CreateCelestialBody("SolarStar", 11.5f, SpaceTargetKind.Mercury, true);
+            planetSpheres[SpaceTargetKind.Earth] = CreateCelestialBody("Planet_Lestingia", 8.0f, SpaceTargetKind.Earth, false);
+            planetSpheres[SpaceTargetKind.Moon] = CreateCelestialBody("Planet_Moon", 4.0f, SpaceTargetKind.Moon, false);
+            planetSpheres[SpaceTargetKind.Mars] = CreateCelestialBody("Planet_Mars", 5.6f, SpaceTargetKind.Mars, false);
+            planetSpheres[SpaceTargetKind.Venus] = CreateCelestialBody("Planet_Venus", 7.4f, SpaceTargetKind.Venus, false);
+            planetSpheres[SpaceTargetKind.Mercury] = CreateCelestialBody("Planet_Mercury", 3.8f, SpaceTargetKind.Mercury, false);
 
-            // Full 24-body 3D Celestial Atlas across Solar System, Extrasolar Systems & Andromeda M31
+            // Full 24-body 3D Cubic Voxel Celestial Atlas across Solar System, Extrasolar Systems & Andromeda M31
             foreach (var body in CelestialAtlas.Bodies)
             {
                 var node = CreateAtlasBodyVisual(body);
@@ -295,64 +295,82 @@ namespace LestingCraft.Runtime
             spaceDomeRoot.SetActive(false);
         }
 
-        Texture2D BuildAtlasPlanetTexture(CelestialBodyDef body, Color primary, Color secondary)
+        static Vector3 CubeFaceDirection(int face, float s, float t)
         {
-            const int w = 256, h = 128;
+            switch (face)
+            {
+                case 0: return new Vector3(1f, t, -s);
+                case 1: return new Vector3(-1f, t, s);
+                case 2: return new Vector3(s, 1f, -t);
+                case 3: return new Vector3(s, -1f, t);
+                case 4: return new Vector3(s, t, 1f);
+                default: return new Vector3(-s, t, -1f);
+            }
+        }
+
+        Texture2D BuildAtlasCubeTexture(CelestialBodyDef body, Color primary, Color secondary)
+        {
+            const int tile = 24;
+            const int w = tile * 3, h = tile * 2;
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
+            tex.filterMode = FilterMode.Point;
             int seed = (int)body.Id * 13 + 7;
             var pixels = new Color32[w * h];
-            for (int y = 0; y < h; y++)
+
+            for (int face = 0; face < 6; face++)
             {
-                float v = (y + 0.5f) / h;
-                float phi = (v - 0.5f) * Mathf.PI;
-                float cp = Mathf.Cos(phi), sp = Mathf.Sin(phi);
-                float polar = Mathf.Abs(sp);
-                for (int x = 0; x < w; x++)
+                int ox = (face % 3) * tile;
+                int oy = (face / 3) * tile;
+                for (int py = 0; py < tile; py++)
                 {
-                    float u = (x + 0.5f) / w;
-                    float theta = u * Mathf.PI * 2f;
-                    Vector3 n = new Vector3(cp * Mathf.Cos(theta), sp, cp * Mathf.Sin(theta));
-                    float bandFreq = body.HasRings || body.RadiusKm > 15000.0 ? 15.5f : 7.5f;
-                    float swirl = Mathf.Sin(theta * 3f + sp * 6.5f + seed) * 0.14f + Mathf.Cos(theta * 7f - sp * 11f) * 0.06f;
-                    float band = Mathf.Sin((sp + swirl) * bandFreq + seed * 0.4f) * 0.5f + 0.5f;
-                    float bandFine = Mathf.Cos((sp - swirl * 0.5f) * bandFreq * 2.3f + 1.1f) * 0.5f + 0.5f;
-                    float cont = Mathf.Sin(n.x * 3.9f + seed * 0.7f) * Mathf.Cos(n.z * 3.6f - seed * 0.3f)
-                               + Mathf.Sin(n.y * 4.7f + n.x * 2.2f) * 0.45f;
-                    Color c;
-                    if (body.IsStar)
+                    float t = ((py + 0.5f) / tile) * 2f - 1f;
+                    for (int px = 0; px < tile; px++)
                     {
-                        float gran = Mathf.Sin(n.x * 16f + n.z * 14f) * Mathf.Cos(n.y * 15f - n.x * 9f) * 0.5f + 0.5f;
-                        c = Color.Lerp(primary, Color.white, 0.28f + 0.48f * gran);
-                    }
-                    else if (body.Id == CelestialBodyId.Earth)
-                    {
-                        c = polar > 0.80f ? new Color(0.93f, 0.97f, 1.0f)
-                          : cont > 0.06f ? Color.Lerp(new Color(0.14f, 0.48f, 0.20f), new Color(0.54f, 0.46f, 0.27f), band * 0.55f)
-                          : Color.Lerp(new Color(0.05f, 0.22f, 0.58f), new Color(0.13f, 0.46f, 0.82f), bandFine * 0.5f);
-                        float cloud = Mathf.Sin(theta * 5f + sp * 8f) * Mathf.Cos(sp * 6f - theta * 2f);
-                        if (cloud > 0.42f) c = Color.Lerp(c, Color.white, (cloud - 0.42f) * 0.9f);
-                    }
-                    else if (body.HasRings || body.RadiusKm > 15000.0)
-                    {
-                        c = Color.Lerp(primary, secondary, Mathf.Clamp01(band * 0.72f + bandFine * 0.28f));
-                        if (body.Id == CelestialBodyId.Jupiter)
+                        float s = ((px + 0.5f) / tile) * 2f - 1f;
+                        Vector3 raw = CubeFaceDirection(face, s, t);
+                        Vector3 n = raw.normalized;
+                        float polar = Mathf.Abs(raw.y);
+                        int hsh = ((px * 73856093) ^ (py * 19349663) ^ (face * 83492791) ^ (seed * 26544357)) & 0x7fffffff;
+                        float jitter = ((hsh % 100) / 100f - 0.5f) * 0.14f;
+
+                        float bandFreq = body.HasRings || body.RadiusKm > 15000.0 ? 8.5f : 4.5f;
+                        float swirl = Mathf.Sin(raw.x * 3.1f + raw.z * 2.9f + seed) * 0.14f;
+                        float band = Mathf.Floor((Mathf.Sin((raw.y + swirl) * bandFreq + seed * 0.4f) * 0.5f + 0.5f) * 5f) / 4f;
+                        float cont = Mathf.Sin(n.x * 3.9f + seed * 0.7f) * Mathf.Cos(n.z * 3.6f - seed * 0.3f)
+                                   + Mathf.Sin(n.y * 4.7f + n.x * 2.2f) * 0.45f;
+                        Color c;
+                        if (body.IsStar)
                         {
-                            float spotDx = Mathf.DeltaAngle(u * 360f, 195f) / 28f;
-                            float spotDy = (sp + 0.34f) / 0.14f;
-                            float spot = 1f - Mathf.Clamp01(spotDx * spotDx + spotDy * spotDy);
-                            if (spot > 0.01f) c = Color.Lerp(c, new Color(0.86f, 0.34f, 0.20f), spot * 0.85f);
+                            float gran = ((hsh >> 4) % 8) / 7f;
+                            c = Color.Lerp(primary, Color.white, 0.24f + 0.56f * gran);
                         }
-                        if (polar > 0.84f) c = Color.Lerp(c, c * 0.72f + new Color(0.06f, 0.08f, 0.12f), (polar - 0.84f) * 4f);
+                        else if (body.Id == CelestialBodyId.Earth)
+                        {
+                            c = polar > 0.78f ? new Color(0.93f, 0.97f, 1.0f)
+                              : cont > 0.05f
+                                ? (cont > 0.42f ? new Color(0.52f, 0.46f, 0.28f) : new Color(0.15f, 0.52f, 0.22f))
+                                : (cont > -0.16f ? new Color(0.12f, 0.46f, 0.84f) : new Color(0.05f, 0.22f, 0.58f));
+                        }
+                        else if (body.HasRings || body.RadiusKm > 15000.0)
+                        {
+                            c = Color.Lerp(primary, secondary, Mathf.Clamp01(band));
+                            if (body.Id == CelestialBodyId.Jupiter && face == 4 && Mathf.Abs(s - 0.18f) < 0.28f && Mathf.Abs(t + 0.22f) < 0.18f)
+                                c = new Color(0.88f, 0.33f, 0.18f);
+                        }
+                        else
+                        {
+                            float stepVal = Mathf.Floor(Mathf.Clamp01(cont * 0.55f + 0.50f) * 4f) / 3f;
+                            c = Color.Lerp(primary, secondary, stepVal);
+                            if (polar > 0.82f && !body.IsStar)
+                                c = Color.Lerp(c, new Color(0.90f, 0.94f, 0.98f), 0.75f);
+                        }
+                        c = new Color(Mathf.Clamp01(c.r + jitter), Mathf.Clamp01(c.g + jitter), Mathf.Clamp01(c.b + jitter), 1f);
+                        if (px == 0 || py == 0 || px == tile - 1 || py == tile - 1)
+                            c = Color.Lerp(c, c * 0.80f, 0.65f);
+                        c.a = 1f;
+                        pixels[(oy + py) * w + (ox + px)] = c;
                     }
-                    else
-                    {
-                        c = Color.Lerp(primary, secondary, Mathf.Clamp01(cont * 0.55f + 0.48f * band));
-                        if (polar > 0.84f) c = Color.Lerp(c, new Color(0.90f, 0.93f, 0.97f), (polar - 0.84f) * 4.2f);
-                    }
-                    c.a = 1f;
-                    pixels[y * w + x] = c;
                 }
             }
             tex.SetPixels32(pixels);
@@ -361,25 +379,32 @@ namespace LestingCraft.Runtime
             return tex;
         }
 
-        Texture2D BuildPlanetaryRingTexture(Color cA, Color cB)
+        Texture2D BuildCloudCubeTexture(int seed, Color cloudTint)
         {
-            const int w = 256, h = 4;
+            const int tile = 16;
+            const int w = tile * 3, h = tile * 2;
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
+            tex.filterMode = FilterMode.Point;
             var pixels = new Color32[w * h];
-            for (int x = 0; x < w; x++)
+            for (int face = 0; face < 6; face++)
             {
-                float r = (x + 0.5f) / w;
-                bool cassiniGap = r > 0.575f && r < 0.655f;
-                bool enckeGap = r > 0.865f && r < 0.895f;
-                bool innerFade = r < 0.05f || r > 0.985f;
-                float ringlet = 0.72f + 0.28f * Mathf.Sin(r * 96f) * Mathf.Cos(r * 37f);
-                float density = (cassiniGap || enckeGap || innerFade) ? 0f
-                    : (r < 0.22f ? 0.55f : r < 0.575f ? 0.98f : 0.84f) * ringlet;
-                Color c = Color.Lerp(cB, Color.Lerp(cA, Color.white, 0.42f), Mathf.Clamp01(density));
-                c.a = density > 0.34f ? 1f : 0f;
-                for (int y = 0; y < h; y++) pixels[y * w + x] = c;
+                int ox = (face % 3) * tile;
+                int oy = (face / 3) * tile;
+                for (int py = 0; py < tile; py++)
+                {
+                    float t = ((py + 0.5f) / tile) * 2f - 1f;
+                    for (int px = 0; px < tile; px++)
+                    {
+                        float s = ((px + 0.5f) / tile) * 2f - 1f;
+                        Vector3 n = CubeFaceDirection(face, s, t).normalized;
+                        float cld = Mathf.Sin(n.x * 5.2f + seed) * Mathf.Cos(n.z * 4.8f - seed * 0.5f) + Mathf.Sin(n.y * 6.4f) * 0.35f;
+                        bool filled = cld > 0.28f;
+                        pixels[(oy + py) * w + (ox + px)] = filled
+                            ? (Color32)new Color(cloudTint.r, cloudTint.g, cloudTint.b, 1f)
+                            : new Color32(0, 0, 0, 0);
+                    }
+                }
             }
             tex.SetPixels32(pixels);
             tex.Apply(false, false);
@@ -387,18 +412,137 @@ namespace LestingCraft.Runtime
             return tex;
         }
 
+        Texture2D BuildSquarePlanetaryRingTexture(Color cA, Color cB)
+        {
+            const int size = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Point;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                float nz = ((y + 0.5f) / size) * 2f - 1f;
+                for (int x = 0; x < size; x++)
+                {
+                    float nx = ((x + 0.5f) / size) * 2f - 1f;
+                    float sqDist = Mathf.Max(Mathf.Abs(nx), Mathf.Abs(nz));
+                    bool insideHole = sqDist < 0.52f || sqDist > 0.99f;
+                    bool cassiniGap = sqDist > 0.755f && sqDist < 0.815f;
+                    bool enckeGap = sqDist > 0.915f && sqDist < 0.940f;
+                    int bandIdx = Mathf.FloorToInt(sqDist * 32f);
+                    float bandTone = ((bandIdx * 37) % 7) / 6f;
+                    float density = (insideHole || cassiniGap || enckeGap) ? 0f : (sqDist < 0.755f ? 0.96f : 0.82f);
+                    Color c = Color.Lerp(cB * 0.88f, Color.Lerp(cA, Color.white, 0.46f), bandTone);
+                    c.a = density > 0.3f ? 1f : 0f;
+                    pixels[y * size + x] = c;
+                }
+            }
+            tex.SetPixels32(pixels);
+            tex.Apply(false, false);
+            ownedObjects.Add(tex);
+            return tex;
+        }
+
+        Mesh BuildVoxelCubeMesh(float halfExtent, string meshName)
+        {
+            const float padU = 0.35f / 72f;
+            const float padV = 0.35f / 48f;
+            var verts = new List<Vector3>(24);
+            var norms = new List<Vector3>(24);
+            var uvs = new List<Vector2>(24);
+            var cols = new List<Color>(24);
+            var tris = new List<int>(36);
+
+            Vector3[] faceNormals = {
+                Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back
+            };
+            Vector3[] faceRight = {
+                Vector3.back, Vector3.forward, Vector3.right, Vector3.right, Vector3.right, Vector3.left
+            };
+            Vector3[] faceUp = {
+                Vector3.up, Vector3.up, Vector3.back, Vector3.forward, Vector3.up, Vector3.up
+            };
+
+            for (int f = 0; f < 6; f++)
+            {
+                float u0 = (f % 3) / 3f + padU, u1 = ((f % 3) + 1) / 3f - padU;
+                float v0 = (f / 3) / 2f + padV, v1 = ((f / 3) + 1) / 2f - padV;
+                Vector3 c = faceNormals[f] * halfExtent;
+                Vector3 r = faceRight[f] * halfExtent;
+                Vector3 u = faceUp[f] * halfExtent;
+                int b = verts.Count;
+                verts.Add(c - r - u); verts.Add(c + r - u); verts.Add(c + r + u); verts.Add(c - r + u);
+                for (int k = 0; k < 4; k++) { norms.Add(faceNormals[f]); cols.Add(Color.white); }
+                uvs.Add(new Vector2(u0, v0)); uvs.Add(new Vector2(u1, v0));
+                uvs.Add(new Vector2(u1, v1)); uvs.Add(new Vector2(u0, v1));
+                tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
+                tris.Add(b); tris.Add(b + 3); tris.Add(b + 2);
+            }
+
+            var mesh = new Mesh { name = meshName };
+            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            ownedObjects.Add(mesh);
+            return mesh;
+        }
+
+        Mesh BuildSquareRingPlateMesh(float outerHalf, float thickness)
+        {
+            var verts = new List<Vector3>(24);
+            var norms = new List<Vector3>(24);
+            var uvs = new List<Vector2>(24);
+            var tris = new List<int>(36);
+            float h = thickness * 0.5f;
+
+            int bt = verts.Count;
+            verts.Add(new Vector3(-outerHalf, h, -outerHalf)); verts.Add(new Vector3(outerHalf, h, -outerHalf));
+            verts.Add(new Vector3(outerHalf, h, outerHalf));   verts.Add(new Vector3(-outerHalf, h, outerHalf));
+            for (int k = 0; k < 4; k++) norms.Add(Vector3.up);
+            uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(1f, 0f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(0f, 1f));
+            tris.Add(bt); tris.Add(bt + 2); tris.Add(bt + 1); tris.Add(bt); tris.Add(bt + 3); tris.Add(bt + 2);
+
+            int bb = verts.Count;
+            verts.Add(new Vector3(-outerHalf, -h, -outerHalf)); verts.Add(new Vector3(-outerHalf, -h, outerHalf));
+            verts.Add(new Vector3(outerHalf, -h, outerHalf));   verts.Add(new Vector3(outerHalf, -h, -outerHalf));
+            for (int k = 0; k < 4; k++) norms.Add(Vector3.down);
+            uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(0f, 1f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(1f, 0f));
+            tris.Add(bb); tris.Add(bb + 2); tris.Add(bb + 1); tris.Add(bb); tris.Add(bb + 3); tris.Add(bb + 2);
+
+            Vector3[] rimN = { Vector3.forward, Vector3.back, Vector3.right, Vector3.left };
+            Vector3[] rimR = { Vector3.right, Vector3.left, Vector3.back, Vector3.forward };
+            for (int s = 0; s < 4; s++)
+            {
+                int br = verts.Count;
+                Vector3 c = rimN[s] * outerHalf;
+                Vector3 r = rimR[s] * outerHalf;
+                verts.Add(c - r - Vector3.up * h); verts.Add(c + r - Vector3.up * h);
+                verts.Add(c + r + Vector3.up * h); verts.Add(c - r + Vector3.up * h);
+                for (int k = 0; k < 4; k++) norms.Add(rimN[s]);
+                uvs.Add(new Vector2(0.95f, 0.5f)); uvs.Add(new Vector2(0.95f, 0.5f));
+                uvs.Add(new Vector2(0.95f, 0.5f)); uvs.Add(new Vector2(0.95f, 0.5f));
+                tris.Add(br); tris.Add(br + 2); tris.Add(br + 1); tris.Add(br); tris.Add(br + 3); tris.Add(br + 2);
+            }
+
+            var mesh = new Mesh { name = "SquareVoxelPlanetaryRing" };
+            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            ownedObjects.Add(mesh);
+            return mesh;
+        }
+
         GameObject CreateAtlasBodyVisual(CelestialBodyDef body)
         {
             var go = new GameObject("Atlas_" + body.WireKey);
             go.transform.SetParent(spaceDomeRoot.transform, false);
-            float visualRadius = body.IsStar ? 11.5f : body.HasRings ? 9.4f : Mathf.Clamp((float)Math.Log10(Math.Max(200.0, body.RadiusKm)) * 1.75f, 2.5f, 9.8f);
+            go.transform.localRotation = Quaternion.Euler(14f, 32f, -8f);
+            float halfExtent = body.IsStar ? 9.6f : body.HasRings ? 7.8f : Mathf.Clamp((float)Math.Log10(Math.Max(200.0, body.RadiusKm)) * 1.55f, 2.2f, 8.2f);
             Color cA = new Color(body.ColorR, body.ColorG, body.ColorB, 1f);
             Color cB = new Color(body.SecondaryR, body.SecondaryG, body.SecondaryB, 1f);
-            var tex = BuildAtlasPlanetTexture(body, cA, cB);
+            var tex = BuildAtlasCubeTexture(body, cA, cB);
             var mf = go.AddComponent<MeshFilter>();
-            mf.sharedMesh = BuildAtlasSphereMesh(48, 32, visualRadius, cA, cB, body.IsStar, (int)body.Id);
+            mf.sharedMesh = BuildVoxelCubeMesh(halfExtent, "AtlasVoxelCube_" + (int)body.Id);
             var mr = go.AddComponent<MeshRenderer>();
-            var mat = MakeLitMaterial("AtlasSurface_" + body.WireKey, Color.white, body.IsStar ? cA * 2.35f : Color.white * 0.28f, 0.04f, body.HasRings ? 0.22f : 0.32f);
+            var mat = MakeLitMaterial("AtlasSurface_" + body.WireKey, Color.white, body.IsStar ? cA * 2.35f : Color.white * 0.24f, 0.04f, 0.14f);
             if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
             mat.mainTexture = tex;
             if (!body.IsStar && mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", tex);
@@ -406,21 +550,46 @@ namespace LestingCraft.Runtime
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
 
+            bool hasClouds = body.Id == CelestialBodyId.Earth || body.Id == CelestialBodyId.Venus ||
+                             body.Id == CelestialBodyId.Titan || body.Id == CelestialBodyId.Kepler452b ||
+                             body.Id == CelestialBodyId.AndromedaPrime;
+            if (hasClouds)
+            {
+                var clouds = new GameObject("CloudCube_" + body.WireKey);
+                clouds.transform.SetParent(go.transform, false);
+                var cloudTint = body.Id == CelestialBodyId.AndromedaPrime
+                    ? new Color(0.86f, 0.78f, 1.0f)
+                    : body.Id == CelestialBodyId.Titan ? new Color(0.96f, 0.80f, 0.52f) : Color.white;
+                var cloudTex = BuildCloudCubeTexture((int)body.Id * 7 + 3, cloudTint);
+                clouds.AddComponent<MeshFilter>().sharedMesh = BuildVoxelCubeMesh(halfExtent * 1.065f, "CloudShell_" + body.WireKey);
+                var cmr = clouds.AddComponent<MeshRenderer>();
+                var cmat = MakeLitMaterial("CloudsCutout_" + body.WireKey, Color.white, cloudTint * 0.22f, 0.02f, 0.12f);
+                if (cmat.HasProperty("_BaseMap")) cmat.SetTexture("_BaseMap", cloudTex);
+                cmat.mainTexture = cloudTex;
+                if (cmat.HasProperty("_AlphaClip")) cmat.SetFloat("_AlphaClip", 1f);
+                if (cmat.HasProperty("_Cutoff")) cmat.SetFloat("_Cutoff", 0.45f);
+                cmat.EnableKeyword("_ALPHATEST_ON");
+                cmat.renderQueue = 2450;
+                cmr.sharedMaterial = cmat;
+                cmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+
             if (body.HasRings)
             {
                 var ring = new GameObject("Rings_" + body.WireKey);
                 ring.transform.SetParent(go.transform, false);
-                ring.transform.localRotation = Quaternion.Euler(body.Id == CelestialBodyId.Uranus ? 97.8f : 26.7f, 18f, -12f);
-                var ringTex = BuildPlanetaryRingTexture(cA, cB);
+                ring.transform.localRotation = Quaternion.Euler(body.Id == CelestialBodyId.Uranus ? 97.8f : 24f, 16f, -10f);
+                var ringTex = BuildSquarePlanetaryRingTexture(cA, cB);
                 var rmf = ring.AddComponent<MeshFilter>();
-                rmf.sharedMesh = BuildRingMesh(visualRadius * (float)body.RingInnerScale, visualRadius * (float)body.RingOuterScale, cA, cB, 72);
+                float outerHalf = halfExtent * (float)body.RingOuterScale;
+                rmf.sharedMesh = BuildSquareRingPlateMesh(outerHalf, halfExtent * 0.055f);
                 var rmr = ring.AddComponent<MeshRenderer>();
-                var rmat = MakeLitMaterial("RingsCutout_" + body.WireKey, Color.white, Color.white * 0.36f, 0.05f, 0.35f);
+                var rmat = MakeLitMaterial("SquareRingsCutout_" + body.WireKey, Color.white, Color.white * 0.36f, 0.04f, 0.18f);
                 if (rmat.HasProperty("_BaseMap")) rmat.SetTexture("_BaseMap", ringTex);
                 rmat.mainTexture = ringTex;
                 if (rmat.HasProperty("_EmissionMap")) rmat.SetTexture("_EmissionMap", ringTex);
                 if (rmat.HasProperty("_AlphaClip")) rmat.SetFloat("_AlphaClip", 1f);
-                if (rmat.HasProperty("_Cutoff")) rmat.SetFloat("_Cutoff", 0.32f);
+                if (rmat.HasProperty("_Cutoff")) rmat.SetFloat("_Cutoff", 0.35f);
                 rmat.EnableKeyword("_ALPHATEST_ON");
                 rmat.renderQueue = 2450;
                 rmr.sharedMaterial = rmat;
@@ -428,91 +597,6 @@ namespace LestingCraft.Runtime
                 rmr.receiveShadows = false;
             }
             return go;
-        }
-
-        Mesh BuildAtlasSphereMesh(int lonSegs, int latSegs, float radius, Color primary, Color secondary, bool isStar, int seed)
-        {
-            var verts = new List<Vector3>();
-            var norms = new List<Vector3>();
-            var uvs = new List<Vector2>();
-            var cols = new List<Color>();
-            var tris = new List<int>();
-            for (int lat = 0; lat <= latSegs; lat++)
-            {
-                float v = (float)lat / latSegs;
-                float phi = (v - 0.5f) * Mathf.PI;
-                for (int lon = 0; lon <= lonSegs; lon++)
-                {
-                    float u = (float)lon / lonSegs;
-                    float theta = u * Mathf.PI * 2f;
-                    Vector3 n = new Vector3(Mathf.Cos(phi) * Mathf.Cos(theta), Mathf.Sin(phi), Mathf.Cos(phi) * Mathf.Sin(theta));
-                    verts.Add(n * radius);
-                    norms.Add(n);
-                    uvs.Add(new Vector2(u, v));
-                    cols.Add(Color.white);
-                }
-            }
-            int stride = lonSegs + 1;
-            for (int lat = 0; lat < latSegs; lat++)
-                for (int lon = 0; lon < lonSegs; lon++)
-                {
-                    int a = lat * stride + lon, b = a + 1, c = a + stride, d = c + 1;
-                    tris.Add(a); tris.Add(c); tris.Add(b);
-                    tris.Add(b); tris.Add(c); tris.Add(d);
-                }
-            var mesh = new Mesh { name = "AtlasSphere_" + seed };
-            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
-            mesh.RecalculateBounds();
-            ownedObjects.Add(mesh);
-            return mesh;
-        }
-
-        Mesh BuildRingMesh(float innerR, float outerR, Color cA, Color cB, int segs)
-        {
-            var verts = new List<Vector3>();
-            var norms = new List<Vector3>();
-            var uvs = new List<Vector2>();
-            var cols = new List<Color>();
-            var tris = new List<int>();
-            for (int side = 0; side < 2; side++)
-            {
-                int baseV = verts.Count;
-                float ny = side == 0 ? 1f : -1f;
-                float yOff = side == 0 ? 0.015f : -0.015f;
-                for (int i = 0; i <= segs; i++)
-                {
-                    float t = (float)i / segs;
-                    float a = t * Mathf.PI * 2f;
-                    Vector3 dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                    verts.Add(dir * innerR + new Vector3(0f, yOff, 0f));
-                    verts.Add(dir * outerR + new Vector3(0f, yOff, 0f));
-                    norms.Add(new Vector3(0f, ny, 0f));
-                    norms.Add(new Vector3(0f, ny, 0f));
-                    uvs.Add(new Vector2(0f, 0.5f));
-                    uvs.Add(new Vector2(1f, 0.5f));
-                    cols.Add(Color.white);
-                    cols.Add(Color.white);
-                }
-                for (int i = 0; i < segs; i++)
-                {
-                    int b = baseV + i * 2;
-                    if (side == 0)
-                    {
-                        tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
-                        tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3);
-                    }
-                    else
-                    {
-                        tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
-                        tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2);
-                    }
-                }
-            }
-            var mesh = new Mesh { name = "PlanetaryRingDisc" };
-            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
-            mesh.RecalculateBounds();
-            ownedObjects.Add(mesh);
-            return mesh;
         }
 
         GameObject CreateSpiralGalaxyBackdrop()
@@ -565,28 +649,39 @@ namespace LestingCraft.Runtime
         {
             var go = new GameObject("SolarAsteroidBelt");
             go.transform.SetParent(spaceDomeRoot.transform, false);
-            var verts = new List<Vector3>(1280);
-            var uvs = new List<Vector2>(1280);
-            var cols = new List<Color>(1280);
-            var tris = new List<int>(1920);
+            var verts = new List<Vector3>(7680);
+            var norms = new List<Vector3>(7680);
+            var uvs = new List<Vector2>(7680);
+            var cols = new List<Color>(7680);
+            var tris = new List<int>(11520);
             var rng = new System.Random(413999);
+            Vector3[] fn = { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back };
+            Vector3[] fr = { Vector3.back, Vector3.forward, Vector3.right, Vector3.right, Vector3.right, Vector3.left };
+            Vector3[] fu = { Vector3.up, Vector3.up, Vector3.back, Vector3.forward, Vector3.up, Vector3.up };
             for (int i = 0; i < 320; i++)
             {
                 float a = (float)(rng.NextDouble() * Math.PI * 2.0);
                 float r = 74f + ((float)rng.NextDouble() - 0.5f) * 9f;
                 Vector3 p = new Vector3(Mathf.Cos(a) * r, ((float)rng.NextDouble() - 0.5f) * 3.4f, Mathf.Sin(a) * r);
-                float s = 0.25f + (float)rng.NextDouble() * 0.55f;
-                Color c = Color.Lerp(new Color(0.42f, 0.39f, 0.36f, 1f), new Color(0.62f, 0.58f, 0.52f, 1f), (float)rng.NextDouble());
-                int b = verts.Count;
-                verts.Add(p + new Vector3(-s, -s, 0f)); verts.Add(p + new Vector3(s, -s, 0f));
-                verts.Add(p + new Vector3(s, s, 0f));  verts.Add(p + new Vector3(-s, s, 0f));
-                uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(1f, 0f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(0f, 1f));
-                cols.Add(c); cols.Add(c); cols.Add(c); cols.Add(c);
-                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
-                tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
+                float s = 0.28f + (float)rng.NextDouble() * 0.62f;
+                Quaternion rot = Quaternion.Euler((float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 360f, 0f);
+                Color baseC = Color.Lerp(new Color(0.42f, 0.39f, 0.36f, 1f), new Color(0.66f, 0.62f, 0.55f, 1f), (float)rng.NextDouble());
+                for (int f = 0; f < 6; f++)
+                {
+                    float shade = f == 2 ? 1.0f : f == 3 ? 0.55f : 0.80f;
+                    Color fc = new Color(baseC.r * shade, baseC.g * shade, baseC.b * shade, 1f);
+                    int b = verts.Count;
+                    Vector3 n = rot * fn[f], right = rot * fr[f] * s, up = rot * fu[f] * s;
+                    verts.Add(p + n * s - right - up); verts.Add(p + n * s + right - up);
+                    verts.Add(p + n * s + right + up); verts.Add(p + n * s - right + up);
+                    for (int k = 0; k < 4; k++) { norms.Add(n); cols.Add(fc); }
+                    uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(1f, 0f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(0f, 1f));
+                    tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
+                    tris.Add(b); tris.Add(b + 3); tris.Add(b + 2);
+                }
             }
-            var mesh = new Mesh { name = "AsteroidBeltTorus" };
-            mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            var mesh = new Mesh { name = "AsteroidBeltVoxelCubes" };
+            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             ownedObjects.Add(mesh);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -597,12 +692,13 @@ namespace LestingCraft.Runtime
             return go;
         }
 
-        GameObject CreateCelestialBody(string name, float radius, SpaceTargetKind paletteKind, bool isSun)
+        GameObject CreateCelestialBody(string name, float halfExtent, SpaceTargetKind paletteKind, bool isSun)
         {
             var go = new GameObject(name);
             go.transform.SetParent(spaceDomeRoot.transform, false);
+            go.transform.localRotation = Quaternion.Euler(16f, 28f, -10f);
             var mf = go.AddComponent<MeshFilter>();
-            mf.sharedMesh = BuildPlanetSphereMesh(28, 18, radius, paletteKind, isSun);
+            mf.sharedMesh = BuildPlanetCubeMesh(12, halfExtent, paletteKind, isSun);
             var mr = go.AddComponent<MeshRenderer>();
             mr.sharedMaterial = isSun
                 ? MakeLitMaterial(name + "_Mat", new Color(1f, 0.92f, 0.68f), new Color(2.4f, 1.85f, 0.95f), 0f, 0.1f)
@@ -656,41 +752,42 @@ namespace LestingCraft.Runtime
             return mesh;
         }
 
-        Mesh BuildPlanetSphereMesh(int lonSegs, int latSegs, float radius, SpaceTargetKind kind, bool isSun)
+        Mesh BuildPlanetCubeMesh(int gridPerFace, float halfExtent, SpaceTargetKind kind, bool isSun)
         {
-            var verts = new List<Vector3>();
-            var norms = new List<Vector3>();
-            var cols = new List<Color>();
-            var tris = new List<int>();
+            int cap = 6 * gridPerFace * gridPerFace * 4;
+            var verts = new List<Vector3>(cap);
+            var norms = new List<Vector3>(cap);
+            var cols = new List<Color>(cap);
+            var tris = new List<int>(6 * gridPerFace * gridPerFace * 6);
+            Vector3[] fn = { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back };
+            Vector3[] fr = { Vector3.back, Vector3.forward, Vector3.right, Vector3.right, Vector3.right, Vector3.left };
+            Vector3[] fu = { Vector3.up, Vector3.up, Vector3.back, Vector3.forward, Vector3.up, Vector3.up };
+            float cell = (2f * halfExtent) / gridPerFace;
 
-            for (int lat = 0; lat <= latSegs; lat++)
+            for (int f = 0; f < 6; f++)
             {
-                float v = (float)lat / latSegs;
-                float phi = (v - 0.5f) * Mathf.PI;
-                for (int lon = 0; lon <= lonSegs; lon++)
+                float shade = isSun ? 1f : (f == 2 ? 1.0f : f == 3 ? 0.62f : f == 4 ? 0.92f : 0.76f);
+                for (int gy = 0; gy < gridPerFace; gy++)
                 {
-                    float u = (float)lon / lonSegs;
-                    float theta = u * Mathf.PI * 2f;
-                    Vector3 n = new Vector3(Mathf.Cos(phi) * Mathf.Cos(theta), Mathf.Sin(phi), Mathf.Cos(phi) * Mathf.Sin(theta));
-                    verts.Add(n * radius);
-                    norms.Add(n);
-                    cols.Add(SamplePlanetSurfaceColor(kind, isSun, n));
+                    for (int gx = 0; gx < gridPerFace; gx++)
+                    {
+                        float s = ((gx + 0.5f) / gridPerFace) * 2f - 1f;
+                        float t = ((gy + 0.5f) / gridPerFace) * 2f - 1f;
+                        Vector3 sampleDir = CubeFaceDirection(f, s, t).normalized;
+                        Color c = SamplePlanetSurfaceColor(kind, isSun, sampleDir) * shade;
+                        c.a = 1f;
+                        Vector3 center = fn[f] * halfExtent + fr[f] * (s * halfExtent) + fu[f] * (t * halfExtent);
+                        Vector3 rx = fr[f] * (cell * 0.5f), uy = fu[f] * (cell * 0.5f);
+                        int b = verts.Count;
+                        verts.Add(center - rx - uy); verts.Add(center + rx - uy);
+                        verts.Add(center + rx + uy); verts.Add(center - rx + uy);
+                        for (int k = 0; k < 4; k++) { norms.Add(fn[f]); cols.Add(c); }
+                        tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
+                        tris.Add(b); tris.Add(b + 3); tris.Add(b + 2);
+                    }
                 }
             }
-            int stride = lonSegs + 1;
-            for (int lat = 0; lat < latSegs; lat++)
-            {
-                for (int lon = 0; lon < lonSegs; lon++)
-                {
-                    int a = lat * stride + lon;
-                    int b = a + 1;
-                    int c = a + stride;
-                    int d = c + 1;
-                    tris.Add(a); tris.Add(c); tris.Add(b);
-                    tris.Add(b); tris.Add(c); tris.Add(d);
-                }
-            }
-            var mesh = new Mesh { name = "PlanetSphere_" + kind };
+            var mesh = new Mesh { name = "PlanetVoxelCube_" + kind };
             mesh.SetVertices(verts);
             mesh.SetNormals(norms);
             mesh.SetColors(cols);
@@ -733,9 +830,9 @@ namespace LestingCraft.Runtime
                 var flameMat = MakeLitMaterial("RocketPlumeFlame", new Color(1f, 0.65f, 0.22f), new Color(3.2f, 1.6f, 0.45f), 0f, 0.2f);
                 var plasmaMat = MakeLitMaterial("ReentryPlasma", new Color(1f, 0.42f, 0.16f), new Color(2.5f, 0.85f, 0.25f), 0f, 0.15f);
 
-                mainFlame = MakePlumeCone("MainEnginePlume", plumeRoot.transform, new Vector3(0.5f, -5.5f, 3.2f), new Vector3(2.6f, 9.5f, 2.6f), flameMat);
-                leftPlume = MakePlumeCone("BoosterPlumePort", plumeRoot.transform, new Vector3(-2.1f, -4.2f, 3.2f), new Vector3(1.5f, 6.8f, 1.5f), flameMat);
-                rightPlume = MakePlumeCone("BoosterPlumeStarboard", plumeRoot.transform, new Vector3(3.1f, -4.2f, 3.2f), new Vector3(1.5f, 6.8f, 1.5f), flameMat);
+                mainFlame = MakePlumeCone("MainEnginePlume", plumeRoot.transform, new Vector3(0.5f, -5.5f, 3.2f), new Vector3(2.4f, 9.5f, 2.4f), flameMat);
+                leftPlume = MakePlumeCone("BoosterPlumePort", plumeRoot.transform, new Vector3(-2.1f, -4.2f, 3.2f), new Vector3(1.4f, 6.8f, 1.4f), flameMat);
+                rightPlume = MakePlumeCone("BoosterPlumeStarboard", plumeRoot.transform, new Vector3(3.1f, -4.2f, 3.2f), new Vector3(1.4f, 6.8f, 1.4f), flameMat);
                 plasmaShield = MakePlumeCone("AtmosphericPlasmaEnvelope", plumeRoot.transform, new Vector3(0.5f, 47f, 4.2f), new Vector3(7.4f, 5.2f, 7.4f), plasmaMat);
 
                 var lightGo = new GameObject("RocketExhaustLight");
@@ -757,7 +854,7 @@ namespace LestingCraft.Runtime
 
         static Transform MakePlumeCone(string name, Transform parent, Vector3 localPos, Vector3 scale, Material mat)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
@@ -813,7 +910,7 @@ namespace LestingCraft.Runtime
                     if (isDest)
                     {
                         float dist = Mathf.Lerp(175f, 36f, Mathf.SmoothStep(0f, 1f, (float)progress01));
-                        kv.Value.transform.localPosition = new Vector3(18f, 52f, dist);
+                        kv.Value.transform.localPosition = new Vector3(8f, 16f, dist);
                     }
                     else if (isOrigin)
                     {
@@ -1438,8 +1535,8 @@ namespace LestingCraft.Runtime
             Part(PrimitiveType.Cube, "CrownCrestLeft", bodyPivot, new Vector3(-0.65f, 6.95f, 0.1f), new Vector3(0.24f, 0.95f, 0.45f), trimMat);
             Part(PrimitiveType.Cube, "CrownCrestRight", bodyPivot, new Vector3(0.65f, 6.95f, 0.1f), new Vector3(0.24f, 0.95f, 0.45f), trimMat);
 
-            // Radiant weak-point core in chest
-            coreSphere = Part(PrimitiveType.Sphere, "RadiantCore", bodyPivot, new Vector3(0f, 4.25f, 0.85f), new Vector3(1.25f, 1.25f, 0.9f), coreMat);
+            // Radiant weak-point core in chest (voxel cube!)
+            coreSphere = Part(PrimitiveType.Cube, "RadiantCore", bodyPivot, new Vector3(0f, 4.25f, 0.85f), new Vector3(1.25f, 1.25f, 0.9f), coreMat);
 
             // Articulated twin arms
             leftArm = new GameObject("LeftArmPivot").transform;
@@ -1454,8 +1551,8 @@ namespace LestingCraft.Runtime
             Part(PrimitiveType.Cube, "RightForearm", rightArm, new Vector3(0f, -1.65f, 0.35f), new Vector3(0.92f, 3.1f, 1.05f), armorMat);
             Part(PrimitiveType.Cube, "RightGauntletBlade", rightArm, new Vector3(0f, -3.1f, 0.55f), new Vector3(1.15f, 0.85f, 1.45f), coreMat);
 
-            haloRing = Part(PrimitiveType.Cylinder, "OrbitalCrownRing", bodyPivot, new Vector3(0f, 7.35f, 0f), new Vector3(3.4f, 0.06f, 3.4f), coreMat);
-            shockwaveRing = Part(PrimitiveType.Cylinder, "TelegraphShockwave", transform, new Vector3(0f, 0.08f, 0f), new Vector3(1f, 0.05f, 1f), coreMat);
+            haloRing = Part(PrimitiveType.Cube, "OrbitalCrownRing", bodyPivot, new Vector3(0f, 7.35f, 0f), new Vector3(3.4f, 0.10f, 3.4f), coreMat);
+            shockwaveRing = Part(PrimitiveType.Cube, "TelegraphShockwave", transform, new Vector3(0f, 0.08f, 0f), new Vector3(1f, 0.06f, 1f), coreMat);
             shockwaveRing.gameObject.SetActive(false);
 
             var hitBox = gameObject.AddComponent<CapsuleCollider>();

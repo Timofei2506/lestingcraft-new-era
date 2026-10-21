@@ -617,7 +617,7 @@ namespace LestingCraft.Runtime
 
             double sx,sy,sz;
             VerticalShuttleWalk.Seat(0,out sx,out sy,out sz);
-            Vector3 cockpitWorld=launchVisual.Cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy,(float)sz));
+            Vector3 cockpitWorld=launchVisual.Cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy+0.25f,(float)sz-0.46f));
             player.TeleportTo(cockpitWorld,true);
             offlineShuttleSeat=true;
             SetCursor(true);
@@ -690,7 +690,7 @@ namespace LestingCraft.Runtime
                     launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,world.Dimension);
                 double sx,sy,sz;
                 VerticalShuttleWalk.Seat(0,out sx,out sy,out sz);
-                Vector3 seatWorld=launchVisual.Cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy,(float)sz));
+                Vector3 seatWorld=launchVisual.Cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy+0.25f,(float)sz-0.46f));
                 player.TeleportTo(seatWorld,true);
                 offlineShuttleSeat=true;
                 spaceVisuals.ApplyPlanetAtmosphereAndGravity(world.Dimension,player,Camera.main);
@@ -903,7 +903,7 @@ namespace LestingCraft.Runtime
                 if(command=="sit")
                 {
                     cabin.BindHelm(SpaceHelm);
-                    player.TeleportTo(cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy+0.35f,(float)sz)));
+                    player.TeleportTo(cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy+0.25f,(float)sz-0.46f)));
                     client.Send(new NetPacket{type="space_flight_ready",protocol=2});
                 }
                 Session.Notice=command=="sit"?"Вы в кресле пилота · Наводите мышь на 3D-тумблеры, РУД, РУС и экран MFD (ЛКМ / колесо) · [E] Встать":"Вы встали с кресла";
@@ -953,7 +953,7 @@ namespace LestingCraft.Runtime
                 if(offlineShuttleSeat)
                 {
                     cabin.BindHelm(SpaceHelm);
-                    player.TeleportTo(cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy+0.35f,(float)sz)));
+                    player.TeleportTo(cabin.transform.TransformPoint(new Vector3((float)sx,(float)sy+0.25f,(float)sz-0.46f)));
                 }
                 Session.Notice=offlineShuttleSeat
                     ? "Вы в кресле пилота! Наводите прицел/мышь на 3D-тумблеры, РУД, штурвал и бортовой экран MFD (ЛКМ / колесо мыши) · [E] Встать"

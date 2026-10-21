@@ -138,6 +138,28 @@ namespace LestingCraft.Tests
             Assert.AreEqual(GalaxyId.Andromeda, helm.CurrentGalaxy);
             Assert.AreEqual(StarSystemId.AndromedaCore, helm.CurrentSystem);
             Assert.IsTrue(helm.InLandingRange, "Hyperjump places ship directly on final landing orbit");
+
+            // Verify every SpaceFlightVisuals celestial body uses crisp 24-vertex voxel cubes & square rings (zero spheres)
+            var visHost = new GameObject("CubicSpaceVisualTest");
+            try
+            {
+                var visuals = SpaceFlightVisuals.Ensure(visHost.transform);
+                visuals.SetOpenSpaceFlightActive(helm, null, visHost.transform);
+                Assert.AreEqual(24, visuals.SpawnedAtlasBodyCount);
+                foreach (var mf in visuals.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    if (mf.sharedMesh == null) continue;
+                    StringAssert.DoesNotContain("Sphere", mf.sharedMesh.name, "Space body must be cubic voxel geometry, never spherical");
+                    if (mf.gameObject.name.StartsWith("Atlas_"))
+                        Assert.AreEqual(24, mf.sharedMesh.vertexCount, "Atlas body " + mf.gameObject.name + " must be a crisp 6-face 24-vertex voxel cube");
+                    if (mf.gameObject.name.StartsWith("Rings_"))
+                        Assert.AreEqual(24, mf.sharedMesh.vertexCount, "Planetary rings " + mf.gameObject.name + " must be a crisp 3D square voxel ring plate");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(visHost);
+            }
         }
 
         [Test]

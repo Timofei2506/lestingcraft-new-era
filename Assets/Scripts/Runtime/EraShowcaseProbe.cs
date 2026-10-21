@@ -214,62 +214,87 @@ namespace LestingCraft.Runtime
             });
 
             // =========================================================================
-            // SHOT 4: Seated Interactive 3D Shuttle Cockpit (Switches, Red Master Arm
-            //         Cover, Throttle, 6-DOF Flight Stick & Live Cyan MFD)
+            // SHOT 4: Seated First-Person Shuttle Flight Deck in Open Space — Real
+            //         Panoramic Windows Showing Cubic Voxel Saturn Outside + Redesigned
+            //         3-MFD Dashboard, Center Pedestal, Switches, Guard, Throttle & Stick!
             // =========================================================================
+            game.ShowcaseOpenSpace(false);
+            var helm = game.SpaceHelm;
+            var spaceVis = SpaceFlightVisuals.Ensure(null);
+            Transform shipRoot = game.LaunchComplexVisual ? game.LaunchComplexVisual.ShuttleRoot : null;
             var cabin = launchVis ? launchVis.Cabin : null;
             GameObject cockpitFillObj = null;
             if (cabin)
             {
-                cabin.BindHelm(game.SpaceHelm);
-                game.SpaceHelm.SelectTarget(CelestialBodyId.Saturn);
-                game.SpaceHelm.SetThrottle(0.76f);
+                cabin.BindHelm(helm);
+                helm.SelectTarget(CelestialBodyId.Saturn);
+                helm.SetThrottle(0.78f);
+                cabin.InteractiveRig.ActivateControl(CockpitControlId.MasterArmCover);
                 cockpitFillObj = new GameObject("CockpitShowcaseKeyLight");
                 cockpitFillObj.transform.SetParent(cabin.transform, false);
-                cockpitFillObj.transform.localPosition = new Vector3(-0.32f, 44.05f, 5.10f);
+                cockpitFillObj.transform.localPosition = new Vector3(0.05f, 44.45f, 4.95f);
                 var fill = cockpitFillObj.AddComponent<Light>();
                 fill.type = LightType.Point;
-                fill.color = new Color(0.94f, 0.97f, 1.0f);
-                fill.range = 6.5f;
-                fill.intensity = 2.65f;
+                fill.color = new Color(0.95f, 0.97f, 1.0f);
+                fill.range = 6.8f;
+                fill.intensity = 2.15f;
                 fill.shadows = LightShadows.None;
             }
             yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "04-cockpit-interactive-3d-controls.png"), () =>
             {
+                if (shipRoot) shipRoot.rotation = Quaternion.identity;
+                helm.SelectTarget(CelestialBodyId.Saturn);
+                SpaceVector saturnPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Saturn, helm.OrbitTimeDays);
+                helm.PositionKm = saturnPos - new SpaceVector(18000.0, 9000.0, 130000.0);
+                helm.SetThrottle(0.78f);
+                helm.Rotation = Quaternion.identity;
+
                 if (cabin)
                 {
+                    Vector3 eyeWorld = cabin.transform.TransformPoint(new Vector3(-0.38f, 43.82f, 4.68f));
+                    Vector3 lookWorld = cabin.transform.TransformPoint(new Vector3(0.10f, 43.46f, 6.20f));
+                    player.transform.SetParent(null, true);
+                    player.TeleportTo(eyeWorld - Vector3.up * 1.5f, false);
+                    cam.fieldOfView = 75f;
+                    cam.nearClipPlane = 0.04f;
+                    cam.farClipPlane = 1200f;
+                    cam.transform.position = eyeWorld;
+                    cam.transform.LookAt(lookWorld);
+
+                    spaceVis.SetOpenSpaceFlightActive(helm, shipRoot, cam.transform);
+                    var saturnInView = GameObject.Find("Atlas_saturn");
+                    if (saturnInView)
+                    {
+                        saturnInView.transform.localPosition = new Vector3(11.5f, 9.5f, 54f);
+                        saturnInView.transform.localRotation = Quaternion.Euler(22f, 36f, -12f);
+                        saturnInView.transform.localScale = Vector3.one * 1.12f;
+                    }
+                    var marsSide = GameObject.Find("Atlas_mars");
+                    if (marsSide)
+                    {
+                        marsSide.SetActive(true);
+                        marsSide.transform.localPosition = new Vector3(38f, 5.5f, 28f);
+                        marsSide.transform.localRotation = Quaternion.Euler(18f, -28f, 10f);
+                        marsSide.transform.localScale = Vector3.one * 1.35f;
+                    }
+
                     if (cabin.InteractiveRig)
                     {
                         cabin.InteractiveRig.RefreshVisualPoses(0.05f);
-                        var cover = cabin.InteractiveRig.transform.Find("PilotConsoleRoot/MasterArmCoverPivot");
-                        if (cover) cover.localRotation = Quaternion.Euler(-96f, 0f, 0f);
-                        var stick = cabin.InteractiveRig.transform.Find("FlightStickBase/FlightStickPivot");
-                        if (stick) stick.localRotation = Quaternion.Euler(9f, 0f, -7f);
-                        var thr = cabin.InteractiveRig.transform.Find("PilotConsoleRoot/ThrottleTrack/ThrottleLever");
-                        if (thr) thr.localPosition = new Vector3(0f, 0.042f, 0.025f);
+                        var stick = cabin.InteractiveRig.transform.Find("FlightStickRoot/FlightStickPivot");
+                        if (stick) stick.localRotation = Quaternion.Euler(8f, 0f, -6f);
                     }
-                    Vector3 eyeWorld = cabin.transform.TransformPoint(new Vector3(-0.46f, 43.68f, 5.16f));
-                    Vector3 lookWorld = cabin.transform.TransformPoint(new Vector3(0.16f, 43.30f, 5.66f));
-                    player.TeleportTo(eyeWorld - Vector3.up * 1.5f, false);
-                    cam.fieldOfView = 72f;
-                    cam.nearClipPlane = 0.04f;
-                    cam.transform.position = eyeWorld;
-                    cam.transform.LookAt(lookWorld);
                 }
-                game.Session.Notice = "3D-кабина шаттла: интерактивные тумблеры, колпак «Взвод», РУД, штурвал 6-DOF и дисплей MFD";
+                game.Session.Notice = "Обновлённая кабина шаттла: панорамные окна в космос, вид на кубический Сатурн, 3 экрана MFD, РУД и РУС";
             });
             if (cockpitFillObj) Destroy(cockpitFillObj);
             cam.nearClipPlane = 0.1f;
 
             // =========================================================================
-            // SHOT 5: Open Space Manual Flight in the Solar System — Giant Ringed Saturn,
-            //         Jupiter, Asteroid Belt, Starfield & Rocket Plumes on the Orbiter
+            // SHOT 5: Open Space Manual Flight in the Solar System — Giant Cubic Voxel
+            //         Saturn with Square Voxel Rings, Starfield & Windowed Orbiter
             // =========================================================================
-            game.ShowcaseOpenSpace(false);
             player.transform.SetParent(null, true);
-            var helm = game.SpaceHelm;
-            var spaceVis = SpaceFlightVisuals.Ensure(null);
-            Transform shipRoot = game.LaunchComplexVisual ? game.LaunchComplexVisual.ShuttleRoot : null;
             yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "05-open-space-saturn-solar-system.png"), () =>
             {
                 helm.SelectTarget(CelestialBodyId.Saturn);
@@ -291,17 +316,18 @@ namespace LestingCraft.Runtime
                     var saturnObj = GameObject.Find("Atlas_saturn");
                     if (saturnObj)
                     {
-                        saturnObj.transform.localScale = Vector3.one * 1.48f;
+                        saturnObj.transform.localScale = Vector3.one * 1.42f;
+                        saturnObj.transform.localRotation = Quaternion.Euler(24f, 38f, -14f);
                         Vector3 aim = Vector3.Lerp(shipRoot.position + new Vector3(6f, 14f, 12f), saturnObj.transform.position, 0.72f);
                         cam.transform.LookAt(aim);
                     }
                 }
-                game.Session.Notice = "Открытый космос [Солнечная система]: ручной полёт у колец Сатурна • Скорость 18 400 м/с • M — Галактика Андромеды";
+                game.Session.Notice = "Открытый космос [Солнечная система]: кубический воксельный Сатурн и квадратные кольца • 18 400 м/с";
             });
 
             // =========================================================================
-            // SHOT 6: Intergalactic Flight in Galaxy #2 — Andromeda (M31) & Ringed
-            //         Crystalline Planet "Andromeda Prime" + Spiral Galaxy Arms
+            // SHOT 6: Intergalactic Flight in Galaxy #2 — Andromeda (M31) & Cubic
+            //         Crystalline Planet "Andromeda Prime" + Square Rings + Spiral M31
             // =========================================================================
             helm.SelectTarget(CelestialBodyId.AndromedaPrime);
             helm.StartHyperjump(CelestialBodyId.AndromedaPrime);
@@ -327,7 +353,8 @@ namespace LestingCraft.Runtime
                     var galaxyObj = GameObject.Find("NeighborSpiralGalaxyBackdrop");
                     if (primeObj)
                     {
-                        primeObj.transform.localScale = Vector3.one * 1.55f;
+                        primeObj.transform.localScale = Vector3.one * 1.48f;
+                        primeObj.transform.localRotation = Quaternion.Euler(22f, -34f, 12f);
                         if (galaxyObj && primeObj.transform.parent == galaxyObj.transform.parent)
                         {
                             galaxyObj.transform.localPosition = primeObj.transform.localPosition * 2.25f + new Vector3(-34f, 22f, 30f);
