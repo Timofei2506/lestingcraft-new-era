@@ -76,7 +76,7 @@ namespace LestingCraft.Runtime
             deadline=Time.realtimeSinceStartup+45;
             while(game.StoryLocked&&failure==null&&Time.realtimeSinceStartup<deadline)yield return null;
             if(game.StoryLocked||failure!=null){Fail("Mandatory opening did not finish its initial cinematic: "+failure);yield break;}
-            if(game.Session.World.ContentVersion!=GameRules.ContentVersion||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp.Length!=6)
+            if(game.Session.World.ContentVersion!=8||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp.Length!=6)
             {Fail("Current living-world runtime systems missing");yield break;}
             var modelProbe=new GameObject("Smoke-only native villager and cat mesh checks");
             modelProbe.transform.position=game.Session.Player.transform.position+Vector3.down*20;

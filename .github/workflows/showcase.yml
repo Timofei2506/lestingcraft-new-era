@@ -21,10 +21,10 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
           df -h /
 
-      - name: Install Xvfb & Mesa OpenGL 4.5 software rasterizer
+      - name: Install Xvfb, Mesa OpenGL 4.5 & IL2CPP clang toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils clang lld zlib1g-dev
 
       - name: Cache Library
         uses: actions/cache@v4
@@ -62,10 +62,6 @@ jobs:
             -logFile Builds/Logs/linux-build.log
           chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
           ls -lh Builds/StandaloneLinux64/
-
-      - name: Return Unity license
-        if: always()
-        uses: buildalon/return-unity-license@v2
 
       - name: Render 8 Authentic 1920x1080 Ultra URP Screenshots in Real Game Binary
         run: |
