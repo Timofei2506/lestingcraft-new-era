@@ -827,7 +827,6 @@ namespace LestingCraft.Runtime
 
             Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 26.0f);
             Vector3 shot12Cam = new Vector3(icx + 2.0f, igy + 22.0f, icz - 44.0f);
-            ClearSightCorridor(radiaWorld, shot12Cam, nukeOrigin + Vector3.up * 6f, 16);
             player.TeleportTo(nukeOrigin + Vector3.up * 4f, false);
             yield return WaitWorldMeshed(radiaWorld, 15f);
             player.TeleportTo(shot12Cam, false);
