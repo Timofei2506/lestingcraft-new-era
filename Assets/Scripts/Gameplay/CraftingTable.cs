@@ -48,10 +48,33 @@ new GridRecipe(132,1,3,139,0,139,139,0,139),
             new GridRecipe(58,4,2,4,120,120,4),
             new GridRecipe(59,4,2,42,42,33,33),
             new GridRecipe(66,4,2,140,145,145,140),
-new GridRecipe(150,1,3,140,140,140,0,121,0,0,121,0),new GridRecipe(151,1,3,149,149,149,0,121,0,0,121,0),new GridRecipe(48,1,3,149,149,149,149,149,149,149,149,149),new GridRecipe(149,9,1,48),new GridRecipe(164,1,3,0,121,122,121,0,122,0,121,122),new GridRecipe(165,4,1,1,121,122),new GridRecipe(152,1,1,140,140,121),new GridRecipe(153,1,1,149,149,121),new GridRecipe(154,1,2,140,0,121,122),new GridRecipe(155,1,2,149,0,121,122),new GridRecipe(156,1,3,0,0,140,0,121,0,121,0,0),new GridRecipe(157,1,3,0,0,149,0,121,0,121,0,0),new GridRecipe(158,1,2,140,140,140,121,0,121),new GridRecipe(159,1,2,149,149,149,121,0,121),new GridRecipe(160,1,3,140,140,140,140,121,140,0,121,0),new GridRecipe(161,1,3,149,149,149,149,121,149,0,121,0),new GridRecipe(162,1,3,0,140,0,140,140,140,0,121,0),new GridRecipe(163,1,3,0,149,0,149,149,149,0,121,0)
+new GridRecipe(150,1,3,140,140,140,0,121,0,0,121,0),new GridRecipe(151,1,3,149,149,149,0,121,0,0,121,0),new GridRecipe(48,1,3,149,149,149,149,149,149,149,149,149),new GridRecipe(149,9,1,48),new GridRecipe(164,1,3,0,121,122,121,0,122,0,121,122),new GridRecipe(165,4,1,1,121,122),new GridRecipe(152,1,1,140,140,121),new GridRecipe(153,1,1,149,149,121),new GridRecipe(154,1,2,140,0,121,122),new GridRecipe(155,1,2,149,0,121,122),new GridRecipe(156,1,3,0,0,140,0,121,0,121,0,0),new GridRecipe(157,1,3,0,0,149,0,121,0,121,0,0),new GridRecipe(158,1,2,140,140,140,121,0,121),new GridRecipe(159,1,2,149,149,149,121,0,121),new GridRecipe(160,1,3,140,140,140,140,121,140,0,121,0),new GridRecipe(161,1,3,149,149,149,149,121,149,0,121,0),new GridRecipe(162,1,3,0,140,0,140,140,140,0,121,0),new GridRecipe(163,1,3,0,149,0,149,149,149,0,121,0),
+            // Era v9: Real Electrical Power Grid, Nuclear Energy, Industrial Blocks, Railways, Modern C-4, Trains, Drones & Robots!
+            new GridRecipe(72,8,3,141,141,141),                                      // Силовой медный кабель ×8
+            new GridRecipe(73,1,3,140,141,140,144,145,144,140,141,140),              // Промышленный аккумулятор
+            new GridRecipe(74,1,3,140,140,140,141,17,141,140,147,140),               // Топливный электрогенератор
+            new GridRecipe(75,1,3,145,145,145,141,141,141,140,72,140),               // Солнечная электростанция
+            new GridRecipe(76,1,3,81,190,81,190,73,190,81,72,81),                    // Ядерный реактор ВВЭР
+            new GridRecipe(77,2,3,0,140,0,145,141,145,0,72,0),                       // Электрический прожектор ×2
+            new GridRecipe(78,2,2,191,145,145,191),                                  // Черенковский излучатель ×2
+            new GridRecipe(71,1,3,190,190,190,190,190,190,190,190,190),              // Урановый топливный блок
+            new GridRecipe(190,9,1,71),                                              // Разборка топливного блока -> 9 ТВЭЛ
+            new GridRecipe(79,8,3,1,140,1,32,1,32,1,140,1),                          // Армированный бетон ×8
+            new GridRecipe(80,6,3,140,146,140,140,140,140),                          // Сигнальная сталь ×6
+            new GridRecipe(81,4,2,144,140,140,144),                                  // Свинцовая биозащита ×4
+            new GridRecipe(82,6,3,140,0,140,0,140,0,140,0,140),                      // Белая ферменная опора ×6
+            new GridRecipe(83,8,2,32,176,176,32),                                    // Асфальтобетон ×8 (из гудрона и гравия)
+            new GridRecipe(84,4,3,44,140,44,140,44,140,44,140,44),                   // Бронированное стекло ×4
+            new GridRecipe(85,16,3,140,0,140,140,121,140,140,0,140),                 // Стальные рельсы ×16
+            new GridRecipe(86,8,3,140,72,140,140,141,140,140,72,140),                // Контактный электрорельс ×8
+            new GridRecipe(87,2,3,146,141,146,147,72,147,140,145,140),               // Фугасный заряд С-4 ×2 (современная взрывчатка!)
+            new GridRecipe(192,1,3,80,77,80,140,73,140,85,72,85),                    // Электровоз «ЭР-Воксель» + грузовой вагон
+            new GridRecipe(193,1,3,140,0,140,72,73,72,140,145,140),                  // Инженерный квадрокоптер (Дрон)
+            new GridRecipe(194,1,3,80,77,80,81,73,81,140,72,140),                    // Шагающий робот «Титан-М»
+            new GridRecipe(195,1,3,0,141,0,140,145,140,0,72,0)                       // Дозиметр «Припять»
         };
-        /// <summary>Room content version needed to craft an output: 8 for 54..69, 7 for stations 49..53, 5 for 48 and 149+, else 0.</summary>
-        public static int RoomVersionFor(int output)=>output>=54&&output<=69?8:output>=49&&output<=53?7:output>=149||output==48?5:0;
+        /// <summary>Room content version needed to craft an output: 9 for 70..89 & 190..195, 8 for 54..69, 7 for stations 49..53, 5 for 48 and 149+, else 0.</summary>
+        public static int RoomVersionFor(int output)=>(output>=70&&output<=89)||(output>=190&&output<=195)?9:output>=54&&output<=69?8:output>=49&&output<=53?7:output>=149||output==48?5:0;
         public static GridRecipe Match(ItemStack[] grid,int size)
         {
             if(grid==null||grid.Length!=9||(size!=2&&size!=3))return null;

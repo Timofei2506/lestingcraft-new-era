@@ -20,7 +20,7 @@ namespace LestingCraft.Runtime
         static void Bootstrap(){if(!FindAnyObjectByType<PrototypeGame>())new GameObject("LestingCraft").AddComponent<PrototypeGame>();}
         readonly string[] dimensions={
             "Лестингия","Луна","Марс","Венера","Меркурий",
-            "Европа","Титан","Плутон","Проксима b","TRAPPIST-1e","Кеплер-452b","Андромеда Прайм","Сомния","Измерение «Сон»"
+            "Европа","Титан","Плутон","Проксима b","TRAPPIST-1e","Кеплер-452b","Андромеда Прайм","Сомния","Измерение «Сон»","Черенковский Затон"
         };
         readonly Dictionary<string,GameObject> avatars=new Dictionary<string,GameObject>();
         readonly Dictionary<string,Vector3> targets=new Dictionary<string,Vector3>();
@@ -42,11 +42,14 @@ namespace LestingCraft.Runtime
         readonly Queue<string> chatLog=new Queue<string>();public int ChatRevision {get;private set;}public float ChatLastTime {get;private set;}float chatSentAt=-10;
         public string ChatLog=>string.Join("\n",chatLog);
 
-        // === FULL COSMOS + 3D MOUSE COCKPIT + DREAM ANOMALY + CHAPTER CODEX ===
+        // === FULL COSMOS + 3D MOUSE COCKPIT + DREAM ANOMALY + INDUSTRIAL TECH & RADIA ABYSS ===
         public readonly OpenSpaceHelm SpaceHelm = new OpenSpaceHelm();
         public readonly DreamAnomaly Dream = new DreamAnomaly();
+        public IndustrialTechRuntime Tech => techRuntime ? techRuntime : (techRuntime = IndustrialTechRuntime.Ensure(null));
+        IndustrialTechRuntime techRuntime;
         public bool CockpitMouseMode { get; private set; }
         public bool InDreamDimension => Dream.IsActive || (world && world.Dimension == Dimension.Dream);
+        public bool InRadiaDimension => world && world.Dimension == Dimension.Radia;
         int storyCodexIndex;
         int storyProgressionMask;
 
@@ -360,13 +363,7 @@ namespace LestingCraft.Runtime
                 if(kb.wKey.isPressed){SpaceHelm.SetThrottle(SpaceHelm.Throttle+dt*0.65f);SpaceHelm.RetroBrake=false;}
                 if(kb.sKey.isPressed)SpaceHelm.SetThrottle(SpaceHelm.Throttle-dt*0.85f);
                 SpaceHelm.RetroBrake=kb.spaceKey.isPressed||kb.xKey.isPressed;
-                if(SpaceHelm.RetroBrake)SpaceHelm.ResetTimeWarp();
-                if(kb.periodKey.wasPressedThisFrame||kb.rightBracketKey.wasPressedThisFrame)
-                    SpaceHelm.IncreaseTimeWarp();
-                if(kb.commaKey.wasPressedThisFrame||kb.leftBracketKey.wasPressedThisFrame)
-                    SpaceHelm.DecreaseTimeWarp();
-                if(kb.slashKey.wasPressedThisFrame)
-                    SpaceHelm.ResetTimeWarp();
+                SpaceHelm.ResetTimeWarp(); // Direct continuous flight — zero Time Warp speedups!
             }
             SpaceHelm.Boost=kb!=null&&kb.leftShiftKey.isPressed;
             SpaceHelm.Step(dt,Mathf.Clamp(pitchIn,-1f,1f),Mathf.Clamp(yawIn,-1f,1f),Mathf.Clamp(rollIn,-1f,1f));
@@ -534,19 +531,19 @@ namespace LestingCraft.Runtime
             SpaceVector destVec=target==SpaceTargetKind.OrbitalStation
                 ? OrbitalStation.Port
                 : SpaceMap.Center((SpaceDestination)(int)target);
-            double tripSeconds=target==SpaceTargetKind.OrbitalStation?900.0:
-                               target==SpaceTargetKind.Moon||world.Dimension==Dimension.Moon?SpaceNavigation.MoonSeconds:
+            double tripSeconds=target==SpaceTargetKind.OrbitalStation?240.0:
+                               target==SpaceTargetKind.Moon||world.Dimension==Dimension.Moon?2004.0:
                                2400.0;
 
             offlineNav=new SpaceNavigation(startVec);
             if(!offlineNav.Ignite(destVec,tripSeconds))
             {
                 destVec=startVec+new SpaceVector(384400000.0,0,0);
-                offlineNav.Ignite(destVec,SpaceNavigation.MoonSeconds);
+                offlineNav.Ignite(destVec,2004.0);
             }
             offlineNav.SetAutopilot(true);
             offlineFlightCountdown=3.5;
-            offlineWarp30x=true;
+            offlineWarp30x=false;
             offlineFlightActive=true;
             offlineShuttleSeat=true;
             CockpitMouseMode=false;
@@ -554,7 +551,7 @@ namespace LestingCraft.Runtime
             if(player.transform.parent!=launchVisual.ShuttleRoot)
                 player.transform.SetParent(launchVisual.ShuttleRoot,true);
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
-            Session.Notice="Обратный отсчёт запущен! Цель: "+SpaceFlightVisuals.TargetNameRu(target)+" · [O] Открытый космос · [T] Варп 30× активен!";
+            Session.Notice="Обратный отсчёт запущен! Цель: "+SpaceFlightVisuals.TargetNameRu(target)+" · Непрерывный полёт в реальном времени ([O] Штурвал космоса)!";
         }
 
         void UpdateOfflineSpaceFlight(float dt)
@@ -761,6 +758,16 @@ namespace LestingCraft.Runtime
 
         public bool TryAttackPlanetaryBoss(Ray aimRay)
         {
+            if(Session&&InRadiaDimension&&Tech)
+            {
+                int held=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
+                int radiaDmg=Weapons.Has(held)?Weapons.Get(held).Damage:(Items.IsPick(held)?11:14);
+                if(Tech.Sim.TryHitBoss(aimRay,radiaDmg,out string bossMsg))
+                {
+                    Session.Notice=bossMsg;
+                    return true;
+                }
+            }
             if(!activePlanetBoss||activePlanetBoss.Defeated||!Session)return false;
             int activeItem=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
             int weaponDmg=Weapons.Has(activeItem)?Weapons.Get(activeItem).Damage:(Items.IsPick(activeItem)?9:12);
@@ -1071,7 +1078,7 @@ namespace LestingCraft.Runtime
                     ? Story.ActiveObjective
                     : "Глава I · Тихий Брод: исследуйте деревню, святилище и постройте или найдите космодром.";
                 string flightLine = SpaceHelm != null && SpaceHelm.Active
-                    ? $"\n\nНАВИГАЦИЯ 1:1: {CelestialAtlas.GetBody(SpaceHelm.TargetBody).NameRu} · {CelestialAtlas.FormatDistanceRu(SpaceHelm.DistanceToTargetKm())} · {SpaceHelm.SpeedKmPerSec:0.00} км/с · Time Warp ×{SpaceHelm.TimeWarp:0}"
+                    ? $"\n\nНАВИГАЦИЯ: {CelestialAtlas.GetBody(SpaceHelm.TargetBody).NameRu} · {CelestialAtlas.FormatDistanceRu(SpaceHelm.DistanceToTargetKm())} · {SpaceHelm.SpeedKmPerSec:0.0} км/с"
                     : (sharedLaunchSite.HasValue ? $"\n\nКосмодром: X {sharedLaunchSite.Value.x} · Z {sharedLaunchSite.Value.z} (лифт X {sharedLaunchSite.Value.x - 20})" : "");
                 return ch1 + flightLine;
             }
@@ -1199,6 +1206,122 @@ namespace LestingCraft.Runtime
             if(spaceVisuals)spaceVisuals.SyncDreamWatcher(Dream,player.transform);
             if(woke)ExitDreamSequence();
         }
+
+        public void EnterRadiaDimension()
+        {
+            if(!world||!player||!Session||InRadiaDimension)return;
+            if(ChatOpen)CloseChat();
+            if(InventoryOpen){paused=false;ui.ShowHUD();}
+            Session.ResetMining();
+            Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
+
+            Tech.Sim.ReturnDimension=world.Dimension==Dimension.Dream?Dimension.Lestingia:world.Dimension;
+            Tech.Sim.ReturnPosition=player.transform.position;
+            Tech.Sim.ResetRadiaEncounter();
+
+            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
+
+            // Ensure player is never soft-locked inside Radia Abyss without a pickaxe & blade to harvest cores and fight the 3 bosses!
+            if(Session.Inventory.Count(101)==0&&Session.Inventory.Count(150)==0&&Session.Inventory.Count(151)==0)
+                Session.Inventory.Add(150,1);
+            if(Session.Inventory.Count(152)==0&&Session.Inventory.Count(153)==0)
+                Session.Inventory.Add(152,1);
+
+            world.SwitchPlanet(Dimension.Radia,Array.Empty<SavedBlock>());
+            dimension=(int)Dimension.Radia;
+            player.TeleportTo(new Vector3(0.5f,50.2f,-11.5f),false);
+            player.transform.rotation=Quaternion.identity;
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Radia,player,Camera.main);
+            VisualSettings.EnsurePostProcessingVolume(1f,true,0f);
+            SetCursor(true);
+            Session.Notice="☢ ЛУЧЕВОЙ КОЛЛАПС -> ЧЕРЕНКОВСКИЙ ЗАТОН! Чтобы открыть шлюз плотины: добудьте 6 светящихся излучателей со дна и убейте всех 3 Боссов Спирали!";
+        }
+
+        public void ExitRadiaDimension()
+        {
+            if(!world||!player||!Session)return;
+            Dimension retDim=Tech.Sim.ReturnDimension==Dimension.Radia?Dimension.Lestingia:Tech.Sim.ReturnDimension;
+            Vector3 retPos=Tech.Sim.ReturnPosition;
+            Tech.Sim.RadiationDose01=0f;
+            Tech.Sim.PostEscapeImmunityTimer=90f;
+            Tech.Sim.FalloutZones.Clear();
+
+            world.SwitchPlanet(retDim,Session.Data.blocks);
+            dimension=(int)retDim;
+            Session.Data.activeDimension=(int)retDim;
+            Session.Vitals.health=100f;
+            Session.Vitals.stamina=100f;
+            Session.Inventory.Add(Items.CherenkovCore,4);
+            player.TeleportTo(retPos+Vector3.up*0.6f,true);
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(retDim,player,Camera.main);
+            if(sharedLaunchSite.HasValue&&!launchVisual&&retDim!=Dimension.Radia)
+                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,retDim);
+            VisualSettings.EnsurePostProcessingVolume(0f,false,0f);
+            Session.Checkpoint();
+            Session.Notice="★ ПРОРЫВ ГЕРМОШЛЮЗА ЗАВЕРШЁН! Вы вырвались из Черенковского Затона с полной дезактивацией и 4 Ядрами Черенкова!";
+        }
+
+        public bool TryUseIndustrialItemOrBlock(bool hasTarget,Vector3Int hitCell,Vector3Int placeCell)
+        {
+            if(!Session||!world||!player)return false;
+            int activeId=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
+
+            if(hasTarget)
+            {
+                ushort targetBlock=world.GetBlock(hitCell.x,hitCell.y,hitCell.z);
+                if(targetBlock==BlockRegistry.RadiaTerminalId)
+                {
+                    Session.Notice=Tech.Sim.TryActivateDamTerminal();
+                    return true;
+                }
+                if(targetBlock==BlockRegistry.C4ChargeId)
+                {
+                    world.Edit(hitCell.x,hitCell.y,hitCell.z,BlockRegistry.AirId);
+                    Tech.ArmExplosive(new Vector3(hitCell.x+0.5f,hitCell.y,hitCell.z+0.5f),false);
+                    Session.Notice="⚡ Таймер заряда С-4 взведён (3,8 сек) — отойдите в укрытие!";
+                    return true;
+                }
+                if(activeId==Items.ElectricLocomotive&&BlockRegistry.IsRail(targetBlock))
+                {
+                    Tech.SpawnElectricTrain(new Vector3(hitCell.x+0.5f,hitCell.y+0.35f,hitCell.z+0.5f));
+                    if(!Session.Creative)Session.Inventory.Remove(Items.ElectricLocomotive,1);
+                    Session.Notice="Электровоз «ЭР-Воксель» + грузовой вагон установлены на рельсы! Нажмите [F], чтобы вести поезд!";
+                    return true;
+                }
+                if(activeId==Items.ThermonukeId)
+                {
+                    Tech.ArmExplosive(new Vector3(placeCell.x+0.5f,placeCell.y,placeCell.z+0.5f),true);
+                    Session.Inventory.Remove(Items.ThermonukeId,1);
+                    Session.Notice="☢ ВНИМАНИЕ! ОБЪЕКТ 666 ВЗВЕДЁН — ДО ДЕТОНАЦИИ 8,0 СЕКУНД! НЕМЕДЛЕННО ПОКИНЬТЕ ЗОНУ!";
+                    return true;
+                }
+            }
+
+            if(activeId==Items.QuadDrone)
+            {
+                Tech.DeployQuadDrone(player.transform.position+player.transform.forward*1.8f,Camera.main);
+                if(!Session.Creative)Session.Inventory.Remove(Items.QuadDrone,1);
+                Session.Notice="Квадрокоптер запущен в воздух! Нажмите [V] для переключения в живую FPV-камеру дрона!";
+                return true;
+            }
+            if(activeId==Items.IndustrialRobot)
+            {
+                Vector3 rPos=hasTarget?new Vector3(placeCell.x+0.5f,placeCell.y,placeCell.z+0.5f):player.transform.position+player.transform.forward*2.0f;
+                Tech.DeployIndustrialRobot(rPos);
+                if(!Session.Creative)Session.Inventory.Remove(Items.IndustrialRobot,1);
+                Session.Notice="Шагающий робот-автоматон «Титан-М» развёрнут: сопровождение и огневая поддержка активны!";
+                return true;
+            }
+            if(activeId==Items.Dosimeter)
+            {
+                Session.Notice=$"Дозиметр «Припять»: фон {Tech.Sim.CurrentMillisievertsPerHour:0} мЗв/ч · накопленная доза {Tech.Sim.RadiationDose01*100f:0}% · энергосеть {Tech.Sim.Grid.GenerationKw:0} кВт";
+                return true;
+            }
+            return false;
+        }
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
         public LaunchSiteVisual LaunchComplexVisual=>launchVisual;
         public SpaceFlightVisuals SpaceVisuals=>spaceVisuals;
@@ -1304,10 +1427,10 @@ namespace LestingCraft.Runtime
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
         }
-        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=8,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
+        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=9,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
         {
             if(multiplayer)IsSurfacePreview=false;
-            realm=Mathf.Clamp(realm,0,13);
+            realm=Mathf.Clamp(realm,0,14);
             bool restoreStation=!multiplayer&&resumeSave!=null&&resumeSave.dockedAtStation;
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
 
@@ -1400,7 +1523,7 @@ namespace LestingCraft.Runtime
                     }
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
                     if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Несовместимые правила комнаты. Обновите сервер; для нового содержимого нужна новая комната");Destroy(client.gameObject);return;}
-                    if(packet.contentVersion>8||packet.contentVersion<0||packet.rulesVersion>=13&&packet.contentVersion!=8||(packet.rulesVersion>=10&&packet.rulesVersion<=12&&packet.contentVersion!=7)||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
+                    if(packet.contentVersion>9||packet.contentVersion<0||packet.rulesVersion>=14&&packet.contentVersion!=9||packet.rulesVersion==13&&packet.contentVersion!=8||(packet.rulesVersion>=10&&packet.rulesVersion<=12&&packet.contentVersion!=7)||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;IsHost=packet.host;pendingWelcome=packet;
                     if(packet.lobby&&!packet.started){online=true;busy=false;InLobby=true;ui.ShowLobby();break;}BeginNetworkWorld(packet);break;
                 case "lobby":ApplyLobby(packet);break;
@@ -1496,7 +1619,7 @@ namespace LestingCraft.Runtime
             foreach(var peerAvatar in avatars.Values)if(peerAvatar)peerAvatar.SetActive(!StoryLocked&&!InDreamDimension);
             if(world&&world.Ready&&status=="Генерируется мир…")status="Мир готов — нажми «Продолжить»";
 
-            if(!InDreamDimension&&!dockedAtStation&&sharedLaunchSite.HasValue&&!launchVisual&&world&&world.Ready&&player&&
+            if(!InDreamDimension&&!InRadiaDimension&&!dockedAtStation&&sharedLaunchSite.HasValue&&!launchVisual&&world&&world.Ready&&player&&
                new Vector2(player.transform.position.x-sharedLaunchSite.Value.x,
                            player.transform.position.z-sharedLaunchSite.Value.z).sqrMagnitude<185f*185f)
             {
@@ -1504,6 +1627,19 @@ namespace LestingCraft.Runtime
                 if(launchVisual.Cabin)launchVisual.Cabin.BindHelm(SpaceHelm);
                 ApplyLift(liftSnapshot);
                 ApplyHatch(hatchOpen);
+            }
+
+            if(world&&player&&Session&&(!paused||online))
+            {
+                var kb=Keyboard.current;
+                var ms=Mouse.current;
+                float fwd=kb!=null?((kb.wKey.isPressed?1f:0f)-(kb.sKey.isPressed?1f:0f)):0f;
+                float str=kb!=null?((kb.dKey.isPressed?1f:0f)-(kb.aKey.isPressed?1f:0f)):0f;
+                float vrt=kb!=null?((kb.spaceKey.isPressed?1f:0f)-(kb.cKey.isPressed?1f:0f)):0f;
+                Vector2 md=ms!=null?ms.delta.ReadValue():Vector2.zero;
+                Tech.StepRuntime(Mathf.Min(Time.deltaTime,0.1f),world,player,Session,Camera.main,fwd,str,vrt,md.x,md.y,out bool enterRadia,out bool exitRadia);
+                if(exitRadia)ExitRadiaDimension();
+                else if(enterRadia&&!SpaceHelm.Active&&!offlineFlightActive&&!dockedAtStation)EnterRadiaDimension();
             }
 
             if(Dream.IsActive)
@@ -1562,6 +1698,7 @@ namespace LestingCraft.Runtime
             var camera=Camera.main;if(camera){camera.transform.SetParent(null);camera.clearFlags=CameraClearFlags.SolidColor;}
             if(ShuttleDemo){Destroy(ShuttleDemo.gameObject);ShuttleDemo=null;}
             if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            if(techRuntime){Destroy(techRuntime.gameObject);techRuntime=null;}
             if(spaceVisuals){Destroy(spaceVisuals.gameObject);spaceVisuals=null;}
             if(player){player.transform.SetParent(null);var hands=player.GetComponent<FirstPersonHands>();if(hands)hands.Release();Destroy(player.gameObject);}
             if(world)Destroy(world.gameObject);
@@ -1572,6 +1709,7 @@ namespace LestingCraft.Runtime
         }
         static Vector3 FindSpawn(int seed,Dimension realm,int contentVersion)
         {
+            if(realm==Dimension.Radia)return new Vector3(0.5f,50.2f,-11.5f);
             for(int r=0;r<8;r++)for(int z=-r;z<=r;z++)for(int x=-r;x<=r;x++)
             {
                 int h=TerrainGenerator.Height(x,z,seed,realm);

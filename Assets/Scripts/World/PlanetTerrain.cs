@@ -16,7 +16,8 @@ namespace LestingCraft.World
         Kepler452b = 10,
         AndromedaPrime = 11,
         Somnia = 12,
-        Dream = 13
+        Dream = 13,
+        Radia = 14
     }
 
     public enum PlanetSurface : byte
@@ -30,7 +31,8 @@ namespace LestingCraft.World
         KeplerHighland, KeplerGranitePeak,
         AndromedaCrystalField, AndromedaCrystalSpire,
         SomniaMarble, SomniaObsidianPillar,
-        DreamPaleFloor, DreamMonolithPillar, DreamLampPost
+        DreamPaleFloor, DreamMonolithPillar, DreamLampPost,
+        RadiaBasinFloor, RadiaCherenkovStrip, RadiaDamWall, RadiaSlagBank
     }
 
     public struct PlanetColumn
@@ -42,6 +44,8 @@ namespace LestingCraft.World
     public static class PlanetTerrain
     {
         public const int Version = 2;
+        public const int RadiaWaterLevel = 48;
+
         static float N(float x, float z, int seed) { return MoonTerrain.ValueNoise(x, z, seed); }
         static float Clamp(float x, float min, float max) { return Math.Max(min, Math.Min(max, x)); }
         static float Smooth(float x) { x = Clamp(x, 0, 1); return x * x * (3 - 2 * x); }
@@ -52,6 +56,63 @@ namespace LestingCraft.World
             uint h = (uint)(seed ^ (x * 374761393) ^ (y * 668265263) ^ (z * 2147483647));
             h = (h ^ (h >> 13)) * 1274126177u;
             return h ^ (h >> 16);
+        }
+
+        static bool IsCherenkovStripX(int x)
+        {
+            int ax = Math.Abs(x);
+            return (ax >= 3 && ax <= 4) || (ax >= 10 && ax <= 11) || (ax >= 18 && ax <= 19) || (ax >= 27 && ax <= 28);
+        }
+
+        // Exact 3D double-helix tower & white lattice truss pier matching /home/user/uploads/image-1.png!
+        static ushort SampleRadiaHelixTower(int x, int y, int z, float baseX, float baseZ, float leanPerMeter)
+        {
+            if (y < 44 || y > 152) return 0;
+
+            // White steel lattice pier emerging from water behind the dam (y = 44..62)
+            if (y <= 62)
+            {
+                float dx0 = Math.Abs(x - baseX), dz0 = Math.Abs(z - baseZ);
+                if (dx0 > 6.6f || dz0 > 6.6f) return 0;
+                bool cornerLeg = dx0 >= 4.4f && dz0 >= 4.4f;
+                bool crossRing = (y == 49 || y == 55 || y == 61 || y == 62) && (dx0 >= 4.4f || dz0 >= 4.4f || (dx0 <= 1.6f && dz0 <= 1.6f));
+                bool xBrace = (dx0 >= 4.4f || dz0 >= 4.4f) && Math.Abs(((x + z + y) % 5 + 5) % 5 - 2) <= 0;
+                if (cornerLeg || crossRing || xBrace) return 82;
+                if (dx0 <= 1.2f && dz0 <= 1.2f) return 78;
+                return 0;
+            }
+
+            // Tilted colossal twin double-helix superstructure rising through the storm mist (y = 63..152)
+            float t = y - 62f;
+            float cx = baseX + t * leanPerMeter;
+            float cz = baseZ - t * 0.03f;
+            float radius = 6.8f;
+            double theta = t * 0.135;
+
+            for (int strand = 0; strand < 2; strand++)
+            {
+                double ang = theta + strand * Math.PI;
+                float sx = cx + (float)Math.Cos(ang) * radius;
+                float sz = cz + (float)Math.Sin(ang) * radius;
+                float d2 = (x - sx) * (x - sx) + (z - sz) * (z - sz);
+                if (d2 <= 5.2f)
+                    return d2 <= 1.15f && (y % 4 == 0) ? (ushort)78 : (ushort)79;
+            }
+
+            // Horizontal structural cross-girders connecting the two helix strands every 6 meters
+            if (y % 6 == 0)
+            {
+                double ang = theta;
+                float ax = cx + (float)Math.Cos(ang) * radius, az = cz + (float)Math.Sin(ang) * radius;
+                float bx = cx - (float)Math.Cos(ang) * radius, bz = cz - (float)Math.Sin(ang) * radius;
+                float abx = bx - ax, abz = bz - az;
+                float proj = Clamp(((x - ax) * abx + (z - az) * abz) / Math.Max(0.01f, abx * abx + abz * abz), 0f, 1f);
+                float px = ax + abx * proj, pz = az + abz * proj;
+                float distSq = (x - px) * (x - px) + (z - pz) * (z - pz);
+                if (distSq <= 1.6f)
+                    return Math.Abs(proj - 0.5f) < 0.14f ? (ushort)78 : (ushort)82;
+            }
+            return 0;
         }
 
         public static PlanetColumn Column(int x, int z, int seed, PlanetBody body)
@@ -71,9 +132,57 @@ namespace LestingCraft.World
             float medium = N(x / 61f, z / 61f, seed ^ 33749);
             float fine = N(x / 14f, z / 14f, seed ^ 54101);
 
+            if (body == PlanetBody.Radia)
+            {
+                // Arrival jetty at (0, 49, -12) looking +Z across the dark flooded basin toward the Dam & Twin Helices!
+                if (Math.Abs(x) <= 4 && z >= -18 && z <= -7)
+                    return new PlanetColumn { Height = 49, Surface = PlanetSurface.RadiaDamWall };
+
+                // Northern Brutalist Concrete Sluice Dam spanning the horizon (z = 70..83) + side assault ramps
+                if (z >= 70 && z <= 83 && Math.Abs(x) <= 84)
+                {
+                    if (Math.Abs(x) >= 34 && Math.Abs(x) <= 41)
+                    {
+                        int rampH = 48 + Math.Min(8, (z - 69));
+                        return new PlanetColumn { Height = rampH, Surface = PlanetSurface.RadiaDamWall };
+                    }
+                    bool sluiceRecess = z == 70 && (Math.Abs(x) % 14 >= 5 && Math.Abs(x) % 14 <= 9);
+                    return new PlanetColumn
+                    {
+                        Height = sluiceRecess ? 54 : 56,
+                        Surface = PlanetSurface.RadiaDamWall
+                    };
+                }
+
+                // Boss I (West Helix Plaza: -27, 58) & Boss II (East Helix Plaza: +31, 58) & Boss III (Central Dam Apron: 0, 64)
+                float dWest = (x + 27f) * (x + 27f) + (z - 56f) * (z - 56f);
+                float dEast = (x - 31f) * (x - 31f) + (z - 56f) * (z - 56f);
+                float dCenter = x * x + (z - 65f) * (z - 65f);
+                if (dWest <= 81f || dEast <= 81f || dCenter <= 64f)
+                    return new PlanetColumn { Height = 49, Surface = PlanetSurface.RadiaDamWall };
+
+                // Submerged parallel rows of glowing cyan Cherenkov fuel blocks under shallow dark water (y = 46 < WaterLevel 48)!
+                if (z >= -26 && z <= 69 && Math.Abs(x) <= 34)
+                {
+                    if (IsCherenkovStripX(x) && (((z % 9) + 9) % 9 != 0))
+                        return new PlanetColumn { Height = 46, Surface = PlanetSurface.RadiaCherenkovStrip };
+                    return new PlanetColumn { Height = 45, Surface = PlanetSurface.RadiaBasinFloor };
+                }
+
+                // Outer vitrified trinitite & ash islands where the 10 hostile mutant species prowl around the basin!
+                float bank = 46.2f + (broad - 0.42f) * 9.5f + (medium - 0.5f) * 5.2f + (fine - 0.5f) * 2.0f;
+                int bh = Math.Max(42, Math.Min(58, (int)Math.Round(bank)));
+                if (bh <= 47 && IsCherenkovStripX(x) && z > -60 && z < 70)
+                    return new PlanetColumn { Height = 46, Surface = PlanetSurface.RadiaCherenkovStrip };
+                return new PlanetColumn
+                {
+                    Height = bh,
+                    Surface = bh >= 48 ? PlanetSurface.RadiaSlagBank : PlanetSurface.RadiaBasinFloor
+                };
+            }
+
             if (body == PlanetBody.Dream)
             {
-                // Keep sleep-paralysis slab around (0, 44, 0) level & unobstructed; exit arch stands at z = 46!
                 if (Math.Abs(x) <= 2 && z == 46)
                     return new PlanetColumn
                     {
@@ -189,12 +298,54 @@ namespace LestingCraft.World
             return new PlanetColumn { Height = Math.Max(12, Math.Min(105, (int)Math.Round(h))), Surface = surface };
         }
 
-        public static ushort Block(int y, PlanetColumn column, PlanetBody body) => Block(0, y, 0, 2506, column, body);
+        public static ushort Block(int y, PlanetColumn column, PlanetBody body)
+        {
+            if (body == PlanetBody.Radia)
+            {
+                if (y < 0 || y >= 256 || y > column.Height) return 0;
+                if (y == 0) return 9;
+                if (column.Surface == PlanetSurface.RadiaCherenkovStrip) return y >= column.Height - 1 ? (ushort)78 : (ushort)27;
+                if (column.Surface == PlanetSurface.RadiaDamWall) return 79;
+                if (column.Surface == PlanetSurface.RadiaSlagBank) return y == column.Height ? (ushort)88 : (ushort)27;
+                return 27;
+            }
+            return Block(0, y, 0, 2506, column, body);
+        }
 
         public static ushort Block(int x, int y, int z, int seed, PlanetColumn column, PlanetBody body)
         {
             if (y < 0 || y >= 256) return 0;
             if (y == 0) return 9;
+
+            if (body == PlanetBody.Radia)
+            {
+                // Twin tilted double-helix towers behind the dam (West at x=-27,z=96 leaning +0.105; East at x=+31,z=92 leaning -0.115)
+                ushort westHelix = SampleRadiaHelixTower(x, y, z, -27f, 96f, 0.105f);
+                if (westHelix != 0) return westHelix;
+                ushort eastHelix = SampleRadiaHelixTower(x, y, z, 31f, 92f, -0.115f);
+                if (eastHelix != 0) return eastHelix;
+
+                // Central Sluice Purge Terminal & Field Supply Workbench on arrival jetty
+                if (x == 0 && z == 73 && y == 57) return 89;
+                if ((x == -2 || x == 2) && z == 73 && y == 57) return 77;
+                if (x == 3 && z == -14 && y == 50) return 11;
+                if (x == -3 && z == -14 && y == 50) return 16;
+
+                if (y > column.Height)
+                    return y <= RadiaWaterLevel ? (ushort)7 : (ushort)0;
+
+                if (column.Surface == PlanetSurface.RadiaCherenkovStrip)
+                    return y >= column.Height - 1 ? (ushort)78 : (ushort)27;
+                if (column.Surface == PlanetSurface.RadiaDamWall)
+                {
+                    if (y == column.Height && Math.Abs(x) % 8 == 0) return 80;
+                    return 79;
+                }
+                if (column.Surface == PlanetSurface.RadiaSlagBank)
+                    return y == column.Height ? (ushort)88 : (ushort)27;
+                return 27;
+            }
+
             if (y > column.Height) return 0;
 
             if (body == PlanetBody.Dream)

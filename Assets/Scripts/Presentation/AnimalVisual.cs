@@ -19,14 +19,18 @@ namespace LestingCraft.Presentation
             "deer-fur","hare-fur","boar-bristles","wolf-fur","bear-fur","fox-fur",
             "bison-fur","goat-fur","lynx-fur","beaver-fur","frog-skin","eagle-feathers",
             "owl-feathers","penguin-plumage","camel-coat","scorpion-chitin",
-            "turtle-shell","moose-fur","capybara-fur","voidray-skin"
+            "turtle-shell","moose-fur","capybara-fur","voidray-skin",
+            "ash-hound-hide","cherenkov-leech-skin","rad-scorpion-carapace","mutant-boar-hide","slag-carapace",
+            "fallout-crow-plumage","gamma-ray-membrane","bone-stalker-hide","vitrified-golem-crust","wraith-shroud"
         };
         public static readonly string[] SpeciesNames =
         {
             "Олень","Заяц","Кабан","Волк","Бурый медведь","Лисица",
             "Зубр","Горный козёл","Рысь","Бобр","Жаба","Орёл",
             "Полярная сова","Северный пингвин","Верблюд","Песчаный скорпион",
-            "Болотная черепаха","Северный лось","Капибара","Эфирный скат"
+            "Болотная черепаха","Северный лось","Капибара","Эфирный скат",
+            "Пепельная гончая","Черенковская пиявка","Радио-скорпион","Двухголовый секач","Шлаковый краб",
+            "Пепельный ворон","Гамма-скат","Костяной ловчий","Тринититовый голем","Фантом Спирали"
         };
 
         static readonly Vector3[] D =
@@ -190,16 +194,31 @@ namespace LestingCraft.Presentation
             rig = new GameObject("Articulated wildlife").transform;
             rig.SetParent(transform, false);
 
-            float[] widths =      { .48f, .3f, .62f, .48f, 1.12f, .32f, 1.2f, .43f, .47f, .55f, .62f, .4f,   .38f, .42f, .72f, .52f, .68f, .92f, .54f, .96f };
-            float[] lengths =     { 1.05f,.45f,1.08f,1.15f,1.6f,  .83f, 1.85f,.85f, .88f, .8f,  .61f, .65f,  .46f, .40f, 1.55f,.76f, .78f, 1.75f,.94f, 1.15f };
-            float[] bodyHeights = { .55f, .3f, .55f, .48f, 1.05f, .36f, 1.05f,.54f, .47f, .43f, .25f, .4f,   .42f, .68f, .74f, .22f, .38f, .88f, .50f, .20f };
-            float[] bodyYs =      { .94f, .24f,.52f, .72f, .98f,  .46f, 1.08f,.78f, .61f, .32f, .22f, .4f,   .38f, .48f, 1.18f,.24f, .28f, 1.26f,.42f, .34f };
+            float[] widths =      { .48f, .3f, .62f, .48f, 1.12f, .32f, 1.2f, .43f, .47f, .55f, .62f, .4f,   .38f, .42f, .72f, .52f, .68f, .92f, .54f, .96f,  .54f, .46f, .66f, .78f, .86f, .44f, 1.08f, .62f, 1.28f, .66f };
+            float[] lengths =     { 1.05f,.45f,1.08f,1.15f,1.6f,  .83f, 1.85f,.85f, .88f, .8f,  .61f, .65f,  .46f, .40f, 1.55f,.76f, .78f, 1.75f,.94f, 1.15f, 1.32f, .92f, .96f, 1.38f, .96f, .72f, 1.30f, 1.25f, 1.48f, 1.05f };
+            float[] bodyHeights = { .55f, .3f, .55f, .48f, 1.05f, .36f, 1.05f,.54f, .47f, .43f, .25f, .4f,   .42f, .68f, .74f, .22f, .38f, .88f, .50f, .20f,  .56f, .30f, .30f, .72f, .46f, .44f, .24f,  .68f, 1.24f, .98f };
+            float[] bodyYs =      { .94f, .24f,.52f, .72f, .98f,  .46f, 1.08f,.78f, .61f, .32f, .22f, .4f,   .38f, .48f, 1.18f,.24f, .28f, 1.26f,.42f, .34f,  .80f, .22f, .30f, .72f, .36f, .44f, .36f,  1.24f, 1.32f, 1.15f };
             float width = widths[kind], length = lengths[kind], bh = bodyHeights[kind], by = bodyYs[kind];
 
             body = Attach("Body", rig, Vector3.zero, p =>
             {
                 Box(p, 0, by, 0, width, bh, length);
                 Mark(p, 0, by - bh * .38f, .03f, width * .77f, bh * .23f, length * .8f, cream, underfur);
+                if (kind >= 20)
+                {
+                    // Bioluminescent cyan Cherenkov spine shards & radiation pustules on all 10 Radia Abyss mutants!
+                    int cher = Surface("cherenkov-crystal");
+                    for (int sp = 0; sp < 4; sp++)
+                        Mark(p, 0, by + bh * .56f, -length * .32f + sp * length * .22f, width * .24f, .22f + (sp % 2) * .08f, .14f,
+                            new Color(.25f, .88f, 1f), cher);
+                    if (kind == 22 || kind == 24) // RadScorpion & SlagCrab heavy pincers
+                    {
+                        for (int side = -1; side <= 1; side += 2)
+                            Mark(p, side * width * .62f, by, length * .55f, .26f, .20f, .42f, new Color(.35f, .92f, 1f), fur);
+                    }
+                    if (kind == 28 || kind == 29) // Vitrified Golem & Wraith towering armored shoulders
+                        Box(p, 0, by + bh * .34f, .12f, width * 1.24f, bh * .48f, length * .55f);
+                }
                 if (kind == 0)
                 {
                     Box(p, 0, 1.22f, .4f, .27f, .55f, .29f);
@@ -283,9 +302,9 @@ namespace LestingCraft.Presentation
                 }
             });
 
-            float[] headYs =      { 1.4f, .38f, .62f, .98f, 1.31f, .65f, 1.17f, 1.1f, .82f, .43f, .29f, .68f,  .66f, .90f, 1.88f, .26f, .28f, 1.72f, .56f, .35f };
-            float[] headWidths =  { .25f, .25f, .42f, .32f, .62f,  .25f, .69f,  .26f, .37f, .39f, .68f, .28f,  .36f, .30f, .34f,  .32f, .24f, .42f,  .34f, .52f };
-            float[] headHeights = { .3f,  .23f, .35f, .32f, .48f,  .26f, .6f,   .32f, .31f, .28f, .2f,  .28f,  .32f, .28f, .34f,  .18f, .20f, .46f,  .34f, .18f };
+            float[] headYs =      { 1.4f, .38f, .62f, .98f, 1.31f, .65f, 1.17f, 1.1f, .82f, .43f, .29f, .68f,  .66f, .90f, 1.88f, .26f, .28f, 1.72f, .56f, .35f,  1.06f, .28f, .34f, .92f, .42f, .72f, .38f, 1.68f, 2.02f, 1.78f };
+            float[] headWidths =  { .25f, .25f, .42f, .32f, .62f,  .25f, .69f,  .26f, .37f, .39f, .68f, .28f,  .36f, .30f, .34f,  .32f, .24f, .42f,  .34f, .52f,  .36f,  .34f, .38f, .56f, .44f, .32f, .58f, .42f,  .64f,  .44f };
+            float[] headHeights = { .3f,  .23f, .35f, .32f, .48f,  .26f, .6f,   .32f, .31f, .28f, .2f,  .28f,  .32f, .28f, .34f,  .18f, .20f, .46f,  .34f, .18f,  .34f,  .22f, .22f, .44f, .24f, .30f, .20f, .44f,  .52f,  .46f };
             headPosition = new Vector3(0, headYs[kind], length * (kind == 14 ? .58f : .48f));
             float hw = headWidths[kind], hh = headHeights[kind];
             Head = Attach("Head", rig, headPosition, p =>
@@ -324,7 +343,7 @@ namespace LestingCraft.Presentation
                 {
                     float ex = hw * .51f;
                     Mark(p, side * ex, hh * .17f, .095f, .025f, .065f, .075f,
-                        kind == 19 ? new Color(.2f, .95f, 1f) : new Color(.69f, .5f, .2f), keratin);
+                        kind >= 20 || kind == 19 ? new Color(.22f, .95f, 1f) : new Color(.69f, .5f, .2f), keratin);
                     Mark(p, side * (ex + .014f), hh * .17f, .105f, .012f, .046f, .04f, Color.black, keratin);
                     if (kind == 0)
                     {
@@ -336,8 +355,11 @@ namespace LestingCraft.Presentation
                 }
             });
 
-            int legCount = kind == 19 ? 0 : (kind == 11 || kind == 12 || kind == 13 ? 2 : (kind == 15 ? 6 : 4));
-            float[] legLengths = { .65f, .19f, .36f, .53f, .58f, .32f, .64f, .56f, .43f, .19f, .16f, .2f, .18f, .16f, .86f, .18f, .14f, .88f, .22f, 0f };
+            int legCount = (kind == 19 || kind == 21 || kind == 26) ? 0
+                         : (kind == 11 || kind == 12 || kind == 13 || kind == 25 || kind == 28 || kind == 29) ? 2
+                         : (kind == 15 || kind == 22 || kind == 24) ? 6 : 4;
+            float[] legLengths = { .65f, .19f, .36f, .53f, .58f, .32f, .64f, .56f, .43f, .19f, .16f, .2f, .18f, .16f, .86f, .18f, .14f, .88f, .22f, 0f,
+                                   .62f, 0f, .24f, .52f, .28f, .22f, 0f, .96f, .82f, .86f };
             float ll = legLengths[kind];
             for (int i = 0; i < legCount; i++)
             {
@@ -385,22 +407,23 @@ namespace LestingCraft.Presentation
                 }
             });
 
-            if (kind == 11 || kind == 12 || kind == 13 || kind == 19)
+            if (kind == 11 || kind == 12 || kind == 13 || kind == 19 || kind == 25 || kind == 26)
             {
                 for (int side = -1; side <= 1; side += 2)
                 {
                     int wingSide = side;
-                    float wy = kind == 13 ? .54f : kind == 19 ? .35f : .48f;
-                    float span = kind == 13 ? .14f : kind == 19 ? .95f : .58f;
+                    bool ray = kind == 19 || kind == 26;
+                    float wy = kind == 13 ? .54f : ray ? .35f : .48f;
+                    float span = kind == 13 ? .14f : ray ? 1.05f : .64f;
                     Transform wing = Attach("Wing" + side, rig, new Vector3(side * width * .45f, wy, .03f), p =>
                     {
                         Box(p, wingSide * span * .5f, kind == 13 ? -.16f : 0, -.02f,
-                            kind == 13 ? .08f : span, kind == 13 ? .38f : .08f, kind == 19 ? .85f : .38f);
+                            kind == 13 ? .08f : span, kind == 13 ? .38f : .08f, ray ? .92f : .42f);
                     });
                     Transform tip = Attach("WingTip" + side, wing, new Vector3(side * span, 0, -.02f), p =>
                     {
-                        Mark(p, wingSide * .22f, 0, -.03f, .44f, .06f, kind == 19 ? .55f : .28f,
-                            kind == 19 ? new Color(.25f, .95f, 1f) : cream * .55f, fur);
+                        Mark(p, wingSide * .22f, 0, -.03f, .44f, .06f, ray ? .55f : .28f,
+                            ray || kind == 25 ? new Color(.25f, .95f, 1f) : cream * .55f, fur);
                     });
                     Wings.Add(wing);
                     wingTips.Add(tip);
@@ -441,8 +464,8 @@ namespace LestingCraft.Presentation
             animationClock = 0;
             gait += step * Mathf.Clamp(filteredSpeed * 6, 0, 18);
             float amplitude = Mathf.Min(34, filteredSpeed * 12);
-            bool hopper = species == 1 || species == 10;
-            bool flyer = species == 11 || species == 12 || species == 19;
+            bool hopper = species == 1 || species == 10 || species == 21;
+            bool flyer = species == 11 || species == 12 || species == 19 || species == 25 || species == 26;
             float hop = hopper ? Mathf.Max(0, Mathf.Sin(gait)) * (species == 10 ? .2f : .13f) * Mathf.Clamp01(filteredSpeed) : 0;
             rig.localPosition = new Vector3(0, hop, 0);
             for (int i = 0; i < Legs.Count; i++)

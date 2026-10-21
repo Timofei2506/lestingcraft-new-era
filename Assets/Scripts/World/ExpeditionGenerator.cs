@@ -54,11 +54,12 @@ namespace LestingCraft.World
                         return 0;
                     }
                 }
-                if (y >= 5 && y <= 22 && (original == 1 || original == 13 || (original >= 19 && original <= 30)))
+                if (y >= 5 && y <= 26 && (original == 1 || original == 13 || (original >= 19 && original <= 30)))
                 {
                     uint h = TerrainGenerator.Hash((int)math.floor(XWorld / 3f), (int)math.floor(y / 3f), (int)math.floor(ZWorld / 3f), seed ^ 62801);
                     int a = ((XWorld % 3) + 3) % 3, b = y % 3, c = ((ZWorld % 3) + 3) % 3;
-                    if (h % 251 == 0 && math.abs(a - 1) + math.abs(b - 1) + math.abs(c - 1) <= 1) return 47;
+                    if (y <= 22 && h % 251 == 0 && math.abs(a - 1) + math.abs(b - 1) + math.abs(c - 1) <= 1) return 47;
+                    if (contentVersion >= 9 && h % 137 == 7 && math.abs(a - 1) + math.abs(b - 1) + math.abs(c - 1) <= 2) return 70;
                 }
                 return original;
             }

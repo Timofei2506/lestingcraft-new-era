@@ -132,7 +132,20 @@ namespace LestingCraft.Runtime
             }
             if(!Active||!World.Ready){Sprinting=false;HasTarget=false;if(Game.Session)Game.Session.ResetMining();return;}
 
-            // Seated in shuttle: allow toggling Free Mouse Cursor [M] / holding [Tab] to click/drag/scroll 3D switches, throttle, stick & MFD!
+            if(keyboard.fKey.wasPressedThisFrame&&Game.Tech.ToggleMountNearestTrain(transform.position,out string trainNote))
+            {
+                Game.Session.Notice=trainNote;
+                return;
+            }
+            if(keyboard.vKey.wasPressedThisFrame&&Game.Tech.ToggleDroneFpv(out string droneNote))
+            {
+                Game.Session.Notice=droneNote;
+                return;
+            }
+            if(Game.Tech.IsRidingTrain||Game.Tech.IsDroneFpv)
+            {
+                Sprinting=false;HasTarget=false;vertical=0;return;
+            }
             if(seatedInShuttle)
             {
                 if(keyboard.mKey.wasPressedThisFrame)
@@ -219,6 +232,7 @@ namespace LestingCraft.Runtime
             if(place)
             {
                 Game.Session.ResetMining();
+                if(Game.TryUseIndustrialItemOrBlock(HasTarget,target.Cell,target.Adjacent))return;
                 if(!keyboard.leftShiftKey.isPressed&&HasTarget)
                 {
                     int station=World.GetBlock(target.Cell.x,target.Cell.y,target.Cell.z);

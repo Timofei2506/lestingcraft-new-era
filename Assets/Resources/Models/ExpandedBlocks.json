@@ -407,6 +407,166 @@
       "hardness": 3.2,
       "pick": true,
       "layer": 49
+    },
+    {
+      "id": 70,
+      "name": "Урановая руда",
+      "surface": "uranium-ore",
+      "hardness": 4.2,
+      "pick": true,
+      "layer": 88
+    },
+    {
+      "id": 71,
+      "name": "Урановый топливный блок",
+      "surface": "uranium-block",
+      "hardness": 5.0,
+      "pick": true,
+      "layer": 89
+    },
+    {
+      "id": 72,
+      "name": "Силовой медный кабель",
+      "surface": "copper-cable",
+      "hardness": 0.9,
+      "pick": false,
+      "layer": 90
+    },
+    {
+      "id": 73,
+      "name": "Промышленный аккумулятор",
+      "surface": "battery-bank",
+      "hardness": 3.2,
+      "pick": true,
+      "layer": 91
+    },
+    {
+      "id": 74,
+      "name": "Топливный электрогенератор",
+      "surface": "generator-casing",
+      "hardness": 3.5,
+      "pick": true,
+      "layer": 92
+    },
+    {
+      "id": 75,
+      "name": "Солнечная электростанция",
+      "surface": "titanium-hull",
+      "hardness": 2.4,
+      "pick": true,
+      "layer": 86
+    },
+    {
+      "id": 76,
+      "name": "Ядерный реактор ВВЭР",
+      "surface": "nuclear-reactor",
+      "hardness": 6.5,
+      "pick": true,
+      "layer": 93
+    },
+    {
+      "id": 77,
+      "name": "Электрический прожектор",
+      "surface": "metal-ingot",
+      "hardness": 1.8,
+      "pick": true,
+      "layer": 51
+    },
+    {
+      "id": 78,
+      "name": "Черенковский излучатель",
+      "surface": "cherenkov-crystal",
+      "hardness": 3.8,
+      "pick": true,
+      "layer": 94
+    },
+    {
+      "id": 79,
+      "name": "Армированный бетон",
+      "surface": "reinforced-concrete",
+      "hardness": 5.5,
+      "pick": true,
+      "layer": 95
+    },
+    {
+      "id": 80,
+      "name": "Сигнальная сталь",
+      "surface": "hazard-steel",
+      "hardness": 4.0,
+      "pick": true,
+      "layer": 96
+    },
+    {
+      "id": 81,
+      "name": "Свинцовая биозащита",
+      "surface": "lead-shield",
+      "hardness": 4.8,
+      "pick": true,
+      "layer": 97
+    },
+    {
+      "id": 82,
+      "name": "Белая ферменная опора",
+      "surface": "polished-marble",
+      "hardness": 3.4,
+      "pick": true,
+      "layer": 49
+    },
+    {
+      "id": 83,
+      "name": "Асфальтобетон",
+      "surface": "basalt",
+      "hardness": 2.6,
+      "pick": true,
+      "layer": 11
+    },
+    {
+      "id": 84,
+      "name": "Бронированное стекло",
+      "surface": "crystal",
+      "hardness": 3.0,
+      "pick": true,
+      "layer": 12
+    },
+    {
+      "id": 85,
+      "name": "Стальные рельсы",
+      "surface": "steel-rail",
+      "hardness": 1.6,
+      "pick": true,
+      "layer": 98
+    },
+    {
+      "id": 86,
+      "name": "Контактный электрорельс",
+      "surface": "powered-rail",
+      "hardness": 1.9,
+      "pick": true,
+      "layer": 99
+    },
+    {
+      "id": 87,
+      "name": "Фугасный заряд С-4",
+      "surface": "c4-explosive",
+      "hardness": 0.8,
+      "pick": false,
+      "layer": 100
+    },
+    {
+      "id": 88,
+      "name": "Остеклованный тринитит",
+      "surface": "obsidian",
+      "hardness": 4.4,
+      "pick": true,
+      "layer": 35
+    },
+    {
+      "id": 89,
+      "name": "Шлюзовой терминал Затона",
+      "surface": "nuclear-reactor",
+      "hardness": 9.0,
+      "pick": true,
+      "layer": 93
     }
   ]
 }

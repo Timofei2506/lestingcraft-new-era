@@ -81,6 +81,62 @@ namespace LestingCraft.Presentation
                 }
             }
         }
+        static Volume globalPostVolume;
+        static Bloom globalBloom;
+        static Tonemapping globalTonemap;
+        static ColorAdjustments globalColorAdj;
+        static Vignette globalVignette;
+
+        public static void EnsurePostProcessingVolume(float radiationDose01 = 0f, bool inRadiaAbyss = false, float nukeFlash01 = 0f)
+        {
+            if (!globalPostVolume)
+            {
+                var go = GameObject.Find("LestingCraftPostVolume");
+                if (!go)
+                {
+                    go = new GameObject("LestingCraftPostVolume");
+                    UnityEngine.Object.DontDestroyOnLoad(go);
+                }
+                globalPostVolume = go.GetComponent<Volume>() ?? go.AddComponent<Volume>();
+                globalPostVolume.isGlobal = true;
+                globalPostVolume.priority = 10f;
+                var profile = globalPostVolume.sharedProfile ?? ScriptableObject.CreateInstance<VolumeProfile>();
+                globalPostVolume.sharedProfile = profile;
+
+                if (!profile.TryGet(out globalBloom)) globalBloom = profile.Add<Bloom>(true);
+                globalBloom.threshold.Override(0.88f);
+                globalBloom.intensity.Override(0.68f);
+                globalBloom.scatter.Override(0.66f);
+
+                if (!profile.TryGet(out globalTonemap)) globalTonemap = profile.Add<Tonemapping>(true);
+                globalTonemap.mode.Override(TonemappingMode.ACES);
+
+                if (!profile.TryGet(out globalColorAdj)) globalColorAdj = profile.Add<ColorAdjustments>(true);
+                if (!profile.TryGet(out globalVignette)) globalVignette = profile.Add<Vignette>(true);
+            }
+
+            if (globalBloom != null)
+                globalBloom.intensity.Override(Mathf.Lerp(inRadiaAbyss ? 0.92f : 0.65f, 3.6f, Mathf.Clamp01(nukeFlash01)));
+
+            if (globalColorAdj != null)
+            {
+                globalColorAdj.postExposure.Override(Mathf.Lerp(inRadiaAbyss ? -0.10f : 0.08f, 3.8f, Mathf.Clamp01(nukeFlash01)));
+                globalColorAdj.contrast.Override(inRadiaAbyss ? 22f : 9f);
+                globalColorAdj.saturation.Override(inRadiaAbyss ? -46f : Mathf.Lerp(6f, -35f, Mathf.Clamp01(radiationDose01)));
+                globalColorAdj.colorFilter.Override(inRadiaAbyss
+                    ? new Color(0.86f, 0.92f, 0.98f, 1f)
+                    : Color.Lerp(Color.white, new Color(0.82f, 1.0f, 0.86f, 1f), Mathf.Clamp01(radiationDose01 * 0.7f)));
+            }
+
+            if (globalVignette != null)
+            {
+                float vig = inRadiaAbyss ? 0.44f : Mathf.Lerp(0.14f, 0.52f, Mathf.Clamp01(radiationDose01));
+                globalVignette.intensity.Override(vig);
+                globalVignette.smoothness.Override(0.45f);
+                globalVignette.color.Override(inRadiaAbyss ? new Color(0.02f, 0.03f, 0.05f) : new Color(0.03f, 0.06f, 0.03f));
+            }
+        }
+
         public static bool HardwareRayTracing { get { return SystemInfo.supportsRayTracing; } }
         public static bool PipelineRayTracing { get { return false; } }
         public void Ultra()

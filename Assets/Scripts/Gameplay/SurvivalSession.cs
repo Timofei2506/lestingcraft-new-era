@@ -77,6 +77,7 @@ namespace LestingCraft.Gameplay
             if(InDream||World.Dimension==Dimension.Dream){Notice="Во сне нельзя ставить или использовать предметы";return;}
             if(pending||Vitals.dead||Data.campaign.runEnded)return;var item=Items.Get(Inventory.Active.item);
             ushort placeBlock=PlaceableBlockForItem(Inventory.Active.item,World.ContentVersion);
+            if(World.Online&&World.ContentVersion<9&&placeBlock>=70){Notice="Нужна новая комната версии 9";return;}
             if(World.Online&&World.ContentVersion<8&&placeBlock>=54){Notice="Нужна новая комната версии 8";return;}
             if(World.Online&&World.ContentVersion<5&&placeBlock>=47){Notice="Нужен новый мир версии 5";return;}if(placeBlock==0||Inventory.Active.count<=0)return;if(World.Online&&World.ContentVersion<2&&placeBlock>18){Notice="Новые материалы доступны в комнате новой версии";return;}if(Living&&Living.Overlaps(cell)){Notice="Здесь житель или кот";return;}if(Animals&&Animals.Overlaps(cell)){Notice="Здесь животное";return;}
             if(World.GetBlock(cell.x,cell.y,cell.z)!=0&&World.GetBlock(cell.x,cell.y,cell.z)!=7){Notice="Место занято";return;}
@@ -86,7 +87,20 @@ namespace LestingCraft.Gameplay
         {
             if(!pending||cell!=pendingCell)return;
             if(Living)Living.Edited(cell);
-            if(drop>0){Progress.Add("mined");Progress.Add("mine_"+harvestBlock);if(World.ContentVersion<6)Inventory.Add(drop,1);else if(!Game.Online)Living.SpawnDrop(drop,1,0,(Vector3)cell+Vector3.one*.5f,Vector3.up*2);if(drop==122&&UnityEngine.Random.value<.25f)Inventory.Add(110,1);if(harvestBlock==3&&UnityEngine.Random.value<.45f)Inventory.Add(113,1);}
+            if(drop>0)
+            {
+                Progress.Add("mined");Progress.Add("mine_"+harvestBlock);
+                if(harvestBlock==BlockRegistry.CherenkovBlockId&&World.Dimension==Dimension.Radia&&Game.Tech!=null)
+                {
+                    Game.Tech.Sim.HarvestedSubmergedCores++;
+                    Inventory.Add(Items.CherenkovCore,1);
+                    Notice=$"Добыт Черенковский излучатель со дна Затона: {Game.Tech.Sim.HarvestedSubmergedCores} / {IndustrialAndRadiaSimulation.RequiredCherenkovCores}!";
+                }
+                if(World.ContentVersion<6)Inventory.Add(drop,1);
+                else if(!Game.Online)Living.SpawnDrop(drop,1,0,(Vector3)cell+Vector3.one*.5f,Vector3.up*2);
+                if(drop==122&&UnityEngine.Random.value<.25f)Inventory.Add(110,1);
+                if(harvestBlock==3&&UnityEngine.Random.value<.45f)Inventory.Add(113,1);
+            }
             if(spend>0){Progress.Add("placed");Progress.Add("place_"+PlaceableBlockForItem(spend,World.ContentVersion));Inventory.Remove(spend,1);}
             if(toolSlot>=0&&!Creative){int selected=Inventory.selected;Inventory.selected=toolSlot;Inventory.WearTool();Inventory.selected=selected;}
             pending=false;drop=spend=0;Notice="";

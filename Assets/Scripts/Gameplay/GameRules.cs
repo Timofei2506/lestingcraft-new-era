@@ -4,7 +4,7 @@ namespace LestingCraft.Gameplay
     public enum GameMode { Survival=0,Hardcore=1,Creative=2,Story=3 }
     public static class GameRules
     {
-        public const int Version=13;
+        public const int Version=14;
         public static readonly string[] ModeNames={"Выживание","Хардкор","Творческий","Сюжет"};
         public static readonly string[] ModeDescriptions={"Свободное выживание, космос и тайны Сна.\nВсе галактики, биомы и поселения открыты.","Одна жизнь на команду.\nЛюбая смерть завершает забег.","Свободное строительство и полёты.\nПолный каталог блоков и корабль.","Трилогия Лестингии: Корни, Небо и Сон.\nСюжетные главы, космодром и сигнал М31."};
         public static bool AcceptsRoom(int roomRules,int serverRules)=>serverRules>=Version&&(roomRules>=3&&roomRules<=Version);
@@ -39,6 +39,6 @@ namespace LestingCraft.Gameplay
     {
         public int chapter,milestones;public int unlockedMask=1;public bool runEnded;
         public int discoveredSystemsMask=1,discoveredGalaxiesMask=1,loreUnlockedMask=1;
-        public bool CanEnter(int realm)=>realm>=0&&realm<14&&(realm>=5||(unlockedMask&(1<<realm))!=0);
+        public bool CanEnter(int realm)=>realm>=0&&realm<15&&(realm>=5||(unlockedMask&(1<<realm))!=0);
     }
 }

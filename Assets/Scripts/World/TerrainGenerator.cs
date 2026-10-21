@@ -20,7 +20,8 @@ namespace LestingCraft.World
         Kepler452b = 10,
         AndromedaPrime = 11,
         Somnia = 12,
-        Dream = 13
+        Dream = 13,
+        Radia = 14
     }
 
     // Pure integer hash + smooth value noise. Generation version 1 is part of the network protocol.

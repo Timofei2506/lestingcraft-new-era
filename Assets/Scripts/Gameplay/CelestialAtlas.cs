@@ -333,13 +333,13 @@ namespace LestingCraft.Gameplay
 
     public sealed class OpenSpaceHelm
     {
-        // KSP-style discrete Time Warp ladder: 1x real-time orbital flight up to 100,000x interplanetary warp!
-        public static readonly double[] TimeWarpRates = { 1.0, 5.0, 10.0, 50.0, 100.0, 1000.0, 10000.0, 100000.0 };
+        // Continuous 1:1 real-time flight without Time Warp buttons (Earth -> Moon cruise = ~33.4 minutes at 185 km/s)
+        public static readonly double[] TimeWarpRates = { 1.0 };
 
-        // Realistic spacecraft speed envelope: LEO ~7.66 km/s, lunar TLI ~11.2 km/s, interplanetary cruise up to 58 km/s
-        public const double MaxSublightSpeedKmS = 58.0;
-        public const double MainEngineAccelKmS2 = 0.048;   // 48 m/s² full main engines
-        public const double BoostEngineAccelKmS2 = 0.145;  // 145 m/s² orbital injection burn
+        // Calibrated sublight cruise drive: LEO ~7.66 km/s, sustained cislunar cruise 185 km/s (~33.4 min Earth -> Moon)
+        public const double MaxSublightSpeedKmS = 185.0;
+        public const double MainEngineAccelKmS2 = 0.85;    // reaches full cruise in ~3.6 min smooth burn
+        public const double BoostEngineAccelKmS2 = 2.40;   // rapid orbital injection / retro-braking burn
 
         public bool Active;
         public bool ManualControl = true;

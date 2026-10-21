@@ -14,8 +14,8 @@ class CheckUltraWildlifeCore
     {
         int assertions = 0;
 
-        // 1. Verify SurfaceLayers has 88 distinct surface names with all 20 species coats
-        Assert(SurfaceLayers.Names.Length == 88, "Expected 88 SurfaceLayers, got " + SurfaceLayers.Names.Length);
+        // 1. Verify SurfaceLayers has 112 distinct surface names with all 30 species coats
+        Assert(SurfaceLayers.Names.Length == 112, "Expected 112 SurfaceLayers, got " + SurfaceLayers.Names.Length);
         assertions++;
         string[] expectedCoats = {
             "deer-fur", "hare-fur", "boar-bristles",

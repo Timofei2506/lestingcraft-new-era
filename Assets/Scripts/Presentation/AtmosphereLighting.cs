@@ -26,6 +26,8 @@ namespace LestingCraft.Presentation
                     return Mathf.Clamp01(baseClouds * 0.22f); // Thin high CO2-ice cirrus wisps
                 case Dimension.Venus:
                     return Mathf.Lerp(0.88f, 0.99f, baseClouds); // Unbroken super-rotating H2SO4 cloud deck
+                case Dimension.Radia:
+                    return 0.94f; // Heavy overcast storm ceiling over Cherenkov Basin (image-1.png)
                 case Dimension.Titan:
                     return Mathf.Lerp(0.62f, 0.86f, baseClouds); // Dense cryogenic methane-nitrogen haze layers
                 case Dimension.Somnia:
@@ -72,6 +74,8 @@ namespace LestingCraft.Presentation
                     return 3.40f; // Thick orange-gold photochemical smog near ground
                 case Dimension.Venus:
                     return 4.20f; // Crushing dense atmospheric scattering
+                case Dimension.Radia:
+                    return 2.85f; // Dense monochrome storm mist silhouetting the twin helix towers
                 case Dimension.Somnia:
                     return 2.60f;
                 default:
@@ -246,6 +250,19 @@ namespace LestingCraft.Presentation
                 AmbientSky = new Color(.085f, .080f, .125f);
                 AmbientEquator = new Color(.115f, .108f, .160f);
                 AmbientGround = new Color(.035f, .032f, .050f);
+            }
+            else if (realm == Dimension.Radia)
+            {
+                // Overcast monochrome storm sky, mirror-black flooded water & piercing cyan underglow (image-1.png!)
+                Zenith = new Color(.34f, .36f, .38f);
+                Horizon = new Color(.55f, .58f, .60f);
+                SunColor = new Color(.76f, .80f, .84f);
+                DirectIntensity = .42f;
+                AmbientSky = new Color(.28f, .30f, .33f);
+                AmbientEquator = new Color(.22f, .24f, .26f);
+                AmbientGround = new Color(.06f, .07f, .09f);
+                ShallowWater = new Color(.032f, .048f, .072f);
+                DeepWater = new Color(.008f, .013f, .022f);
             }
         }
 

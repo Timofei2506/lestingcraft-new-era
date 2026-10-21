@@ -189,6 +189,7 @@ namespace LestingCraft.Runtime
                 case Dimension.AndromedaPrime: return 1.12f;
                 case Dimension.Somnia: return 0.62f;
                 case Dimension.Dream: return 0.86f;
+                case Dimension.Radia: return 1.04f;
                 default: return 1.0f;
             }
         }
@@ -325,15 +326,54 @@ namespace LestingCraft.Runtime
             }
         }
 
-        Texture2D BuildAtlasCubeTexture(CelestialBodyDef body, Color primary, Color secondary)
+        static float Hash31(int x, int y, int z, int seed)
         {
-            const int tile = 24;
+            unchecked
+            {
+                uint h = (uint)(x * 73856093 ^ y * 19349663 ^ z * 83492791 ^ seed * 26544357);
+                h ^= h >> 13;
+                h *= 1274126177u;
+                return ((h ^ (h >> 16)) & 0xffffu) / 65535f;
+            }
+        }
+
+        static float ValueNoise3D(Vector3 p, int seed)
+        {
+            int ix = Mathf.FloorToInt(p.x), iy = Mathf.FloorToInt(p.y), iz = Mathf.FloorToInt(p.z);
+            float fx = p.x - ix, fy = p.y - iy, fz = p.z - iz;
+            fx = fx * fx * (3f - 2f * fx);
+            fy = fy * fy * (3f - 2f * fy);
+            fz = fz * fz * (3f - 2f * fz);
+            float c000 = Hash31(ix, iy, iz, seed), c100 = Hash31(ix + 1, iy, iz, seed);
+            float c010 = Hash31(ix, iy + 1, iz, seed), c110 = Hash31(ix + 1, iy + 1, iz, seed);
+            float c001 = Hash31(ix, iy, iz + 1, seed), c101 = Hash31(ix + 1, iy, iz + 1, seed);
+            float c011 = Hash31(ix, iy + 1, iz + 1, seed), c111 = Hash31(ix + 1, iy + 1, iz + 1, seed);
+            float x00 = Mathf.Lerp(c000, c100, fx), x10 = Mathf.Lerp(c010, c110, fx);
+            float x01 = Mathf.Lerp(c001, c101, fx), x11 = Mathf.Lerp(c011, c111, fx);
+            return Mathf.Lerp(Mathf.Lerp(x00, x10, fy), Mathf.Lerp(x01, x11, fy), fz);
+        }
+
+        static float Fbm3D(Vector3 p, int seed, int octaves = 4)
+        {
+            float sum = 0f, amp = 0.5f, norm = 0f;
+            for (int i = 0; i < octaves; i++)
+            {
+                sum += amp * ValueNoise3D(p, seed + i * 97);
+                norm += amp;
+                p *= 2.07f;
+                amp *= 0.5f;
+            }
+            return sum / norm;
+        }
+
+        void BuildAtlasCubePbrMaps(CelestialBodyDef body, Color primary, Color secondary, out Texture2D albedoTex, out Texture2D normalSpecTex)
+        {
+            const int tile = 96; // 16x higher texel resolution per cubic face than legacy 24x24!
             const int w = tile * 3, h = tile * 2;
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Point;
             int seed = (int)body.Id * 13 + 7;
             var pixels = new Color32[w * h];
+            var heights = new float[w * h];
+            var specs = new float[w * h];
 
             for (int face = 0; face < 6; face++)
             {
@@ -347,62 +387,152 @@ namespace LestingCraft.Runtime
                         float s = ((px + 0.5f) / tile) * 2f - 1f;
                         Vector3 raw = CubeFaceDirection(face, s, t);
                         Vector3 n = raw.normalized;
-                        float polar = Mathf.Abs(raw.y);
-                        int hsh = ((px * 73856093) ^ (py * 19349663) ^ (face * 83492791) ^ (seed * 26544357)) & 0x7fffffff;
-                        float jitter = ((hsh % 100) / 100f - 0.5f) * 0.14f;
+                        float polar = Mathf.Abs(n.y);
 
-                        float bandFreq = body.HasRings || body.RadiusKm > 15000.0 ? 8.5f : 4.5f;
-                        float swirl = Mathf.Sin(raw.x * 3.1f + raw.z * 2.9f + seed) * 0.14f;
-                        float band = Mathf.Floor((Mathf.Sin((raw.y + swirl) * bandFreq + seed * 0.4f) * 0.5f + 0.5f) * 5f) / 4f;
-                        float cont = Mathf.Sin(n.x * 3.9f + seed * 0.7f) * Mathf.Cos(n.z * 3.6f - seed * 0.3f)
-                                   + Mathf.Sin(n.y * 4.7f + n.x * 2.2f) * 0.45f;
+                        float cont = Fbm3D(n * 2.85f, seed, 5);
+                        float detail = Fbm3D(n * 11.5f, seed + 401, 4);
+                        float ridge = 1f - Mathf.Abs(Fbm3D(n * 6.4f, seed + 811, 3) * 2f - 1f);
+                        float craterCell = ValueNoise3D(n * 14.0f, seed + 1201);
+                        float craterRim = Mathf.Clamp01(1f - Mathf.Abs(craterCell - 0.72f) * 14f);
+                        float craterBowl = craterCell > 0.72f ? -0.35f * Mathf.Clamp01((craterCell - 0.72f) * 5f) : 0f;
+
                         Color c;
+                        float hgt = 0.5f;
+                        float spec = 0.04f;
+
                         if (body.IsStar)
                         {
-                            float gran = ((hsh >> 4) % 8) / 7f;
-                            c = Color.Lerp(primary, Color.white, 0.24f + 0.56f * gran);
+                            float plasma = Fbm3D(n * 8.0f, seed, 4);
+                            float flare = Mathf.Pow(Mathf.Clamp01(ridge), 2.2f);
+                            c = Color.Lerp(secondary, Color.Lerp(primary, Color.white, 0.72f), Mathf.Clamp01(plasma * 0.75f + flare * 0.45f));
+                            hgt = plasma;
+                            spec = 0.0f;
                         }
-                        else if (body.Id == CelestialBodyId.Earth)
+                        else if (body.Id == CelestialBodyId.Earth || body.Id == CelestialBodyId.Kepler452b)
                         {
-                            c = polar > 0.78f ? new Color(0.93f, 0.97f, 1.0f)
-                              : cont > 0.05f
-                                ? (cont > 0.42f ? new Color(0.52f, 0.46f, 0.28f) : new Color(0.15f, 0.52f, 0.22f))
-                                : (cont > -0.16f ? new Color(0.12f, 0.46f, 0.84f) : new Color(0.05f, 0.22f, 0.58f));
+                            bool iceCap = polar + (detail - 0.5f) * 0.14f > 0.81f;
+                            if (iceCap)
+                            {
+                                c = Color.Lerp(new Color(0.86f, 0.93f, 0.99f), Color.white, detail);
+                                hgt = 0.66f + 0.15f * detail;
+                                spec = 0.55f;
+                            }
+                            else if (cont > 0.485f)
+                            {
+                                float elev = Mathf.Clamp01((cont - 0.485f) * 3.1f + ridge * 0.28f);
+                                Color lush = body.Id == CelestialBodyId.Kepler452b ? new Color(0.11f, 0.52f, 0.42f) : new Color(0.14f, 0.46f, 0.19f);
+                                Color arid = new Color(0.58f, 0.49f, 0.31f);
+                                Color mount = new Color(0.50f, 0.48f, 0.46f);
+                                c = Color.Lerp(lush, arid, Mathf.Clamp01((1f - polar) * detail * 1.15f));
+                                if (elev > 0.62f) c = Color.Lerp(c, mount, (elev - 0.62f) * 2.2f);
+                                if (elev > 0.84f) c = Color.Lerp(c, new Color(0.95f, 0.97f, 1.0f), (elev - 0.84f) * 5.0f);
+                                hgt = 0.52f + elev * 0.48f;
+                                spec = 0.05f;
+                            }
+                            else
+                            {
+                                float shelf = Mathf.Clamp01((cont - 0.34f) / 0.145f);
+                                c = Color.Lerp(new Color(0.035f, 0.145f, 0.42f), new Color(0.11f, 0.46f, 0.78f), shelf * shelf);
+                                hgt = 0.42f;
+                                spec = 0.92f;
+                            }
                         }
                         else if (body.HasRings || body.RadiusKm > 15000.0)
                         {
-                            c = Color.Lerp(primary, secondary, Mathf.Clamp01(band));
-                            if (body.Id == CelestialBodyId.Jupiter && face == 4 && Mathf.Abs(s - 0.18f) < 0.28f && Mathf.Abs(t + 0.22f) < 0.18f)
-                                c = new Color(0.88f, 0.33f, 0.18f);
+                            float turb = (detail - 0.5f) * 0.22f + Mathf.Sin(n.x * 5.5f + n.z * 5.1f) * 0.05f;
+                            float bands = 0.5f + 0.5f * Mathf.Sin((n.y + turb) * 17.5f + seed * 0.4f);
+                            float fine = 0.5f + 0.5f * Mathf.Sin((n.y + turb * 1.6f) * 42f);
+                            c = Color.Lerp(secondary, Color.Lerp(primary, Color.white, 0.22f * fine), bands);
+                            if (body.Id == CelestialBodyId.Jupiter)
+                            {
+                                float spot = Vector2.Distance(new Vector2(s * 0.8f, (t + 0.22f) * 1.35f), new Vector2(0.14f, 0f));
+                                if (face == 4 && spot < 0.26f)
+                                    c = Color.Lerp(new Color(0.86f, 0.31f, 0.17f), new Color(0.96f, 0.62f, 0.42f), spot / 0.26f);
+                            }
+                            hgt = 0.45f + 0.28f * bands + 0.15f * fine;
+                            spec = 0.22f;
                         }
                         else
                         {
-                            float stepVal = Mathf.Floor(Mathf.Clamp01(cont * 0.55f + 0.50f) * 4f) / 3f;
-                            c = Color.Lerp(primary, secondary, stepVal);
-                            if (polar > 0.82f && !body.IsStar)
-                                c = Color.Lerp(c, new Color(0.90f, 0.94f, 0.98f), 0.75f);
+                            // High-definition rocky / icy worlds (Moon maria & highland craters, Mars canyons, Europa cracks)
+                            float maria = Mathf.SmoothStep(0.36f, 0.66f, cont);
+                            c = Color.Lerp(secondary * 0.86f, primary * 1.06f, maria);
+                            c *= 0.88f + 0.24f * detail;
+                            c = Color.Lerp(c, c * 1.24f, craterRim * 0.65f);
+                            if (body.Id == CelestialBodyId.Europa)
+                            {
+                                float lineae = Mathf.Pow(Mathf.Clamp01(ridge), 6f);
+                                c = Color.Lerp(c, new Color(0.56f, 0.34f, 0.24f), lineae * 0.65f);
+                                spec = 0.72f;
+                            }
+                            else if (polar > 0.84f && body.Id == CelestialBodyId.Mars)
+                            {
+                                c = Color.Lerp(c, new Color(0.95f, 0.94f, 0.92f), (polar - 0.84f) * 5.5f);
+                                spec = 0.45f;
+                            }
+                            hgt = Mathf.Clamp01(0.45f + 0.30f * maria + 0.18f * detail + 0.26f * craterRim + craterBowl);
                         }
-                        c = new Color(Mathf.Clamp01(c.r + jitter), Mathf.Clamp01(c.g + jitter), Mathf.Clamp01(c.b + jitter), 1f);
-                        if (px == 0 || py == 0 || px == tile - 1 || py == tile - 1)
-                            c = Color.Lerp(c, c * 0.80f, 0.65f);
+
                         c.a = 1f;
-                        pixels[(oy + py) * w + (ox + px)] = c;
+                        int idx = (oy + py) * w + (ox + px);
+                        pixels[idx] = c;
+                        heights[idx] = hgt;
+                        specs[idx] = spec;
                     }
                 }
             }
-            tex.SetPixels32(pixels);
-            tex.Apply(false, false);
-            ownedObjects.Add(tex);
-            return tex;
+
+            var normals = new Color32[w * h];
+            for (int face = 0; face < 6; face++)
+            {
+                int ox = (face % 3) * tile;
+                int oy = (face / 3) * tile;
+                for (int py = 0; py < tile; py++)
+                {
+                    int py0 = Mathf.Max(0, py - 1), py1 = Mathf.Min(tile - 1, py + 1);
+                    for (int px = 0; px < tile; px++)
+                    {
+                        int px0 = Mathf.Max(0, px - 1), px1 = Mathf.Min(tile - 1, px + 1);
+                        float hL = heights[(oy + py) * w + (ox + px0)];
+                        float hR = heights[(oy + py) * w + (ox + px1)];
+                        float hD = heights[(oy + py0) * w + (ox + px)];
+                        float hU = heights[(oy + py1) * w + (ox + px)];
+                        Vector3 nrm = new Vector3((hL - hR) * 2.6f, (hD - hU) * 2.6f, 1f).normalized;
+                        int idx = (oy + py) * w + (ox + px);
+                        normals[idx] = new Color32(
+                            (byte)Mathf.Clamp(Mathf.RoundToInt((nrm.x * 0.5f + 0.5f) * 255f), 0, 255),
+                            (byte)Mathf.Clamp(Mathf.RoundToInt((nrm.y * 0.5f + 0.5f) * 255f), 0, 255),
+                            (byte)Mathf.Clamp(Mathf.RoundToInt((nrm.z * 0.5f + 0.5f) * 255f), 128, 255),
+                            (byte)Mathf.Clamp(Mathf.RoundToInt(specs[idx] * 255f), 0, 255));
+                    }
+                }
+            }
+
+            albedoTex = new Texture2D(w, h, TextureFormat.RGBA32, true)
+            {
+                wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 8
+            };
+            albedoTex.SetPixels32(pixels);
+            albedoTex.Apply(true, false);
+            ownedObjects.Add(albedoTex);
+
+            normalSpecTex = new Texture2D(w, h, TextureFormat.RGBA32, true, true)
+            {
+                wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 8
+            };
+            normalSpecTex.SetPixels32(normals);
+            normalSpecTex.Apply(true, false);
+            ownedObjects.Add(normalSpecTex);
         }
 
         Texture2D BuildCloudCubeTexture(int seed, Color cloudTint)
         {
-            const int tile = 16;
+            const int tile = 80;
             const int w = tile * 3, h = tile * 2;
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Point;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, true)
+            {
+                wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 4
+            };
             var pixels = new Color32[w * h];
             for (int face = 0; face < 6; face++)
             {
@@ -415,26 +545,29 @@ namespace LestingCraft.Runtime
                     {
                         float s = ((px + 0.5f) / tile) * 2f - 1f;
                         Vector3 n = CubeFaceDirection(face, s, t).normalized;
-                        float cld = Mathf.Sin(n.x * 5.2f + seed) * Mathf.Cos(n.z * 4.8f - seed * 0.5f) + Mathf.Sin(n.y * 6.4f) * 0.35f;
-                        bool filled = cld > 0.28f;
+                        Vector3 swirl = n + new Vector3(Mathf.Sin(n.y * 7f), 0f, Mathf.Cos(n.y * 7f)) * 0.22f;
+                        float cld = Fbm3D(swirl * 4.4f, seed, 4);
+                        bool filled = cld > 0.53f;
+                        float shade = Mathf.Clamp01(0.80f + (cld - 0.53f) * 1.1f);
                         pixels[(oy + py) * w + (ox + px)] = filled
-                            ? (Color32)new Color(cloudTint.r, cloudTint.g, cloudTint.b, 1f)
+                            ? (Color32)new Color(cloudTint.r * shade, cloudTint.g * shade, cloudTint.b * shade, 1f)
                             : new Color32(0, 0, 0, 0);
                     }
                 }
             }
             tex.SetPixels32(pixels);
-            tex.Apply(false, false);
+            tex.Apply(true, false);
             ownedObjects.Add(tex);
             return tex;
         }
 
         Texture2D BuildSquarePlanetaryRingTexture(Color cA, Color cB)
         {
-            const int size = 64;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Point;
+            const int size = 256;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, true)
+            {
+                wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 8
+            };
             var pixels = new Color32[size * size];
             for (int y = 0; y < size; y++)
             {
@@ -443,19 +576,18 @@ namespace LestingCraft.Runtime
                 {
                     float nx = ((x + 0.5f) / size) * 2f - 1f;
                     float sqDist = Mathf.Max(Mathf.Abs(nx), Mathf.Abs(nz));
-                    bool insideHole = sqDist < 0.52f || sqDist > 0.99f;
-                    bool cassiniGap = sqDist > 0.755f && sqDist < 0.815f;
-                    bool enckeGap = sqDist > 0.915f && sqDist < 0.940f;
-                    int bandIdx = Mathf.FloorToInt(sqDist * 32f);
-                    float bandTone = ((bandIdx * 37) % 7) / 6f;
-                    float density = (insideHole || cassiniGap || enckeGap) ? 0f : (sqDist < 0.755f ? 0.96f : 0.82f);
-                    Color c = Color.Lerp(cB * 0.88f, Color.Lerp(cA, Color.white, 0.46f), bandTone);
-                    c.a = density > 0.3f ? 1f : 0f;
+                    bool insideHole = sqDist < 0.515f || sqDist > 0.992f;
+                    bool cassiniGap = sqDist > 0.752f && sqDist < 0.808f;
+                    bool enckeGap = sqDist > 0.916f && sqDist < 0.936f;
+                    float fineRing = 0.5f + 0.5f * Mathf.Sin(sqDist * 210f) * Mathf.Cos(sqDist * 73f);
+                    float density = (insideHole || cassiniGap || enckeGap) ? 0f : (0.55f + 0.45f * fineRing);
+                    Color c = Color.Lerp(cB * 0.82f, Color.Lerp(cA, Color.white, 0.55f), fineRing);
+                    c.a = density > 0.34f ? 1f : 0f;
                     pixels[y * size + x] = c;
                 }
             }
             tex.SetPixels32(pixels);
-            tex.Apply(false, false);
+            tex.Apply(true, false);
             ownedObjects.Add(tex);
             return tex;
         }
@@ -499,6 +631,7 @@ namespace LestingCraft.Runtime
             var mesh = new Mesh { name = meshName };
             mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
+            mesh.RecalculateTangents();
             ownedObjects.Add(mesh);
             return mesh;
         }
@@ -547,14 +680,17 @@ namespace LestingCraft.Runtime
             return mesh;
         }
 
-        Material MakePlanetVoxelMaterial(string label, Texture2D tex, Color tint, float emissionGain, float cutoff = 0.42f)
+        Material MakePlanetVoxelMaterial(string label, Texture2D tex, Color tint, float emissionGain, float cutoff = 0.42f, Texture2D bumpSpec = null, Color atmo = default, float cityGlow = 0f)
         {
             var sh = Shader.Find("LestingCraft/SpacePlanetVoxel");
             if (sh != null)
             {
                 var m = new Material(sh) { name = label, color = tint };
                 if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+                if (bumpSpec != null && m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", bumpSpec);
                 if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", tint);
+                if (m.HasProperty("_AtmoColor")) m.SetColor("_AtmoColor", atmo);
+                if (m.HasProperty("_CityGlow")) m.SetFloat("_CityGlow", cityGlow);
                 if (m.HasProperty("_EmissionGain")) m.SetFloat("_EmissionGain", emissionGain);
                 if (m.HasProperty("_Cutoff")) m.SetFloat("_Cutoff", cutoff);
                 m.mainTexture = tex;
@@ -575,11 +711,20 @@ namespace LestingCraft.Runtime
             float halfExtent = body.IsStar ? 9.6f : body.HasRings ? 7.8f : Mathf.Clamp((float)Math.Log10(Math.Max(200.0, body.RadiusKm)) * 1.55f, 2.2f, 8.2f);
             Color cA = new Color(body.ColorR, body.ColorG, body.ColorB, 1f);
             Color cB = new Color(body.SecondaryR, body.SecondaryG, body.SecondaryB, 1f);
-            var tex = BuildAtlasCubeTexture(body, cA, cB);
+            BuildAtlasCubePbrMaps(body, cA, cB, out var tex, out var bumpSpec);
+            Color atmo = body.Id == CelestialBodyId.Earth ? new Color(0.28f, 0.62f, 1.0f, 0.72f)
+                       : body.Id == CelestialBodyId.Mars ? new Color(0.95f, 0.54f, 0.34f, 0.35f)
+                       : body.Id == CelestialBodyId.Venus ? new Color(1.0f, 0.86f, 0.56f, 0.55f)
+                       : body.Id == CelestialBodyId.Titan ? new Color(0.32f, 0.82f, 0.88f, 0.62f)
+                       : body.Id == CelestialBodyId.Kepler452b ? new Color(0.24f, 0.88f, 0.72f, 0.65f)
+                       : body.Id == CelestialBodyId.AndromedaPrime ? new Color(0.76f, 0.48f, 1.0f, 0.68f)
+                       : body.IsStar ? new Color(1.0f, 0.78f, 0.35f, 0.95f)
+                       : new Color(0f, 0f, 0f, 0f);
+            float cityGlow = body.Id == CelestialBodyId.Earth ? 1.0f : body.Id == CelestialBodyId.Kepler452b ? 0.55f : 0f;
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = BuildVoxelCubeMesh(halfExtent, "AtlasVoxelCube_" + (int)body.Id);
             var mr = go.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = MakePlanetVoxelMaterial("AtlasSurface_" + body.WireKey, tex, Color.white, body.IsStar ? 0.95f : 0.18f, 0.05f);
+            mr.sharedMaterial = MakePlanetVoxelMaterial("AtlasSurface_" + body.WireKey, tex, Color.white, body.IsStar ? 1.05f : 0.06f, 0.05f, bumpSpec, atmo, cityGlow);
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
 
@@ -1233,15 +1378,17 @@ namespace LestingCraft.Runtime
             if (spiralGalaxyObj) spiralGalaxyObj.SetActive(dim == Dimension.AndromedaPrime || dim == Dimension.Somnia);
             if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
 
-            if (dim == Dimension.Dream)
+            if (dim == Dimension.Dream || dim == Dimension.Radia)
             {
                 if (spaceDomeRoot) spaceDomeRoot.SetActive(false);
-                Color dreamFog = new Color(0.17f, 0.15f, 0.23f);
+                Color heavyFog = dim == Dimension.Radia
+                    ? new Color(0.55f, 0.58f, 0.60f)   // Exact overcast monochrome storm fog matching image-1.png!
+                    : new Color(0.17f, 0.15f, 0.23f);
                 RenderSettings.fog = true;
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogColor = dreamFog;
-                RenderSettings.fogDensity = 0.038f;
-                if (cam) cam.backgroundColor = dreamFog;
+                RenderSettings.fogColor = heavyFog;
+                RenderSettings.fogDensity = dim == Dimension.Radia ? 0.0155f : 0.038f;
+                if (cam) cam.backgroundColor = heavyFog;
                 return;
             }
 

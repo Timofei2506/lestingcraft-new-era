@@ -31,6 +31,13 @@ namespace LestingCraft.World
         public const ushort RedMesaId = 62, GlacialIceId = 63, MagmaBasaltId = 64, LavenderTurfId = 65;
         public const ushort TitaniumHullId = 66, AndromedaCrystalId = 67, DreamMonolithId = 68, DreamStoneId = 69;
 
+        // Era v9: Uranium, Real Power Grid, Industrial Architecture, Railways, Modern C-4 & Radia Abyss
+        public const ushort UraniumOreId = 70, UraniumBlockId = 71, CopperCableId = 72, BatteryBankId = 73;
+        public const ushort FuelGeneratorId = 74, SolarArrayId = 75, NuclearReactorId = 76, ElectricFloodlightId = 77;
+        public const ushort CherenkovBlockId = 78, ReinforcedConcreteId = 79, HazardSteelId = 80, LeadShieldId = 81;
+        public const ushort WhiteTrussId = 82, AsphaltId = 83, ArmoredGlassId = 84, SteelRailId = 85;
+        public const ushort PoweredRailId = 86, C4ChargeId = 87, TrinititeSlagId = 88, RadiaTerminalId = 89;
+
         private static readonly BlockDefinition[] Definitions = BuildDefinitions();
 
         static BlockDefinition[] BuildDefinitions()
@@ -57,11 +64,14 @@ namespace LestingCraft.World
             list[18] = new BlockDefinition(18, "Planks", true, 1.2f);
             foreach (var b in ExpandedContent.Blocks)
             {
-                byte light = b.Id == 56 ? (byte)15 :
+                byte light = b.Id == 56 || b.Id == 77 || b.Id == 78 ? (byte)15 :
                              b.Id == 54 ? (byte)14 :
-                             b.Id == 67 ? (byte)13 :
+                             b.Id == 67 || b.Id == 76 || b.Id == 89 ? (byte)13 :
                              b.Id == 61 ? (byte)12 :
-                             b.Id == 64 ? (byte)9 : (byte)0;
+                             b.Id == 71 ? (byte)10 :
+                             b.Id == 64 ? (byte)9 :
+                             b.Id == 70 ? (byte)7 :
+                             b.Id == 73 || b.Id == 86 ? (byte)6 : (byte)0;
                 list[b.Id] = new BlockDefinition((ushort)b.Id, b.Name, true, b.Hardness, light);
             }
             return list;
@@ -70,10 +80,15 @@ namespace LestingCraft.World
         public static BlockDefinition Get(ushort id) => id < Definitions.Length ? Definitions[id] : Definitions[0];
         public static bool IsAir(ushort id) => id == 0;
         public static bool IsSolid(ushort id) => id < Definitions.Length && Definitions[id].Solid;
+        public static bool IsRail(ushort id) => id == SteelRailId || id == PoweredRailId;
         public static bool IsCustomPlacedModel(ushort id) =>
-            id == CampfireId || id == CrystalId || id == TorchBlockId || id == BedBlockId || id == LanternBlockId;
+            id == CampfireId || id == CrystalId || id == TorchBlockId || id == BedBlockId || id == LanternBlockId ||
+            id == CopperCableId || id == SolarArrayId || id == NuclearReactorId || id == SteelRailId ||
+            id == PoweredRailId || id == C4ChargeId;
         public static bool Occludes(ushort id) =>
-            IsSolid(id) && id != CampfireId && id != CrystalId && id != 44 &&
-            id != TorchBlockId && id != BedBlockId && id != LanternBlockId;
+            IsSolid(id) && id != CampfireId && id != CrystalId && id != 44 && id != ArmoredGlassId &&
+            id != TorchBlockId && id != BedBlockId && id != LanternBlockId &&
+            id != CopperCableId && id != SolarArrayId && id != NuclearReactorId &&
+            id != SteelRailId && id != PoweredRailId && id != C4ChargeId;
     }
 }

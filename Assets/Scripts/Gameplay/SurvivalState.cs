@@ -66,7 +66,7 @@ namespace LestingCraft.Gameplay
     [Serializable] public sealed class SessionSave
     {
         public LivingSave living=new LivingSave();
-        public int schema=3,contentVersion=8,seed,mode;public LestingCraft.Story.StoryState story;public WildlifeSave wildlife=new WildlifeSave();public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
+        public int schema=3,contentVersion=9,seed,mode;public LestingCraft.Story.StoryState story;public WildlifeSave wildlife=new WildlifeSave();public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
         public bool launchPlaced;public int launchX,launchZ;
         public int activeDimension,defeatedPlanetBossMask;public bool dockedAtStation;
         public int activeGalaxy,activeSystem;
@@ -85,16 +85,16 @@ namespace LestingCraft.Gameplay
                 if(data==null||(data.schema!=2&&data.schema!=3)||!GameRules.IsValid(data.mode))return null;
                 if(data.schema==3&&!raw.Contains("\"contentVersion\""))return null;
                 if(data.schema==2){data.contentVersion=1;data.schema=3;}
-                if(data.contentVersion<1||data.contentVersion>8)return null;
+                if(data.contentVersion<1||data.contentVersion>9)return null;
                 if(data.player==null)return null;
                 if(data.launchPlaced&&(data.launchX < -320||data.launchX > 320||data.launchZ < -260||data.launchZ > 320))return null;
-                data.activeDimension=Mathf.Clamp(data.activeDimension,0,12);
+                data.activeDimension=Mathf.Clamp(data.activeDimension,0,14);
                 data.player.Normalize();
                 if(data.campaign==null)data.campaign=new CampaignProgress();
                 if(data.blocks==null)data.blocks=Array.Empty<SavedBlock>();
                 if(data.blocks.Length>8192)return null;
-                int maxBlock=data.contentVersion>=8?69:data.contentVersion>=7?53:data.contentVersion>=5?48:46;
-                foreach(var b in data.blocks)if(b==null||b.realm<0||b.realm>12||b.y<=0||b.y>=256||Math.Abs((long)b.x)>=32000||Math.Abs((long)b.z)>=32000||b.block<0||b.block>maxBlock||b.block==9)return null;
+                int maxBlock=data.contentVersion>=9?89:data.contentVersion>=8?69:data.contentVersion>=7?53:data.contentVersion>=5?48:46;
+                foreach(var b in data.blocks)if(b==null||b.realm<0||b.realm>14||b.y<=0||b.y>=256||Math.Abs((long)b.x)>=32000||Math.Abs((long)b.z)>=32000||b.block<0||b.block>maxBlock||b.block==9)return null;
                 return data;
             }catch{return null;}
         }

@@ -5,13 +5,13 @@ namespace LestingCraft.Gameplay
  {public readonly int Id,Layer;public readonly string Name,Surface;public readonly float Hardness;public readonly bool Pick;public ExpandedBlock(int id,string name,string surface,float hardness,bool pick,int layer){Id=id;Name=name;Surface=surface;Hardness=hardness;Pick=pick;Layer=layer;}}
  public static class ExpandedContent
  {
-  public const int MaxBlock=69,Version=4;
+  public const int MaxBlock=89,Version=4;
   public static readonly ExpandedBlock[] Blocks={
    new ExpandedBlock(19,"Угольная руда","ore-coal",2.5f,true,25),
-   new ExpandedBlock(20,"Железная руда","ore",3f,true,14),
+   new ExpandedBlock(20,"Железная руда","ore",3.0f,true,14),
    new ExpandedBlock(21,"Медная руда","ore-copper",2.8f,true,24),
    new ExpandedBlock(22,"Золотая руда","ore-gold",3.2f,true,26),
-   new ExpandedBlock(23,"Серебряная руда","ore-silver",3f,true,27),
+   new ExpandedBlock(23,"Серебряная руда","ore-silver",3.0f,true,27),
    new ExpandedBlock(24,"Оловянная руда","ore-tin",2.7f,true,28),
    new ExpandedBlock(25,"Кварцевая жила","ore-quartz",2.6f,true,29),
    new ExpandedBlock(26,"Серная руда","ore-sulfur",2.3f,true,30),
@@ -19,13 +19,13 @@ namespace LestingCraft.Gameplay
    new ExpandedBlock(28,"Известняк","limestone",1.6f,true,32),
    new ExpandedBlock(29,"Сланец","slate",1.8f,true,33),
    new ExpandedBlock(30,"Мрамор","marble",2.4f,true,34),
-   new ExpandedBlock(31,"Обсидиан","obsidian",6f,true,35),
+   new ExpandedBlock(31,"Обсидиан","obsidian",6.0f,true,35),
    new ExpandedBlock(32,"Гравий","gravel",0.7f,false,36),
    new ExpandedBlock(33,"Глина","clay",0.6f,false,37),
    new ExpandedBlock(34,"Ил","mud",0.5f,false,38),
    new ExpandedBlock(35,"Замшелый камень","mossy-stone",1.5f,true,39),
    new ExpandedBlock(36,"Булыжник","cobblestone",1.7f,true,40),
-   new ExpandedBlock(37,"Каменные кирпичи","stone-bricks",2f,true,41),
+   new ExpandedBlock(37,"Каменные кирпичи","stone-bricks",2.0f,true,41),
    new ExpandedBlock(38,"Треснувшие кирпичи","cracked-bricks",1.8f,true,42),
    new ExpandedBlock(39,"Глиняные кирпичи","clay-bricks",1.9f,true,43),
    new ExpandedBlock(40,"Полированный камень","polished-stone",2.1f,true,44),
@@ -33,12 +33,12 @@ namespace LestingCraft.Gameplay
    new ExpandedBlock(42,"Полированный мрамор","polished-marble",2.5f,true,49),
    new ExpandedBlock(43,"Песчаник","sandstone",1.2f,true,45),
    new ExpandedBlock(44,"Стекло","crystal",0.4f,false,12),
-   new ExpandedBlock(45,"Угольный блок","coal-block",3f,true,46),
+   new ExpandedBlock(45,"Угольный блок","coal-block",3.0f,true,46),
    new ExpandedBlock(46,"Медный блок","copper-block",3.5f,true,47),
    new ExpandedBlock(47,"Алмазная руда","diamond-ore",5.0f,true,57),
    new ExpandedBlock(48,"Алмазный блок","diamond-facets",5.5f,true,58),
    new ExpandedBlock(49,"Нефтяная скважина","basalt",2.5f,true,11),
-   new ExpandedBlock(50,"Компрессор","metal-ingot",3f,true,51),
+   new ExpandedBlock(50,"Компрессор","metal-ingot",3.0f,true,51),
    new ExpandedBlock(51,"Перегонный куб","obsidian",3.5f,true,35),
    new ExpandedBlock(52,"Криоустановка","snow",2.8f,true,15),
    new ExpandedBlock(53,"Смеситель топлива","clay-bricks",2.6f,true,43),
@@ -57,10 +57,30 @@ namespace LestingCraft.Gameplay
    new ExpandedBlock(66,"Титановая обшивка","titanium-hull",4.2f,true,86),
    new ExpandedBlock(67,"Кристалл Андромеды","andromeda-crystal",3.6f,true,87),
    new ExpandedBlock(68,"Монолит Сна","obsidian",8.0f,true,35),
-   new ExpandedBlock(69,"Бледный камень Сна","polished-marble",3.2f,true,49)
+   new ExpandedBlock(69,"Бледный камень Сна","polished-marble",3.2f,true,49),
+   new ExpandedBlock(70,"Урановая руда","uranium-ore",4.2f,true,88),
+   new ExpandedBlock(71,"Урановый топливный блок","uranium-block",5.0f,true,89),
+   new ExpandedBlock(72,"Силовой медный кабель","copper-cable",0.9f,false,90),
+   new ExpandedBlock(73,"Промышленный аккумулятор","battery-bank",3.2f,true,91),
+   new ExpandedBlock(74,"Топливный электрогенератор","generator-casing",3.5f,true,92),
+   new ExpandedBlock(75,"Солнечная электростанция","titanium-hull",2.4f,true,86),
+   new ExpandedBlock(76,"Ядерный реактор ВВЭР","nuclear-reactor",6.5f,true,93),
+   new ExpandedBlock(77,"Электрический прожектор","metal-ingot",1.8f,true,51),
+   new ExpandedBlock(78,"Черенковский излучатель","cherenkov-crystal",3.8f,true,94),
+   new ExpandedBlock(79,"Армированный бетон","reinforced-concrete",5.5f,true,95),
+   new ExpandedBlock(80,"Сигнальная сталь","hazard-steel",4.0f,true,96),
+   new ExpandedBlock(81,"Свинцовая биозащита","lead-shield",4.8f,true,97),
+   new ExpandedBlock(82,"Белая ферменная опора","polished-marble",3.4f,true,49),
+   new ExpandedBlock(83,"Асфальтобетон","basalt",2.6f,true,11),
+   new ExpandedBlock(84,"Бронированное стекло","crystal",3.0f,true,12),
+   new ExpandedBlock(85,"Стальные рельсы","steel-rail",1.6f,true,98),
+   new ExpandedBlock(86,"Контактный электрорельс","powered-rail",1.9f,true,99),
+   new ExpandedBlock(87,"Фугасный заряд С-4","c4-explosive",0.8f,false,100),
+   new ExpandedBlock(88,"Остеклованный тринитит","obsidian",4.4f,true,35),
+   new ExpandedBlock(89,"Шлюзовой терминал Затона","nuclear-reactor",9.0f,true,93)
   };
-  public static bool Has(int id)=>id>=19&&id<=69;
+  public static bool Has(int id)=>id>=19&&id<=89;
   public static bool NeedsPick(int id)=>id==1||id>=10&&id<=13||id==17||Has(id)&&Blocks[id-19].Pick;
-  public static int Smelt(int id)=>id>=20&&id<=26?140+id-20:id==6?44:id==33?39:id==135?138:0;
+  public static int Smelt(int id)=>id==70?190:id>=20&&id<=26?140+id-20:id==6?44:id==33?39:id==135?138:0;
  }
 }

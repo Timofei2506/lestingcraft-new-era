@@ -23,7 +23,7 @@ const KEY_A = 'a'.repeat(32);
 const KEY_B = 'b'.repeat(32);
 
 test('Era expansion protocol v13 / contentVersion 8 preserves full legacy compatibility', () => {
-  assert.equal(RULES_VERSION, 13);
+  assert.equal(RULES_VERSION, 14);
   const cfg = createConfig({version: 1, ownerKey: KEY_A, seed: 2506, dimension: 0, mode: 0, rulesVersion: 13});
   assert.equal(cfg.rulesVersion, 13);
   assert.equal(cfg.contentVersion, 8);

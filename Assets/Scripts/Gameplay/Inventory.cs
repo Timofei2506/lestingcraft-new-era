@@ -16,6 +16,7 @@ namespace LestingCraft.Gameplay
     public static class Items
     {
         public const int Torch=148,WoodPick=100,StonePick=101,Axe=102,Sword=103,Coat=104,Berries=110,Bread=111,Planks=120,Stick=121,Fiber=122,Charcoal=123,RoastedBerries=112,Grain=113,Dough=114,Workbench=16,Furnace=17;
+        public const int UraniumRod=190,CherenkovCore=191,ElectricLocomotive=192,QuadDrone=193,IndustrialRobot=194,Dosimeter=195,ThermonukeId=666;
         static readonly Dictionary<int,ItemDefinition> all=new Dictionary<int,ItemDefinition>();
         static Items()
         {
@@ -38,12 +39,19 @@ namespace LestingCraft.Gameplay
             all[135]=new ItemDefinition(135,"Сырое мясо",32,food:4);all[136]=new ItemDefinition(136,"Сырая шкура");all[138]=new ItemDefinition(138,"Жареное мясо",32,food:28);all[139]=new ItemDefinition(139,"Кожа");
             string[] minerals={"Железный слиток","Медный слиток","Золотой слиток","Серебряный слиток","Оловянный слиток","Кварц","Сера","Уголь"};for(int i=0;i<8;i++)all[140+i]=new ItemDefinition(140+i,minerals[i]);
             all[Planks]=new ItemDefinition(Planks,"Доски",block:18);all[Stick]=new ItemDefinition(Stick,"Палки");all[Fiber]=new ItemDefinition(Fiber,"Волокно");
-            // Stage-1 fuel chain (FuelChain.cs). Icons and models come in step 1.3.
             all[FuelChain.CrudeOil]=new ItemDefinition(FuelChain.CrudeOil,"Сырая нефть");all[FuelChain.Gasoline]=new ItemDefinition(FuelChain.Gasoline,"Бензин");all[FuelChain.Diesel]=new ItemDefinition(FuelChain.Diesel,"Дизель");all[FuelChain.Kerosene]=new ItemDefinition(FuelChain.Kerosene,"Керосин");
             all[FuelChain.LiquidOxygen]=new ItemDefinition(FuelChain.LiquidOxygen,"Жидкий кислород");all[FuelChain.RocketFuel]=new ItemDefinition(FuelChain.RocketFuel,"Ракетное топливо");all[FuelChain.Residue]=new ItemDefinition(FuelChain.Residue,"Гудрон");all[FuelChain.CompressedAir]=new ItemDefinition(FuelChain.CompressedAir,"Сжатый воздух");
+            all[UraniumRod]=new ItemDefinition(UraniumRod,"Урановый стержень ТВЭЛ");
+            all[CherenkovCore]=new ItemDefinition(CherenkovCore,"Ядро Черенкова");
+            all[ElectricLocomotive]=new ItemDefinition(ElectricLocomotive,"Электровоз «ЭР-Воксель»",1);
+            all[QuadDrone]=new ItemDefinition(QuadDrone,"Инженерный квадрокоптер",1);
+            all[IndustrialRobot]=new ItemDefinition(IndustrialRobot,"Робот-автоматон «Титан-М»",1);
+            all[Dosimeter]=new ItemDefinition(Dosimeter,"Дозиметр «Припять»",1);
+            // STRICTLY SECRET WARHEAD: never exposed in CatalogIds, CreativeCatalog, recipes, drops or trades — ONLY /give 666!
+            all[ThermonukeId]=new ItemDefinition(ThermonukeId,"Объект 666 · Термоядерная боеголовка",1);
         }
-        // Fuel-chain items 170..177 and stations 49..53 have icons since step 1.3; catalog must equal ItemArtwork.AllIds.
-        public static int[] CatalogIds{get{var ids=new List<int>(all.Keys);ids.Sort();return ids.ToArray();}}
+        // Public catalog must equal ItemArtwork.AllIds and strictly exclude secret ThermonukeId (666).
+        public static int[] CatalogIds{get{var ids=new List<int>(all.Count);foreach(int k in all.Keys)if(k!=ThermonukeId)ids.Add(k);ids.Sort();return ids.ToArray();}}
         public static bool Exists(int id)=>all.ContainsKey(id);
         public static ItemDefinition Get(int id)=>all.TryGetValue(id,out var item)?item:default;
         public static bool IsPick(int id)=>id==WoodPick||id==StonePick||id==150||id==151;

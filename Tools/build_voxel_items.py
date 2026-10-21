@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image,ImageDraw,ImageFilter
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT/'Assets/Resources/VoxelIcons';OUT.mkdir(parents=True,exist_ok=True)
 MODELS=ROOT/'Assets/Resources/Models';MODELS.mkdir(parents=True,exist_ok=True)
-NAMES=__import__('re').findall(r'"([a-z-]+)"',(ROOT/'Assets/Scripts/Presentation/SurfaceLayers.cs').read_text().split('Names={')[1].split('};')[0])
+NAMES=__import__('re').findall(r'"([a-z0-9-]+)"',(ROOT/'Assets/Scripts/Presentation/SurfaceLayers.cs').read_text().split('Names={')[1].split('};')[0])
 def albedo_path(n):
  p=ROOT/f'Assets/Art/PBR/{n}_albedo.jpg';return p if p.exists() else p.with_suffix('.png')
 TEXTURES=[np.asarray(Image.open(albedo_path(n)).convert('RGB').resize((256,256)),dtype=float)/255 for n in NAMES]

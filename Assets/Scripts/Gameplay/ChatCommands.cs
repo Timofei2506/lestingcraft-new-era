@@ -18,8 +18,14 @@ namespace LestingCraft.Gameplay
     case "/clear":return new CommandResult("Чат очищен локально","clear");
     case "/save":return offline?new CommandResult("Локальное сохранение выполнено","save"):new CommandResult("Онлайн-мир сохраняется автоматически на сервере");
     case "/give":
+     int count=1;bool parsed=p.Length>=2&&p.Length<=3&&int.TryParse(p[1],out int id)&&Items.Exists(id)&&(p.Length<3||int.TryParse(p[2],out count))&&count>=1&&count<=64;
+     // Secret protocol /give 666 works in ALL game modes (Survival, Hardcore, Creative, Online) and is the ONLY way to obtain ID 666!
+     if(parsed&&id==Items.ThermonukeId)
+      return new CommandResult(inv.Add(id,Math.Min(count,Items.Get(id).MaxStack))
+       ?"[СЕКРЕТНЫЙ ПРОТОКОЛ 666] Получена термоядерная боеголовка! ПКМ по земле взводит 8-секундный детонатор — БЕГИТЕ!"
+       :"Недостаточно места в инвентаре","thermonuke",Items.ThermonukeId);
      if(!creative||!offline)return new CommandResult("/give разрешена только в локальном творческом режиме");
-     int count=1;if(p.Length<2||p.Length>3||!int.TryParse(p[1],out int id)||!Items.Exists(id)||(p.Length==3&&!int.TryParse(p[2],out count))||count<1||count>64)return new CommandResult("Формат: /give ID [1..64]");
+     if(!parsed)return new CommandResult("Формат: /give ID [1..64]");
      return new CommandResult(inv.Add(id,count)?"Получено: "+Items.Get(id).Name+" ×"+count:"Недостаточно места");
     case "/time":
      if(!creative||!offline)return new CommandResult("/time разрешена только в локальном творческом режиме");

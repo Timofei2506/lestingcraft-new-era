@@ -29,7 +29,7 @@ namespace LestingCraft.Tests
                 var panel = cabin.Panel;
                 Vector3 pilotEye = cabin.transform.TransformPoint(CockpitInteractiveRig.PilotEyeLocal);
 
-                Assert.AreEqual(18, rig.Controls.Count, "All 18 physical 3D cockpit controls must register BoxCollider hitboxes");
+                Assert.AreEqual(16, rig.Controls.Count, "All 16 physical 3D cockpit controls (direct flight, zero Time Warp buttons) must register BoxCollider hitboxes");
                 foreach (var kv in rig.Controls)
                 {
                     var box = kv.Value.GetComponent<BoxCollider>();
@@ -71,11 +71,10 @@ namespace LestingCraft.Tests
                 Scroll3DControl(rig, CockpitControlId.ThrottleLever, 0.25f, pilotEye);
                 Assert.Greater(helm.Throttle, beforeThrottle);
 
+                // Direct real-time spaceflight: Time Warp speed-up buttons are removed from 3D cockpit
                 Assert.AreEqual(1.0, helm.TimeWarp, 1e-6);
-                Click3DControl(rig, CockpitControlId.TimeWarpUpButton, pilotEye);
-                Assert.AreEqual(5.0, helm.TimeWarp, 1e-6);
-                Click3DControl(rig, CockpitControlId.TimeWarpDownButton, pilotEye);
-                Assert.AreEqual(1.0, helm.TimeWarp, 1e-6);
+                Assert.IsFalse(rig.Controls.ContainsKey(CockpitControlId.TimeWarpUpButton));
+                Assert.IsFalse(rig.Controls.ContainsKey(CockpitControlId.TimeWarpDownButton));
 
                 var galSwitch = Click3DControl(rig, CockpitControlId.MfdToggleGalaxy, pilotEye);
                 Assert.IsTrue(galSwitch.RequestedHyperjump);
@@ -139,7 +138,7 @@ namespace LestingCraft.Tests
             Assert.AreEqual(384400.0, SpaceVector.Distance(earthPos, moonPos), 1500.0, "Moon must orbit Earth at real 384,400 km");
             Assert.AreEqual(1221870.0, SpaceVector.Distance(saturnPos, titanPos), 5000.0, "Titan must orbit Saturn at real 1,221,870 km");
 
-            // Real manual 6-DOF piloting in realistic km/s + KSP Time Warp (1x..100,000x)
+            // Real manual 6-DOF piloting in continuous direct cruise (zero Time Warp buttons, ~33.4 min Earth -> Moon)
             var helm = new OpenSpaceHelm();
             helm.EnterOrbitAround(CelestialBodyId.Earth);
             SpaceVector p0 = helm.PositionKm;
@@ -148,20 +147,12 @@ namespace LestingCraft.Tests
             helm.Boost = true;
             for (int i = 0; i < 15; i++) helm.Step(0.1f, 0.35f, -0.25f, 0.15f);
             double realTimeMovedKm = SpaceVector.Distance(p0, helm.PositionKm);
-            Assert.Greater(realTimeMovedKm, 8.0, "Ship moves at realistic orbital velocity (~8-55 km/s) at 1x");
-            Assert.Less(realTimeMovedKm, 150.0, "Ship does NOT fly at arcade speeds at 1x");
+            Assert.Greater(realTimeMovedKm, 8.0, "Ship accelerates smoothly under continuous thrust");
+            Assert.Less(realTimeMovedKm, 320.0, "Ship stays calibrated to ~185 km/s lunar cruise speed");
 
-            // Engaging KSP Time Warp enforces gravity-well safety cap (10,000x at 5 Mkm) and full 100,000x in deep interplanetary space (25 Mkm)!
-            helm.PositionKm = CelestialAtlas.WorldPositionKm(CelestialBodyId.Earth, helm.OrbitTimeDays) + new SpaceVector(5000000.0, 0.0, 0.0);
+            // Time Warp speed-ups stay strictly locked at 1.0x even if legacy methods are called
             for (int w = 0; w < 7; w++) helm.IncreaseTimeWarp();
-            Assert.AreEqual(10000.0, helm.TimeWarp, 1e-3, "Near Earth SOI (5 Mkm), KSP safety limiter caps warp to 10,000x");
-
-            helm.PositionKm = CelestialAtlas.WorldPositionKm(CelestialBodyId.Earth, helm.OrbitTimeDays) + new SpaceVector(0.0, 35000000.0, 0.0);
-            helm.IncreaseTimeWarp();
-            Assert.AreEqual(100000.0, helm.TimeWarp, 1e-3, "Above the ecliptic plane (35 Mkm), full 100,000x warp stays active");
-            SpaceVector pWarp0 = helm.PositionKm;
-            for (int t = 0; t < 10; t++) helm.Step(0.1f, 0f, 0f, 0f);
-            Assert.Greater(SpaceVector.Distance(pWarp0, helm.PositionKm), 750000.0, "100,000x KSP Time Warp covers ~850,000..5,800,000 km per real second");
+            Assert.AreEqual(1.0, helm.TimeWarp, 1e-6, "Direct flight keeps TimeWarp locked at 1.0x");
             helm.ResetTimeWarp();
 
             helm.StartHyperjump(CelestialBodyId.AndromedaPrime);
@@ -249,7 +240,7 @@ namespace LestingCraft.Tests
         [Test]
         public void ThreeChapterSagaCodexBedsUpgradedVillagesAndRealLanternTorchStreetPoles()
         {
-            Assert.AreEqual(6, StoryChapters.Entries.Length);
+            Assert.AreEqual(7, StoryChapters.Entries.Length);
             int mask = 0;
             CollectionAssert.IsNotEmpty(StoryChapters.EvaluateProgressionTransmission(Dimension.Moon, GalaxyId.MilkyWay, 0, false, ref mask));
             CollectionAssert.IsNotEmpty(StoryChapters.EvaluateProgressionTransmission(Dimension.Lestingia, GalaxyId.MilkyWay, 1, false, ref mask));
@@ -284,12 +275,12 @@ namespace LestingCraft.Tests
         [Test]
         public void DiverseVillagersTwentyAnimalsFiftyOneExpandedBlocksAndTwelveBiomes()
         {
-            Assert.AreEqual(13, GameRules.Version);
-            Assert.AreEqual(51, ExpandedContent.Blocks.Length);
-            Assert.AreEqual(69, ExpandedContent.MaxBlock);
-            Assert.AreEqual(88, SurfaceLayers.Names.Length);
+            Assert.AreEqual(14, GameRules.Version);
+            Assert.AreEqual(71, ExpandedContent.Blocks.Length);
+            Assert.AreEqual(89, ExpandedContent.MaxBlock);
+            Assert.AreEqual(112, SurfaceLayers.Names.Length);
             Assert.AreEqual(12, BiomeGenerator.Names.Length);
-            Assert.AreEqual(20, WildlifeSimulation.SpeciesCount);
+            Assert.AreEqual(30, WildlifeSimulation.SpeciesCount);
             Assert.GreaterOrEqual(TradeOffer.ProfessionCount, 10);
 
             // All 12 biomes appear deterministically in v8 while v7 remains strictly 6 biomes

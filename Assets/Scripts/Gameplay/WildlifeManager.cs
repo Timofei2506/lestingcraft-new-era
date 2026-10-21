@@ -41,11 +41,13 @@ namespace LestingCraft.Gameplay
         sealed class QueuedAttack { public int slot, item; public float at; }
         readonly Dictionary<int, QueuedAttack> queuedAttacks = new Dictionary<int, QueuedAttack>();
 
+        public IReadOnlyList<AnimalState> Animals => simulation != null ? (IReadOnlyList<AnimalState>)simulation.Animals : Array.Empty<AnimalState>();
+
         bool Enabled
         {
             get
             {
-                return session && (int)session.World.Dimension == 0 &&
+                return session && ((int)session.World.Dimension == 0 || (int)session.World.Dimension == 14) &&
                     (!session.Game.Online || session.World.ContentVersion >= 2);
             }
         }

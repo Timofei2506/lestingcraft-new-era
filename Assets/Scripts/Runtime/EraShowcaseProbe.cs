@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
+using LestingCraft.World;
 using LestingCraft.Gameplay;
 using LestingCraft.Presentation;
 
@@ -566,8 +567,222 @@ namespace LestingCraft.Runtime
                 RenderSettings.fog = false;
             });
 
+            // =========================================================================
+            // SHOT 10: ERA-V9 New Irradiated Dimension — «Черенковский Затон» (Dimension.Radia)
+            //          Matching reference vista: twin tilted double-helix towers on white
+            //          truss piers, concrete sluice dam, glowing underwater Cherenkov rows,
+            //          3 Raid Bosses, mutant fauna (20..29) & monochrome stormy ash!
+            // =========================================================================
+            ui.ShowHUD();
+            inv.slots[0] = new ItemStack { item = Items.Dosimeter, count = 1 };
+            inv.slots[1] = new ItemStack { item = BlockRegistry.UraniumOreId, count = 12 };
+            inv.slots[2] = new ItemStack { item = BlockRegistry.NuclearReactorId, count = 1 };
+            inv.slots[3] = new ItemStack { item = BlockRegistry.CopperCableId, count = 32 };
+            inv.slots[4] = new ItemStack { item = Items.ElectricLocomotive, count = 1 };
+            inv.slots[5] = new ItemStack { item = Items.QuadDrone, count = 1 };
+            inv.slots[6] = new ItemStack { item = Items.IndustrialRobot, count = 1 };
+            inv.slots[7] = new ItemStack { item = BlockRegistry.C4ChargeId, count = 8 };
+            inv.slots[8] = new ItemStack { item = Items.CherenkovCore, count = 6 };
+            inv.selected = 0;
+            inv.revision++;
+
+            SetCamerasActive(cam, hands, false);
+            var radiaWorld = game.Session.World;
+            radiaWorld.SwitchPlanet(Dimension.Radia, Array.Empty<SavedBlock>());
+            game.Tech.Sim.ResetRadiaEncounter();
+            game.Tech.Sim.RadiationDose01 = 0.64f;
+            var spaceVisV9 = SpaceFlightVisuals.Ensure(null);
+            spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Radia, player, cam);
+            VisualSettings.EnsurePostProcessingVolume(1f, true, 0f);
+
+            // Stream the entire Radia basin from near water (-20) all the way past the dam (z=78) & twin helix towers (z=104)
+            Vector3[] streamAnchors =
+            {
+                new Vector3(0f, 52f, 96f),
+                new Vector3(-36f, 52f, 96f),
+                new Vector3(44f, 52f, 96f),
+                new Vector3(0f, 52f, 44f),
+                new Vector3(0f, 52f, -6f)
+            };
+            foreach (var anchor in streamAnchors)
+            {
+                player.TeleportTo(anchor, false);
+                yield return WaitWorldMeshed(radiaWorld, 25f);
+            }
+            var radiaMutantsRoot = new GameObject("RadiaMutantsShowcase");
+            int[] radiaSpecies = { 20, 21, 22, 24, 25, 26, 28, 29 };
+            for (int m = 0; m < radiaSpecies.Length; m++)
+            {
+                float side = (m % 2 == 0) ? -1f : 1f;
+                var mGo = new GameObject("RadiaMutant_" + radiaSpecies[m]);
+                mGo.transform.SetParent(radiaMutantsRoot.transform, false);
+                mGo.transform.position = new Vector3(side * (24.5f + (m % 3) * 2.4f), 49.05f, 8.0f + m * 6.5f);
+                mGo.transform.rotation = Quaternion.Euler(0f, side < 0f ? 128f : -128f, 0f);
+                mGo.AddComponent<AnimalVisual>().Build(radiaSpecies[m]);
+            }
+
+            Vector3 radiaCamPos = new Vector3(0.5f, 53.6f, -15.5f);
+            player.TeleportTo(radiaCamPos, false);
+            game.Tech.StepRuntime(0.25f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
+
+            // Cool cyan underglow along submerged Cherenkov rows so dark water shines authentically
+            var cherenkovLightsRoot = new GameObject("RadiaCherenkovGlowLights");
+            float[] glowZ = { 2f, 22f, 42f, 60f };
+            for (int gz = 0; gz < glowZ.Length; gz++)
+            {
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    var glObj = new GameObject("CherenkovWaterGlow_" + gz + "_" + side);
+                    glObj.transform.SetParent(cherenkovLightsRoot.transform, false);
+                    glObj.transform.position = new Vector3(side * 10.5f, 49.6f, glowZ[gz]);
+                    var gl = glObj.AddComponent<Light>();
+                    gl.type = LightType.Point;
+                    gl.color = new Color(0.28f, 0.78f, 1.0f);
+                    gl.range = 28f;
+                    gl.intensity = 9.5f;
+                    gl.shadows = LightShadows.None;
+                }
+            }
+
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "10-radia-abyss-twin-helix-dam.png"), () =>
+            {
+                cam.fieldOfView = 72f;
+                cam.farClipPlane = 600f;
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0.76f, 0.78f, 0.80f, 1f);
+                RenderSettings.fog = true;
+                RenderSettings.fogMode = FogMode.ExponentialSquared;
+                RenderSettings.fogDensity = 0.0046f;
+                RenderSettings.fogColor = new Color(0.68f, 0.70f, 0.73f, 1f);
+                RenderSettings.ambientLight = new Color(0.42f, 0.44f, 0.47f, 1f);
+                cam.transform.position = radiaCamPos;
+                cam.transform.LookAt(new Vector3(2.0f, 67.5f, 92.0f));
+                game.Session.Notice = "";
+            });
+            Destroy(radiaMutantsRoot);
+            Destroy(cherenkovLightsRoot);
+
+            // =========================================================================
+            // SHOT 11: ERA-V9 Industrial Power Grid (Nuclear Reactor + 3D Copper Wires +
+            //          Solar + Battery + Lead Shielding) + Electric Train + Quad-Drone + Robot!
+            // =========================================================================
+            SetCamerasActive(cam, hands, false);
+            VisualSettings.EnsurePostProcessingVolume(0f, false, 0f);
+            radiaWorld.SwitchPlanet(Dimension.Lestingia, Array.Empty<SavedBlock>());
+            spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Lestingia, player, cam);
+            int icx = 32, icz = 32, igy = 48;
+            player.TeleportTo(new Vector3(icx, igy + 4f, icz), false);
+            yield return WaitWorldMeshed(radiaWorld, 25f);
+
+            // Flat industrial yard made of Reinforced Concrete (79), Asphalt (84), Hazard Steel (80) & Lead Shield (81)
+            for (int ix = -16; ix <= 16; ix++)
+                for (int iz = -14; iz <= 18; iz++)
+                {
+                    ushort floorBlk = Mathf.Abs(iz - 3) <= 2 ? BlockRegistry.AsphaltId
+                                    : (ix < -4 && iz > 6) ? BlockRegistry.HazardSteelId
+                                    : BlockRegistry.ReinforcedConcreteId;
+                    for (int y = igy - 3; y <= igy; y++)
+                        SetBlock(radiaWorld, icx + ix, y, icz + iz, y == igy ? floorBlk : 1);
+                    for (int y = igy + 1; y <= igy + 18; y++)
+                        SetBlock(radiaWorld, icx + ix, y, icz + iz, 0);
+                }
+
+            // Cooling water basin + VVER Nuclear Reactor (76) + Lead Shield wall (81) + Battery (73) + Solar array (75)
+            SetBlock(radiaWorld, icx - 10, igy + 1, icz + 10, BlockRegistry.WaterId);
+            SetBlock(radiaWorld, icx - 9, igy + 1, icz + 10, BlockRegistry.NuclearReactorId);
+            SetBlock(radiaWorld, icx - 9, igy + 2, icz + 10, BlockRegistry.CherenkovBlockId);
+            for (int sx = -12; sx <= -6; sx++)
+            {
+                SetBlock(radiaWorld, icx + sx, igy + 1, icz + 12, BlockRegistry.LeadShieldId);
+                SetBlock(radiaWorld, icx + sx, igy + 2, icz + 12, BlockRegistry.LeadShieldId);
+                SetBlock(radiaWorld, icx + sx, igy + 3, icz + 12, BlockRegistry.ArmoredGlassId);
+            }
+            SetBlock(radiaWorld, icx - 6, igy + 1, icz + 9, BlockRegistry.BatteryBankId);
+            SetBlock(radiaWorld, icx - 5, igy + 1, icz + 9, 74);
+            for (int sp = 0; sp < 4; sp++)
+            {
+                SetBlock(radiaWorld, icx + 5 + sp * 2, igy + 1, icz + 10, BlockRegistry.WhiteTrussId);
+                SetBlock(radiaWorld, icx + 5 + sp * 2, igy + 2, icz + 10, 75);
+            }
+            // Overhead 3D Copper Power Line (72) connecting Reactor -> Battery -> Powered Rail -> Floodlight (77)
+            for (int h = 1; h <= 4; h++)
+            {
+                SetBlock(radiaWorld, icx - 8, igy + h, icz + 9, BlockRegistry.CopperCableId);
+                SetBlock(radiaWorld, icx + 4, igy + h, icz + 9, BlockRegistry.CopperCableId);
+            }
+            for (int wx = -8; wx <= 6; wx++)
+                SetBlock(radiaWorld, icx + wx, igy + 4, icz + 9, BlockRegistry.CopperCableId);
+            SetBlock(radiaWorld, icx + 6, igy + 5, icz + 9, BlockRegistry.ElectricFloodlightId);
+            for (int ry = 1; ry <= 4; ry++)
+                SetBlock(radiaWorld, icx, igy + ry, icz + 8, BlockRegistry.CopperCableId);
+
+            // Electrified Railway Track (85 & 86) across yard + C4 charge stack on freight platform
+            for (int rx = -15; rx <= 15; rx++)
+            {
+                SetBlock(radiaWorld, icx + rx, igy, icz + 2, 28);
+                SetBlock(radiaWorld, icx + rx, igy + 1, icz + 2, (rx % 4 == 0) ? BlockRegistry.PoweredRailId : BlockRegistry.SteelRailId);
+            }
+            SetBlock(radiaWorld, icx, igy + 1, icz + 7, BlockRegistry.CopperCableId);
+            SetBlock(radiaWorld, icx, igy + 1, icz + 6, BlockRegistry.CopperCableId);
+            SetBlock(radiaWorld, icx, igy + 1, icz + 5, BlockRegistry.CopperCableId);
+            SetBlock(radiaWorld, icx, igy + 1, icz + 4, BlockRegistry.CopperCableId);
+            SetBlock(radiaWorld, icx, igy + 1, icz + 3, BlockRegistry.CopperCableId);
+            SetBlock(radiaWorld, icx - 11, igy + 1, icz + 5, BlockRegistry.C4ChargeId);
+            SetBlock(radiaWorld, icx + 11, igy + 1, icz + 6, BlockRegistry.HazardSteelId);
+
+            yield return WaitWorldMeshed(radiaWorld, 20f);
+            game.Tech.SpawnElectricTrain(new Vector3(icx + 2.5f, igy + 1.02f, icz + 2.5f));
+            game.Tech.DeployIndustrialRobot(new Vector3(icx - 3.5f, igy + 1.02f, icz + 5.6f));
+            game.Tech.DeployQuadDrone(new Vector3(icx + 4.2f, igy + 4.4f, icz + 5.2f), cam);
+            player.TeleportTo(new Vector3(icx + 0.5f, igy + 2.0f, icz - 7.5f), false);
+            for (int s = 0; s < 6; s++)
+                game.Tech.StepRuntime(0.25f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
+
+            inv.selected = 2;
+            inv.revision++;
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "11-industrial-nuclear-grid-train-drone-robot.png"), () =>
+            {
+                game.Session.Data.clock = 585.0;
+                RenderSettings.fog = true;
+                RenderSettings.fogDensity = 0.0022f;
+                cam.fieldOfView = 70f;
+                cam.farClipPlane = 500f;
+                cam.transform.position = new Vector3(icx + 1.2f, igy + 5.4f, icz - 8.2f);
+                cam.transform.LookAt(new Vector3(icx - 1.2f, igy + 2.4f, icz + 6.5f));
+                game.Session.Notice = "Энергосеть активна: Реактор ВВЭР + Солнечный массив · Электропоезд «ЭР-Воксель» · Квадрокоптер · «Титан-М»";
+            });
+
+            // =========================================================================
+            // SHOT 12: Secret Command «/give 666» Thermonuclear Detonation —
+            //          Colossal 95m 3D Fireball & Mushroom Cloud, Wilson Ring & Trinitite Crater!
+            // =========================================================================
+            ChatCommands.Execute("/give 666", false, true, inv, radiaWorld.Seed, player.transform.position, 1);
+            inv.selected = Array.FindIndex(inv.slots, s => s.item == Items.ThermonukeId);
+            if (inv.selected < 0) inv.selected = 0;
+            inv.revision++;
+
+            Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 52.0f);
+            player.TeleportTo(nukeOrigin + Vector3.up * 4f, false);
+            yield return WaitWorldMeshed(radiaWorld, 15f);
+            player.TeleportTo(new Vector3(icx + 2.0f, igy + 18.0f, icz - 46.0f), false);
+            game.Tech.ArmExplosive(nukeOrigin, true);
+            // Advance 9.6s so 8.0s countdown completes and 3D Mushroom Cloud rises in peak glowing glory
+            for (int nStep = 0; nStep < 48; nStep++)
+                game.Tech.StepRuntime(0.20f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
+            yield return WaitWorldMeshed(radiaWorld, 15f);
+
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "12-secret-666-thermonuclear-mushroom.png"), () =>
+            {
+                game.Session.Data.clock = 1160.0; // Dramatic dusk lighting so incandescent mushroom cloud illuminates sky & crater!
+                cam.fieldOfView = 72f;
+                cam.farClipPlane = 800f;
+                cam.transform.position = new Vector3(icx + 2.0f, igy + 20.0f, icz - 48.0f);
+                cam.transform.LookAt(nukeOrigin + Vector3.up * 32.0f);
+                game.Session.Notice = "☢ СЕКРЕТНЫЙ ОБЪЕКТ 666 (/give 666) · Термоядерный гриб и оплавленный кратер тринитита!";
+            });
+
             finishing = true;
-            Debug.Log("[Showcase] PASS: 11 authentic 1920x1080 URP screenshots saved to " + outDir);
+            Debug.Log("[Showcase] PASS: 14 authentic 1920x1080 URP screenshots saved to " + outDir);
             Application.Quit(0);
             yield return null;
             Environment.Exit(0);

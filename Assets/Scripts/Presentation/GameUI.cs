@@ -518,12 +518,32 @@ namespace LestingCraft.Presentation
                 {
                     var session=game.Session;var v=session.Vitals;
                     healthBody.SetBody(v);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
-                    vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}"+(v.air<100?$"\nВоздух  {v.air:0}%":"");
+                    string extraTech="";
+                    if(game.Tech)
+                    {
+                        var sim=game.Tech.Sim;
+                        if(sim.CurrentMillisievertsPerHour>8f||sim.RadiationDose01>0.03f||session.Inventory.Active.item==Items.Dosimeter)
+                            extraTech+=$"\n☢ Фон  {sim.CurrentMillisievertsPerHour:0} мЗв/ч ({sim.RadiationDose01*100f:0}%)";
+                        if(sim.Grid.GenerationKw>0.1f||sim.Grid.DemandKw>0.1f)
+                            extraTech+=$"\n⚡ Сеть  {sim.Grid.GenerationKw:0}/{sim.Grid.DemandKw:0} кВт · {sim.Grid.StoredKwh:0} кВт·ч";
+                    }
+                    vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}"+(v.air<100?$"\nВоздух  {v.air:0}%":"")+extraTech;
 
                     if(lastNotice!=session.Notice){lastNotice=session.Notice;noticeAt=Time.unscaledTime;}
                     noticeHUD.text=Time.unscaledTime-noticeAt<4?lastNotice:"";
                 }
-                loadingHUD.text=!game.WorldReady?"Формирование ландшафта… "+game.ChunkCount+" чанков":"";
+                if(!game.WorldReady)
+                    loadingHUD.text="Формирование ландшафта… "+game.ChunkCount+" чанков";
+                else if(game.InRadiaDimension&&game.Tech)
+                {
+                    var s=game.Tech.Sim;
+                    loadingHUD.text=s.EscapePortalOpen
+                        ?"☢ ЧЕРЕНКОВСКИЙ ЗАТОН · ШЛЮЗ ОТКРЫТ! Идите в белый разлом над терминалом плотины!"
+                        :s.PurgeActive
+                            ?$"☢ СИРЕНА ПРОДУВКИ ШЛЮЗА · Продержитесь ещё {s.PurgeRemainingSeconds:0} сек!"
+                            :$"☢ ЧЕРЕНКОВСКИЙ ЗАТОН · Ядра со дна: {s.HarvestedSubmergedCores}/6 · Боссы Спирали: {s.DefeatedBossCount}/3";
+                }
+                else loadingHUD.text="";
             }
             if(game.Session)
             {

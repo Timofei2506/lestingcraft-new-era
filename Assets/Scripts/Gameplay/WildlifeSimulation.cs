@@ -38,7 +38,7 @@ namespace LestingCraft.Gameplay
 
     public sealed class WildlifeSimulation
     {
-        public const int SpeciesCount = 20;
+        public const int SpeciesCount = 30;
         public const int MaxAnimals = 384, MaxSites = 8192, ActiveLimit = 32, ActiveLimitV8 = 96;
         public readonly List<AnimalState> Animals = new List<AnimalState>();
         readonly HashSet<string> sites = new HashSet<string>();
@@ -51,16 +51,54 @@ namespace LestingCraft.Gameplay
 
         public delegate float Ground(float x, float z, float previousY, float radius, float height);
 
-        // 0..11 original species + 12:Owl, 13:Penguin, 14:Camel, 15:Scorpion, 16:Turtle, 17:Moose, 18:Capybara, 19:VoidRay
-        static readonly int[] Health = { 30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55 };
-        static readonly int[] Meat = { 3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2 };
-        static readonly int[] Hide = { 2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3 };
-        static readonly int[] AttackDamage = { 0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0 };
-        static readonly float[] Heights = { 2.2f, .8f, .95f, 1.25f, 1.95f, .9f, 2.05f, 1.65f, 1.05f, .7f, .55f, .9f, .75f, .95f, 2.35f, .55f, .62f, 2.45f, .82f, .85f };
-        static readonly float[] Radii = { .43f, .21f, .45f, .38f, .72f, .27f, .76f, .32f, .34f, .35f, .38f, .36f, .30f, .28f, .58f, .36f, .40f, .74f, .36f, .55f };
-        static readonly float[] Lengths = { 1.6f, .65f, 1.6f, 1.9f, 2.3f, 1.5f, 2.6f, 1.35f, 1.35f, 1.5f, .95f, 1.15f, .62f, .58f, 2.25f, 1.15f, .95f, 2.55f, 1.15f, 1.65f };
-        static readonly float[] Walk = { .65f, .75f, .65f, 1.15f, .65f, 1.25f, .55f, .9f, 1.05f, .55f, .5f, 2.8f, 2.4f, .62f, .72f, .95f, .35f, .60f, .58f, 2.6f };
-        static readonly float[] Run = { 3.8f, 4.2f, 3.8f, 4.6f, 3.3f, 4.8f, 3.4f, 3.6f, 4.4f, 2.1f, 2.7f, 4.5f, 4.1f, 2.4f, 3.5f, 3.6f, 1.2f, 3.9f, 2.8f, 4.6f };
+        // 0..11 classic + 12..19 v8 exotic + 20..29 Era v9 Hostile Radia Abyss Mutants:
+        // 20:AshHound, 21:CherenkovLeech, 22:RadScorpion, 23:MutantBoar, 24:SlagCrab,
+        // 25:FalloutCrow, 26:GammaRay, 27:BoneStalker, 28:VitrifiedGolem, 29:WraithStalker
+        static readonly int[] Health =
+        {
+            30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55,
+            65, 48, 85, 115, 95, 42, 90, 130, 175, 140
+        };
+        static readonly int[] Meat =
+        {
+            3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2,
+            2, 1, 2, 5, 2, 1, 3, 2, 0, 1
+        };
+        static readonly int[] Hide =
+        {
+            2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3,
+            3, 2, 4, 4, 4, 2, 4, 5, 6, 5
+        };
+        static readonly int[] AttackDamage =
+        {
+            0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0,
+            11, 9, 14, 15, 12, 10, 13, 16, 19, 17
+        };
+        static readonly float[] Heights =
+        {
+            2.2f, .8f, .95f, 1.25f, 1.95f, .9f, 2.05f, 1.65f, 1.05f, .7f, .55f, .9f, .75f, .95f, 2.35f, .55f, .62f, 2.45f, .82f, .85f,
+            1.35f, .58f, .72f, 1.28f, .78f, .85f, .92f, 2.35f, 2.48f, 2.15f
+        };
+        static readonly float[] Radii =
+        {
+            .43f, .21f, .45f, .38f, .72f, .27f, .76f, .32f, .34f, .35f, .38f, .36f, .30f, .28f, .58f, .36f, .40f, .74f, .36f, .55f,
+            .42f, .34f, .48f, .55f, .52f, .34f, .58f, .46f, .78f, .44f
+        };
+        static readonly float[] Lengths =
+        {
+            1.6f, .65f, 1.6f, 1.9f, 2.3f, 1.5f, 2.6f, 1.35f, 1.35f, 1.5f, .95f, 1.15f, .62f, .58f, 2.25f, 1.15f, .95f, 2.55f, 1.15f, 1.65f,
+            1.95f, 1.15f, 1.35f, 1.85f, 1.25f, .95f, 1.75f, 1.65f, 2.15f, 1.45f
+        };
+        static readonly float[] Walk =
+        {
+            .65f, .75f, .65f, 1.15f, .65f, 1.25f, .55f, .9f, 1.05f, .55f, .5f, 2.8f, 2.4f, .62f, .72f, .95f, .35f, .60f, .58f, 2.6f,
+            1.45f, 1.15f, 1.10f, 1.05f, .85f, 2.9f, 2.7f, 1.35f, .75f, 1.55f
+        };
+        static readonly float[] Run =
+        {
+            3.8f, 4.2f, 3.8f, 4.6f, 3.3f, 4.8f, 3.4f, 3.6f, 4.4f, 2.1f, 2.7f, 4.5f, 4.1f, 2.4f, 3.5f, 3.6f, 1.2f, 3.9f, 2.8f, 4.6f,
+            5.4f, 4.2f, 4.4f, 4.9f, 3.4f, 5.6f, 5.1f, 5.5f, 3.5f, 5.8f
+        };
 
         static readonly int[][] HabitatSpeciesV7 =
         {
@@ -79,10 +117,12 @@ namespace LestingCraft.Gameplay
             new[] { 0, 1, 3, 4, 6, 8, 12, 13, 13, 17, 17 },   // 2: Snow / Taiga / Glacial Ice
             new[] { 1, 5, 7, 11, 14, 14, 15, 15 },            // 3: Dunes & Red Mesa Canyon
             new[] { 2, 9, 10, 11, 16, 16, 18, 18, 19 },       // 4: Marsh, Glow-Shroom & Water
-            new[] { 1, 3, 7, 8, 11, 12, 15, 17, 19 }          // 5: Rocky, Volcanic & Andromeda
+            new[] { 1, 3, 7, 8, 11, 12, 15, 17, 19 },         // 5: Rocky, Volcanic & Andromeda
+            new[] { 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 }  // 6: Radia Irradiated Abyss — 10 hostile mutants!
         };
 
-        public static bool IsFlyer(int s) { return s == 11 || s == 12 || s == 19; }
+        public static bool IsFlyer(int s) { return s == 11 || s == 12 || s == 19 || s == 25 || s == 26; }
+        public static bool IsRadiaMutant(int s) { return s >= 20 && s < SpeciesCount; }
 
         public WildlifeSimulation(int seed, WildlifeSave saved = null, int contentVersion = 2)
         {
@@ -113,7 +153,7 @@ namespace LestingCraft.Gameplay
             }
         }
 
-        bool ValidSpecies(int s) { return s >= 0 && s < (contentVersion >= 8 ? SpeciesCount : contentVersion >= 7 ? 12 : 3); }
+        bool ValidSpecies(int s) { return s >= 0 && s < (contentVersion >= 9 ? SpeciesCount : contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3); }
         static bool Finite(float v) { return !float.IsNaN(v) && !float.IsInfinity(v) && Math.Abs(v) < 32000; }
         static int Index(int s) { return s >= 0 && s < SpeciesCount ? s : 2; }
         static float ClampFlight(float h) { return Finite(h) && h >= 2.8f && h <= 6.5f ? h : 4.5f; }
@@ -140,6 +180,7 @@ namespace LestingCraft.Gameplay
 
         public static int Habitat(int surface, int x, int z, int seed)
         {
+            if (surface == 78 || surface == 79 || surface == 80 || surface == 82 || surface == 88 || surface == 89) return 6;
             if (surface == 33 || surface == 34 || surface == 7 || surface == 61) return 4;
             if (surface == 6 || surface == 43 || surface == 62) return 3;
             if (surface == 27 || surface == 32 || surface == 1 || surface == 64 || surface == 67) return 5;
@@ -149,6 +190,8 @@ namespace LestingCraft.Gameplay
 
         public static int SpeciesForHabitat(uint hash, int habitat, int contentVersion = 7)
         {
+            if (habitat == 6 && contentVersion >= 9)
+                return 20 + (int)((hash >> 16) % 10u);
             int[][] table = contentVersion >= 8 ? HabitatSpeciesV8 : HabitatSpeciesV7;
             int[] choices = table[Math.Max(0, Math.Min(5, habitat))];
             return choices[(int)((hash >> 16) % (uint)choices.Length)];
@@ -200,7 +243,7 @@ namespace LestingCraft.Gameplay
                         bool flyer = IsFlyer(species);
                         float ay = ground(mx, mz, -1, Radius(species), Height(species) + (flyer ? 6 : 0));
                         if (!Finite(ay)) continue;
-                        float flight = species == 11 ? 4.75f : species == 12 ? 3.65f : species == 19 ? 4.25f : 0;
+                        float flight = species == 11 ? 4.75f : species == 12 || species == 25 ? 3.65f : species == 19 || species == 26 ? 4.25f : 0;
                         Animals.Add(new AnimalState
                         {
                             id = m == 0 ? ("a:" + key) : ("a:" + key + ":" + m),
@@ -246,8 +289,8 @@ namespace LestingCraft.Gameplay
                 if (IsFlyer(a.species))
                 {
                     float old = a.flightHeight;
-                    a.flightPhase = (a.flightPhase + dt * (a.species == 19 ? .55f : .8f)) % 6.2831853f;
-                    float baseH = a.species == 12 ? 3.65f : a.species == 19 ? 4.25f : 4.75f;
+                    a.flightPhase = (a.flightPhase + dt * (a.species == 19 || a.species == 26 ? .55f : .8f)) % 6.2831853f;
+                    float baseH = a.species == 12 || a.species == 25 ? 2.85f : a.species == 19 || a.species == 26 ? 3.15f : 4.75f;
                     a.flightHeight = baseH + 1.15f * (float)Math.Sin(a.flightPhase);
                     a.y += a.flightHeight - old;
                 }
@@ -286,10 +329,11 @@ namespace LestingCraft.Gameplay
                 a.bite = Math.Max(0, a.bite - dt);
                 a.timer -= dt;
                 int s = a.species;
-                bool hostile = (s == 2 || s == 6 || s == 8 || s == 17) && a.anger > 0 ||
+                bool hostile = IsRadiaMutant(s) && (a.anger > 0 || best < 676f) ||
+                               (s == 2 || s == 6 || s == 8 || s == 17) && a.anger > 0 ||
                                (s == 3 || s == 15) && (a.anger > 0 || best < 81) ||
                                s == 4 && (a.anger > 0 || best < 36);
-                bool defending = hostile && best < 196 && Math.Abs(a.y - nearest.y) < 8;
+                bool defending = hostile && best < (IsRadiaMutant(s) ? 676f : 196f) && Math.Abs(a.y - nearest.y) < 10;
                 bool flee = best < (s == 1 ? 100 : 64) && !defending &&
                             Math.Abs(a.y - nearest.y) < 8 && !IsFlyer(s) && s != 18;
                 float speed = Walk[s];
@@ -297,11 +341,11 @@ namespace LestingCraft.Gameplay
                 {
                     a.goalX = nearest.x; a.goalZ = nearest.z;
                     speed = s == 2 ? 3.1f : Run[s];
-                    if (best < (s == 4 || s == 6 || s == 17 ? 4 : 2.4f) &&
-                        Math.Abs(nearest.y - (a.y + 1.5f)) < 2.3f && a.bite <= 0)
+                    if (best < (s == 4 || s == 6 || s == 17 || s == 28 ? 5.2f : IsRadiaMutant(s) ? 3.8f : 2.4f) &&
+                        Math.Abs(nearest.y - (a.y + 1.5f)) < 3.6f && a.bite <= 0)
                     {
                         if (damage != null) damage(nearest.id, AttackDamage[s]);
-                        a.bite = 1.5f;
+                        a.bite = IsRadiaMutant(s) ? 1.15f : 1.5f;
                     }
                 }
                 else if (flee)
