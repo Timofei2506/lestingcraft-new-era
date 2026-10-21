@@ -227,7 +227,7 @@ namespace LestingCraft.Runtime
                     if (chunks.TryGetValue(affected, out adjacent)) adjacent.SpecialsDirty = true;
                 }
         }
-        public void Edit(int x, int y, int z, ushort block)
+        public void Edit(int x, int y, int z, ushort block, bool rebuildLight = true)
         {
             int maxAllowed = Online && ContentVersion < 2 ? 18 :
                 ContentVersion >= 8 ? LestingCraft.Gameplay.ExpandedContent.MaxBlock :
@@ -248,8 +248,11 @@ namespace LestingCraft.Runtime
                 else view.SpecialCells.Remove(local);
                 view.SpecialsDirty = true;
             }
-            Skylight.Edit(x, y, z);
-            if (skyVolume) skyVolume.Invalidate();
+            if (rebuildLight)
+            {
+                Skylight.Edit(x, y, z);
+                if (skyVolume) skyVolume.Invalidate();
+            }
             // Corner AO and vertex skylight also depend on diagonal chunks.
             for (int dz = -1; dz <= 1; dz++)
                 for (int dx = -1; dx <= 1; dx++)
@@ -261,6 +264,12 @@ namespace LestingCraft.Runtime
                     View adjacent;
                     if (chunks.TryGetValue(affected, out adjacent)) adjacent.SpecialsDirty = true;
                 }
+        }
+
+        public void FlushColumnSkylight(int x, int y, int z)
+        {
+            Skylight.Edit(x, y, z);
+            if (skyVolume) skyVolume.Invalidate();
         }
 
         Vector2Int Center()

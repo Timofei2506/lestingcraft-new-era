@@ -650,26 +650,33 @@ namespace LestingCraft.Runtime
             float r2 = radius * radius;
             float linerR2 = (radius + 1.35f) * (radius + 1.35f);
 
-            for (int y = Mathf.Max(2, cy - radius); y <= Mathf.Min(250, cy + radius); y++)
             for (int z = cz - radius - 1; z <= cz + radius + 1; z++)
             for (int x = cx - radius - 1; x <= cx + radius + 1; x++)
             {
-                float d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy) + (z - cz) * (z - cz);
-                if (d2 > linerR2) continue;
-                ushort cur = world.GetBlock(x, y, z);
-                if (cur == 0 || cur == BlockRegistry.BedrockId || cur == BlockRegistry.RadiaTerminalId) continue;
+                bool touchedCol = false;
+                for (int y = Mathf.Max(2, cy - radius); y <= Mathf.Min(250, cy + radius); y++)
+                {
+                    float d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy) + (z - cz) * (z - cz);
+                    if (d2 > linerR2) continue;
+                    ushort cur = world.GetBlock(x, y, z);
+                    if (cur == 0 || cur == BlockRegistry.BedrockId || cur == BlockRegistry.RadiaTerminalId) continue;
 
-                if (d2 <= r2)
-                {
-                    world.Edit(x, y, z, BlockRegistry.AirId);
-                    if (!ch.IsThermonuke666 && (x + y + z) % 4 == 0 && session?.Inventory != null)
-                        session.Inventory.Add(Items.ToolDrop(cur), 1);
+                    if (d2 <= r2)
+                    {
+                        world.Edit(x, y, z, BlockRegistry.AirId, false);
+                        touchedCol = true;
+                        if (!ch.IsThermonuke666 && (x + y + z) % 4 == 0 && session?.Inventory != null)
+                            session.Inventory.Add(Items.ToolDrop(cur), 1);
+                    }
+                    else if (ch.IsThermonuke666 && BlockRegistry.IsSolid(cur))
+                    {
+                        // Fuse crater walls & floor into black Vitrified Trinitite Glass (Block 88)!
+                        world.Edit(x, y, z, BlockRegistry.TrinititeSlagId, false);
+                        touchedCol = true;
+                    }
                 }
-                else if (ch.IsThermonuke666 && BlockRegistry.IsSolid(cur))
-                {
-                    // Fuse crater walls & floor into black Vitrified Trinitite Glass (Block 88)!
-                    world.Edit(x, y, z, BlockRegistry.TrinititeSlagId);
-                }
+                if (touchedCol)
+                    world.FlushColumnSkylight(x, cy, z);
             }
 
             float blastDist = Vector3.Distance(player.transform.position, ch.Position);
