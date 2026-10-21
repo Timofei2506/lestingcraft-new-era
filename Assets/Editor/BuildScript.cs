@@ -44,11 +44,11 @@ public static class BuildScript
             if(!array||array.depth!=LestingCraft.Presentation.SurfaceLayers.Names.Length||array.width!=512||array.height!=512)
                 throw new InvalidOperationException("Incomplete current PBR array: "+layer);
         }
-        if(LestingCraft.Gameplay.GameRules.Version!=13)throw new InvalidOperationException("Expected rules13 era-v8 build");
+        if(LestingCraft.Gameplay.GameRules.Version!=14)throw new InvalidOperationException("Expected rules14 era-v9 build");
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
         // Developer playtest build from the space branch; not a public release until Unity smoke passes.
-        PlayerSettings.bundleVersion = "0.4.0-era-v8";
+        PlayerSettings.bundleVersion = "0.5.0-era-v9";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");
@@ -75,7 +75,7 @@ public static class BuildScript
         if(!storyBlood||!storyBlood.shader||storyBlood.shader.name!="Universal Render Pipeline/Unlit")
             throw new System.Exception("Story blood must have a serialized, included player shader");
         bool shaderErrors=false;
-        foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","CrystalGlass","Grass","AtmosphericSky","VolumetricAtmosphere"})
+        foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","CrystalGlass","Grass","AtmosphericSky","VolumetricAtmosphere","SpacePlanetVoxel"})
         {
             var shader=Shader.Find("LestingCraft/"+name);
             if(!shader||ShaderUtil.ShaderHasError(shader)){Debug.LogError("BuildScript: invalid shader "+name);shaderErrors=true;}
