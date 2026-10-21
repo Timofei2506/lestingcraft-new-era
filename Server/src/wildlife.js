@@ -190,18 +190,23 @@ export class Fauna {
 
     spawn(p) {
         if (p.alive === false || !finite(p.x) || !finite(p.z)) return;
-        const cx = Math.floor(p.x / 24), cz = Math.floor(p.z / 24);
-        for (let dz = -2; dz <= 2; dz++) {
-            for (let dx = -2; dx <= 2; dx++) {
+        const abundantV8 = this.contentVersion >= 8;
+        const cellSize = abundantV8 ? 18 : 24;
+        const radiusCells = abundantV8 ? 3 : 2;
+        const maxTotal = abundantV8 ? 384 : 256;
+        const cx = Math.floor(p.x / cellSize), cz = Math.floor(p.z / cellSize);
+        for (let dz = -radiusCells; dz <= radiusCells; dz++) {
+            for (let dx = -radiusCells; dx <= radiusCells; dx++) {
                 const sx = cx + dx, sz = cz + dz, key = `${sx}:${sz}`;
-                if (this.sites.has(key) || this.sites.size >= 4096 || this.animals.length >= 256) continue;
-                // Immutable legacy hash, positions, rejection and species formula.
+                if (this.sites.has(key) || this.sites.size >= 8192 || this.animals.length >= maxTotal) continue;
+                // Immutable legacy hash, positions, rejection and species formula for contentVersion < 8.
                 const h = speciesHash(sx, sz, this.seed ^ 2581);
-                const x = sx * 24 + 4 + h % 16 + .5, z = sz * 24 + 4 + (h >>> 8) % 16 + .5;
+                const x = sx * cellSize + (abundantV8 ? 3 + h % 12 : 4 + h % 16) + .5;
+                const z = sz * cellSize + (abundantV8 ? 3 + (h >>> 8) % 12 : 4 + (h >>> 8) % 16) + .5;
                 const d = (x - p.x) ** 2 + (z - p.z) ** 2;
-                if (d < 144 || d > 3600) continue;
+                if (d < (abundantV8 ? 100 : 144) || d > (abundantV8 ? 5625 : 3600)) continue;
                 this.sites.add(key);
-                if (h % 2) continue;
+                if (abundantV8 ? (h % 6 === 0) : (h % 2)) continue;
                 let species = (h >>> 16) % 3;
                 if (this.contentVersion >= 7) {
                     const ix = Math.floor(x), iz = Math.floor(z);
@@ -210,16 +215,23 @@ export class Fauna {
                     const choices = pool[wildlifeHabitat(surface, ix, iz, this.seed)];
                     species = choices[(h >>> 16) % choices.length];
                 }
-                let y = this.ground(x, z, -1, species);
-                if (!Number.isFinite(y)) continue;
-                const flightHeight = flyingSpecies(species) ? 4.75 : 0;
-                y += flightHeight;
-                this.animals.push({
-                    id: 'a:' + key, species, health: health(species), x, y, z, yaw: h % 360,
-                    homeX: x, homeZ: z, goalX: x, goalZ: z, timer: 1,
-                    anger: 0, bite: 0, wander: 0, impulseX: 0, impulseZ: 0, fallSpeed: 0,
-                    flightHeight, flightPhase: 0, dead: false
-                });
+                const herdCount = abundantV8 ? (flyingSpecies(species) ? 2 : 2 + (h % 2)) : 1;
+                for (let m = 0; m < herdCount && this.animals.length < maxTotal; m++) {
+                    const ox = m === 0 ? 0 : (((h >>> (m * 5)) % 7) - 3) * 1.45;
+                    const oz = m === 0 ? 0 : (((h >>> (m * 5 + 3)) % 7) - 3) * 1.45;
+                    const mx = x + ox, mz = z + oz;
+                    let y = this.ground(mx, mz, -1, species);
+                    if (!Number.isFinite(y)) continue;
+                    const flightHeight = flyingSpecies(species) ? 4.75 : 0;
+                    y += flightHeight;
+                    this.animals.push({
+                        id: m === 0 ? 'a:' + key : `a:${key}:${m}`, species, health: health(species),
+                        x: mx, y, z: mz, yaw: (h + m * 97) % 360,
+                        homeX: mx, homeZ: mz, goalX: mx, goalZ: mz, timer: 1,
+                        anger: 0, bite: 0, wander: 0, impulseX: 0, impulseZ: 0, fallSpeed: 0,
+                        flightHeight, flightPhase: m * 1.7, dead: false
+                    });
+                }
             }
         }
     }
@@ -240,14 +252,14 @@ export class Fauna {
             for (; visited < count; visited++) {
                 const a = this.animals[(start + visited) % count];
                 if (a.dead) continue;
-                let nearest = null, best = 3600;
+                let nearest = null, best = this.contentVersion >= 8 ? 5625 : 3600;
                 for (const p of observers) {
                     if (p.alive === false) continue;
                     const d = (a.x - p.x) ** 2 + (a.z - p.z) ** 2;
                     if (d < best) { best = d; nearest = p; }
                 }
                 if (!nearest) continue;
-                if (active++ >= 32) break;
+                if (active++ >= (this.contentVersion >= 8 ? 96 : 32)) break;
                 const s = a.species;
                 if (flyingSpecies(s)) {
                     const old = a.flightHeight;

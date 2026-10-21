@@ -152,25 +152,8 @@ namespace LestingCraft.Presentation
     string bossHud=game.BossHudStatus;
     string hint=game.Session.Living?game.Session.Living.Hint:"";
     if(interactionHUD)interactionHUD.text=string.IsNullOrEmpty(bossHud)?hint:(bossHud+(string.IsNullOrEmpty(hint)?"":"\n"+hint));
-    var position=game.Session.Player.transform.position;
-    if(biomeHUD)
-    {
-     if(game.DockedAtOrbitalStation)biomeHUD.text="Орбитальная станция · Низкая орбита";
-     else if(game.Session.World.Dimension!=LestingCraft.World.Dimension.Lestingia)biomeHUD.text="Планета: "+game.CurrentPlanetTitle;
-     else biomeHUD.text=game.Session.World.ContentVersion>=7?LestingCraft.World.BiomeGenerator.Name(LestingCraft.World.BiomeGenerator.At(Mathf.FloorToInt(position.x),Mathf.FloorToInt(position.z),game.Session.World.Seed)):"";
-    }
-    if(padHUD)
-    {
-     var site=game.LaunchSitePosition;
-     if(!string.IsNullOrEmpty(game.SpaceHudStatus))padHUD.text=game.SpaceHudStatus;
-     else if(game.LaunchPlacementArmed)padHUD.text="ЧЕРТЁЖ КОСМОДРОМА\nПрицельтесь в землю рядом и нажмите ПКМ";
-     else if(!site.HasValue)padHUD.text="";
-     else if(Mathf.Abs(position.x-site.Value.x)<50&&Mathf.Abs(position.z-site.Value.z)<40)
-      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЛифт: X {site.Value.x-20} · Z {site.Value.z+3} · E — лифт/люк/кресло";
-     else if(Mathf.Abs(position.x-(site.Value.x-20))<22&&position.z>site.Value.z-123&&position.z<site.Value.z+15)
-      padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nПо эстакаде к лифту: X {site.Value.x-20} · Z {site.Value.z+3}";
-     else padHUD.text=$"КОСМОДРОМ · X {position.x:0} / Z {position.z:0}\nЭстакада: X {site.Value.x-20} · Z {site.Value.z-110}"+(game.Session.Creative?" · F9 — перенести рядом":"");
-    }
+    if(biomeHUD)biomeHUD.text="";
+    if(padHUD)padHUD.text=game.LaunchPlacementArmed?"Чертёж космодрома · ПКМ по ровной земле рядом":"";
     return;
    }
    if(page==Page.Trade){if(stationTradeActive)RefreshStationTrade();else RefreshTrade();return;}

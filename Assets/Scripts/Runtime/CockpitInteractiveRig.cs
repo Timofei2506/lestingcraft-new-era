@@ -23,7 +23,9 @@ namespace LestingCraft.Runtime
         MfdCycleSystem,
         MfdToggleGalaxy,
         HyperjumpButton,
-        LandOrDockButton
+        LandOrDockButton,
+        TimeWarpDownButton,
+        TimeWarpUpButton
     }
 
     public struct CockpitActionResult
@@ -175,10 +177,12 @@ namespace LestingCraft.Runtime
             VisualMesh("MasterArmCoverMesh", guardHit.transform, Vector3.zero, new Vector3(0.074f, 0.062f, 0.084f), redMat);
             RegisterHitbox(guardHit, CockpitControlId.MasterArmCover, "ЗАЩИТНЫЙ КОЛПАК «ВЗВОД»", guardPivot);
 
-            // Row 3 (z = -0.15): Ignition, Abort & Helm Mode Pushbuttons
-            AddPushButton(CockpitControlId.IgniteButton, "КНОПКА «ПУСК ДВИГАТЕЛЕЙ»", consoleRoot, new Vector3(-0.06f, 0.005f, -0.15f), greenMat, 0.85f);
-            AddPushButton(CockpitControlId.AbortButton, "АВАРИЙНЫЙ СБРОС (ABORT)", consoleRoot, new Vector3(0.08f, 0.005f, -0.15f), redMat, 0.82f);
-            AddPushButton(CockpitControlId.HelmModeButton, "РЕЖИМ ШТУРВАЛА: РУЧНОЙ / АВТО", consoleRoot, new Vector3(0.22f, 0.005f, -0.15f), amberMat, 0.80f);
+            // Row 3 (z = -0.15): Ignition, Abort, Helm Mode & KSP Time Warp Pushbuttons
+            AddPushButton(CockpitControlId.IgniteButton, "КНОПКА «ПУСК ДВИГАТЕЛЕЙ»", consoleRoot, new Vector3(-0.08f, 0.005f, -0.15f), greenMat, 0.80f);
+            AddPushButton(CockpitControlId.AbortButton, "АВАРИЙНЫЙ СБРОС (ABORT)", consoleRoot, new Vector3(0.03f, 0.005f, -0.15f), redMat, 0.78f);
+            AddPushButton(CockpitControlId.TimeWarpDownButton, "УСКОРЕНИЕ ВРЕМЕНИ - [<]", consoleRoot, new Vector3(0.14f, 0.005f, -0.15f), amberMat, 0.78f);
+            AddPushButton(CockpitControlId.TimeWarpUpButton, "УСКОРЕНИЕ ВРЕМЕНИ + [>]", consoleRoot, new Vector3(0.25f, 0.005f, -0.15f), cyanScreenMat, 0.78f);
+            AddPushButton(CockpitControlId.HelmModeButton, "РЕЖИМ ШТУРВАЛА: РУЧНОЙ / АВТО", consoleRoot, new Vector3(0.08f, 0.005f, 0.00f), amberMat, 0.78f);
 
             // ================================================================================
             // 3. PILOT 6-DOF ROTATIONAL HAND CONTROLLER (РУС / Flight Stick at Pilot Seat 0!)
@@ -416,6 +420,14 @@ namespace LestingCraft.Runtime
                     res.RequestedLandOrDock = true;
                     res.MessageRu = "Запрос посадки / стыковки…";
                     break;
+                case CockpitControlId.TimeWarpDownButton:
+                    if (helm != null)
+                        res.MessageRu = "Ускорение времени (Time Warp): ×" + helm.DecreaseTimeWarp().ToString("0");
+                    break;
+                case CockpitControlId.TimeWarpUpButton:
+                    if (helm != null)
+                        res.MessageRu = "Ускорение времени (Time Warp): ×" + helm.IncreaseTimeWarp().ToString("0");
+                    break;
             }
             RefreshVisualPoses();
             return res;
@@ -516,11 +528,13 @@ namespace LestingCraft.Runtime
             {
                 var body = CelestialAtlas.GetBody(helm.TargetBody);
                 var sys = CelestialAtlas.GetSystem(helm.CurrentSystem);
+                string distTxt = CelestialAtlas.FormatDistanceRu(helm.DistanceToTargetKm());
+                string warpTxt = helm.TimeWarp > 1.5 ? $"   WARP ×{helm.TimeWarp:0}" : "   WARP ×1";
                 mfdReadout.text =
-                    "НАВИГАТОР ЭРА-V8 · " + CelestialAtlas.GalaxyNameRu(helm.CurrentGalaxy).ToUpperInvariant() + "\n" +
-                    "СИСТЕМА: " + sys.NameRu + "\n" +
-                    "ЦЕЛЬ:    " + body.NameRu + "\n" +
-                    "ТЯГА:    " + Mathf.RoundToInt(helm.Throttle * 100f) + "%   СКОР: " + helm.Velocity.magnitude.ToString("0") + " М/С";
+                    "НАВИГАТОР 1:1 · " + sys.NameRu + warpTxt + "\n" +
+                    "ЦЕЛЬ: " + body.NameRu + "  (" + distTxt + ")" + (helm.InLandingRange ? " [L-ПОСАДКА]" : "") + "\n" +
+                    "СКОР: " + helm.SpeedKmPerSec.ToString("0.00") + " КМ/С   ТЯГА: " + Mathf.RoundToInt(helm.Throttle * 100f) + "%\n" +
+                    "[< / >] УСКОРЕНИЕ ВРЕМЕНИ · [G] ЦЕЛЬ · [J] ПРЫЖОК";
             }
         }
 

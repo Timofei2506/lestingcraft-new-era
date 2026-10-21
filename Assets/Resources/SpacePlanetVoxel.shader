@@ -4,7 +4,10 @@ Shader "LestingCraft/SpacePlanetVoxel"
     {
         _BaseMap("Voxel Atlas Map", 2D) = "white" {}
         _BaseColor("Tint", Color) = (1, 1, 1, 1)
-        _EmissionGain("Self Illumination", Float) = 0.28
+        _SunDirWS("Star Direction World", Vector) = (0.45, 0.72, -0.53, 0)
+        _SolarFlux("Solar Flux", Float) = 1.0
+        _NightAmbient("Night Side Ambient", Float) = 0.016
+        _EmissionGain("Self Illumination", Float) = 0.0
         _Cutoff("Alpha Cutoff", Float) = 0.42
     }
     SubShader
@@ -28,6 +31,9 @@ Shader "LestingCraft/SpacePlanetVoxel"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
+                float4 _SunDirWS;
+                float _SolarFlux;
+                float _NightAmbient;
                 float _EmissionGain;
                 float _Cutoff;
             CBUFFER_END
@@ -62,12 +68,13 @@ Shader "LestingCraft/SpacePlanetVoxel"
                 half4 tex = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
                 clip(tex.a - _Cutoff);
 
-                // Crisp Minecraft/voxel 3-face directional cube shading so top, front & side faces of every cubic planet pop clearly
                 float3 nWS = normalize(input.normalWS);
-                float3 sunDir = normalize(float3(0.45, 0.72, -0.53));
-                half ndl = saturate(dot(nWS, sunDir));
-                half axisContrast = abs(input.normalOS.y) > 0.5 ? 1.06 : (abs(input.normalOS.z) > 0.5 ? 0.90 : 0.74);
-                half shade = (0.44 + 0.72 * ndl) * axisContrast + _EmissionGain;
+                float3 sunDir = normalize(length(_SunDirWS.xyz) > 0.001 ? _SunDirWS.xyz : float3(0.45, 0.72, -0.53));
+                half rawNdl = dot(nWS, sunDir);
+                // Realistic sharp planetary day/night terminator: sunlit faces shine cleanly, night side plunges into true deep-space darkness!
+                half sunlit = smoothstep(-0.08, 0.22, rawNdl) * (0.28 + 0.92 * saturate(rawNdl));
+                half axisFacet = abs(input.normalOS.y) > 0.5 ? 1.05 : (abs(input.normalOS.z) > 0.5 ? 0.94 : 0.84);
+                half shade = _NightAmbient + sunlit * _SolarFlux * axisFacet + _EmissionGain;
                 return half4(tex.rgb * _BaseColor.rgb * shade, 1.0);
             }
             ENDHLSL

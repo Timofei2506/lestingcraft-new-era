@@ -13,7 +13,7 @@ namespace LestingCraft.Presentation
     /// <summary>Native scalable uGUI, no IMGUI or embedded webpage. All fonts/art are local.</summary>
     public sealed partial class GameUI : MonoBehaviour
     {
-        enum Page{Account,Achievements,Home,World,Rooms,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby}
+        enum Page{Account,Achievements,Home,World,Rooms,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby,Journal}
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
@@ -236,14 +236,36 @@ namespace LestingCraft.Presentation
         public void ShowPause()
         {
             Clear(Page.Pause);Header("Пауза");
-            Label(content.transform,"МИР ПОДОЖДЁТ",64,248,1000,86,44,White,true);
-            Label(content.transform,game.WorldLabel+"\n"+(game.Online?"Комната "+game.RoomCode+" · сетевой мир не останавливается":"Локальная экспедиция"),67,373,1050,90,22,Muted);
+            Label(content.transform,"МИР ПОДОЖДЁТ",64,210,680,76,44,White,true);
+            Label(content.transform,game.WorldLabel+"\n"+(game.Online?"Комната "+game.RoomCode+" · сетевой мир не останавливается":"Локальная экспедиция"),67,300,680,82,21,Muted);
+            var storyCard=Box(content.transform,776,174,760,334,Panel);
+            Label(storyCard.transform,"СЮЖЕТ И БОРТОВОЙ ЖУРНАЛ",28,22,704,36,22,Accent,true);
+            Label(storyCard.transform,game.PauseStorySummary,28,68,704,176,17,White);
+            Button("Открыть все 3 главы сюжета  →",28,254,704,56,ShowStoryJournal,true,storyCard.transform);
             Button("Продолжить  →",64,534,395,64,game.Resume,true);
+            Button("Сюжет и журнал",505,534,420,64,ShowStoryJournal);
             Button("Аккаунт / достижения",505,698,420,58,ShowAccount);
             Button("Настройки",64,619,395,58,()=>ShowSettings(Page.Pause));
             Button("В главное меню",64,698,395,58,game.ReturnToMenu);
-            Label(content.transform,"ESC — продолжить · E — инвентарь · Enter / T — чат\nЛКМ — добывать · ПКМ — использовать · F1 — интерфейс · F2 — снимок",505,535,950,68,15,Muted);
-            if(game.Online)Button("Скопировать код комнаты",505,619,380,58,()=>GUIUtility.systemCopyBuffer=game.RoomCode);
+            Label(content.transform,"ESC — продолжить · E — инвентарь · Шаттл: W/S — тяга, < / > — Time Warp, G — цель, J — прыжок, L — посадка",952,535,584,84,15,Muted);
+            if(game.Online)Button("Скопировать код комнаты",505,619,420,58,()=>GUIUtility.systemCopyBuffer=game.RoomCode);
+        }
+        public void ShowStoryJournal()
+        {
+            Clear(Page.Journal);Header("Сюжет · Архив экспедиции");
+            var card=Box(content.transform,64,150,1472,620,Panel);
+            Label(card.transform,"ТЕКУЩАЯ ЗАДАЧА: "+game.PauseStorySummary.Replace("\n\n","  ·  "),32,20,1408,58,18,Accent,true);
+            var entries=LestingCraft.Story.StoryChapters.Entries;
+            for(int i=0;i<entries.Length;i++)
+            {
+                int col=i%2,row=i/2;
+                var box=Box(card.transform,32+col*710,88+row*168,690,156,new Color(.045f,.075f,.088f,.98f));
+                Label(box.transform,entries[i].ChapterRu+" · "+entries[i].TitleRu,18,12,654,30,18,Accent,true);
+                Label(box.transform,entries[i].BodyRu,18,46,654,74,14,White);
+                Label(box.transform,"Источник: "+entries[i].SpeakerRu,18,122,654,28,14,Muted);
+            }
+            Button("← Назад в меню паузы",64,798,380,62,ShowPause,true);
+            Button("Продолжить игру  →",468,798,380,62,game.Resume);
         }
         public void ShowInventory(int station=0,Vector3Int cell=default)
         {

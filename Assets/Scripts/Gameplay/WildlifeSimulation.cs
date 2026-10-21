@@ -39,7 +39,7 @@ namespace LestingCraft.Gameplay
     public sealed class WildlifeSimulation
     {
         public const int SpeciesCount = 20;
-        public const int MaxAnimals = 256, MaxSites = 4096, ActiveLimit = 32;
+        public const int MaxAnimals = 384, MaxSites = 8192, ActiveLimit = 32, ActiveLimitV8 = 96;
         public readonly List<AnimalState> Animals = new List<AnimalState>();
         readonly HashSet<string> sites = new HashSet<string>();
         readonly int seed, contentVersion;
@@ -164,19 +164,26 @@ namespace LestingCraft.Gameplay
         public void Spawn(AnimalObserver p, Ground ground)
         {
             if (!p.alive || !Finite(p.x) || !Finite(p.z)) return;
-            int cx = (int)Math.Floor(p.x / 24), cz = (int)Math.Floor(p.z / 24);
-            for (int dz = -2; dz <= 2; dz++)
-                for (int dx = -2; dx <= 2; dx++)
+            bool abundantV8 = contentVersion >= 8;
+            int cellSize = abundantV8 ? 18 : 24;
+            int radiusCells = abundantV8 ? 3 : 2;
+            int maxTotal = abundantV8 ? MaxAnimals : 256;
+            int cx = (int)Math.Floor(p.x / cellSize), cz = (int)Math.Floor(p.z / cellSize);
+            for (int dz = -radiusCells; dz <= radiusCells; dz++)
+                for (int dx = -radiusCells; dx <= radiusCells; dx++)
                 {
                     int sx = cx + dx, sz = cz + dz;
                     string key = sx + ":" + sz;
-                    if (sites.Contains(key) || sites.Count >= MaxSites || Animals.Count >= MaxAnimals) continue;
+                    if (sites.Contains(key) || sites.Count >= MaxSites || Animals.Count >= maxTotal) continue;
                     uint h = Hash(sx, sz, seed ^ 2581);
-                    float ax = sx * 24 + 4 + h % 16 + .5f, az = sz * 24 + 4 + (h >> 8) % 16 + .5f;
+                    float ax = sx * cellSize + 3 + h % (uint)(cellSize - 6) + .5f;
+                    float az = sz * cellSize + 3 + (h >> 8) % (uint)(cellSize - 6) + .5f;
                     float distance = (ax - p.x) * (ax - p.x) + (az - p.z) * (az - p.z);
-                    if (distance < 144 || distance > 3600) continue;
+                    float minSq = abundantV8 ? 100f : 144f;
+                    float maxSq = abundantV8 ? 5625f : 3600f;
+                    if (distance < minSq || distance > maxSq) continue;
                     sites.Add(key);
-                    if (h % 2 != 0) continue;
+                    if (abundantV8 ? (h % 6 == 0) : (h % 2 != 0)) continue;
                     int species = (int)((h >> 16) % 3);
                     if (contentVersion >= 7)
                     {
@@ -184,16 +191,25 @@ namespace LestingCraft.Gameplay
                         int surface = SurfaceAt == null ? 3 : SurfaceAt(ix, iz);
                         species = SpeciesForHabitat(h, Habitat(surface, ix, iz, seed), contentVersion);
                     }
-                    bool flyer = IsFlyer(species);
-                    float ay = ground(ax, az, -1, Radius(species), Height(species) + (flyer ? 6 : 0));
-                    if (!Finite(ay)) continue;
-                    float flight = species == 11 ? 4.75f : species == 12 ? 3.65f : species == 19 ? 4.25f : 0;
-                    Animals.Add(new AnimalState
+                    int herdCount = abundantV8 ? (IsFlyer(species) ? 2 : 2 + (int)(h % 2)) : 1;
+                    for (int m = 0; m < herdCount && Animals.Count < maxTotal; m++)
                     {
-                        id = "a:" + key, species = species, health = MaxHealth(species),
-                        x = ax, y = ay + flight, z = az, homeX = ax, homeZ = az,
-                        goalX = ax, goalZ = az, yaw = h % 360, timer = 1, flightHeight = flight
-                    });
+                        float ox = m == 0 ? 0f : ((int)((h >> (m * 5)) % 7) - 3) * 1.45f;
+                        float oz = m == 0 ? 0f : ((int)((h >> (m * 5 + 3)) % 7) - 3) * 1.45f;
+                        float mx = ax + ox, mz = az + oz;
+                        bool flyer = IsFlyer(species);
+                        float ay = ground(mx, mz, -1, Radius(species), Height(species) + (flyer ? 6 : 0));
+                        if (!Finite(ay)) continue;
+                        float flight = species == 11 ? 4.75f : species == 12 ? 3.65f : species == 19 ? 4.25f : 0;
+                        Animals.Add(new AnimalState
+                        {
+                            id = m == 0 ? ("a:" + key) : ("a:" + key + ":" + m),
+                            species = species, health = MaxHealth(species),
+                            x = mx, y = ay + flight, z = mz, homeX = mx, homeZ = mz,
+                            goalX = mx, goalZ = mz, yaw = (h + (uint)(m * 97)) % 360,
+                            timer = 1, flightHeight = flight, flightPhase = m * 1.7f
+                        });
+                    }
                 }
         }
 
@@ -218,7 +234,7 @@ namespace LestingCraft.Gameplay
                 AnimalState a = Animals[(start + visited) % count];
                 if (a.dead) continue;
                 AnimalObserver nearest = default(AnimalObserver);
-                float best = 3600;
+                float best = contentVersion >= 8 ? 5625f : 3600f;
                 foreach (AnimalObserver p in observers)
                 {
                     if (!p.alive) continue;
@@ -226,7 +242,7 @@ namespace LestingCraft.Gameplay
                     if (d < best) { best = d; nearest = p; }
                 }
                 if (nearest.id == null) continue;
-                if (active++ >= ActiveLimit) break;
+                if (active++ >= (contentVersion >= 8 ? ActiveLimitV8 : ActiveLimit)) break;
                 if (IsFlyer(a.species))
                 {
                     float old = a.flightHeight;

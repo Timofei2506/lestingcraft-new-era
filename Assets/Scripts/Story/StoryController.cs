@@ -4,6 +4,7 @@ namespace LestingCraft.Story
  public sealed class StoryController:MonoBehaviour
  {
   public PrototypeGame Game;public StoryState State {get;private set;}public bool Locked=>State!=null&&StoryRules.Locked(State);public bool Enabled=>State!=null;
+  public string ActiveObjective=>Enabled&&State!=null?StoryRules.Objective(State):"";
   // Scene-time impacts of the three knocks in the stage 1 witness scene (subtitle: "три удара" from t=9).
   static readonly float[] KnockTimes={9f,9.9f,10.8f};
   StoryContent content;StoryActors actors;Camera cameraView;Canvas canvas;Text quest,speaker,subtitle,hint,boss;Image panel,topBar,bottomBar;Button next,choiceA,choiceB;bool journalHidden;bool arenaPlaced;bool wasCinematic;bool readySent;int shownRevision=-1,oldStage=-1;long pauseAt;long remoteTime;float received;float attackTime=-10;Vector3 cameraHome;Quaternion cameraRotation;
@@ -38,7 +39,8 @@ namespace LestingCraft.Story
    if(!readySent){readySent=true;if(Game.Online)Game.SendStory(new NetPacket{type="story_ready"});else Action("ready");}
    if(!Game.Online){var copy=State.Copy();if(StoryRules.Tick(copy,Now))Apply(copy,Now);TickOfflineBoss();}
    if(oldStage!=State.stage){oldStage=State.stage;if(State.stage==4||State.stage==5||State.stage==7||State.stage==10){Vector2 p=State.stage==4?new Vector2(-28,-25):State.stage==7?new Vector2(48,-90):new Vector2(96,53);Game.Session.Player.SetCheckpoint(new Vector3(p.x,StoryWorld.Floor(Game.Session.World.Seed)+1.05f,p.y));}Game.RefreshStoryControl();}
-   if(!Locked&&!Game.Paused&&!Game.ChatOpen&&Keyboard.current!=null&&Keyboard.current.jKey.wasPressedThisFrame)journalHidden=!journalHidden;if(quest)quest.gameObject.SetActive(!journalHidden);
+   // Story objectives live exclusively inside the ESC pause menu & Story Journal — never cluttering the main HUD!
+   if(quest)quest.gameObject.SetActive(false);
    actors.Apply(State,Now);if(State.stage==10&&State.sceneAt>0&&!arenaPlaced){arenaPlaced=true;Game.Session.Player.TeleportTo(new Vector3(176,StoryWorld.Floor(Game.Session.World.Seed)+1.05f,-99),true);}GrantRewards();if(Game.Paused){canvas.enabled=false;return;}canvas.enabled=true;RefreshUI();Cinematic();
    if(!Locked&&!Game.Paused&&!Game.ChatOpen&&Keyboard.current!=null&&Keyboard.current.fKey.wasPressedThisFrame)
    {if(Interaction(out string action,out int arg,out _))Action(action,arg);}

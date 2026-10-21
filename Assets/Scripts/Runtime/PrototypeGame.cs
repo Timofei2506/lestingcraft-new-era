@@ -166,15 +166,12 @@ namespace LestingCraft.Runtime
         {
             get
             {
-                if(InDreamDimension)
-                {
-                    if(Dream.IsParalyzed)return "СОННЫЙ ПАРАЛИЧ · ТЕЛО СКОСТЕНО ("+Math.Max(0.0,6.5-Dream.PhaseSeconds).ToString("0.0")+" с)";
-                    return "ИЗМЕРЕНИЕ «СОН» · ИДИТЕ К БЛЕДНОЙ АРКЕ НА СЕВЕРЕ (Z = 46) · НЕ ТЕРЯЙТЕ СИЛУЭТ ИЗ ВИДУ";
-                }
+                if(InDreamDimension&&Dream.IsParalyzed)
+                    return "Сонный паралич ("+Math.Max(0.0,6.5-Dream.PhaseSeconds).ToString("0.0")+" с)";
                 if(!activePlanetBoss||activePlanetBoss.Defeated||!player)return "";
                 float d=Vector3.Distance(player.transform.position,activePlanetBoss.transform.position);
-                if(d>72f)return $"БОСС ПЛАНЕТЫ: {activePlanetBoss.BossName} ({d:0} м к северо-востоку)";
-                return $"★ {activePlanetBoss.BossName} · HP {activePlanetBoss.Health} / {activePlanetBoss.MaxHealth} ★";
+                if(d>28f)return "";
+                return $"{activePlanetBoss.BossName} · {activePlanetBoss.Health} / {activePlanetBoss.MaxHealth}";
             }
         }
 
@@ -360,8 +357,16 @@ namespace LestingCraft.Runtime
             float rollIn=kb!=null?((kb.qKey.isPressed?1f:0f)-(kb.eKey.isPressed?1f:0f)):0f;
             if(kb!=null)
             {
-                if(kb.wKey.isPressed)SpaceHelm.SetThrottle(SpaceHelm.Throttle+dt*0.65f);
+                if(kb.wKey.isPressed){SpaceHelm.SetThrottle(SpaceHelm.Throttle+dt*0.65f);SpaceHelm.RetroBrake=false;}
                 if(kb.sKey.isPressed)SpaceHelm.SetThrottle(SpaceHelm.Throttle-dt*0.85f);
+                SpaceHelm.RetroBrake=kb.spaceKey.isPressed||kb.xKey.isPressed;
+                if(SpaceHelm.RetroBrake)SpaceHelm.ResetTimeWarp();
+                if(kb.periodKey.wasPressedThisFrame||kb.rightBracketKey.wasPressedThisFrame)
+                    SpaceHelm.IncreaseTimeWarp();
+                if(kb.commaKey.wasPressedThisFrame||kb.leftBracketKey.wasPressedThisFrame)
+                    SpaceHelm.DecreaseTimeWarp();
+                if(kb.slashKey.wasPressedThisFrame)
+                    SpaceHelm.ResetTimeWarp();
             }
             SpaceHelm.Boost=kb!=null&&kb.leftShiftKey.isPressed;
             SpaceHelm.Step(dt,Mathf.Clamp(pitchIn,-1f,1f),Mathf.Clamp(yawIn,-1f,1f),Mathf.Clamp(rollIn,-1f,1f));
@@ -1058,15 +1063,29 @@ namespace LestingCraft.Runtime
             Session.Notice=$"[{entry.ChapterRu} · {entry.TitleRu}] ({entry.SpeakerRu}): {entry.BodyRu}";
         }
 
+        public string PauseStorySummary
+        {
+            get
+            {
+                string ch1 = Story && !string.IsNullOrEmpty(Story.ActiveObjective)
+                    ? Story.ActiveObjective
+                    : "Глава I · Тихий Брод: исследуйте деревню, святилище и постройте или найдите космодром.";
+                string flightLine = SpaceHelm != null && SpaceHelm.Active
+                    ? $"\n\nНАВИГАЦИЯ 1:1: {CelestialAtlas.GetBody(SpaceHelm.TargetBody).NameRu} · {CelestialAtlas.FormatDistanceRu(SpaceHelm.DistanceToTargetKm())} · {SpaceHelm.SpeedKmPerSec:0.00} км/с · Time Warp ×{SpaceHelm.TimeWarp:0}"
+                    : (sharedLaunchSite.HasValue ? $"\n\nКосмодром: X {sharedLaunchSite.Value.x} · Z {sharedLaunchSite.Value.z} (лифт X {sharedLaunchSite.Value.x - 20})" : "");
+                return ch1 + flightLine;
+            }
+        }
+
         void EvaluateStoryRadio()
         {
             if(!Session||!world)return;
             var g=SpaceHelm.Active?SpaceHelm.CurrentGalaxy:
                   (world.Dimension==Dimension.AndromedaPrime||world.Dimension==Dimension.Somnia)?GalaxyId.Andromeda:GalaxyId.MilkyWay;
-            string line=StoryChapters.EvaluateProgressionTransmission(
+            // Unlock journal chapters silently — story lives in ESC menu without cluttering the HUD!
+            StoryChapters.EvaluateProgressionTransmission(
                 world.Dimension,g,Session.Data.player.dreamVisits,
                 Session.Inventory.Count(BlockRegistry.AndromedaCrystalId)>0,ref storyProgressionMask);
-            if(!string.IsNullOrEmpty(line))Session.Notice=line;
         }
 
         public void UseBed(Vector3Int cell)

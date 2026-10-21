@@ -173,7 +173,7 @@ namespace LestingCraft.Runtime
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "01-village-houses-lantern-poles.png"), () =>
             {
                 game.Session.Data.clock = 760.0;
-                game.Session.Notice = "Обновлённая деревня: черепичные крыши, кровати в домах, уличные фонари и 10 профессий жителей";
+                game.Session.Notice = "";
                 cam.fieldOfView = 66f;
                 cam.farClipPlane = 450f;
                 MoveBoth(player, cam, shot1Cam, shot1Look);
@@ -198,7 +198,7 @@ namespace LestingCraft.Runtime
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "02-biomes-cherry-blocks-and-20-animals.png"), () =>
             {
                 game.Session.Data.clock = 615.0;
-                game.Session.Notice = "Новые биомы (Вишнёвая роща, Биолюминесцентная чаща, Меса, Ледник), 16 блоков и 20 видов животных";
+                game.Session.Notice = "";
                 cam.fieldOfView = 68f;
                 MoveBoth(player, cam, shot2Cam, shot2Look);
             });
@@ -222,7 +222,7 @@ namespace LestingCraft.Runtime
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "03-cosmodrome-orbiter-launch-complex.png"), () =>
             {
                 game.Session.Data.clock = 570.0;
-                game.Session.Notice = "Космодром Лестингии: стартовый стол, кабель-мачта, лифт экипажа и вертикальный орбитальный шаттл";
+                game.Session.Notice = "";
                 cam.fieldOfView = 68f;
                 MoveBoth(player, cam, shot3Cam, shot3Look);
             });
@@ -301,7 +301,7 @@ namespace LestingCraft.Runtime
                         if (stick) stick.localRotation = Quaternion.Euler(8f, 0f, -6f);
                     }
                 }
-                game.Session.Notice = "Обновлённая кабина шаттла: панорамные окна в космос, вид на кубический Сатурн, 3 экрана MFD, РУД и РУС";
+                game.Session.Notice = "";
             });
 
             // =========================================================================
@@ -314,7 +314,7 @@ namespace LestingCraft.Runtime
                 if (shipRoot) shipRoot.rotation = Quaternion.identity;
                 helm.SelectTarget(CelestialBodyId.Saturn);
                 SpaceVector saturnPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Saturn, helm.OrbitTimeDays);
-                helm.PositionKm = saturnPos - new SpaceVector(18000.0, 9000.0, 130000.0);
+                helm.PositionKm = saturnPos - new SpaceVector(85000.0, 28000.0, 290000.0);
                 helm.SetThrottle(0.78f);
                 helm.Rotation = Quaternion.identity;
 
@@ -339,33 +339,33 @@ namespace LestingCraft.Runtime
                         saturnInView.transform.rotation = cam.transform.rotation * Quaternion.Euler(24f, 38f, -14f);
                         saturnInView.transform.localScale = Vector3.one * 1.08f;
                     }
-                    var marsPort = GameObject.Find("Atlas_mars");
-                    if (marsPort)
+                    var titanPort = GameObject.Find("Atlas_titan");
+                    if (titanPort)
                     {
-                        marsPort.SetActive(true);
+                        titanPort.SetActive(true);
                         Vector3 sideDir = (cabin.transform.TransformPoint(new Vector3(-1.95f, 44.20f, 3.85f)) - catwalkEye).normalized;
-                        marsPort.transform.position = catwalkEye + sideDir * 38f;
-                        marsPort.transform.rotation = cam.transform.rotation * Quaternion.Euler(18f, -28f, 10f);
-                        marsPort.transform.localScale = Vector3.one * 1.25f;
+                        titanPort.transform.position = catwalkEye + sideDir * 38f;
+                        titanPort.transform.rotation = cam.transform.rotation * Quaternion.Euler(18f, -28f, 10f);
+                        titanPort.transform.localScale = Vector3.one * 1.15f;
                     }
                     if (cabin.InteractiveRig)
                         cabin.InteractiveRig.RefreshVisualPoses(0.05f);
                 }
-                game.Session.Notice = "Интерьер шаттла: кресла экипажа, межпалубная шахта с лестницей, боковые иллюминаторы и панорамный обзор";
+                game.Session.Notice = "";
             });
             if (cockpitFillObj) Destroy(cockpitFillObj);
             cam.nearClipPlane = 0.1f;
 
             // =========================================================================
-            // SHOT 5: Open Space Manual Flight in the Solar System — Giant Cubic Voxel
-            //         Saturn with Square Voxel Rings, Starfield & Windowed Orbiter
+            // SHOT 5: Open Space 1:1 Flight at Saturn (~303,500 km, Mimas Orbit) —
+            //         7,200 Stars, Directional Solar Terminator & Dark Night Side!
             // =========================================================================
             player.transform.SetParent(null, true);
             yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "05-open-space-saturn-solar-system.png"), () =>
             {
                 helm.SelectTarget(CelestialBodyId.Saturn);
                 SpaceVector saturnPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Saturn, helm.OrbitTimeDays);
-                helm.PositionKm = saturnPos - new SpaceVector(78000.0, 26000.0, 145000.0);
+                helm.PositionKm = saturnPos - new SpaceVector(85000.0, 28000.0, 290000.0);
                 helm.SetThrottle(0.86f);
                 helm.Boost = true;
                 helm.Rotation = Quaternion.identity;
@@ -383,25 +383,25 @@ namespace LestingCraft.Runtime
                     var saturnObj = GameObject.Find("Atlas_saturn");
                     if (saturnObj)
                     {
-                        saturnObj.transform.position = cam.transform.position + cam.transform.forward * 96f + cam.transform.right * 18f + cam.transform.up * 6f;
+                        saturnObj.transform.position = cam.transform.position + cam.transform.forward * 98f + cam.transform.right * 18f + cam.transform.up * 6f;
                         saturnObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(26f, 36f, -14f);
-                        saturnObj.transform.localScale = Vector3.one * 1.32f;
+                        saturnObj.transform.localScale = Vector3.one * 1.28f;
                     }
                     var titanObj = GameObject.Find("Atlas_titan");
                     if (titanObj)
                     {
                         titanObj.SetActive(true);
-                        titanObj.transform.position = cam.transform.position + cam.transform.forward * 108f - cam.transform.right * 32f + cam.transform.up * 18f;
+                        titanObj.transform.position = cam.transform.position + cam.transform.forward * 124f - cam.transform.right * 34f + cam.transform.up * 16f;
                         titanObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(22f, -30f, 12f);
-                        titanObj.transform.localScale = Vector3.one * 1.15f;
+                        titanObj.transform.localScale = Vector3.one * 0.72f;
                     }
                 }
-                game.Session.Notice = "Открытый космос [Солнечная система]: кубический воксельный Сатурн и квадратные кольца • 18 400 м/с";
+                game.Session.Notice = "";
             });
 
             // =========================================================================
-            // SHOT 6: Intergalactic Flight in Galaxy #2 — Andromeda (M31) & Cubic
-            //         Crystalline Planet "Andromeda Prime" + Square Rings + Spiral M31
+            // SHOT 6: Intergalactic 1:1 Flight in Andromeda (M31) — 7,200 Stars,
+            //         Voxel Spiral Galaxy M31 & Crystalline Ringed Andromeda Prime!
             // =========================================================================
             helm.SelectTarget(CelestialBodyId.AndromedaPrime);
             helm.StartHyperjump(CelestialBodyId.AndromedaPrime);
@@ -432,7 +432,7 @@ namespace LestingCraft.Runtime
                     {
                         primeObj.transform.position = cam.transform.position + cam.transform.forward * 92f - cam.transform.right * 18f + cam.transform.up * 6f;
                         primeObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(26f, -36f, 14f);
-                        primeObj.transform.localScale = Vector3.one * 1.42f;
+                        primeObj.transform.localScale = Vector3.one * 1.38f;
                     }
                     if (galaxyObj)
                     {
@@ -441,13 +441,31 @@ namespace LestingCraft.Runtime
                         galaxyObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(56f, 18f, -24f);
                     }
                 }
-                game.Session.Notice = "Галактика Андромеды (M31): система Ядра Андромеды • Планета Андромеда Прайм и спиральный рукав";
+                game.Session.Notice = "";
             });
 
             helm.Disengage();
             game.SetOuterSpaceSurfaceHidden(false);
             spaceVis.SetOpenSpaceFlightActive(null, shipRoot, cam.transform);
             if (shipRoot) shipRoot.rotation = Quaternion.identity;
+
+            // =========================================================================
+            // SHOT 5B: Titan Surface Atmosphere Proof — Petrol-Cyan Stratosphere,
+            //          Golden Methane Haze & Giant Ringed Cubic Saturn Overhead (NOT Mars!)
+            // =========================================================================
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "05b-titan-saturn-atmosphere-contrast.png"), () =>
+            {
+                game.Session.Data.clock = 610.0;
+                game.Session.Notice = "";
+                WorldAtmosphere.Configure(cam, (int)LestingCraft.World.Dimension.Titan, 610.0);
+                spaceVis.ApplyPlanetAtmosphereAndGravity(LestingCraft.World.Dimension.Titan, player, cam);
+                cam.fieldOfView = 70f;
+                cam.farClipPlane = 1200f;
+                Vector3 titanEye = new Vector3(bioX, bioY + 4.0f, bioZ - 10.0f);
+                MoveBoth(player, cam, titanEye, titanEye + new Vector3(11f, 8.5f, 18f));
+            });
+            WorldAtmosphere.Configure(cam, (int)LestingCraft.World.Dimension.Lestingia, 640.0);
+            spaceVis.ApplyPlanetAtmosphereAndGravity(LestingCraft.World.Dimension.Lestingia, player, cam);
 
             // =========================================================================
             // SHOT 7: Eerie "Dream" Dimension — Sleep Paralysis, Towering Black Monoliths
@@ -478,7 +496,7 @@ namespace LestingCraft.Runtime
                 cam.fieldOfView = 66f;
                 cam.farClipPlane = 240f;
                 MoveBoth(player, cam, new Vector3(dx, dy + 2.35f, dz - 3.5f), new Vector3(dx, dy + 2.45f, dz + 10.5f));
-                game.Session.Notice = "Измерение «Сон» [Сонный паралич]: вы не можете пошевелиться... В тумане замер Наблюдатель (изоляция от мира)";
+                game.Session.Notice = "";
             });
             if (dreamLightObj) Destroy(dreamLightObj);
 
@@ -536,8 +554,20 @@ namespace LestingCraft.Runtime
                 RenderSettings.fog = false;
             });
 
+            // =========================================================================
+            // SHOT 9: ESC Pause Menu With Integrated Story & Expedition Journal Card!
+            // =========================================================================
+            ui.ShowPause();
+            yield return null;
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "09-esc-pause-story-menu.png"), () =>
+            {
+                ui.ShowPause();
+                game.Session.Data.clock = 640.0;
+                RenderSettings.fog = false;
+            });
+
             finishing = true;
-            Debug.Log("[Showcase] PASS: 8 authentic 1920x1080 URP screenshots saved to " + outDir);
+            Debug.Log("[Showcase] PASS: 11 authentic 1920x1080 URP screenshots saved to " + outDir);
             Application.Quit(0);
             yield return null;
             Environment.Exit(0);

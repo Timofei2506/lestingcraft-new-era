@@ -240,6 +240,20 @@ namespace LestingCraft.Runtime
             return m;
         }
 
+        Material starfieldMat;
+
+        Material MakeStarfieldMaterial(string label, float exposure = 1.45f)
+        {
+            Shader sh = Shader.Find("LestingCraft/SpaceStarfield")
+                ?? Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                ?? Shader.Find("Sprites/Default");
+            var m = new Material(sh) { name = label, color = Color.white };
+            if (m.HasProperty("_Exposure")) m.SetFloat("_Exposure", exposure);
+            if (m.HasProperty("_TwinkleTime")) m.SetFloat("_TwinkleTime", 0f);
+            ownedObjects.Add(m);
+            return m;
+        }
+
         Light spaceKeyLight;
 
         void BuildCelestialRig()
@@ -254,25 +268,27 @@ namespace LestingCraft.Runtime
             spaceKeyLight = sunRigLight.AddComponent<Light>();
             spaceKeyLight.type = LightType.Directional;
             spaceKeyLight.color = new Color(1.0f, 0.96f, 0.90f);
-            spaceKeyLight.intensity = 2.15f;
-            spaceKeyLight.shadows = LightShadows.None;
+            spaceKeyLight.intensity = 2.05f;
+            spaceKeyLight.shadows = LightShadows.Soft;
 
             var backdrop = GameObject.CreatePrimitive(PrimitiveType.Cube);
             backdrop.name = "DeepSpaceBackdrop";
             backdrop.transform.SetParent(spaceDomeRoot.transform, false);
-            backdrop.transform.localScale = new Vector3(-420f, 420f, 420f);
+            backdrop.transform.localScale = new Vector3(-720f, 720f, 720f);
             SafeDestroy(backdrop.GetComponent<Collider>());
             domeRenderer = backdrop.GetComponent<MeshRenderer>();
-            domeRenderer.sharedMaterial = MakeLitMaterial("SpaceSkyBackdrop", new Color(0.008f, 0.012f, 0.026f), new Color(0.006f, 0.010f, 0.022f), 0f, 0f);
+            domeRenderer.sharedMaterial = MakeLitMaterial("SpaceSkyBackdrop", new Color(0.004f, 0.006f, 0.014f), new Color(0.002f, 0.004f, 0.010f), 0f, 0f);
             domeRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             domeRenderer.receiveShadows = false;
+            domeRenderer.enabled = false;
 
             starfieldObj = new GameObject("ProceduralStarfield");
             starfieldObj.transform.SetParent(spaceDomeRoot.transform, false);
             var sfFilter = starfieldObj.AddComponent<MeshFilter>();
-            sfFilter.sharedMesh = BuildStarfieldMesh(2400, 195f, 2506);
+            sfFilter.sharedMesh = BuildStarfieldMesh(7200, 340f, 2506);
             var sfRenderer = starfieldObj.AddComponent<MeshRenderer>();
-            sfRenderer.sharedMaterial = MakeVertexColorMaterial("StarfieldMat");
+            starfieldMat = MakeStarfieldMaterial("StarfieldMat", 1.55f);
+            sfRenderer.sharedMaterial = starfieldMat;
             sfRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             sfRenderer.receiveShadows = false;
 
@@ -635,13 +651,13 @@ namespace LestingCraft.Runtime
                 tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
                 tris.Add(b); tris.Add(b + 3); tris.Add(b + 2);
             }
-            var mesh = new Mesh { name = "SpiralGalaxyM31" };
+            var mesh = new Mesh { name = "SpiralGalaxyM31", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
             mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             ownedObjects.Add(mesh);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = MakeVertexColorMaterial("SpiralGalaxyMat", true);
+            mr.sharedMaterial = MakeStarfieldMaterial("SpiralGalaxyMat", 1.15f);
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             go.SetActive(false);
             return go;
@@ -717,23 +733,46 @@ namespace LestingCraft.Runtime
             var cols = new List<Color>(count * 4);
             var tris = new List<int>(count * 6);
             var rng = new System.Random(seed);
+            Quaternion galacticPlane = Quaternion.Euler(62.87f, 28.0f, -19.0f);
             for (int i = 0; i < count; i++)
             {
-                double u = rng.NextDouble() * 2.0 - 1.0;
-                double theta = rng.NextDouble() * Math.PI * 2.0;
-                float rxy = Mathf.Sqrt(Mathf.Max(0f, 1f - (float)(u * u)));
-                Vector3 dir = new Vector3(rxy * Mathf.Cos((float)theta), (float)u, rxy * Mathf.Sin((float)theta));
+                bool milkyWayBand = i % 3 == 0;
+                Vector3 dir;
+                if (milkyWayBand)
+                {
+                    float galLon = (float)(rng.NextDouble() * Math.PI * 2.0);
+                    float galLat = (float)((rng.NextDouble() + rng.NextDouble() - 1.0) * 0.24);
+                    Vector3 gDir = new Vector3(
+                        Mathf.Cos(galLat) * Mathf.Cos(galLon),
+                        Mathf.Sin(galLat),
+                        Mathf.Cos(galLat) * Mathf.Sin(galLon));
+                    dir = (galacticPlane * gDir).normalized;
+                }
+                else
+                {
+                    double u = rng.NextDouble() * 2.0 - 1.0;
+                    double theta = rng.NextDouble() * Math.PI * 2.0;
+                    float rxy = Mathf.Sqrt(Mathf.Max(0f, 1f - (float)(u * u)));
+                    dir = new Vector3(rxy * Mathf.Cos((float)theta), (float)u, rxy * Mathf.Sin((float)theta));
+                }
+
                 Vector3 center = dir * radius;
                 Vector3 right = Vector3.Cross(dir, Mathf.Abs(dir.y) > 0.9f ? Vector3.right : Vector3.up).normalized;
                 Vector3 up = Vector3.Cross(right, dir).normalized;
-                float size = Mathf.Lerp(0.18f, 0.72f, (float)(rng.NextDouble() * rng.NextDouble()));
+                float roll = (float)rng.NextDouble();
+                float size = roll > 0.985f ? Mathf.Lerp(1.15f, 2.05f, (float)rng.NextDouble())
+                           : Mathf.Lerp(0.28f, 0.88f, (float)(rng.NextDouble() * rng.NextDouble()));
                 float temp = (float)rng.NextDouble();
-                Color c = temp < 0.25f ? new Color(0.74f, 0.85f, 1.0f, 1f)
-                        : temp < 0.72f ? new Color(0.98f, 0.97f, 0.93f, 1f)
-                        : temp < 0.90f ? new Color(1.0f, 0.86f, 0.62f, 1f)
-                                       : new Color(1.0f, 0.66f, 0.50f, 1f);
-                c *= Mathf.Lerp(0.55f, 1.0f, (float)rng.NextDouble());
-                c.a = 1f;
+                Color c = temp < 0.18f ? new Color(0.68f, 0.82f, 1.0f, 1f)     // O / B blue-white
+                        : temp < 0.62f ? new Color(0.98f, 0.98f, 0.96f, 1f)    // A / F pure white
+                        : temp < 0.84f ? new Color(1.0f, 0.90f, 0.68f, 1f)     // G solar yellow-white
+                        : temp < 0.95f ? new Color(1.0f, 0.72f, 0.46f, 1f)     // K orange star
+                                       : new Color(1.0f, 0.50f, 0.36f, 1f);    // M red giant
+                float mag = milkyWayBand
+                    ? Mathf.Lerp(0.32f, 0.92f, (float)rng.NextDouble())
+                    : Mathf.Lerp(0.42f, 1.0f, (float)rng.NextDouble());
+                c.r *= mag; c.g *= mag; c.b *= mag;
+                c.a = Mathf.Clamp01(mag);
                 int b = verts.Count;
                 verts.Add(center - right * size - up * size);
                 verts.Add(center + right * size - up * size);
@@ -744,7 +783,7 @@ namespace LestingCraft.Runtime
                 tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
                 tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
             }
-            var mesh = new Mesh { name = "ProceduralStars" };
+            var mesh = new Mesh { name = "ProceduralStars", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
             mesh.SetVertices(verts);
             mesh.SetUVs(0, uvs);
             mesh.SetColors(cols);
@@ -936,6 +975,24 @@ namespace LestingCraft.Runtime
             }
         }
 
+        static float BaseMeshHalfExtent(CelestialBodyDef body) =>
+            body.IsStar ? 9.6f : body.HasRings ? 7.8f : Mathf.Clamp((float)Math.Log10(Math.Max(200.0, body.RadiusKm)) * 1.55f, 2.2f, 8.2f);
+
+        static void ApplyPlanetShaderLighting(GameObject root, Vector3 sunDirWorld, float solarFlux, float nightAmbient, float distantStarGlow)
+        {
+            if (!root) return;
+            var renderers = root.GetComponentsInChildren<MeshRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var mat = renderers[i] ? renderers[i].sharedMaterial : null;
+                if (!mat) continue;
+                if (mat.HasProperty("_SunDirWS")) mat.SetVector("_SunDirWS", new Vector4(sunDirWorld.x, sunDirWorld.y, sunDirWorld.z, 0f));
+                if (mat.HasProperty("_SolarFlux")) mat.SetFloat("_SolarFlux", solarFlux);
+                if (mat.HasProperty("_NightAmbient")) mat.SetFloat("_NightAmbient", nightAmbient);
+                if (mat.HasProperty("_EmissionGain")) mat.SetFloat("_EmissionGain", distantStarGlow);
+            }
+        }
+
         public void SetOpenSpaceFlightActive(OpenSpaceHelm helm, Transform shuttleTransform, Transform viewer)
         {
             BuildCelestialRig();
@@ -957,58 +1014,117 @@ namespace LestingCraft.Runtime
                 if (cachedWorldAtmosphere) cachedWorldAtmosphere.SetActive(false);
                 RenderSettings.fog = false;
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-                RenderSettings.ambientLight = new Color(0.16f, 0.18f, 0.24f);
+                // True airless space darkness on shadowed shuttle hulls & night hemispheres!
+                RenderSettings.ambientLight = new Color(0.011f, 0.014f, 0.022f);
                 if (domeRenderer) domeRenderer.enabled = false;
-                if (Camera.main && Camera.main.farClipPlane < 900f) Camera.main.farClipPlane = 900f;
+                if (Camera.main && Camera.main.farClipPlane < 1200f) Camera.main.farClipPlane = 1200f;
+
+                Quaternion invShipRot = Quaternion.Inverse(helm.Rotation);
+                var sysDef = CelestialAtlas.GetSystem(helm.CurrentSystem);
+                SpaceVector toStarKm = new SpaceVector(0, 0, 0) - helm.PositionKm;
+                double starDistKm = Math.Max(700000.0, toStarKm.Magnitude);
+                double starAu = starDistKm / CelestialAtlas.AstronomicalUnitKm;
+                float solarFluxAtShip = Mathf.Clamp(1.0f / Mathf.Pow((float)Math.Max(0.22, starAu), 0.62f), 0.14f, 2.65f);
+
+                Vector3 sunDirWorld = (invShipRot * new Vector3(
+                    (float)toStarKm.Normalized.X, (float)toStarKm.Normalized.Y, (float)toStarKm.Normalized.Z)).normalized;
+                if (sunDirWorld.sqrMagnitude < 0.001f) sunDirWorld = new Vector3(0.45f, 0.72f, -0.53f).normalized;
+
                 if (spaceKeyLight)
                 {
                     spaceKeyLight.enabled = true;
-                    spaceKeyLight.intensity = 2.55f;
+                    spaceKeyLight.color = Color.Lerp(sysDef.PrimaryStarColor, Color.white, 0.45f);
+                    spaceKeyLight.intensity = 2.15f * solarFluxAtShip;
+                    spaceKeyLight.transform.rotation = Quaternion.LookRotation(-sunDirWorld, Vector3.up);
                 }
+
                 spaceDomeRoot.SetActive(true);
                 if (viewer) spaceDomeRoot.transform.position = viewer.position;
                 bool jumping = helm.InHyperjump;
                 Color deepSky = helm.CurrentGalaxy == GalaxyId.Andromeda
-                    ? new Color(0.012f, 0.007f, 0.030f)
-                    : new Color(0.004f, 0.007f, 0.018f);
+                    ? new Color(0.004f, 0.003f, 0.012f)
+                    : new Color(0.002f, 0.003f, 0.008f);
                 if (jumping)
-                    deepSky = Color.Lerp(deepSky, new Color(0.18f, 0.42f, 0.85f), Mathf.Sin((float)helm.HyperjumpProgress * Mathf.PI));
+                    deepSky = Color.Lerp(deepSky, new Color(0.14f, 0.36f, 0.78f), Mathf.Sin((float)helm.HyperjumpProgress * Mathf.PI));
                 if (Camera.main)
                 {
                     Camera.main.clearFlags = CameraClearFlags.SolidColor;
                     Camera.main.backgroundColor = deepSky;
                 }
-                if (starfieldObj) starfieldObj.SetActive(true);
+                if (starfieldObj)
+                {
+                    starfieldObj.SetActive(true);
+                    starfieldObj.transform.localRotation = invShipRot;
+                    if (starfieldMat)
+                    {
+                        if (starfieldMat.HasProperty("_TwinkleTime")) starfieldMat.SetFloat("_TwinkleTime", Time.time);
+                        if (starfieldMat.HasProperty("_Exposure")) starfieldMat.SetFloat("_Exposure", Mathf.Lerp(1.85f, 1.20f, Mathf.Clamp01(solarFluxAtShip * 0.45f)));
+                    }
+                }
                 if (sunObj) sunObj.SetActive(false);
                 foreach (var kv in planetSpheres) if (kv.Value) kv.Value.SetActive(false);
                 if (spiralGalaxyObj)
                 {
                     spiralGalaxyObj.SetActive(true);
-                    spiralGalaxyObj.transform.Rotate(0f, Time.deltaTime * 1.4f, 0f, Space.Self);
+                    Vector3 galDir = invShipRot * new Vector3(-0.34f, 0.24f, 0.91f).normalized;
+                    spiralGalaxyObj.transform.localPosition = galDir * 305f;
+                    spiralGalaxyObj.transform.localRotation = invShipRot * Quaternion.Euler(58f, -18f, 24f);
                 }
                 if (asteroidBeltObj)
                 {
-                    bool showBelt = helm.CurrentSystem == StarSystemId.SolarSystem;
-                    asteroidBeltObj.SetActive(showBelt);
-                    if (showBelt) asteroidBeltObj.transform.Rotate(0f, Time.deltaTime * 0.9f, 0f, Space.Self);
+                    // Asteroid belt only visible when ship is genuinely near ~2.2..3.3 AU (320..500 Mkm from Sun)!
+                    bool nearBelt = helm.CurrentSystem == StarSystemId.SolarSystem && starDistKm > 3.1e8 && starDistKm < 5.1e8;
+                    asteroidBeltObj.SetActive(nearBelt);
+                    if (nearBelt) asteroidBeltObj.transform.localRotation = invShipRot;
                 }
 
-                // Map real million-km vectors in the active StarSystem into compressed 3D sky-dome coordinates around the shuttle
-                Quaternion invShipRot = Quaternion.Inverse(helm.Rotation);
+                // True 1:1 perspective angular projection of every star, planet, moon & station (ZERO HUD clutter!)
+                Vector3 starWorldRendered = spaceDomeRoot.transform.position + sunDirWorld * 300f;
                 foreach (var body in CelestialAtlas.Bodies)
                 {
                     if (!atlasBodyObjects.TryGetValue(body.Id, out var obj) || !obj) continue;
                     bool inSys = body.System == helm.CurrentSystem;
                     obj.SetActive(inSys);
                     if (!inSys) continue;
-                    SpaceVector deltaKm = CelestialAtlas.WorldPositionKm(body.Id, helm.OrbitTimeDays) - helm.PositionKm;
-                    double distKm = Math.Max(1.0, deltaKm.Magnitude);
-                    // Logarithmic compression keeps nearby moons large & approachable while distant outer giants stay visible on the ecliptic!
-                    float renderDist = Mathf.Clamp(22f + (float)Math.Log10(distKm / Math.Max(1000.0, body.RadiusKm * 2.0) + 1.0) * 34f, 18f, 182f);
+
+                    SpaceVector bodyWorldKm = CelestialAtlas.WorldPositionKm(body.Id, helm.OrbitTimeDays);
+                    SpaceVector deltaKm = bodyWorldKm - helm.PositionKm;
+                    double distKm = Math.Max(body.RadiusKm * 1.04, deltaKm.Magnitude);
+
+                    // Monotonic depth ordering from 20 m (orbiting right overhead) to 295 m (billions of km away)
+                    float renderDist = Mathf.Lerp(20f, 295f, Mathf.InverseLerp(2.0f, 10.2f, (float)Math.Log10(distKm + 1.0)));
                     SpaceVector dir = deltaKm.Normalized;
                     Vector3 rel = invShipRot * new Vector3((float)dir.X, (float)dir.Y, (float)dir.Z) * renderDist;
                     obj.transform.localPosition = rel;
-                    obj.transform.Rotate(0f, Time.deltaTime * 5.0f, 0f, Space.Self);
+
+                    // Exact 1:1 astronomical angular radius: tan(asin(R / d))
+                    double sinAng = Math.Min(0.94, Math.Max(1e-7, body.RadiusKm / distKm));
+                    float trueHalfWorld = renderDist * Mathf.Tan((float)Math.Asin(sinAng));
+                    // Distant planets (> millions of km away) gleam as bright natural naked-eye planetary stars without fake HUD boxes
+                    float minStarPointHalf = renderDist * (body.IsStar ? 0.0042f : 0.0019f);
+                    float finalHalfWorld = Mathf.Max(minStarPointHalf, trueHalfWorld);
+                    float baseHalf = BaseMeshHalfExtent(body);
+                    obj.transform.localScale = Vector3.one * (finalHalfWorld / Mathf.Max(0.1f, baseHalf));
+
+                    // Compute true solar illumination vector at the planet's own heliocentric position!
+                    double bodyAu = Math.Max(0.20, bodyWorldKm.Magnitude / CelestialAtlas.AstronomicalUnitKm);
+                    float bodyFlux = body.IsStar ? 1.0f : Mathf.Clamp(1.05f / Mathf.Pow((float)bodyAu, 0.55f), 0.22f, 2.25f);
+                    Vector3 bodyToSunWS;
+                    if (body.IsStar)
+                        bodyToSunWS = Vector3.up;
+                    else
+                    {
+                        SpaceVector toSunFromBody = new SpaceVector(0, 0, 0) - bodyWorldKm;
+                        Vector3 sDir = invShipRot * new Vector3(
+                            (float)toSunFromBody.Normalized.X, (float)toSunFromBody.Normalized.Y, (float)toSunFromBody.Normalized.Z);
+                        bodyToSunWS = sDir.sqrMagnitude > 0.001f ? sDir.normalized : (starWorldRendered - obj.transform.position).normalized;
+                    }
+
+                    // Self-emission: stars blaze brightly; unresolved distant planets shine as bright point stars; close resolved planets have dark night sides!
+                    float unresolvedBlend = 1f - Mathf.Clamp01((trueHalfWorld - minStarPointHalf) / Mathf.Max(0.001f, minStarPointHalf * 2.5f));
+                    float selfGlow = body.IsStar ? 1.35f : Mathf.Lerp(0.0f, 1.05f, unresolvedBlend);
+                    float nightAmb = body.IsStar ? 0.85f : 0.015f;
+                    ApplyPlanetShaderLighting(obj, bodyToSunWS, bodyFlux, nightAmb, selfGlow);
                 }
             }
 
@@ -1144,102 +1260,105 @@ namespace LestingCraft.Runtime
                 spaceDomeRoot.SetActive(true);
                 if (player) spaceDomeRoot.transform.position = player.transform.position;
             }
+            if (spaceKeyLight) spaceKeyLight.enabled = false;
+            if (domeRenderer) domeRenderer.enabled = false;
+            foreach (var kv in planetSpheres) if (kv.Value) kv.Value.SetActive(false);
 
-            Color sky = new Color(0.01f, 0.013f, 0.026f);
-            Color emit = new Color(0.008f, 0.01f, 0.02f);
-            bool showStars = true;
-            SpaceTargetKind overheadBody = SpaceTargetKind.Earth;
+            bool showDaytimeStars = IsStationSpawned || dim == Dimension.Moon || dim == Dimension.Mercury ||
+                                    dim == Dimension.Europa || dim == Dimension.Pluto || dim == Dimension.AndromedaPrime || dim == Dimension.Somnia;
             float sunScale = 1.0f;
+            CelestialBodyId? heroSkyParent = null;
+            float heroSkyScale = 1.0f;
 
             if (IsStationSpawned)
             {
-                sky = new Color(0.006f, 0.010f, 0.022f);
-                overheadBody = SpaceTargetKind.Earth;
+                heroSkyParent = CelestialBodyId.Earth;
+                heroSkyScale = 3.2f;
             }
             else if (dim == Dimension.Moon)
             {
-                sky = new Color(0.008f, 0.010f, 0.018f);
-                overheadBody = SpaceTargetKind.Earth;
+                heroSkyParent = CelestialBodyId.Earth;
+                heroSkyScale = 1.15f;
             }
             else if (dim == Dimension.Mars)
             {
-                sky = new Color(0.46f, 0.24f, 0.14f);
-                emit = new Color(0.28f, 0.13f, 0.07f);
-                showStars = false;
-                overheadBody = SpaceTargetKind.Moon;
-                sunScale = 0.72f;
+                sunScale = 0.66f;
             }
             else if (dim == Dimension.Venus)
             {
-                sky = new Color(0.68f, 0.48f, 0.18f);
-                emit = new Color(0.42f, 0.27f, 0.08f);
-                showStars = false;
-                overheadBody = SpaceTargetKind.Earth;
-                sunScale = 0.55f;
+                sunScale = 0.45f;
             }
             else if (dim == Dimension.Mercury)
             {
-                sky = new Color(0.018f, 0.014f, 0.012f);
-                overheadBody = SpaceTargetKind.Venus;
-                sunScale = 2.35f;
+                sunScale = 2.60f;
             }
             else if (dim == Dimension.Europa)
             {
-                sky = new Color(0.012f, 0.024f, 0.048f);
-                sunScale = 0.28f;
+                // Jupiter looms enormous over Europa's glacial ridges!
+                sunScale = 0.24f;
+                heroSkyParent = CelestialBodyId.Jupiter;
+                heroSkyScale = 2.35f;
             }
             else if (dim == Dimension.Titan)
             {
-                sky = new Color(0.58f, 0.36f, 0.14f);
-                emit = new Color(0.32f, 0.18f, 0.06f);
-                showStars = false;
-                sunScale = 0.22f;
+                // Ringed cubic Saturn hangs majestically in Titan's petrol-cyan & honey-gold sky!
+                sunScale = 0.16f;
+                heroSkyParent = CelestialBodyId.Saturn;
+                heroSkyScale = 2.45f;
             }
             else if (dim == Dimension.Pluto)
             {
-                sky = new Color(0.008f, 0.010f, 0.022f);
-                sunScale = 0.10f;
+                sunScale = 0.08f;
+                heroSkyParent = CelestialBodyId.Uranus;
+                heroSkyScale = 0.85f;
             }
-            else if (dim == Dimension.ProximaB || dim == Dimension.Trappist1e)
+            else if (dim == Dimension.ProximaB)
             {
-                sky = new Color(0.24f, 0.08f, 0.09f);
-                emit = new Color(0.14f, 0.04f, 0.05f);
-                sunScale = 1.45f;
+                sunScale = 1.95f;
+                heroSkyParent = CelestialBodyId.CentauriPrime;
+                heroSkyScale = 1.15f;
+            }
+            else if (dim == Dimension.Trappist1e)
+            {
+                sunScale = 1.55f;
+                heroSkyParent = CelestialBodyId.Trappist1d;
+                heroSkyScale = 1.65f;
             }
             else if (dim == Dimension.Kepler452b)
             {
-                sky = new Color(0.18f, 0.36f, 0.44f);
                 sunScale = 1.08f;
             }
             else if (dim == Dimension.AndromedaPrime || dim == Dimension.Somnia)
             {
-                sky = new Color(0.06f, 0.03f, 0.14f);
-                emit = new Color(0.04f, 0.02f, 0.10f);
-                sunScale = dim == Dimension.Somnia ? 0.65f : 1.75f;
+                sunScale = dim == Dimension.Somnia ? 0.55f : 1.35f;
+                if (spiralGalaxyObj)
+                {
+                    spiralGalaxyObj.SetActive(true);
+                    spiralGalaxyObj.transform.localPosition = new Vector3(-48f, 96f, 210f);
+                    spiralGalaxyObj.transform.localRotation = Quaternion.Euler(48f, -22f, 20f);
+                }
             }
 
-            if (cam) cam.backgroundColor = sky;
-            RenderSettings.fog = false;
-            if (domeRenderer)
+            if (starfieldObj)
             {
-                if (domeRenderer.sharedMaterial.HasProperty("_BaseColor")) domeRenderer.sharedMaterial.SetColor("_BaseColor", sky);
-                if (domeRenderer.sharedMaterial.HasProperty("_EmissionColor")) domeRenderer.sharedMaterial.SetColor("_EmissionColor", emit);
+                starfieldObj.SetActive(showDaytimeStars);
+                starfieldObj.transform.localRotation = Quaternion.identity;
+                if (starfieldMat && starfieldMat.HasProperty("_Exposure"))
+                    starfieldMat.SetFloat("_Exposure", dim == Dimension.AndromedaPrime || dim == Dimension.Somnia ? 0.95f : 1.50f);
             }
-            if (starfieldObj) starfieldObj.SetActive(showStars);
             if (sunObj)
             {
-                sunObj.SetActive(true);
+                sunObj.SetActive(showDaytimeStars);
                 sunObj.transform.localScale = Vector3.one * sunScale;
-                sunObj.transform.localPosition = new Vector3(-95f, 92f, 110f);
+                sunObj.transform.localPosition = new Vector3(-115f, 108f, 145f);
             }
-            foreach (var kv in planetSpheres)
+            if (heroSkyParent.HasValue && atlasBodyObjects.TryGetValue(heroSkyParent.Value, out var skyPlanet) && skyPlanet)
             {
-                bool show = kv.Key == overheadBody && (IsStationSpawned || dim == Dimension.Moon || dim == Dimension.Mercury);
-                kv.Value.SetActive(show);
-                if (show)
-                {
-                    kv.Value.transform.localPosition = IsStationSpawned ? new Vector3(0f, -68f, 42f) : new Vector3(35f, 96f, 115f);
-                }
+                skyPlanet.SetActive(true);
+                skyPlanet.transform.localPosition = IsStationSpawned ? new Vector3(0f, -68f, 44f) : new Vector3(44f, 88f, 155f);
+                skyPlanet.transform.localRotation = Quaternion.Euler(22f, 34f, -12f);
+                skyPlanet.transform.localScale = Vector3.one * heroSkyScale;
+                ApplyPlanetShaderLighting(skyPlanet, new Vector3(-0.62f, 0.54f, 0.56f).normalized, 1.15f, 0.025f, 0.04f);
             }
         }
 

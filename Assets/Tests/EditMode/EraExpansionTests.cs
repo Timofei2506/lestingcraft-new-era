@@ -29,7 +29,7 @@ namespace LestingCraft.Tests
                 var panel = cabin.Panel;
                 Vector3 pilotEye = cabin.transform.TransformPoint(CockpitInteractiveRig.PilotEyeLocal);
 
-                Assert.AreEqual(16, rig.Controls.Count, "All 16 physical 3D cockpit controls must register BoxCollider hitboxes");
+                Assert.AreEqual(18, rig.Controls.Count, "All 18 physical 3D cockpit controls must register BoxCollider hitboxes");
                 foreach (var kv in rig.Controls)
                 {
                     var box = kv.Value.GetComponent<BoxCollider>();
@@ -66,10 +66,16 @@ namespace LestingCraft.Tests
                 var ignite = Click3DControl(rig, CockpitControlId.IgniteButton, pilotEye);
                 Assert.IsTrue(ignite.RequestedIgnite);
 
-                // Scroll wheel & drag on 3D Throttle Lever + 3D Flight Stick + MFD Galaxy jump
+                // Scroll wheel & drag on 3D Throttle Lever + 3D Time Warp buttons + MFD Galaxy jump
                 float beforeThrottle = helm.Throttle;
                 Scroll3DControl(rig, CockpitControlId.ThrottleLever, 0.25f, pilotEye);
                 Assert.Greater(helm.Throttle, beforeThrottle);
+
+                Assert.AreEqual(1.0, helm.TimeWarp, 1e-6);
+                Click3DControl(rig, CockpitControlId.TimeWarpUpButton, pilotEye);
+                Assert.AreEqual(5.0, helm.TimeWarp, 1e-6);
+                Click3DControl(rig, CockpitControlId.TimeWarpDownButton, pilotEye);
+                Assert.AreEqual(1.0, helm.TimeWarp, 1e-6);
 
                 var galSwitch = Click3DControl(rig, CockpitControlId.MfdToggleGalaxy, pilotEye);
                 Assert.IsTrue(galSwitch.RequestedHyperjump);
@@ -123,7 +129,17 @@ namespace LestingCraft.Tests
             Assert.IsTrue(CelestialAtlas.GetBody(CelestialBodyId.Uranus).HasRings);
             Assert.IsTrue(CelestialAtlas.GetBody(CelestialBodyId.AndromedaPrime).HasRings);
 
-            // Real manual 6-DOF piloting changes 3D trajectory & attitude continuously, plus hyperjumps across both galaxies
+            // Verify real 1:1 astronomical semi-major axes and hierarchical moon/station orbits!
+            SpaceVector earthPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Earth, 42.0);
+            SpaceVector moonPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Moon, 42.0);
+            SpaceVector saturnPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Saturn, 42.0);
+            SpaceVector titanPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Titan, 42.0);
+            Assert.AreEqual(149598000.0, earthPos.Magnitude, 5e4, "Earth orbits Sol at 1 AU (149.598 Mkm)");
+            Assert.AreEqual(1433530000.0, saturnPos.Magnitude, 6e6, "Saturn orbits Sol at ~9.58 AU (1.4335 Bkm)");
+            Assert.AreEqual(384400.0, SpaceVector.Distance(earthPos, moonPos), 1500.0, "Moon must orbit Earth at real 384,400 km");
+            Assert.AreEqual(1221870.0, SpaceVector.Distance(saturnPos, titanPos), 5000.0, "Titan must orbit Saturn at real 1,221,870 km");
+
+            // Real manual 6-DOF piloting in realistic km/s + KSP Time Warp (1x..100,000x)
             var helm = new OpenSpaceHelm();
             helm.EnterOrbitAround(CelestialBodyId.Earth);
             SpaceVector p0 = helm.PositionKm;
@@ -131,7 +147,22 @@ namespace LestingCraft.Tests
             helm.SetThrottle(0.85f);
             helm.Boost = true;
             for (int i = 0; i < 15; i++) helm.Step(0.1f, 0.35f, -0.25f, 0.15f);
-            Assert.Greater(SpaceVector.Distance(p0, helm.PositionKm), 1000.0);
+            double realTimeMovedKm = SpaceVector.Distance(p0, helm.PositionKm);
+            Assert.Greater(realTimeMovedKm, 8.0, "Ship moves at realistic orbital velocity (~8-55 km/s) at 1x");
+            Assert.Less(realTimeMovedKm, 150.0, "Ship does NOT fly at arcade speeds at 1x");
+
+            // Engaging KSP Time Warp enforces gravity-well safety cap (10,000x at 5 Mkm) and full 100,000x in deep interplanetary space (25 Mkm)!
+            helm.PositionKm = CelestialAtlas.WorldPositionKm(CelestialBodyId.Earth, helm.OrbitTimeDays) + new SpaceVector(5000000.0, 0.0, 0.0);
+            for (int w = 0; w < 7; w++) helm.IncreaseTimeWarp();
+            Assert.AreEqual(10000.0, helm.TimeWarp, 1e-3, "Near Earth SOI (5 Mkm), KSP safety limiter caps warp to 10,000x");
+
+            helm.PositionKm = CelestialAtlas.WorldPositionKm(CelestialBodyId.Earth, helm.OrbitTimeDays) + new SpaceVector(0.0, 35000000.0, 0.0);
+            helm.IncreaseTimeWarp();
+            Assert.AreEqual(100000.0, helm.TimeWarp, 1e-3, "Above the ecliptic plane (35 Mkm), full 100,000x warp stays active");
+            SpaceVector pWarp0 = helm.PositionKm;
+            for (int t = 0; t < 10; t++) helm.Step(0.1f, 0f, 0f, 0f);
+            Assert.Greater(SpaceVector.Distance(pWarp0, helm.PositionKm), 750000.0, "100,000x KSP Time Warp covers ~850,000..5,800,000 km per real second");
+            helm.ResetTimeWarp();
 
             helm.StartHyperjump(CelestialBodyId.AndromedaPrime);
             for (int i = 0; i < 20; i++) helm.Step(0.1f, 0f, 0f, 0f);
@@ -322,6 +353,26 @@ namespace LestingCraft.Tests
                 }
             }
             Assert.AreEqual(20, coats.Count, "Every one of the 20 animal species must map to its own dedicated PBR coat");
+
+            // Distinct planetary atmospheres (Titan != Mars != Venus != Moon != AndromedaPrime) & denser v8 Earth herds
+            var marsAtmo = AtmosphereLighting.At(600.0, Dimension.Mars, 0.2f, 0f);
+            var titanAtmo = AtmosphereLighting.At(600.0, Dimension.Titan, 0.2f, 0f);
+            var moonAtmo = AtmosphereLighting.At(600.0, Dimension.Moon, 0f, 0f);
+            float zenithDiff = Mathf.Abs(marsAtmo.Zenith.r - titanAtmo.Zenith.r)
+                             + Mathf.Abs(marsAtmo.Zenith.g - titanAtmo.Zenith.g)
+                             + Mathf.Abs(marsAtmo.Zenith.b - titanAtmo.Zenith.b);
+            Assert.Greater(zenithDiff, 0.35f, "Titan zenith must be teal-cyan, NOT Mars dusty orange!");
+            Assert.Less(moonAtmo.Zenith.r + moonAtmo.Zenith.g + moonAtmo.Zenith.b, 0.05f, "Airless Moon zenith must be vacuum black");
+            Assert.Greater(AtmosphereLighting.CloudCoverageForRealm(Dimension.Venus, 0.5f), 0.85f, "Venus must maintain thick golden-amber cloud cover");
+            Assert.AreEqual(0f, AtmosphereLighting.CloudCoverageForRealm(Dimension.Moon, 0.5f), 1e-4f, "Airless Moon must have zero clouds");
+
+            WildlifeSimulation.Ground meadowGround = (float gx, float gz, float prevY, float rad, float hgt) => 68f;
+            var obs = new AnimalObserver { x = 0f, z = 0f, alive = true };
+            var simV7 = new WildlifeSimulation(2506, null, 7);
+            var simV8 = new WildlifeSimulation(2506, null, 8);
+            simV7.Spawn(obs, meadowGround);
+            simV8.Spawn(obs, meadowGround);
+            Assert.GreaterOrEqual(simV8.Animals.Count, simV7.Animals.Count * 3, "Earth v8 biome herds must spawn >3x more wildlife than legacy v7");
         }
     }
 }
