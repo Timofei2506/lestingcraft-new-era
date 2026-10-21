@@ -145,6 +145,57 @@ namespace LestingCraft.Runtime
         {
             get { return Ready && dirty.Count == 0 && meshTask == null; }
         }
+        public void ShowcasePumpSync()
+        {
+            if (detailQuality != LestingCraft.Presentation.VisualSettings.Current.Preset)
+            {
+                detailQuality = LestingCraft.Presentation.VisualSettings.Current.Preset;
+                foreach (var key in chunks.Keys) dirty.Add(key);
+            }
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Vector2Int center = Center();
+            while (sw.ElapsedMilliseconds < 120000)
+            {
+                Skylight.Process();
+                foreach (var pair in chunks)
+                {
+                    View v = pair.Value;
+                    if (v.Baking)
+                    {
+                        v.Bake.Complete();
+                        v.Baking = false;
+                        v.CollisionReady = true;
+                        if (v.Near)
+                        {
+                            v.Collider.sharedMesh = v.Collision;
+                            v.Collider.enabled = true;
+                        }
+                    }
+                }
+                if (work == null)
+                {
+                    Vector2Int key;
+                    if (FindDirty(center, out key)) work = Rebuild(key, chunks[key]);
+                    else if (FindMissing(center, out key)) work = Generate(key);
+                    else
+                    {
+                        Ready = true;
+                        break;
+                    }
+                }
+                if (work != null)
+                {
+                    if (pendingBuffer.IsCreated) pendingJob.Complete();
+                    if (meshTask != null) meshTask.Wait();
+                    if (!work.MoveNext())
+                    {
+                        var disposable = work as IDisposable;
+                        if (disposable != null) disposable.Dispose();
+                        work = null;
+                    }
+                }
+            }
+        }
         public void ShowcaseEditUnbounded(int x, int y, int z, ushort block)
         {
             if (!Contains(x, y, z) || y == 0 || block == BlockRegistry.BedrockId) return;

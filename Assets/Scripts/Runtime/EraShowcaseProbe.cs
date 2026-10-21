@@ -92,10 +92,16 @@ namespace LestingCraft.Runtime
             SetCamerasActive(cam, hands, false);
 
             deadline = Time.realtimeSinceStartup + 180f;
+            if (game.Session && game.Session.World)
+                game.Session.World.ShowcasePumpSync();
             while ((!game.WorldReady || !game.Session || !game.Session.World.IsIdleForShowcase) &&
                    Time.realtimeSinceStartup < deadline)
             {
-                if (game.Session) game.Session.Data.clock = 570.0;
+                if (game.Session)
+                {
+                    game.Session.Data.clock = 570.0;
+                    game.Session.World.ShowcasePumpSync();
+                }
                 yield return null;
             }
             Debug.Log("[Showcase] Initial world streaming complete: ready=" + game.WorldReady +
@@ -439,11 +445,15 @@ namespace LestingCraft.Runtime
 
         static IEnumerator WaitWorldMeshed(VoxelWorld world, float maxWallSeconds)
         {
-            // Give VoxelWorld at least 4 frames first so center change enqueues any missing/dirty chunks
-            for (int i = 0; i < 4; i++) yield return null;
+            yield return null;
+            if (world) world.ShowcasePumpSync();
+            yield return null;
             float deadline = Time.realtimeSinceStartup + maxWallSeconds;
             while (world && !world.IsIdleForShowcase && Time.realtimeSinceStartup < deadline)
+            {
+                world.ShowcasePumpSync();
                 yield return null;
+            }
         }
 
         IEnumerator RenderAndCapture(Camera cam, FirstPersonHands hands, bool showHands, string fullPath, Action lockPose)

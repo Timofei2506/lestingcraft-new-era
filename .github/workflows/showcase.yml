@@ -92,3 +92,11 @@ jobs:
             Builds/StandaloneLinux64/ShowcaseResults/*.png
             Builds/Logs/**
           retention-days: 30
+
+      - name: Upload StandaloneLinux64 Binary for Instant Replay
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StandaloneLinux64-Player
+          path: Builds/StandaloneLinux64/**
+          retention-days: 3
