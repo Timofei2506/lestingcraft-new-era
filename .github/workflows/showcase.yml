@@ -65,21 +65,37 @@ jobs:
           path: Library
           key: Library-il2cpp-v2-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
 
-      - name: Render 8 Authentic 1920x1080 Ultra URP Screenshots in Real Game Binary
+      - name: Render Authentic 1920x1080 Ultra URP Screenshots in Real Game Binary
         run: |
           chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
           ls -lh Builds/StandaloneLinux64/
           mkdir -p Builds/StandaloneLinux64/ShowcaseResults Builds/Logs
+          (
+            for i in $(seq 1 360); do
+              if grep -q "\[Showcase\] PASS:" Builds/Logs/linux-showcase.log 2>/dev/null; then
+                sleep 2
+                pkill -f LestingCraft.x86_64 || true
+                exit 0
+              fi
+              sleep 2
+            done
+          ) &
+          WATCHER_PID=$!
           xvfb-run -a -s "-screen 0 1920x1080x24" \
-            env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
+            env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=$(nproc) \
             ./Builds/StandaloneLinux64/LestingCraft.x86_64 \
             -force-glcore \
             -screen-fullscreen 0 \
             -screen-width 1920 \
             -screen-height 1080 \
             -lc-showcase \
-            -logFile Builds/Logs/linux-showcase.log
+            -logFile Builds/Logs/linux-showcase.log || true
+          kill $WATCHER_PID 2>/dev/null || true
           grep -E "\\[Showcase\\]" Builds/Logs/linux-showcase.log || true
+          test -f Builds/StandaloneLinux64/ShowcaseResults/04-cockpit-interactive-3d-controls.png
+          test -f Builds/StandaloneLinux64/ShowcaseResults/04b-shuttle-cabin-interior-ergonomics.png
+          test -f Builds/StandaloneLinux64/ShowcaseResults/05-open-space-saturn-solar-system.png
+          test -f Builds/StandaloneLinux64/ShowcaseResults/06-andromeda-galaxy-prime.png
           test -f Builds/StandaloneLinux64/ShowcaseResults/08-inventory-new-blocks-and-bed.png
           ls -lh Builds/StandaloneLinux64/ShowcaseResults/
 

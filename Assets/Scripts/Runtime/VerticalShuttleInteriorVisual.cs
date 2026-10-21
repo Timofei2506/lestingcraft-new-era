@@ -107,7 +107,7 @@ namespace LestingCraft.Runtime
             // =========================================================================
             // 1. TOWER ACCESS WALKWAY & LOWER MID-DECK (Clean ergonomic crew quarters)
             // =========================================================================
-            Box("Physical tower-to-airlock walkway",new Vector3(-5.5f,27.88f,3),new Vector3(7f,.24f,1.90f),floor);
+            padEquipment.Add(Box("Physical tower-to-airlock walkway",new Vector3(-5.5f,27.88f,3),new Vector3(7f,.24f,1.90f),floor));
             padEquipment.Add(Box("Tower lift exit bridge",new Vector3(-18.3f,27.88f,3),new Vector3(1.1f,.24f,1.90f),floor));
             Box("Lower crew deck",new Vector3(.5f,27.88f,3.5f),new Vector3(4.92f,.24f,4.92f),floor);
 
@@ -208,6 +208,7 @@ namespace LestingCraft.Runtime
             // 7. SEALED TOWER HATCH & MOVING CREW LIFT
             // =========================================================================
             hatch=Box("Closed pressure hatch · server controlled",new Vector3(-9.14f,29.43f,3),new Vector3(.18f,2.86f,1.94f),wall);
+            padEquipment.Add(hatch);
             hatchCollider=hatch.GetComponent<BoxCollider>();
             liftBaseLocal=new Vector3(VerticalShuttleWalk.LiftX,VerticalShuttleWalk.LiftGroundY-.14f,3);
             liftRiseLocal=Vector3.up;liftAnchor=transform;

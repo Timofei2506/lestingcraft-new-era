@@ -287,6 +287,54 @@ namespace LestingCraft.Runtime
                 }
                 game.Session.Notice = "Обновлённая кабина шаттла: панорамные окна в космос, вид на кубический Сатурн, 3 экрана MFD, РУД и РУС";
             });
+
+            // =========================================================================
+            // SHOT 4B: Full Shuttle Interior Walkthrough View (Aft Flight-Deck Catwalk
+            //          Looking Forward Across Twin Crew Seats, Safety Railing, Inter-Deck
+            //          Ladder, Side Viewports, Sloped 3-MFD Console & Open Space Outside!)
+            // =========================================================================
+            yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "04b-shuttle-cabin-interior-ergonomics.png"), () =>
+            {
+                if (shipRoot) shipRoot.rotation = Quaternion.identity;
+                helm.SelectTarget(CelestialBodyId.Saturn);
+                SpaceVector saturnPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Saturn, helm.OrbitTimeDays);
+                helm.PositionKm = saturnPos - new SpaceVector(18000.0, 9000.0, 130000.0);
+                helm.SetThrottle(0.78f);
+                helm.Rotation = Quaternion.identity;
+
+                if (cabin)
+                {
+                    Vector3 catwalkEye = cabin.transform.TransformPoint(new Vector3(0.50f, 44.32f, 2.08f));
+                    Vector3 catwalkLook = cabin.transform.TransformPoint(new Vector3(0.50f, 43.38f, 5.72f));
+                    player.transform.SetParent(null, true);
+                    player.TeleportTo(catwalkEye - Vector3.up * 1.5f, false);
+                    cam.fieldOfView = 82f;
+                    cam.nearClipPlane = 0.05f;
+                    cam.farClipPlane = 1200f;
+                    cam.transform.position = catwalkEye;
+                    cam.transform.LookAt(catwalkLook);
+
+                    spaceVis.SetOpenSpaceFlightActive(helm, shipRoot, cam.transform);
+                    var saturnInView = GameObject.Find("Atlas_saturn");
+                    if (saturnInView)
+                    {
+                        saturnInView.transform.localPosition = new Vector3(5.0f, 10.5f, 56f);
+                        saturnInView.transform.localRotation = Quaternion.Euler(22f, 36f, -12f);
+                        saturnInView.transform.localScale = Vector3.one * 1.18f;
+                    }
+                    var marsPort = GameObject.Find("Atlas_mars");
+                    if (marsPort)
+                    {
+                        marsPort.SetActive(true);
+                        marsPort.transform.localPosition = new Vector3(-34f, 6.0f, 26f);
+                        marsPort.transform.localRotation = Quaternion.Euler(18f, -28f, 10f);
+                        marsPort.transform.localScale = Vector3.one * 1.35f;
+                    }
+                    if (cabin.InteractiveRig)
+                        cabin.InteractiveRig.RefreshVisualPoses(0.05f);
+                }
+                game.Session.Notice = "Интерьер шаттла: кресла экипажа, межпалубная шахта с лестницей, боковые иллюминаторы и панорамный обзор";
+            });
             if (cockpitFillObj) Destroy(cockpitFillObj);
             cam.nearClipPlane = 0.1f;
 
@@ -369,6 +417,7 @@ namespace LestingCraft.Runtime
             });
 
             helm.Disengage();
+            game.SetOuterSpaceSurfaceHidden(false);
             spaceVis.SetOpenSpaceFlightActive(null, shipRoot, cam.transform);
             if (shipRoot) shipRoot.rotation = Quaternion.identity;
 
@@ -489,11 +538,15 @@ namespace LestingCraft.Runtime
         {
             if (cam) cam.enabled = true;
             if (hands && hands.ViewCamera) hands.ViewCamera.enabled = showHands;
-            for (int i = 0; i < 3; i++)
+            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+                if (l && l.type != LightType.Directional) l.shadows = LightShadows.None;
+            for (int i = 0; i < 2; i++)
             {
                 if (lockPose != null) lockPose();
                 yield return null;
             }
+            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+                if (l && l.type != LightType.Directional) l.shadows = LightShadows.None;
             if (lockPose != null) lockPose();
             yield return new WaitForEndOfFrame();
             ScreenCapture.CaptureScreenshot(fullPath);

@@ -326,11 +326,28 @@ namespace LestingCraft.Runtime
             if(player.transform.parent!=launchVisual.ShuttleRoot)
                 player.transform.SetParent(launchVisual.ShuttleRoot,true);
             launchVisual.SyncSpaceFlightOffset(1450f,0.01f);
+            SetOuterSpaceSurfaceHidden(true);
             if(immediateHyperjump)
                 SpaceHelm.StartHyperjump(SpaceHelm.TargetBody);
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
             spaceVisuals.SetOpenSpaceFlightActive(SpaceHelm,launchVisual.ShuttleRoot,player.transform);
             Session.Notice="РУЧНОЙ ШТУРВАЛ ОТКРЫТОГО КОСМОСА АКТИВЕН! Вся Солнечная система, 7 звёздных систем и Галактика Андромеды M31 перед вами!";
+        }
+
+        public void SetOuterSpaceSurfaceHidden(bool hidden)
+        {
+            if(!world)return;
+            Transform shuttle=launchVisual?launchVisual.ShuttleRoot:null;
+            foreach(var r in world.GetComponentsInChildren<Renderer>(true))
+            {
+                if(shuttle&&r.transform.IsChildOf(shuttle))continue;
+                r.enabled=!hidden;
+            }
+            foreach(var l in world.GetComponentsInChildren<Light>(true))
+            {
+                if(shuttle&&l.transform.IsChildOf(shuttle))continue;
+                l.enabled=!hidden;
+            }
         }
 
         void UpdateOpenSpaceFlight(float dt)
@@ -368,6 +385,7 @@ namespace LestingCraft.Runtime
             if(body.IsDockableStation)
             {
                 SpaceHelm.Disengage();
+                SetOuterSpaceSurfaceHidden(false);
                 CompleteOfflineStationDocking();
                 return;
             }
@@ -378,6 +396,7 @@ namespace LestingCraft.Runtime
             }
             var targetKind=SpaceFlightVisuals.TargetForBody(body.Id);
             SpaceHelm.Disengage();
+            SetOuterSpaceSurfaceHidden(false);
             CompleteOfflinePlanetLanding(targetKind);
         }
 
