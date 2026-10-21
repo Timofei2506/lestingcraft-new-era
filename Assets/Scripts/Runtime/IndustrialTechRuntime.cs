@@ -359,6 +359,9 @@ namespace LestingCraft.Runtime
             requestRadiaExit = false;
             if (!world || !player || session == null) return;
             InitMaterials();
+            var proto = FindAnyObjectByType<PrototypeGame>();
+            if (proto && proto.LaunchComplexVisual && !proto.SpaceHelm.Active)
+                proto.LaunchComplexVisual.gameObject.SetActive(world.Dimension == Dimension.Lestingia);
 
             float daylight = RenderSettings.ambientIntensity > 0f ? Mathf.Clamp01(RenderSettings.ambientSkyColor.grayscale * 2.2f) : 0.75f;
             Sim.StepPowerAndRadiation(

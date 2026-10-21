@@ -109,6 +109,11 @@ namespace LestingCraft.World
 
         public static ushort SampleContent(int x, int y, int z, int seed, Dimension d, int contentVersion)
         {
+            if (d == Dimension.Radia)
+            {
+                var surface = PlanetTerrain.Column(x, z, seed, PlanetBody.Radia);
+                return PlanetTerrain.Block(x, y, z, seed, surface, PlanetBody.Radia);
+            }
             if (contentVersion >= 4 && d == Dimension.Lestingia &&
                 LestingCraft.Story.StoryWorld.TrySample(x, y, z, seed, out ushort placed, contentVersion))
                 return placed;

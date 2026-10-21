@@ -44,7 +44,7 @@ namespace LestingCraft.World
     public static class PlanetTerrain
     {
         public const int Version = 2;
-        public const int RadiaWaterLevel = 48;
+        public const int RadiaWaterLevel = 50;
 
         static float N(float x, float z, int seed) { return MoonTerrain.ValueNoise(x, z, seed); }
         static float Clamp(float x, float min, float max) { return Math.Max(min, Math.Min(max, x)); }
@@ -134,16 +134,20 @@ namespace LestingCraft.World
 
             if (body == PlanetBody.Radia)
             {
-                // Arrival jetty at (0, 49, -12) looking +Z across the dark flooded basin toward the Dam & Twin Helices!
+                // Arrival jetty at (0, 51, -12) looking +Z across the dark flooded basin toward the Dam & Twin Helices!
                 if (Math.Abs(x) <= 4 && z >= -18 && z <= -7)
-                    return new PlanetColumn { Height = 49, Surface = PlanetSurface.RadiaDamWall };
+                    return new PlanetColumn { Height = 51, Surface = PlanetSurface.RadiaDamWall };
 
-                // Northern Brutalist Concrete Sluice Dam spanning the horizon (z = 70..83) + side assault ramps
-                if (z >= 70 && z <= 83 && Math.Abs(x) <= 84)
+                // Northern Brutalist Concrete Sluice Dam spanning the horizon (z = 68..83) + tall twin central sluice pylons!
+                if (z >= 68 && z <= 83 && Math.Abs(x) <= 84)
                 {
+                    if (Math.Abs(x) >= 6 && Math.Abs(x) <= 10 && z <= 76)
+                        return new PlanetColumn { Height = 68, Surface = PlanetSurface.RadiaDamWall };
+                    if (z < 70)
+                        return new PlanetColumn { Height = 47, Surface = PlanetSurface.RadiaBasinFloor };
                     if (Math.Abs(x) >= 34 && Math.Abs(x) <= 41)
                     {
-                        int rampH = 48 + Math.Min(8, (z - 69));
+                        int rampH = 50 + Math.Min(7, (z - 69));
                         return new PlanetColumn { Height = rampH, Surface = PlanetSurface.RadiaDamWall };
                     }
                     bool sluiceRecess = z == 70 && (Math.Abs(x) % 14 >= 5 && Math.Abs(x) % 14 <= 9);
@@ -154,30 +158,33 @@ namespace LestingCraft.World
                     };
                 }
 
-                // Boss I (West Helix Plaza: -27, 58) & Boss II (East Helix Plaza: +31, 58) & Boss III (Central Dam Apron: 0, 64)
+                // Boss I (West Helix Plaza: -27, 56) & Boss II (East Helix Plaza: +31, 56) & Boss III (Central Dam Apron: 0, 65)
                 float dWest = (x + 27f) * (x + 27f) + (z - 56f) * (z - 56f);
                 float dEast = (x - 31f) * (x - 31f) + (z - 56f) * (z - 56f);
                 float dCenter = x * x + (z - 65f) * (z - 65f);
                 if (dWest <= 81f || dEast <= 81f || dCenter <= 64f)
-                    return new PlanetColumn { Height = 49, Surface = PlanetSurface.RadiaDamWall };
+                    return new PlanetColumn { Height = 51, Surface = PlanetSurface.RadiaDamWall };
 
-                // Submerged parallel rows of glowing cyan Cherenkov fuel blocks under shallow dark water (y = 46 < WaterLevel 48)!
+                // Submerged parallel rows of glowing cyan Cherenkov fuel blocks under shallow dark water (y = 48..49 < WaterLevel 50)!
                 if (z >= -26 && z <= 69 && Math.Abs(x) <= 34)
                 {
                     if (IsCherenkovStripX(x) && (((z % 9) + 9) % 9 != 0))
-                        return new PlanetColumn { Height = 46, Surface = PlanetSurface.RadiaCherenkovStrip };
-                    return new PlanetColumn { Height = 45, Surface = PlanetSurface.RadiaBasinFloor };
+                    {
+                        int chH = (z < 10 && Math.Abs(x) <= 12) ? 49 : 48;
+                        return new PlanetColumn { Height = chH, Surface = PlanetSurface.RadiaCherenkovStrip };
+                    }
+                    return new PlanetColumn { Height = 47, Surface = PlanetSurface.RadiaBasinFloor };
                 }
 
                 // Outer vitrified trinitite & ash islands where the 10 hostile mutant species prowl around the basin!
-                float bank = 46.2f + (broad - 0.42f) * 9.5f + (medium - 0.5f) * 5.2f + (fine - 0.5f) * 2.0f;
-                int bh = Math.Max(42, Math.Min(58, (int)Math.Round(bank)));
-                if (bh <= 47 && IsCherenkovStripX(x) && z > -60 && z < 70)
-                    return new PlanetColumn { Height = 46, Surface = PlanetSurface.RadiaCherenkovStrip };
+                float bank = 48.2f + (broad - 0.42f) * 9.5f + (medium - 0.5f) * 5.2f + (fine - 0.5f) * 2.0f;
+                int bh = Math.Max(44, Math.Min(60, (int)Math.Round(bank)));
+                if (bh <= 49 && IsCherenkovStripX(x) && z > -60 && z < 70)
+                    return new PlanetColumn { Height = 48, Surface = PlanetSurface.RadiaCherenkovStrip };
                 return new PlanetColumn
                 {
                     Height = bh,
-                    Surface = bh >= 48 ? PlanetSurface.RadiaSlagBank : PlanetSurface.RadiaBasinFloor
+                    Surface = bh >= 50 ? PlanetSurface.RadiaSlagBank : PlanetSurface.RadiaBasinFloor
                 };
             }
 
@@ -319,17 +326,17 @@ namespace LestingCraft.World
 
             if (body == PlanetBody.Radia)
             {
-                // Twin tilted double-helix towers behind the dam (West at x=-27,z=96 leaning +0.105; East at x=+31,z=92 leaning -0.115)
-                ushort westHelix = SampleRadiaHelixTower(x, y, z, -27f, 96f, 0.105f);
+                // Twin tilted double-helix towers behind the dam (West at x=-32,z=94 leaning +0.135; East at x=+35,z=90 leaning -0.145)
+                ushort westHelix = SampleRadiaHelixTower(x, y, z, -32f, 94f, 0.135f);
                 if (westHelix != 0) return westHelix;
-                ushort eastHelix = SampleRadiaHelixTower(x, y, z, 31f, 92f, -0.115f);
+                ushort eastHelix = SampleRadiaHelixTower(x, y, z, 35f, 90f, -0.145f);
                 if (eastHelix != 0) return eastHelix;
 
                 // Central Sluice Purge Terminal & Field Supply Workbench on arrival jetty
                 if (x == 0 && z == 73 && y == 57) return 89;
                 if ((x == -2 || x == 2) && z == 73 && y == 57) return 77;
-                if (x == 3 && z == -14 && y == 50) return 11;
-                if (x == -3 && z == -14 && y == 50) return 16;
+                if (x == 3 && z == -14 && y == 52) return 11;
+                if (x == -3 && z == -14 && y == 52) return 16;
 
                 if (y > column.Height)
                     return y <= RadiaWaterLevel ? (ushort)7 : (ushort)0;

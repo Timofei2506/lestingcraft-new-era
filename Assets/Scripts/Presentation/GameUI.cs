@@ -247,7 +247,7 @@ namespace LestingCraft.Presentation
             Button("Аккаунт / достижения",505,698,420,58,ShowAccount);
             Button("Настройки",64,619,395,58,()=>ShowSettings(Page.Pause));
             Button("В главное меню",64,698,395,58,game.ReturnToMenu);
-            Label(content.transform,"ESC — продолжить · E — инвентарь · Шаттл: W/S — тяга, < / > — Time Warp, G — цель, J — прыжок, L — посадка",952,535,584,84,15,Muted);
+            Label(content.transform,"ESC — продолжить · E — инвентарь · Шаттл: SHIFT/CTRL — тяга, X — тормоз, G — цель, J — прыжок, L — посадка",952,535,584,84,15,Muted);
             if(game.Online)Button("Скопировать код комнаты",505,619,420,58,()=>GUIUtility.systemCopyBuffer=game.RoomCode);
         }
         public void ShowStoryJournal()

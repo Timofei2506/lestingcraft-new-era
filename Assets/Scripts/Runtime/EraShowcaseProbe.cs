@@ -266,8 +266,8 @@ namespace LestingCraft.Runtime
 
                 if (cabin)
                 {
-                    Vector3 eyeWorld = cabin.transform.TransformPoint(new Vector3(-0.36f, 43.48f, 4.66f));
-                    Vector3 lookWorld = cabin.transform.TransformPoint(new Vector3(0.12f, 43.05f, 5.75f));
+                    Vector3 eyeWorld = cabin.transform.TransformPoint(new Vector3(-0.36f, 43.84f, 4.52f));
+                    Vector3 lookWorld = cabin.transform.TransformPoint(new Vector3(0.14f, 43.30f, 5.75f));
                     player.transform.SetParent(null, true);
                     player.TeleportTo(eyeWorld - Vector3.up * 1.5f, false);
                     cam.fieldOfView = 76f;
@@ -573,7 +573,8 @@ namespace LestingCraft.Runtime
             //          truss piers, concrete sluice dam, glowing underwater Cherenkov rows,
             //          3 Raid Bosses, mutant fauna (20..29) & monochrome stormy ash!
             // =========================================================================
-            ui.ShowHUD();
+            game.Resume();
+            if (launchVis) launchVis.gameObject.SetActive(false);
             inv.slots[0] = new ItemStack { item = Items.Dosimeter, count = 1 };
             inv.slots[1] = new ItemStack { item = BlockRegistry.UraniumOreId, count = 12 };
             inv.slots[2] = new ItemStack { item = BlockRegistry.NuclearReactorId, count = 1 };
@@ -621,42 +622,44 @@ namespace LestingCraft.Runtime
                 mGo.AddComponent<AnimalVisual>().Build(radiaSpecies[m]);
             }
 
-            Vector3 radiaCamPos = new Vector3(0.5f, 53.6f, -15.5f);
+            Vector3 radiaCamPos = new Vector3(0.5f, 55.2f, -15.5f);
             player.TeleportTo(radiaCamPos, false);
             game.Tech.StepRuntime(0.25f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
 
             // Cool cyan underglow along submerged Cherenkov rows so dark water shines authentically
             var cherenkovLightsRoot = new GameObject("RadiaCherenkovGlowLights");
-            float[] glowZ = { 2f, 22f, 42f, 60f };
+            float[] glowZ = { -4f, 12f, 28f, 44f, 60f };
             for (int gz = 0; gz < glowZ.Length; gz++)
             {
                 for (int side = -1; side <= 1; side += 2)
                 {
                     var glObj = new GameObject("CherenkovWaterGlow_" + gz + "_" + side);
                     glObj.transform.SetParent(cherenkovLightsRoot.transform, false);
-                    glObj.transform.position = new Vector3(side * 10.5f, 49.6f, glowZ[gz]);
+                    glObj.transform.position = new Vector3(side * 10.5f, 51.6f, glowZ[gz]);
                     var gl = glObj.AddComponent<Light>();
                     gl.type = LightType.Point;
-                    gl.color = new Color(0.28f, 0.78f, 1.0f);
-                    gl.range = 28f;
-                    gl.intensity = 9.5f;
+                    gl.color = new Color(0.24f, 0.80f, 1.0f);
+                    gl.range = 30f;
+                    gl.intensity = 11.5f;
                     gl.shadows = LightShadows.None;
                 }
             }
 
-            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "10-radia-abyss-twin-helix-dam.png"), () =>
+            yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "10-radia-abyss-twin-helix-dam.png"), () =>
             {
-                cam.fieldOfView = 72f;
+                game.Resume();
+                if (launchVis) launchVis.gameObject.SetActive(false);
+                cam.fieldOfView = 74f;
                 cam.farClipPlane = 600f;
                 cam.clearFlags = CameraClearFlags.SolidColor;
-                cam.backgroundColor = new Color(0.76f, 0.78f, 0.80f, 1f);
+                cam.backgroundColor = new Color(0.72f, 0.74f, 0.76f, 1f);
                 RenderSettings.fog = true;
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogDensity = 0.0046f;
-                RenderSettings.fogColor = new Color(0.68f, 0.70f, 0.73f, 1f);
-                RenderSettings.ambientLight = new Color(0.42f, 0.44f, 0.47f, 1f);
+                RenderSettings.fogDensity = 0.0052f;
+                RenderSettings.fogColor = new Color(0.64f, 0.66f, 0.69f, 1f);
+                RenderSettings.ambientLight = new Color(0.40f, 0.42f, 0.45f, 1f);
                 cam.transform.position = radiaCamPos;
-                cam.transform.LookAt(new Vector3(2.0f, 67.5f, 92.0f));
+                cam.transform.LookAt(new Vector3(1.5f, 59.5f, 92.0f));
                 game.Session.Notice = "";
             });
             Destroy(radiaMutantsRoot);
@@ -742,12 +745,13 @@ namespace LestingCraft.Runtime
             inv.revision++;
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "11-industrial-nuclear-grid-train-drone-robot.png"), () =>
             {
+                game.Resume();
                 game.Session.Data.clock = 585.0;
                 RenderSettings.fog = true;
                 RenderSettings.fogDensity = 0.0022f;
                 cam.fieldOfView = 70f;
                 cam.farClipPlane = 500f;
-                cam.transform.position = new Vector3(icx + 1.2f, igy + 5.4f, icz - 8.2f);
+                cam.transform.position = new Vector3(icx + 1.2f, igy + 5.8f, icz - 8.6f);
                 cam.transform.LookAt(new Vector3(icx - 1.2f, igy + 2.4f, icz + 6.5f));
                 game.Session.Notice = "Энергосеть активна: Реактор ВВЭР + Солнечный массив · Электропоезд «ЭР-Воксель» · Квадрокоптер · «Титан-М»";
             });
@@ -761,10 +765,12 @@ namespace LestingCraft.Runtime
             if (inv.selected < 0) inv.selected = 0;
             inv.revision++;
 
-            Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 52.0f);
+            Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 26.0f);
+            Vector3 shot12Cam = new Vector3(icx + 2.0f, igy + 22.0f, icz - 36.0f);
+            ClearSightCorridor(radiaWorld, shot12Cam, nukeOrigin + Vector3.up * 6f, 16);
             player.TeleportTo(nukeOrigin + Vector3.up * 4f, false);
             yield return WaitWorldMeshed(radiaWorld, 15f);
-            player.TeleportTo(new Vector3(icx + 2.0f, igy + 18.0f, icz - 46.0f), false);
+            player.TeleportTo(shot12Cam, false);
             game.Tech.ArmExplosive(nukeOrigin, true);
             // Advance 9.6s so 8.0s countdown completes and 3D Mushroom Cloud rises in peak glowing glory
             for (int nStep = 0; nStep < 48; nStep++)
@@ -773,11 +779,14 @@ namespace LestingCraft.Runtime
 
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "12-secret-666-thermonuclear-mushroom.png"), () =>
             {
-                game.Session.Data.clock = 1160.0; // Dramatic dusk lighting so incandescent mushroom cloud illuminates sky & crater!
-                cam.fieldOfView = 72f;
+                game.Resume();
+                game.Session.Data.clock = 1140.0; // Dramatic dusk lighting so incandescent mushroom cloud illuminates sky & crater!
+                RenderSettings.fog = true;
+                RenderSettings.fogDensity = 0.0018f;
+                cam.fieldOfView = 76f;
                 cam.farClipPlane = 800f;
-                cam.transform.position = new Vector3(icx + 2.0f, igy + 20.0f, icz - 48.0f);
-                cam.transform.LookAt(nukeOrigin + Vector3.up * 32.0f);
+                cam.transform.position = shot12Cam;
+                cam.transform.LookAt(nukeOrigin + Vector3.up * 26.0f);
                 game.Session.Notice = "☢ СЕКРЕТНЫЙ ОБЪЕКТ 666 (/give 666) · Термоядерный гриб и оплавленный кратер тринитита!";
             });
 
