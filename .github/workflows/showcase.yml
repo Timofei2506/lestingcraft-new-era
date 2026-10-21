@@ -1,0 +1,95 @@
+name: Showcase Screenshots (Linux 64)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: unity-license
+  cancel-in-progress: false
+
+jobs:
+  showcase:
+    name: Build & Capture 1920x1080 Era-v8 Screenshots
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free runner disk space for Unity
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Install Xvfb & Mesa OpenGL 4.5 software rasterizer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-showcase-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Art/PBR/**') }}
+          restore-keys: |
+            Library-showcase-
+            Library-tests-
+            Library-
+
+      - name: Install Unity Editor
+        uses: buildalon/unity-setup@v2
+        with:
+          hub-version: 3.12.0
+          cache-installation: true
+          build-targets: StandaloneLinux64
+
+      - name: Activate Unity license (Personal)
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Build StandaloneLinux64 Player
+        run: |
+          mkdir -p Builds/StandaloneLinux64 Builds/Logs
+          unity-editor \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath . \
+            -executeMethod BuildScript.BuildLinux64 \
+            -logFile Builds/Logs/linux-build.log
+          chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
+          ls -lh Builds/StandaloneLinux64/
+
+      - name: Return Unity license
+        if: always()
+        uses: buildalon/return-unity-license@v2
+
+      - name: Render 8 Authentic 1920x1080 Ultra URP Screenshots in Real Game Binary
+        run: |
+          mkdir -p Builds/StandaloneLinux64/ShowcaseResults Builds/Logs
+          xvfb-run -a -s "-screen 0 1920x1080x24" \
+            env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
+            ./Builds/StandaloneLinux64/LestingCraft.x86_64 \
+            -force-glcore \
+            -screen-fullscreen 0 \
+            -screen-width 1920 \
+            -screen-height 1080 \
+            -lc-showcase \
+            -logFile Builds/Logs/linux-showcase.log
+          grep -E "\\[Showcase\\]" Builds/Logs/linux-showcase.log || true
+          test -f Builds/StandaloneLinux64/ShowcaseResults/08-inventory-new-blocks-and-bed.png
+          ls -lh Builds/StandaloneLinux64/ShowcaseResults/
+
+      - name: Upload 1920x1080 Showcase Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EraV8-Screenshots
+          path: |
+            Builds/StandaloneLinux64/ShowcaseResults/*.png
+            Builds/Logs/linux-showcase.log
+            Builds/Logs/linux-build.log
+          retention-days: 30

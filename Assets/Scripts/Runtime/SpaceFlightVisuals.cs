@@ -203,6 +203,13 @@ namespace LestingCraft.Runtime
             return comp;
         }
 
+        static void SafeDestroy(UnityEngine.Object obj)
+        {
+            if (!obj) return;
+            if (Application.isPlaying) Destroy(obj);
+            else DestroyImmediate(obj);
+        }
+
         Material MakeLitMaterial(string label, Color baseColor, Color emission, float metallic = 0.1f, float smoothness = 0.25f)
         {
             var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
@@ -221,14 +228,18 @@ namespace LestingCraft.Runtime
 
         Material MakeVertexColorMaterial(string label, bool additive = false)
         {
-            Shader sh = additive
-                ? (Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit"))
-                : (Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Universal Render Pipeline/Lit"));
+            Shader sh = Shader.Find("LestingCraft/SmokeParticles")
+                ?? (additive
+                    ? (Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit"))
+                    : (Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Lit")));
             var m = new Material(sh) { name = label, color = Color.white };
+            if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", Texture2D.whiteTexture);
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
             ownedObjects.Add(m);
             return m;
         }
+
+        Light spaceKeyLight;
 
         void BuildCelestialRig()
         {
@@ -236,20 +247,29 @@ namespace LestingCraft.Runtime
             spaceDomeRoot = new GameObject("CelestialSpaceDome");
             spaceDomeRoot.transform.SetParent(transform, false);
 
+            var sunRigLight = new GameObject("DeepSpaceSolarKeyLight");
+            sunRigLight.transform.SetParent(spaceDomeRoot.transform, false);
+            sunRigLight.transform.localRotation = Quaternion.Euler(26f, -38f, 0f);
+            spaceKeyLight = sunRigLight.AddComponent<Light>();
+            spaceKeyLight.type = LightType.Directional;
+            spaceKeyLight.color = new Color(1.0f, 0.96f, 0.90f);
+            spaceKeyLight.intensity = 2.15f;
+            spaceKeyLight.shadows = LightShadows.None;
+
             var backdrop = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             backdrop.name = "DeepSpaceBackdrop";
             backdrop.transform.SetParent(spaceDomeRoot.transform, false);
             backdrop.transform.localScale = new Vector3(-420f, 420f, 420f);
-            DestroyImmediate(backdrop.GetComponent<Collider>());
+            SafeDestroy(backdrop.GetComponent<Collider>());
             domeRenderer = backdrop.GetComponent<MeshRenderer>();
-            domeRenderer.sharedMaterial = MakeLitMaterial("SpaceSkyBackdrop", new Color(0.01f, 0.014f, 0.028f), new Color(0.008f, 0.012f, 0.025f), 0f, 0f);
+            domeRenderer.sharedMaterial = MakeLitMaterial("SpaceSkyBackdrop", new Color(0.008f, 0.012f, 0.026f), new Color(0.006f, 0.010f, 0.022f), 0f, 0f);
             domeRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             domeRenderer.receiveShadows = false;
 
             starfieldObj = new GameObject("ProceduralStarfield");
             starfieldObj.transform.SetParent(spaceDomeRoot.transform, false);
             var sfFilter = starfieldObj.AddComponent<MeshFilter>();
-            sfFilter.sharedMesh = BuildStarfieldMesh(1600, 195f, 2506);
+            sfFilter.sharedMesh = BuildStarfieldMesh(2400, 195f, 2506);
             var sfRenderer = starfieldObj.AddComponent<MeshRenderer>();
             sfRenderer.sharedMaterial = MakeVertexColorMaterial("StarfieldMat");
             sfRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -275,19 +295,114 @@ namespace LestingCraft.Runtime
             spaceDomeRoot.SetActive(false);
         }
 
+        Texture2D BuildAtlasPlanetTexture(CelestialBodyDef body, Color primary, Color secondary)
+        {
+            const int w = 256, h = 128;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Bilinear;
+            int seed = (int)body.Id * 13 + 7;
+            var pixels = new Color32[w * h];
+            for (int y = 0; y < h; y++)
+            {
+                float v = (y + 0.5f) / h;
+                float phi = (v - 0.5f) * Mathf.PI;
+                float cp = Mathf.Cos(phi), sp = Mathf.Sin(phi);
+                float polar = Mathf.Abs(sp);
+                for (int x = 0; x < w; x++)
+                {
+                    float u = (x + 0.5f) / w;
+                    float theta = u * Mathf.PI * 2f;
+                    Vector3 n = new Vector3(cp * Mathf.Cos(theta), sp, cp * Mathf.Sin(theta));
+                    float bandFreq = body.HasRings || body.RadiusKm > 15000.0 ? 15.5f : 7.5f;
+                    float swirl = Mathf.Sin(theta * 3f + sp * 6.5f + seed) * 0.14f + Mathf.Cos(theta * 7f - sp * 11f) * 0.06f;
+                    float band = Mathf.Sin((sp + swirl) * bandFreq + seed * 0.4f) * 0.5f + 0.5f;
+                    float bandFine = Mathf.Cos((sp - swirl * 0.5f) * bandFreq * 2.3f + 1.1f) * 0.5f + 0.5f;
+                    float cont = Mathf.Sin(n.x * 3.9f + seed * 0.7f) * Mathf.Cos(n.z * 3.6f - seed * 0.3f)
+                               + Mathf.Sin(n.y * 4.7f + n.x * 2.2f) * 0.45f;
+                    Color c;
+                    if (body.IsStar)
+                    {
+                        float gran = Mathf.Sin(n.x * 16f + n.z * 14f) * Mathf.Cos(n.y * 15f - n.x * 9f) * 0.5f + 0.5f;
+                        c = Color.Lerp(primary, Color.white, 0.28f + 0.48f * gran);
+                    }
+                    else if (body.Id == CelestialBodyId.Earth)
+                    {
+                        c = polar > 0.80f ? new Color(0.93f, 0.97f, 1.0f)
+                          : cont > 0.06f ? Color.Lerp(new Color(0.14f, 0.48f, 0.20f), new Color(0.54f, 0.46f, 0.27f), band * 0.55f)
+                          : Color.Lerp(new Color(0.05f, 0.22f, 0.58f), new Color(0.13f, 0.46f, 0.82f), bandFine * 0.5f);
+                        float cloud = Mathf.Sin(theta * 5f + sp * 8f) * Mathf.Cos(sp * 6f - theta * 2f);
+                        if (cloud > 0.42f) c = Color.Lerp(c, Color.white, (cloud - 0.42f) * 0.9f);
+                    }
+                    else if (body.HasRings || body.RadiusKm > 15000.0)
+                    {
+                        c = Color.Lerp(primary, secondary, Mathf.Clamp01(band * 0.72f + bandFine * 0.28f));
+                        if (body.Id == CelestialBodyId.Jupiter)
+                        {
+                            float spotDx = Mathf.DeltaAngle(u * 360f, 195f) / 28f;
+                            float spotDy = (sp + 0.34f) / 0.14f;
+                            float spot = 1f - Mathf.Clamp01(spotDx * spotDx + spotDy * spotDy);
+                            if (spot > 0.01f) c = Color.Lerp(c, new Color(0.86f, 0.34f, 0.20f), spot * 0.85f);
+                        }
+                        if (polar > 0.84f) c = Color.Lerp(c, c * 0.72f + new Color(0.06f, 0.08f, 0.12f), (polar - 0.84f) * 4f);
+                    }
+                    else
+                    {
+                        c = Color.Lerp(primary, secondary, Mathf.Clamp01(cont * 0.55f + 0.48f * band));
+                        if (polar > 0.84f) c = Color.Lerp(c, new Color(0.90f, 0.93f, 0.97f), (polar - 0.84f) * 4.2f);
+                    }
+                    c.a = 1f;
+                    pixels[y * w + x] = c;
+                }
+            }
+            tex.SetPixels32(pixels);
+            tex.Apply(false, false);
+            ownedObjects.Add(tex);
+            return tex;
+        }
+
+        Texture2D BuildPlanetaryRingTexture(Color cA, Color cB)
+        {
+            const int w = 256, h = 4;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Bilinear;
+            var pixels = new Color32[w * h];
+            for (int x = 0; x < w; x++)
+            {
+                float r = (x + 0.5f) / w;
+                bool cassiniGap = r > 0.575f && r < 0.655f;
+                bool enckeGap = r > 0.865f && r < 0.895f;
+                bool innerFade = r < 0.05f || r > 0.985f;
+                float ringlet = 0.72f + 0.28f * Mathf.Sin(r * 96f) * Mathf.Cos(r * 37f);
+                float density = (cassiniGap || enckeGap || innerFade) ? 0f
+                    : (r < 0.22f ? 0.55f : r < 0.575f ? 0.98f : 0.84f) * ringlet;
+                Color c = Color.Lerp(cB, Color.Lerp(cA, Color.white, 0.42f), Mathf.Clamp01(density));
+                c.a = density > 0.34f ? 1f : 0f;
+                for (int y = 0; y < h; y++) pixels[y * w + x] = c;
+            }
+            tex.SetPixels32(pixels);
+            tex.Apply(false, false);
+            ownedObjects.Add(tex);
+            return tex;
+        }
+
         GameObject CreateAtlasBodyVisual(CelestialBodyDef body)
         {
             var go = new GameObject("Atlas_" + body.WireKey);
             go.transform.SetParent(spaceDomeRoot.transform, false);
-            float visualRadius = body.IsStar ? 10.5f : body.HasRings ? 8.2f : Mathf.Clamp((float)Math.Log10(Math.Max(200.0, body.RadiusKm)) * 1.65f, 2.2f, 9.2f);
+            float visualRadius = body.IsStar ? 11.5f : body.HasRings ? 9.4f : Mathf.Clamp((float)Math.Log10(Math.Max(200.0, body.RadiusKm)) * 1.75f, 2.5f, 9.8f);
             Color cA = new Color(body.ColorR, body.ColorG, body.ColorB, 1f);
             Color cB = new Color(body.SecondaryR, body.SecondaryG, body.SecondaryB, 1f);
+            var tex = BuildAtlasPlanetTexture(body, cA, cB);
             var mf = go.AddComponent<MeshFilter>();
-            mf.sharedMesh = BuildAtlasSphereMesh(24, 16, visualRadius, cA, cB, body.IsStar, (int)body.Id);
+            mf.sharedMesh = BuildAtlasSphereMesh(48, 32, visualRadius, cA, cB, body.IsStar, (int)body.Id);
             var mr = go.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = body.IsStar
-                ? MakeLitMaterial("AtlasStar_" + body.WireKey, cA, cA * 2.2f, 0f, 0.1f)
-                : MakeVertexColorMaterial("AtlasPlanet_" + body.WireKey);
+            var mat = MakeLitMaterial("AtlasSurface_" + body.WireKey, Color.white, body.IsStar ? cA * 2.35f : Color.white * 0.28f, 0.04f, body.HasRings ? 0.22f : 0.32f);
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
+            mat.mainTexture = tex;
+            if (!body.IsStar && mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", tex);
+            mr.sharedMaterial = mat;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
 
@@ -295,11 +410,20 @@ namespace LestingCraft.Runtime
             {
                 var ring = new GameObject("Rings_" + body.WireKey);
                 ring.transform.SetParent(go.transform, false);
-                ring.transform.localRotation = Quaternion.Euler(body.Id == CelestialBodyId.Uranus ? 97.8f : 26.7f, 14f, 0f);
+                ring.transform.localRotation = Quaternion.Euler(body.Id == CelestialBodyId.Uranus ? 97.8f : 26.7f, 18f, -12f);
+                var ringTex = BuildPlanetaryRingTexture(cA, cB);
                 var rmf = ring.AddComponent<MeshFilter>();
-                rmf.sharedMesh = BuildRingMesh(visualRadius * (float)body.RingInnerScale, visualRadius * (float)body.RingOuterScale, cA, cB, 48);
+                rmf.sharedMesh = BuildRingMesh(visualRadius * (float)body.RingInnerScale, visualRadius * (float)body.RingOuterScale, cA, cB, 72);
                 var rmr = ring.AddComponent<MeshRenderer>();
-                rmr.sharedMaterial = MakeVertexColorMaterial("RingsMat_" + body.WireKey);
+                var rmat = MakeLitMaterial("RingsCutout_" + body.WireKey, Color.white, Color.white * 0.36f, 0.05f, 0.35f);
+                if (rmat.HasProperty("_BaseMap")) rmat.SetTexture("_BaseMap", ringTex);
+                rmat.mainTexture = ringTex;
+                if (rmat.HasProperty("_EmissionMap")) rmat.SetTexture("_EmissionMap", ringTex);
+                if (rmat.HasProperty("_AlphaClip")) rmat.SetFloat("_AlphaClip", 1f);
+                if (rmat.HasProperty("_Cutoff")) rmat.SetFloat("_Cutoff", 0.32f);
+                rmat.EnableKeyword("_ALPHATEST_ON");
+                rmat.renderQueue = 2450;
+                rmr.sharedMaterial = rmat;
                 rmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 rmr.receiveShadows = false;
             }
@@ -310,6 +434,7 @@ namespace LestingCraft.Runtime
         {
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
+            var uvs = new List<Vector2>();
             var cols = new List<Color>();
             var tris = new List<int>();
             for (int lat = 0; lat <= latSegs; lat++)
@@ -323,11 +448,8 @@ namespace LestingCraft.Runtime
                     Vector3 n = new Vector3(Mathf.Cos(phi) * Mathf.Cos(theta), Mathf.Sin(phi), Mathf.Cos(phi) * Mathf.Sin(theta));
                     verts.Add(n * radius);
                     norms.Add(n);
-                    float band = Mathf.Sin(n.y * (7.5f + (seed % 5)) + Mathf.Sin(n.x * 3.3f + seed) * 0.8f) * 0.5f + 0.5f;
-                    float patch = Mathf.Cos(n.x * 4.4f + seed * 0.7f) * Mathf.Sin(n.z * 4.1f - seed * 0.3f) * 0.5f + 0.5f;
-                    Color c = isStar ? Color.Lerp(primary, Color.white, 0.35f * patch) : Color.Lerp(primary, secondary, Mathf.Clamp01(band * 0.65f + patch * 0.35f));
-                    c.a = 1f;
-                    cols.Add(c);
+                    uvs.Add(new Vector2(u, v));
+                    cols.Add(Color.white);
                 }
             }
             int stride = lonSegs + 1;
@@ -339,7 +461,7 @@ namespace LestingCraft.Runtime
                     tris.Add(b); tris.Add(c); tris.Add(d);
                 }
             var mesh = new Mesh { name = "AtlasSphere_" + seed };
-            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             ownedObjects.Add(mesh);
             return mesh;
@@ -348,27 +470,46 @@ namespace LestingCraft.Runtime
         Mesh BuildRingMesh(float innerR, float outerR, Color cA, Color cB, int segs)
         {
             var verts = new List<Vector3>();
+            var norms = new List<Vector3>();
+            var uvs = new List<Vector2>();
             var cols = new List<Color>();
             var tris = new List<int>();
-            for (int i = 0; i <= segs; i++)
+            for (int side = 0; side < 2; side++)
             {
-                float a = (float)i / segs * Mathf.PI * 2f;
-                Vector3 dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                verts.Add(dir * innerR);
-                verts.Add(dir * outerR);
-                cols.Add(Color.Lerp(cA, Color.white, 0.35f));
-                cols.Add(Color.Lerp(cB, cA, 0.45f));
-            }
-            for (int i = 0; i < segs; i++)
-            {
-                int b = i * 2;
-                tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
-                tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3);
-                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
-                tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2);
+                int baseV = verts.Count;
+                float ny = side == 0 ? 1f : -1f;
+                float yOff = side == 0 ? 0.015f : -0.015f;
+                for (int i = 0; i <= segs; i++)
+                {
+                    float t = (float)i / segs;
+                    float a = t * Mathf.PI * 2f;
+                    Vector3 dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                    verts.Add(dir * innerR + new Vector3(0f, yOff, 0f));
+                    verts.Add(dir * outerR + new Vector3(0f, yOff, 0f));
+                    norms.Add(new Vector3(0f, ny, 0f));
+                    norms.Add(new Vector3(0f, ny, 0f));
+                    uvs.Add(new Vector2(0f, 0.5f));
+                    uvs.Add(new Vector2(1f, 0.5f));
+                    cols.Add(Color.white);
+                    cols.Add(Color.white);
+                }
+                for (int i = 0; i < segs; i++)
+                {
+                    int b = baseV + i * 2;
+                    if (side == 0)
+                    {
+                        tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
+                        tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3);
+                    }
+                    else
+                    {
+                        tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
+                        tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2);
+                    }
+                }
             }
             var mesh = new Mesh { name = "PlanetaryRingDisc" };
-            mesh.SetVertices(verts); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             ownedObjects.Add(mesh);
             return mesh;
@@ -378,23 +519,30 @@ namespace LestingCraft.Runtime
         {
             var go = new GameObject("NeighborSpiralGalaxyBackdrop");
             go.transform.SetParent(spaceDomeRoot.transform, false);
-            go.transform.localPosition = new Vector3(-92f, 64f, 148f);
-            go.transform.localRotation = Quaternion.Euler(34f, -22f, 19f);
-            var verts = new List<Vector3>(2400);
-            var cols = new List<Color>(2400);
-            var tris = new List<int>(3600);
+            go.transform.localPosition = new Vector3(-56f, 38f, 146f);
+            go.transform.localRotation = Quaternion.Euler(58f, -18f, 24f);
+            var verts = new List<Vector3>(6400);
+            var uvs = new List<Vector2>(6400);
+            var cols = new List<Color>(6400);
+            var tris = new List<int>(9600);
             var rng = new System.Random(31031);
-            for (int i = 0; i < 600; i++)
+            for (int i = 0; i < 1500; i++)
             {
                 int arm = i % 2;
-                float r = Mathf.Pow((float)rng.NextDouble(), 0.62f) * 34f;
-                float ang = arm * Mathf.PI + r * 0.24f + ((float)rng.NextDouble() - 0.5f) * 0.55f;
-                Vector3 p = new Vector3(Mathf.Cos(ang) * r, ((float)rng.NextDouble() - 0.5f) * (1.8f - r * 0.03f), Mathf.Sin(ang) * r * 0.58f);
-                float sz = Mathf.Lerp(1.6f, 0.42f, r / 34f);
-                Color c = Color.Lerp(new Color(1.0f, 0.90f, 0.72f, 1f), new Color(0.56f, 0.44f, 0.98f, 1f), r / 34f);
+                float r = Mathf.Pow((float)rng.NextDouble(), 0.68f) * 44f;
+                float ang = arm * Mathf.PI + r * 0.21f + ((float)rng.NextDouble() - 0.5f) * 0.62f;
+                Vector3 p = new Vector3(Mathf.Cos(ang) * r, ((float)rng.NextDouble() - 0.5f) * (2.2f - r * 0.03f), Mathf.Sin(ang) * r * 0.62f);
+                float sz = Mathf.Lerp(2.35f, 0.48f, r / 44f);
+                bool h2Knot = rng.NextDouble() < 0.14 && r > 8f;
+                Color c = r < 7f
+                    ? Color.Lerp(new Color(1.0f, 0.95f, 0.80f, 0.92f), new Color(1.0f, 0.84f, 0.56f, 0.80f), r / 7f)
+                    : h2Knot
+                        ? new Color(0.95f, 0.38f, 0.72f, 0.78f)
+                        : Color.Lerp(new Color(0.72f, 0.80f, 1.0f, 0.74f), new Color(0.42f, 0.52f, 0.98f, 0.52f), r / 44f);
                 int b = verts.Count;
                 verts.Add(p + new Vector3(-sz, 0f, -sz)); verts.Add(p + new Vector3(sz, 0f, -sz));
                 verts.Add(p + new Vector3(sz, 0f, sz));   verts.Add(p + new Vector3(-sz, 0f, sz));
+                uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(1f, 0f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(0f, 1f));
                 cols.Add(c); cols.Add(c); cols.Add(c); cols.Add(c);
                 tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
                 tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
@@ -402,7 +550,7 @@ namespace LestingCraft.Runtime
                 tris.Add(b); tris.Add(b + 3); tris.Add(b + 2);
             }
             var mesh = new Mesh { name = "SpiralGalaxyM31" };
-            mesh.SetVertices(verts); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             ownedObjects.Add(mesh);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -418,6 +566,7 @@ namespace LestingCraft.Runtime
             var go = new GameObject("SolarAsteroidBelt");
             go.transform.SetParent(spaceDomeRoot.transform, false);
             var verts = new List<Vector3>(1280);
+            var uvs = new List<Vector2>(1280);
             var cols = new List<Color>(1280);
             var tris = new List<int>(1920);
             var rng = new System.Random(413999);
@@ -431,12 +580,13 @@ namespace LestingCraft.Runtime
                 int b = verts.Count;
                 verts.Add(p + new Vector3(-s, -s, 0f)); verts.Add(p + new Vector3(s, -s, 0f));
                 verts.Add(p + new Vector3(s, s, 0f));  verts.Add(p + new Vector3(-s, s, 0f));
+                uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(1f, 0f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(0f, 1f));
                 cols.Add(c); cols.Add(c); cols.Add(c); cols.Add(c);
                 tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
                 tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
             }
             var mesh = new Mesh { name = "AsteroidBeltTorus" };
-            mesh.SetVertices(verts); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             ownedObjects.Add(mesh);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -465,6 +615,7 @@ namespace LestingCraft.Runtime
         Mesh BuildStarfieldMesh(int count, float radius, int seed)
         {
             var verts = new List<Vector3>(count * 4);
+            var uvs = new List<Vector2>(count * 4);
             var cols = new List<Color>(count * 4);
             var tris = new List<int>(count * 6);
             var rng = new System.Random(seed);
@@ -490,12 +641,14 @@ namespace LestingCraft.Runtime
                 verts.Add(center + right * size - up * size);
                 verts.Add(center + right * size + up * size);
                 verts.Add(center - right * size + up * size);
+                uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(1f, 0f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(0f, 1f));
                 cols.Add(c); cols.Add(c); cols.Add(c); cols.Add(c);
                 tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
                 tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
             }
             var mesh = new Mesh { name = "ProceduralStars" };
             mesh.SetVertices(verts);
+            mesh.SetUVs(0, uvs);
             mesh.SetColors(cols);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
@@ -609,7 +762,7 @@ namespace LestingCraft.Runtime
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
             go.transform.localScale = scale;
-            DestroyImmediate(go.GetComponent<Collider>());
+            SafeDestroy(go.GetComponent<Collider>());
             var mr = go.GetComponent<MeshRenderer>();
             mr.sharedMaterial = mat;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -689,6 +842,7 @@ namespace LestingCraft.Runtime
             BuildCelestialRig();
             if (helm == null || !helm.Active)
             {
+                if (spaceKeyLight) spaceKeyLight.enabled = false;
                 foreach (var kv in atlasBodyObjects) if (kv.Value) kv.Value.SetActive(false);
                 if (spiralGalaxyObj) spiralGalaxyObj.SetActive(false);
                 if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
@@ -697,6 +851,9 @@ namespace LestingCraft.Runtime
 
             if (spaceDomeRoot)
             {
+                RenderSettings.fog = false;
+                if (Camera.main && Camera.main.farClipPlane < 900f) Camera.main.farClipPlane = 900f;
+                if (spaceKeyLight) spaceKeyLight.enabled = true;
                 spaceDomeRoot.SetActive(true);
                 if (viewer) spaceDomeRoot.transform.position = viewer.position;
                 bool jumping = helm.InHyperjump;
@@ -766,23 +923,43 @@ namespace LestingCraft.Runtime
             {
                 dreamWatcherRoot = new GameObject("DreamShadowWatcher");
                 dreamWatcherRoot.transform.SetParent(transform, false);
-                var shadowMat = MakeLitMaterial("DreamShadowSilhouette", new Color(0.015f, 0.012f, 0.022f), Color.black, 0f, 0.05f);
-                var eyeMat = MakeLitMaterial("DreamShadowEyes", new Color(0.88f, 0.90f, 0.98f), new Color(1.5f, 1.55f, 1.8f), 0f, 0.9f);
+                var shadowMat = MakeLitMaterial("DreamShadowSilhouette", new Color(0.012f, 0.010f, 0.018f), new Color(0.028f, 0.014f, 0.045f), 0f, 0.05f);
+                var eyeMat = MakeLitMaterial("DreamShadowEyes", new Color(0.95f, 0.96f, 1.0f), new Color(2.4f, 2.2f, 2.8f), 0f, 0.9f);
 
                 var torso = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 torso.name = "WatcherTorso";
                 torso.transform.SetParent(dreamWatcherRoot.transform, false);
-                torso.transform.localPosition = new Vector3(0f, 1.18f, 0f);
-                torso.transform.localScale = new Vector3(0.46f, 2.24f, 0.24f);
-                DestroyImmediate(torso.GetComponent<Collider>());
+                torso.transform.localPosition = new Vector3(0f, 1.24f, 0f);
+                torso.transform.localScale = new Vector3(0.48f, 2.38f, 0.24f);
+                SafeDestroy(torso.GetComponent<Collider>());
                 torso.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
+
+                var shoulders = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                shoulders.name = "WatcherShoulders";
+                shoulders.transform.SetParent(dreamWatcherRoot.transform, false);
+                shoulders.transform.localPosition = new Vector3(0f, 2.18f, 0f);
+                shoulders.transform.localScale = new Vector3(0.84f, 0.22f, 0.26f);
+                SafeDestroy(shoulders.GetComponent<Collider>());
+                shoulders.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
+
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    var arm = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    arm.name = "WatcherArm" + s;
+                    arm.transform.SetParent(dreamWatcherRoot.transform, false);
+                    arm.transform.localPosition = new Vector3(s * 0.44f, 1.26f, 0.04f);
+                    arm.transform.localRotation = Quaternion.Euler(0f, 0f, s * -5f);
+                    arm.transform.localScale = new Vector3(0.14f, 1.86f, 0.14f);
+                    SafeDestroy(arm.GetComponent<Collider>());
+                    arm.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
+                }
 
                 var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 head.name = "WatcherHead";
                 head.transform.SetParent(dreamWatcherRoot.transform, false);
-                head.transform.localPosition = new Vector3(0f, 2.48f, 0f);
-                head.transform.localScale = new Vector3(0.30f, 0.38f, 0.28f);
-                DestroyImmediate(head.GetComponent<Collider>());
+                head.transform.localPosition = new Vector3(0f, 2.62f, 0f);
+                head.transform.localScale = new Vector3(0.32f, 0.42f, 0.28f);
+                SafeDestroy(head.GetComponent<Collider>());
                 head.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
 
                 for (int i = -1; i <= 1; i += 2)
@@ -790,11 +967,21 @@ namespace LestingCraft.Runtime
                     var eye = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     eye.name = "WatcherEye" + i;
                     eye.transform.SetParent(dreamWatcherRoot.transform, false);
-                    eye.transform.localPosition = new Vector3(i * 0.075f, 2.50f, 0.145f);
-                    eye.transform.localScale = new Vector3(0.042f, 0.024f, 0.02f);
-                    DestroyImmediate(eye.GetComponent<Collider>());
+                    eye.transform.localPosition = new Vector3(i * 0.078f, 2.65f, 0.146f);
+                    eye.transform.localScale = new Vector3(0.052f, 0.028f, 0.02f);
+                    SafeDestroy(eye.GetComponent<Collider>());
                     eye.GetComponent<MeshRenderer>().sharedMaterial = eyeMat;
                 }
+
+                var auraGo = new GameObject("WatcherAuraLight");
+                auraGo.transform.SetParent(dreamWatcherRoot.transform, false);
+                auraGo.transform.localPosition = new Vector3(0f, 2.2f, 0.6f);
+                var aura = auraGo.AddComponent<Light>();
+                aura.type = LightType.Point;
+                aura.color = new Color(0.58f, 0.34f, 0.78f);
+                aura.range = 14f;
+                aura.intensity = 1.65f;
+                aura.shadows = LightShadows.None;
             }
             dreamWatcherRoot.SetActive(true);
             dreamWatcherRoot.transform.position = new Vector3(dream.StalkerX, dream.StalkerY - 1f, dream.StalkerZ);
@@ -1117,7 +1304,7 @@ namespace LestingCraft.Runtime
             go.transform.localPosition = pos;
             go.transform.localScale = scale;
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
-            if (!collider) DestroyImmediate(go.GetComponent<Collider>());
+            if (!collider) SafeDestroy(go.GetComponent<Collider>());
             return go.transform;
         }
 
@@ -1309,7 +1496,8 @@ namespace LestingCraft.Runtime
             go.transform.SetParent(parent, false);
             go.transform.localPosition = pos;
             go.transform.localScale = scale;
-            DestroyImmediate(go.GetComponent<Collider>());
+            if (Application.isPlaying) Destroy(go.GetComponent<Collider>());
+            else DestroyImmediate(go.GetComponent<Collider>());
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
             return go.transform;
         }

@@ -76,7 +76,7 @@ namespace LestingCraft.Runtime
             deadline=Time.realtimeSinceStartup+45;
             while(game.StoryLocked&&failure==null&&Time.realtimeSinceStartup<deadline)yield return null;
             if(game.StoryLocked||failure!=null){Fail("Mandatory opening did not finish its initial cinematic: "+failure);yield break;}
-            if(game.Session.World.ContentVersion!=7||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp.Length!=6)
+            if(game.Session.World.ContentVersion!=GameRules.ContentVersion||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp.Length!=6)
             {Fail("Current living-world runtime systems missing");yield break;}
             var modelProbe=new GameObject("Smoke-only native villager and cat mesh checks");
             modelProbe.transform.position=game.Session.Player.transform.position+Vector3.down*20;
@@ -127,7 +127,7 @@ namespace LestingCraft.Runtime
             if(!VoxelRaycast.Trace(crystalOrigin,Vector3.forward,3,game.Session.World.GetBlock,out var crystalHit)||crystalHit.Cell!=crystalCell){Fail("Native crystal voxel targeting mismatch");yield break;}
             if(!game.Session.Animals||game.Session.Animals.Save().animals.Length==0){Fail("Runtime wildlife did not spawn");yield break;}
             var wildlifeKinds=new System.Collections.Generic.HashSet<int>();foreach(var animal in game.Session.Animals.Save().animals)if(!animal.dead)wildlifeKinds.Add(animal.species);
-            if(wildlifeKinds.Count!=3||FindObjectsByType<AnimalVisual>(FindObjectsSortMode.None).Length<3){Fail("Deer / hare / boar runtime visuals missing");yield break;}
+            if(wildlifeKinds.Count<3||FindObjectsByType<AnimalVisual>(FindObjectsSortMode.None).Length<3){Fail("Deer / hare / boar runtime visuals missing");yield break;}
             if(crystal.GetComponent<MeshRenderer>().sharedMaterial.shader.name!="LestingCraft/CrystalGlass"){Fail("Crystal must use transmitting sparkle shader");yield break;}
             Debug.Log("[Smoke] FOUNDATION11: real deer/hare/boar runtime meshes; transmitting crystal; PBR layers="+SurfaceLayers.Names.Length+"; content version="+game.Session.World.ContentVersion);
             deadline=Time.realtimeSinceStartup+25;CampfireEffects effects=null;

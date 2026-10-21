@@ -15,7 +15,8 @@ on:
       - 'Docs/**'
       - 'README.md'
       - '.github/workflows/website.yml'
-      - '.github/workflows/release-feed.yml' 
+      - '.github/workflows/release-feed.yml'
+      - '.github/workflows/showcase.yml'
   pull_request:
     branches: [main, develop]
     paths-ignore:
@@ -28,7 +29,8 @@ on:
       - 'Docs/**'
       - 'README.md'
       - '.github/workflows/website.yml'
-      - '.github/workflows/release-feed.yml' 
+      - '.github/workflows/release-feed.yml'
+      - '.github/workflows/showcase.yml'
   workflow_dispatch:
 
 # Personal-лицензия имеет мало мест — не даём сборкам конкурировать за seat

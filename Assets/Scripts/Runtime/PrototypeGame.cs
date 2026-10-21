@@ -1162,8 +1162,21 @@ namespace LestingCraft.Runtime
             if(woke)ExitDreamSequence();
         }
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
+        public LaunchSiteVisual LaunchComplexVisual=>launchVisual;
+        public SpaceFlightVisuals SpaceVisuals=>spaceVisuals;
+        public void ShowcaseSpawnCosmodrome(int baseX,int baseZ)
+        {
+            if(!Session||!world)return;
+            var site=LaunchSiteVisual.OfflineSite(world.Seed,baseX,baseZ,world.Dimension);
+            SetLaunchSite(site);
+            launchVisual=LaunchSiteVisual.Create(world.transform,site,world.Seed,world.Dimension);
+            if(world.Dimension==Dimension.Lestingia){Session.Data.launchPlaced=true;Session.Data.launchX=baseX;Session.Data.launchZ=baseZ;}
+        }
+        public void ShowcaseOpenSpace(bool autoJumpAndromeda){EnterOpenSpaceFlight(autoJumpAndromeda);}
+        public void ShowcaseEnterDream(){if(!Session||!WorldReady||Dream.IsActive)return;Dream.EnterDream(world.Dimension,player.transform.position.x,player.transform.position.y,player.transform.position.z);EnterDreamSequence();}
+        public void ShowcaseExitDream(){if(Dream.IsActive){Dream.ForceWake();ExitDreamSequence();}}
         public void PlayOffline()
-        {if(busy||world)return;IsSurfacePreview=false;int seed=Array.IndexOf(Environment.GetCommandLineArgs(),"-lc-smoke-test")>=0?2506:Guid.NewGuid().GetHashCode();seedText=seed.ToString();StartWorld(seed,0,false);}
+        {if(busy||world)return;IsSurfacePreview=false;int seed=(Array.IndexOf(Environment.GetCommandLineArgs(),"-lc-smoke-test")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-lc-showcase")>=0)?2506:Guid.NewGuid().GetHashCode();seedText=seed.ToString();StartWorld(seed,0,false);}
         public void ContinueOffline()
         {
             if(busy||world)return;resumeSave=LocalSave.Load();if(resumeSave==null){Fail("Сохранение повреждено");return;}

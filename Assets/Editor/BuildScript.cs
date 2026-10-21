@@ -21,6 +21,11 @@ public static class BuildScript
         Build(BuildTarget.StandaloneWindows64, "Builds/StandaloneWindows64/LestingCraft.exe");
     }
 
+    public static void BuildLinux64()
+    {
+        Build(BuildTarget.StandaloneLinux64, "Builds/StandaloneLinux64/LestingCraft.x86_64");
+    }
+
     private static void Build(BuildTarget target, string outputPath)
     {
         if (Scenes.Length == 0)
@@ -37,16 +42,17 @@ public static class BuildScript
             if(!array||array.depth!=LestingCraft.Presentation.SurfaceLayers.Names.Length||array.width!=512||array.height!=512)
                 throw new InvalidOperationException("Incomplete current PBR array: "+layer);
         }
-        if(LestingCraft.Gameplay.GameRules.Version!=12)throw new InvalidOperationException("Expected rules12 creative placement test build");
+        if(LestingCraft.Gameplay.GameRules.Version!=13)throw new InvalidOperationException("Expected rules13 era-v8 build");
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
         // Developer playtest build from the space branch; not a public release until Unity smoke passes.
-        PlayerSettings.bundleVersion = "0.3.5-ground-creative-test";
+        PlayerSettings.bundleVersion = "0.4.0-era-v8";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");
         var sizes=PlayerSettings.GetIconSizes(UnityEditor.Build.NamedBuildTarget.Standalone,IconKind.Application);
-        PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Standalone,sizes.Select(_=>icon).ToArray(),IconKind.Application);
+        if(sizes!=null&&sizes.Length>0)
+            PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Standalone,sizes.Select(_=>icon).ToArray(),IconKind.Application);
 
         var options = new BuildPlayerOptions
         {
