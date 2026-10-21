@@ -117,7 +117,7 @@ namespace LestingCraft.Tests
 
             // Hard multi-stage escape ritual: cannot open sluice until 6 cores + all 3 Raid Bosses are defeated + 20s purge completes
             sim.ResetRadiaEncounter();
-            StringAssert.Contains("ЗАБЛОКИРОВАН", sim.TryActivateDamTerminal());
+            StringAssert.Contains("ОТКАЗ ШЛЮЗА", sim.TryActivateDamTerminal());
             sim.HarvestedSubmergedCores = 6;
             for (int b = 0; b < 3; b++)
             {

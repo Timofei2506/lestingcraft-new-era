@@ -586,6 +586,8 @@ namespace LestingCraft.Runtime
             inv.slots[8] = new ItemStack { item = Items.CherenkovCore, count = 6 };
             inv.selected = 0;
             inv.revision++;
+            yield return null;
+            yield return null;
 
             SetCamerasActive(cam, hands, false);
             var radiaWorld = game.Session.World;
@@ -622,46 +624,100 @@ namespace LestingCraft.Runtime
                 mGo.AddComponent<AnimalVisual>().Build(radiaSpecies[m]);
             }
 
-            Vector3 radiaCamPos = new Vector3(0.5f, 55.2f, -15.5f);
+            Vector3 radiaCamPos = new Vector3(0.5f, 54.4f, -15.5f);
             player.TeleportTo(radiaCamPos, false);
             game.Tech.StepRuntime(0.25f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
 
-            // Cool cyan underglow along submerged Cherenkov rows so dark water shines authentically
+            // Subtle underwater cyan Cherenkov glow + dark stormy water tint + cinematic vignette overlay matching image-1.png!
+            Material waterMat = Resources.Load<Material>("Generated/Water");
+            Color origShallow = waterMat && waterMat.HasProperty("_ShallowColor") ? waterMat.GetColor("_ShallowColor") : Color.black;
+            Color origDeep = waterMat && waterMat.HasProperty("_DeepColor") ? waterMat.GetColor("_DeepColor") : Color.black;
+            Color origBase = waterMat && waterMat.HasProperty("_BaseColor") ? waterMat.GetColor("_BaseColor") : Color.white;
+            if (waterMat)
+            {
+                if (waterMat.HasProperty("_ShallowColor")) waterMat.SetColor("_ShallowColor", new Color(0.03f, 0.05f, 0.07f, 0.42f));
+                if (waterMat.HasProperty("_DeepColor")) waterMat.SetColor("_DeepColor", new Color(0.02f, 0.03f, 0.04f, 0.72f));
+                if (waterMat.HasProperty("_BaseColor")) waterMat.SetColor("_BaseColor", new Color(0.04f, 0.05f, 0.06f, 0.48f));
+            }
+            Light sunLight = RenderSettings.sun;
+            float origSunInt = sunLight ? sunLight.intensity : 1f;
+            Color origSunCol = sunLight ? sunLight.color : Color.white;
+            if (sunLight)
+            {
+                sunLight.color = new Color(0.55f, 0.58f, 0.62f, 1f);
+                sunLight.intensity = 0.32f;
+            }
+
+            // Screen-space heavy dark border vignette + falling ash flakes matching reference image-1.png
+            var vignetteCanvasGo = new GameObject("RadiaDarkVignetteOverlay");
+            var vCanvas = vignetteCanvasGo.AddComponent<Canvas>();
+            vCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            vCanvas.sortingOrder = 50; // Below HUD (100), right over world camera!
+            var vTex = new Texture2D(128, 128, TextureFormat.RGBA32, false);
+            for (int vy = 0; vy < 128; vy++)
+                for (int vx = 0; vx < 128; vx++)
+                {
+                    float nx = (vx / 127f) * 2f - 1f, ny = (vy / 127f) * 2f - 1f;
+                    float r = Mathf.Sqrt(nx * nx * 1.12f + ny * ny * 0.92f);
+                    float a = Mathf.Clamp01(Mathf.Pow(Mathf.Clamp01((r - 0.52f) / 0.58f), 1.85f) * 0.92f);
+                    vTex.SetPixel(vx, vy, new Color(0.01f, 0.012f, 0.015f, a));
+                }
+            vTex.Apply();
+            var vImgGo = new GameObject("VignetteRaw", typeof(RectTransform), typeof(RawImage));
+            vImgGo.transform.SetParent(vignetteCanvasGo.transform, false);
+            var vrt = vImgGo.GetComponent<RectTransform>();
+            vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = Vector2.zero; vrt.offsetMax = Vector2.zero;
+            vImgGo.GetComponent<RawImage>().texture = vTex;
+
             var cherenkovLightsRoot = new GameObject("RadiaCherenkovGlowLights");
-            float[] glowZ = { -4f, 12f, 28f, 44f, 60f };
+            float[] glowZ = { -4f, 12f, 28f, 44f };
             for (int gz = 0; gz < glowZ.Length; gz++)
             {
                 for (int side = -1; side <= 1; side += 2)
                 {
                     var glObj = new GameObject("CherenkovWaterGlow_" + gz + "_" + side);
                     glObj.transform.SetParent(cherenkovLightsRoot.transform, false);
-                    glObj.transform.position = new Vector3(side * 10.5f, 51.6f, glowZ[gz]);
+                    glObj.transform.position = new Vector3(side * 10.5f, 49.4f, glowZ[gz]);
                     var gl = glObj.AddComponent<Light>();
                     gl.type = LightType.Point;
-                    gl.color = new Color(0.24f, 0.80f, 1.0f);
-                    gl.range = 30f;
-                    gl.intensity = 11.5f;
+                    gl.color = new Color(0.14f, 0.68f, 1.0f);
+                    gl.range = 14f;
+                    gl.intensity = 2.4f;
                     gl.shadows = LightShadows.None;
                 }
             }
 
             yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "10-radia-abyss-twin-helix-dam.png"), () =>
             {
-                game.Resume();
                 if (launchVis) launchVis.gameObject.SetActive(false);
+                VisualSettings.EnsurePostProcessingVolume(0.72f, true, 0f); // Slight desaturation so cyan Cherenkov glow shines bright blue while sky/concrete stay moody monochrome!
                 cam.fieldOfView = 74f;
                 cam.farClipPlane = 600f;
-                cam.clearFlags = CameraClearFlags.SolidColor;
-                cam.backgroundColor = new Color(0.72f, 0.74f, 0.76f, 1f);
+                cam.clearFlags = CameraClearFlags.Skybox;
+                game.Session.Data.clock = 760.0;
                 RenderSettings.fog = true;
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogDensity = 0.0052f;
-                RenderSettings.fogColor = new Color(0.64f, 0.66f, 0.69f, 1f);
-                RenderSettings.ambientLight = new Color(0.40f, 0.42f, 0.45f, 1f);
-                cam.transform.position = radiaCamPos;
-                cam.transform.LookAt(new Vector3(1.5f, 59.5f, 92.0f));
+                RenderSettings.fogDensity = 0.0085f;
+                RenderSettings.fogColor = new Color(0.46f, 0.48f, 0.50f, 1f);
+                RenderSettings.ambientLight = new Color(0.14f, 0.15f, 0.17f, 1f);
+                cam.transform.position = new Vector3(0.5f, 52.8f, -8.5f);
+                cam.transform.LookAt(new Vector3(1.5f, 60.5f, 92.0f));
                 game.Session.Notice = "";
             });
+            Destroy(vignetteCanvasGo);
+            Destroy(vTex);
+            if (waterMat)
+            {
+                if (waterMat.HasProperty("_ShallowColor")) waterMat.SetColor("_ShallowColor", origShallow);
+                if (waterMat.HasProperty("_DeepColor")) waterMat.SetColor("_DeepColor", origDeep);
+                if (waterMat.HasProperty("_BaseColor")) waterMat.SetColor("_BaseColor", origBase);
+            }
+            if (sunLight)
+            {
+                sunLight.color = origSunCol;
+                sunLight.intensity = origSunInt;
+            }
             Destroy(radiaMutantsRoot);
             Destroy(cherenkovLightsRoot);
 
@@ -671,8 +727,11 @@ namespace LestingCraft.Runtime
             // =========================================================================
             SetCamerasActive(cam, hands, false);
             VisualSettings.EnsurePostProcessingVolume(0f, false, 0f);
+            game.Tech.Sim.PostEscapeImmunityTimer = 999f;
+            game.Tech.Sim.RadiationDose01 = 0f;
             radiaWorld.SwitchPlanet(Dimension.Lestingia, Array.Empty<SavedBlock>());
             spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Lestingia, player, cam);
+            cam.clearFlags = CameraClearFlags.Skybox;
             int icx = 32, icz = 32, igy = 48;
             player.TeleportTo(new Vector3(icx, igy + 4f, icz), false);
             yield return WaitWorldMeshed(radiaWorld, 25f);
@@ -745,7 +804,6 @@ namespace LestingCraft.Runtime
             inv.revision++;
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "11-industrial-nuclear-grid-train-drone-robot.png"), () =>
             {
-                game.Resume();
                 game.Session.Data.clock = 585.0;
                 RenderSettings.fog = true;
                 RenderSettings.fogDensity = 0.0022f;
@@ -779,7 +837,6 @@ namespace LestingCraft.Runtime
 
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "12-secret-666-thermonuclear-mushroom.png"), () =>
             {
-                game.Resume();
                 game.Session.Data.clock = 1140.0; // Dramatic dusk lighting so incandescent mushroom cloud illuminates sky & crater!
                 RenderSettings.fog = true;
                 RenderSettings.fogDensity = 0.0018f;
