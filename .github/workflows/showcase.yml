@@ -11,7 +11,7 @@ jobs:
   showcase:
     name: Build & Capture 1920x1080 Era-v8 Screenshots
     runs-on: ubuntu-22.04
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,12 +26,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils clang lld zlib1g-dev
 
-      - name: Cache Library
-        uses: actions/cache@v4
+      - name: Restore Library & IL2CPP Cache
+        uses: actions/cache/restore@v4
         with:
           path: Library
-          key: Library-showcase-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Art/PBR/**') }}
+          key: Library-il2cpp-v2-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
           restore-keys: |
+            Library-il2cpp-v2-
             Library-showcase-
             Library-tests-
             Library-
@@ -56,6 +57,13 @@ jobs:
           log-name: build-StandaloneLinux64
           build-target: StandaloneLinux64
           args: -quit -batchmode -nographics -executeMethod BuildScript.BuildLinux64
+
+      - name: Save Full IL2CPP Library Cache Always
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: Library-il2cpp-v2-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
 
       - name: Render 8 Authentic 1920x1080 Ultra URP Screenshots in Real Game Binary
         run: |

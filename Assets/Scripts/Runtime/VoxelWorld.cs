@@ -141,6 +141,41 @@ namespace LestingCraft.Runtime
         {
             return edits.ContainsKey(cell) || edits.Count < (Online ? 4096 : 8192);
         }
+        public bool IsIdleForShowcase
+        {
+            get { return Ready && dirty.Count == 0 && meshTask == null; }
+        }
+        public void ShowcaseEditUnbounded(int x, int y, int z, ushort block)
+        {
+            if (!Contains(x, y, z) || y == 0 || block == BlockRegistry.BedrockId) return;
+            if (GetBlock(x, y, z) == block) return;
+            var pos = new Vector3Int(x, y, z);
+            edits[pos] = block;
+            editRevision++;
+            var key = new Vector2Int(ChunkCoordinate(x), ChunkCoordinate(z));
+            View view;
+            if (chunks.TryGetValue(key, out view))
+            {
+                var local = new Vector3Int(x - key.x * 16, y, z - key.y * 16);
+                view.Data.SetBlock(local.x, y, local.z, block);
+                if (BlockRegistry.IsCustomPlacedModel(block)) view.SpecialCells[local] = block;
+                else view.SpecialCells.Remove(local);
+                view.SpecialsDirty = true;
+            }
+            Skylight.Edit(x, y, z);
+            if (skyVolume) skyVolume.Invalidate();
+            dirty.Add(key);
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx < 0 && x - key.x * 16 != 0 || dx > 0 && x - key.x * 16 != 15) continue;
+                    if (dz < 0 && z - key.y * 16 != 0 || dz > 0 && z - key.y * 16 != 15) continue;
+                    var affected = key + new Vector2Int(dx, dz);
+                    dirty.Add(affected);
+                    View adjacent;
+                    if (chunks.TryGetValue(affected, out adjacent)) adjacent.SpecialsDirty = true;
+                }
+        }
         public void Edit(int x, int y, int z, ushort block)
         {
             int maxAllowed = Online && ContentVersion < 2 ? 18 :

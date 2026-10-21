@@ -24,6 +24,7 @@ public static class BuildScript
     public static void BuildLinux64()
     {
         PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Standalone, ScriptingImplementation.IL2CPP);
+        PlayerSettings.SetIl2CppCompilerConfiguration(UnityEditor.Build.NamedBuildTarget.Standalone, Il2CppCompilerConfiguration.Debug);
         Build(BuildTarget.StandaloneLinux64, "Builds/StandaloneLinux64/LestingCraft.x86_64");
     }
 

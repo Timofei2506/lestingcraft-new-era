@@ -1164,6 +1164,14 @@ namespace LestingCraft.Runtime
         public string ModeName=>GameRules.ModeNames[Session?(int)Session.Mode:selectedMode];
         public LaunchSiteVisual LaunchComplexVisual=>launchVisual;
         public SpaceFlightVisuals SpaceVisuals=>spaceVisuals;
+        public void ShowcaseStartFreshWorld()
+        {
+            if(world)Leave();
+            IsSurfacePreview=false;
+            selectedMode=0;
+            seedText="2506";
+            StartWorld(2506,0,false);
+        }
         public void ShowcaseSpawnCosmodrome(int baseX,int baseZ)
         {
             if(!Session||!world)return;

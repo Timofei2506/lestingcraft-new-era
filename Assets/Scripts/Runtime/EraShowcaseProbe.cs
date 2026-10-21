@@ -49,6 +49,8 @@ namespace LestingCraft.Runtime
 
         IEnumerator Start()
         {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 1000;
             Screen.SetResolution(1920, 1080, false);
             yield return null;
             yield return null;
@@ -76,32 +78,41 @@ namespace LestingCraft.Runtime
             string outDir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "ShowcaseResults"));
             Directory.CreateDirectory(outDir);
 
-            // Launch deterministic survival world (seed 2506) on Ultra graphics quality
+            // Launch deterministic survival world (seed 2506) directly on Ultra preset,
+            // keeping cameras muted ONLY during background chunk streaming so CPU software
+            // rasterization does not throttle VoxelWorld.LateUpdate() chunk meshing.
+            VisualSettings.Current.Ultra();
             ui.ShowHome();
-            game.SelectedMode = 0;
-            game.PlayOffline();
+            game.ShowcaseStartFreshWorld();
+            yield return null;
 
-            deadline = Time.realtimeSinceStartup + 210f;
-            while (!game.WorldReady && Time.realtimeSinceStartup < deadline)
+            var cam = Camera.main;
+            var player = game.Session ? game.Session.Player : null;
+            var hands = player ? player.GetComponent<FirstPersonHands>() : null;
+            SetCamerasActive(cam, hands, false);
+
+            deadline = Time.realtimeSinceStartup + 180f;
+            while ((!game.WorldReady || !game.Session || !game.Session.World.IsIdleForShowcase) &&
+                   Time.realtimeSinceStartup < deadline)
             {
                 if (game.Session) game.Session.Data.clock = 570.0;
                 yield return null;
             }
+            Debug.Log("[Showcase] Initial world streaming complete: ready=" + game.WorldReady +
+                      " chunks=" + game.ChunkCount + " t=" + Time.realtimeSinceStartup.ToString("F1") + "s");
             if (!game.WorldReady || !game.Session || game.ChunkCount < 5)
             {
-                Fail("World failed to initialize for showcase.");
+                Fail("World failed to initialize for showcase (chunks=" + game.ChunkCount + ").");
                 yield break;
             }
 
-            // Wait for compulsory ruined-house intro lock to finish naturally
-            deadline = Time.realtimeSinceStartup + 45f;
+            // Wait for compulsory ruined-house intro cinematic lock while cameras are muted (~1000 FPS)
+            deadline = Time.realtimeSinceStartup + 60f;
             while (game.StoryLocked && Time.realtimeSinceStartup < deadline)
                 yield return null;
 
-            VisualSettings.Current.Ultra();
-            var player = game.Session.Player;
-            var cam = Camera.main;
-            var hands = player.GetComponent<FirstPersonHands>();
+            player = game.Session.Player;
+            hands = player.GetComponent<FirstPersonHands>();
             player.enabled = false;
 
             // Populate hotbar with signature era-v8 items so HUD bar looks authentic in every gameplay shot
@@ -128,15 +139,18 @@ namespace LestingCraft.Runtime
             // SHOT 1: Upgraded Village, Shingled Houses, Bed Interior, Lantern Street
             //         Poles (zero campfires on posts!) & Diverse Villager Professions
             // =========================================================================
+            SetCamerasActive(cam, hands, false);
             MoveBoth(player, cam, new Vector3(baseX, 90f, baseZ), new Vector3(baseX, 80f, baseZ + 8f));
-            yield return WaitWorldSettle(24, null);
+            yield return WaitWorldMeshed(game.Session.World, 35f);
             int groundY = FindSurfaceY(game.Session.World, baseX, baseZ);
             GameObject villageRoot = BuildVillageShowcaseScene(game.Session.World, baseX, groundY, baseZ);
             inv.selected = 0;
             inv.revision++;
             Vector3 shot1Cam = new Vector3(baseX - 9.5f, groundY + 4.35f, baseZ - 12.5f);
             Vector3 shot1Look = new Vector3(baseX + 2.5f, groundY + 2.8f, baseZ + 3.5f);
-            yield return WaitWorldSettle(18, () =>
+            MoveBoth(player, cam, shot1Cam, shot1Look);
+            yield return WaitWorldMeshed(game.Session.World, 35f);
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "01-village-houses-lantern-poles.png"), () =>
             {
                 game.Session.Data.clock = 975.0;
                 game.Session.Notice = "Обновлённая деревня: черепичные крыши, кровати в домах, уличные фонари и 10 профессий жителей";
@@ -144,7 +158,6 @@ namespace LestingCraft.Runtime
                 cam.farClipPlane = 450f;
                 MoveBoth(player, cam, shot1Cam, shot1Look);
             });
-            yield return CaptureVerified(Path.Combine(outDir, "01-village-houses-lantern-poles.png"));
             Destroy(villageRoot);
 
             // =========================================================================
@@ -153,21 +166,22 @@ namespace LestingCraft.Runtime
             // =========================================================================
             int bioX = Mathf.Clamp(baseX + 86, -180, 180), bioZ = Mathf.Clamp(baseZ - 22, -180, 180);
             MoveBoth(player, cam, new Vector3(bioX, 90f, bioZ), new Vector3(bioX, 80f, bioZ + 8f));
-            yield return WaitWorldSettle(24, null);
+            yield return WaitWorldMeshed(game.Session.World, 35f);
             int bioY = FindSurfaceY(game.Session.World, bioX, bioZ);
             GameObject wildlifeRoot = BuildBiomesAndWildlifeScene(game.Session.World, bioX, bioY, bioZ);
             inv.selected = 5;
             inv.revision++;
             Vector3 shot2Cam = new Vector3(bioX, bioY + 4.25f, bioZ - 13.5f);
             Vector3 shot2Look = new Vector3(bioX, bioY + 2.25f, bioZ + 4.5f);
-            yield return WaitWorldSettle(18, () =>
+            MoveBoth(player, cam, shot2Cam, shot2Look);
+            yield return WaitWorldMeshed(game.Session.World, 35f);
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "02-biomes-cherry-blocks-and-20-animals.png"), () =>
             {
                 game.Session.Data.clock = 615.0;
                 game.Session.Notice = "Новые биомы (Вишнёвая роща, Биолюминесцентная чаща, Меса, Ледник), 16 блоков и 20 видов животных";
                 cam.fieldOfView = 68f;
                 MoveBoth(player, cam, shot2Cam, shot2Look);
             });
-            yield return CaptureVerified(Path.Combine(outDir, "02-biomes-cherry-blocks-and-20-animals.png"));
             Destroy(wildlifeRoot);
 
             // =========================================================================
@@ -175,28 +189,28 @@ namespace LestingCraft.Runtime
             // =========================================================================
             int padX = Mathf.Clamp(baseX - 88, -170, 170), padZ = Mathf.Clamp(baseZ + 76, -170, 170);
             MoveBoth(player, cam, new Vector3(padX - 24f, 92f, padZ - 28f), new Vector3(padX, 82f, padZ));
-            yield return WaitWorldSettle(24, null);
+            yield return WaitWorldMeshed(game.Session.World, 35f);
             game.ShowcaseSpawnCosmodrome(padX, padZ);
-            yield return WaitWorldSettle(16, null);
+            yield return null;
             var launchVis = game.LaunchComplexVisual;
             Vector3 shuttleBase = launchVis ? launchVis.ShuttleRoot.position : new Vector3(padX, 68f, padZ);
             Vector3 shot3Cam = shuttleBase + new Vector3(-25f, 10.5f, -31f);
             Vector3 shot3Look = shuttleBase + new Vector3(0.5f, 22.5f, 1.5f);
             ClearSightCorridor(game.Session.World, shot3Cam, shot3Look, 6);
-            yield return WaitWorldSettle(16, () =>
+            MoveBoth(player, cam, shot3Cam, shot3Look);
+            yield return WaitWorldMeshed(game.Session.World, 35f);
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "03-cosmodrome-orbiter-launch-complex.png"), () =>
             {
                 game.Session.Data.clock = 900.0;
                 game.Session.Notice = "Космодром Лестингии: стартовый стол, кабель-мачта, лифт экипажа и вертикальный орбитальный шаттл";
                 cam.fieldOfView = 68f;
                 MoveBoth(player, cam, shot3Cam, shot3Look);
             });
-            yield return CaptureVerified(Path.Combine(outDir, "03-cosmodrome-orbiter-launch-complex.png"));
 
             // =========================================================================
             // SHOT 4: Seated Interactive 3D Shuttle Cockpit (Switches, Red Master Arm
             //         Cover, Throttle, 6-DOF Flight Stick & Live Cyan MFD)
             // =========================================================================
-            if (hands && hands.ViewCamera) hands.ViewCamera.enabled = false;
             var cabin = launchVis ? launchVis.Cabin : null;
             GameObject cockpitFillObj = null;
             if (cabin)
@@ -213,8 +227,10 @@ namespace LestingCraft.Runtime
                 fill.range = 6.5f;
                 fill.intensity = 2.65f;
                 fill.shadows = LightShadows.None;
-
-                yield return WaitWorldSettle(12, () =>
+            }
+            yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "04-cockpit-interactive-3d-controls.png"), () =>
+            {
+                if (cabin)
                 {
                     if (cabin.InteractiveRig)
                     {
@@ -233,10 +249,9 @@ namespace LestingCraft.Runtime
                     cam.nearClipPlane = 0.04f;
                     cam.transform.position = eyeWorld;
                     cam.transform.LookAt(lookWorld);
-                    game.Session.Notice = "3D-кабина шаттла: интерактивные тумблеры, колпак «Взвод», РУД, штурвал 6-DOF и дисплей MFD";
-                });
-            }
-            yield return CaptureVerified(Path.Combine(outDir, "04-cockpit-interactive-3d-controls.png"));
+                }
+                game.Session.Notice = "3D-кабина шаттла: интерактивные тумблеры, колпак «Взвод», РУД, штурвал 6-DOF и дисплей MFD";
+            });
             if (cockpitFillObj) Destroy(cockpitFillObj);
             cam.nearClipPlane = 0.1f;
 
@@ -249,7 +264,7 @@ namespace LestingCraft.Runtime
             var helm = game.SpaceHelm;
             var spaceVis = SpaceFlightVisuals.Ensure(null);
             Transform shipRoot = game.LaunchComplexVisual ? game.LaunchComplexVisual.ShuttleRoot : null;
-            yield return WaitWorldSettle(10, () =>
+            yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "05-open-space-saturn-solar-system.png"), () =>
             {
                 helm.SelectTarget(CelestialBodyId.Saturn);
                 SpaceVector saturnPos = CelestialAtlas.WorldPositionKm(CelestialBodyId.Saturn, helm.OrbitTimeDays);
@@ -277,7 +292,6 @@ namespace LestingCraft.Runtime
                 }
                 game.Session.Notice = "Открытый космос [Солнечная система]: ручной полёт у колец Сатурна • Скорость 18 400 м/с • M — Галактика Андромеды";
             });
-            yield return CaptureVerified(Path.Combine(outDir, "05-open-space-saturn-solar-system.png"));
 
             // =========================================================================
             // SHOT 6: Intergalactic Flight in Galaxy #2 — Andromeda (M31) & Ringed
@@ -287,7 +301,7 @@ namespace LestingCraft.Runtime
             helm.StartHyperjump(CelestialBodyId.AndromedaPrime);
             for (int step = 0; step < 30; step++)
                 helm.Step(0.5f, 0f, 0f, 0f);
-            yield return WaitWorldSettle(10, () =>
+            yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "06-andromeda-galaxy-prime.png"), () =>
             {
                 helm.SelectTarget(CelestialBodyId.AndromedaPrime);
                 SpaceVector primePos = CelestialAtlas.WorldPositionKm(CelestialBodyId.AndromedaPrime, helm.OrbitTimeDays);
@@ -320,9 +334,7 @@ namespace LestingCraft.Runtime
                 }
                 game.Session.Notice = "Галактика Андромеды (M31): система Ядра Андромеды • Планета Андромеда Прайм и спиральный рукав";
             });
-            yield return CaptureVerified(Path.Combine(outDir, "06-andromeda-galaxy-prime.png"));
 
-            // Disengage open space cleanly before entering the Dream dimension
             helm.Disengage();
             spaceVis.SetOpenSpaceFlightActive(null, shipRoot, cam.transform);
             if (shipRoot) shipRoot.rotation = Quaternion.identity;
@@ -332,12 +344,14 @@ namespace LestingCraft.Runtime
             //         & Glowing-Eyed Shadow Watcher in Swirling Fog (Isolated from Co-op)
             // =========================================================================
             game.ShowcaseEnterDream();
-            yield return WaitWorldSettle(24, null);
+            yield return WaitWorldMeshed(game.Session.World, 35f);
             Vector3 dp = player.transform.position;
             int dx = Mathf.RoundToInt(dp.x), dz = Mathf.RoundToInt(dp.z);
             int dy = FindSurfaceY(game.Session.World, dx, dz);
             var dreamLightObj = BuildDreamCorridorAndMonoliths(game.Session.World, dx, dy, dz);
-            yield return WaitWorldSettle(16, () =>
+            MoveBoth(player, cam, new Vector3(dx, dy + 2.35f, dz - 3.5f), new Vector3(dx, dy + 2.45f, dz + 10.5f));
+            yield return WaitWorldMeshed(game.Session.World, 35f);
+            yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "07-dream-dimension-sleep-paralysis.png"), () =>
             {
                 spaceVis.SyncDreamWatcher(game.Dream, cam.transform);
                 var watcherObj = GameObject.Find("DreamShadowWatcher");
@@ -356,22 +370,16 @@ namespace LestingCraft.Runtime
                 MoveBoth(player, cam, new Vector3(dx, dy + 2.35f, dz - 3.5f), new Vector3(dx, dy + 2.45f, dz + 10.5f));
                 game.Session.Notice = "Измерение «Сон» [Сонный паралич]: вы не можете пошевелиться... В тумане замер Наблюдатель (изоляция от мира)";
             });
-            yield return CaptureVerified(Path.Combine(outDir, "07-dream-dimension-sleep-paralysis.png"));
             if (dreamLightObj) Destroy(dreamLightObj);
 
             // Wake up cleanly back into sunlit Lestingia!
             game.ShowcaseExitDream();
-            yield return WaitWorldSettle(22, () =>
-            {
-                game.Session.Data.clock = 640.0;
-                RenderSettings.fog = false;
-            });
+            yield return WaitWorldMeshed(game.Session.World, 35f);
 
             // =========================================================================
             // SHOT 8: Live In-Game Inventory UI, Full Armor 3D Character Preview &
             //         All 16 New v8 Blocks + Craftable Bed Tooltip
             // =========================================================================
-            if (hands && hands.ViewCamera) hands.ViewCamera.enabled = true;
             int[] gearItems = { 104, 105, 106, 107, 108, 130, 131, 132 };
             for (int g = 0; g < gearItems.Length; g++)
             {
@@ -400,6 +408,9 @@ namespace LestingCraft.Runtime
             inv.slots[15] = new ItemStack { item = 69, count = 16 }; // Камень Сна
             inv.revision++;
 
+            SetCamerasActive(cam, hands, true);
+            game.Session.Data.clock = 640.0;
+            RenderSettings.fog = false;
             game.ToggleInventory();
             yield return null;
             yield return null;
@@ -409,12 +420,55 @@ namespace LestingCraft.Runtime
                 Vector2 pt = RectTransformUtility.WorldToScreenPoint(null, bedHover.transform.position) + new Vector2(28f, -28f);
                 ExecuteEvents.Execute(bedHover.gameObject, new PointerEventData(EventSystem.current) { position = pt }, ExecuteEvents.pointerEnterHandler);
             }
-            yield return WaitWorldSettle(6, null);
-            yield return CaptureVerified(Path.Combine(outDir, "08-inventory-new-blocks-and-bed.png"));
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "08-inventory-new-blocks-and-bed.png"), () =>
+            {
+                game.Session.Data.clock = 640.0;
+                RenderSettings.fog = false;
+            });
 
             finishing = true;
             Debug.Log("[Showcase] PASS: 8 authentic 1920x1080 URP screenshots saved to " + outDir);
             Application.Quit(0);
+        }
+
+        static void SetCamerasActive(Camera cam, FirstPersonHands hands, bool active)
+        {
+            if (cam) cam.enabled = active;
+            if (hands && hands.ViewCamera) hands.ViewCamera.enabled = active;
+        }
+
+        static IEnumerator WaitWorldMeshed(VoxelWorld world, float maxWallSeconds)
+        {
+            // Give VoxelWorld at least 4 frames first so center change enqueues any missing/dirty chunks
+            for (int i = 0; i < 4; i++) yield return null;
+            float deadline = Time.realtimeSinceStartup + maxWallSeconds;
+            while (world && !world.IsIdleForShowcase && Time.realtimeSinceStartup < deadline)
+                yield return null;
+        }
+
+        IEnumerator RenderAndCapture(Camera cam, FirstPersonHands hands, bool showHands, string fullPath, Action lockPose)
+        {
+            if (cam) cam.enabled = true;
+            if (hands && hands.ViewCamera) hands.ViewCamera.enabled = showHands;
+            for (int i = 0; i < 3; i++)
+            {
+                if (lockPose != null) lockPose();
+                yield return null;
+            }
+            if (lockPose != null) lockPose();
+            yield return new WaitForEndOfFrame();
+            ScreenCapture.CaptureScreenshot(fullPath);
+            float deadline = Time.realtimeSinceStartup + 25f;
+            while (!ScreenshotReady(fullPath) && Time.realtimeSinceStartup < deadline)
+                yield return null;
+            yield return null;
+            SetCamerasActive(cam, hands, false);
+            if (!ScreenshotReady(fullPath))
+            {
+                Fail("Timed out writing screenshot: " + fullPath);
+                yield break;
+            }
+            Debug.Log("[Showcase] CAPTURED: " + fullPath + " (" + Time.realtimeSinceStartup.ToString("F1") + "s)");
         }
 
         static void MoveBoth(FirstPersonController player, Camera cam, Vector3 camWorld, Vector3 lookTarget)
@@ -436,7 +490,7 @@ namespace LestingCraft.Runtime
 
         static void SetBlock(VoxelWorld world, int x, int y, int z, int id)
         {
-            world.Edit(x, y, z, (ushort)id);
+            world.ShowcaseEditUnbounded(x, y, z, (ushort)id);
         }
 
         static void ClearSightCorridor(VoxelWorld world, Vector3 from, Vector3 to, int halfWidth)
@@ -667,33 +721,6 @@ namespace LestingCraft.Runtime
             bl.intensity = 3.4f;
             bl.shadows = LightShadows.None;
             return mistLightRoot;
-        }
-
-        static IEnumerator WaitWorldSettle(int frames, Action lockPerFrame)
-        {
-            for (int i = 0; i < frames; i++)
-            {
-                yield return null;
-                if (lockPerFrame != null) lockPerFrame();
-            }
-            yield return new WaitForEndOfFrame();
-            if (lockPerFrame != null) lockPerFrame();
-        }
-
-        IEnumerator CaptureVerified(string fullPath)
-        {
-            yield return new WaitForEndOfFrame();
-            ScreenCapture.CaptureScreenshot(fullPath);
-            float deadline = Time.realtimeSinceStartup + 25f;
-            while (!ScreenshotReady(fullPath) && Time.realtimeSinceStartup < deadline)
-                yield return null;
-            yield return null;
-            if (!ScreenshotReady(fullPath))
-            {
-                Fail("Timed out writing screenshot: " + fullPath);
-                yield break;
-            }
-            Debug.Log("[Showcase] CAPTURED: " + fullPath);
         }
 
         static bool ScreenshotReady(string path)
