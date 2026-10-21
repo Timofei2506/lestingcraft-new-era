@@ -51,20 +51,16 @@ jobs:
           password: ${{ secrets.UNITY_PASSWORD }}
 
       - name: Build StandaloneLinux64 Player
-        run: |
-          mkdir -p Builds/StandaloneLinux64 Builds/Logs
-          unity-editor \
-            -batchmode \
-            -nographics \
-            -quit \
-            -projectPath . \
-            -executeMethod BuildScript.BuildLinux64 \
-            -logFile Builds/Logs/linux-build.log
-          chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
-          ls -lh Builds/StandaloneLinux64/
+        uses: buildalon/unity-action@v3
+        with:
+          log-name: build-StandaloneLinux64
+          build-target: StandaloneLinux64
+          args: -quit -batchmode -nographics -executeMethod BuildScript.BuildLinux64
 
       - name: Render 8 Authentic 1920x1080 Ultra URP Screenshots in Real Game Binary
         run: |
+          chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
+          ls -lh Builds/StandaloneLinux64/
           mkdir -p Builds/StandaloneLinux64/ShowcaseResults Builds/Logs
           xvfb-run -a -s "-screen 0 1920x1080x24" \
             env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
@@ -86,6 +82,5 @@ jobs:
           name: EraV8-Screenshots
           path: |
             Builds/StandaloneLinux64/ShowcaseResults/*.png
-            Builds/Logs/linux-showcase.log
-            Builds/Logs/linux-build.log
+            Builds/Logs/**
           retention-days: 30
