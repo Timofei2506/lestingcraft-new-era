@@ -646,7 +646,7 @@ namespace LestingCraft.Runtime
         void DetonateCharge(ArmedCharge ch, VoxelWorld world, FirstPersonController player, SurvivalSession session)
         {
             int cx = Mathf.FloorToInt(ch.Position.x), cy = Mathf.FloorToInt(ch.Position.y), cz = Mathf.FloorToInt(ch.Position.z);
-            int radius = ch.IsThermonuke666 ? 15 : 5;
+            int radius = ch.IsThermonuke666 ? 11 : 5;
             float r2 = radius * radius;
             float linerR2 = (radius + 1.35f) * (radius + 1.35f);
 

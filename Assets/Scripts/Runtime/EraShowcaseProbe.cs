@@ -825,15 +825,16 @@ namespace LestingCraft.Runtime
             yield return null;
             yield return null;
 
-            Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 26.0f);
-            Vector3 shot12Cam = new Vector3(icx + 2.0f, igy + 22.0f, icz - 44.0f);
+            Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 8.0f);
+            Vector3 shot12Cam = new Vector3(icx + 2.0f, igy + 16.5f, icz - 18.0f);
             player.TeleportTo(nukeOrigin + Vector3.up * 4f, false);
             yield return WaitWorldMeshed(radiaWorld, 15f);
             player.TeleportTo(shot12Cam, false);
+            yield return WaitWorldMeshed(radiaWorld, 10f);
             game.Tech.ArmExplosive(nukeOrigin, true);
-            // Advance 17.0s (85 * 0.20s) so 12.0s countdown detonates, carves vitrified crater & 3D Mushroom Cloud rises 55m high!
-            for (int nStep = 0; nStep < 85; nStep++)
-                game.Tech.StepRuntime(0.20f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
+            // Advance 15.0s (15 * 1.0s) so 12.0s countdown detonates inside loaded chunks, carves trinitite crater & 3D Mushroom Cloud rises!
+            for (int nStep = 0; nStep < 15; nStep++)
+                game.Tech.StepRuntime(1.0f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
             yield return WaitWorldMeshed(radiaWorld, 15f);
 
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "12-secret-666-thermonuclear-mushroom.png"), () =>
@@ -841,10 +842,10 @@ namespace LestingCraft.Runtime
                 game.Session.Data.clock = 1140.0; // Dramatic dusk lighting so incandescent mushroom cloud illuminates sky & crater!
                 RenderSettings.fog = true;
                 RenderSettings.fogDensity = 0.0018f;
-                cam.fieldOfView = 76f;
+                cam.fieldOfView = 80f;
                 cam.farClipPlane = 800f;
                 cam.transform.position = shot12Cam;
-                cam.transform.LookAt(nukeOrigin + Vector3.up * 26.0f);
+                cam.transform.LookAt(nukeOrigin + Vector3.up * 16.0f);
                 game.Session.Notice = "☢ СЕКРЕТНЫЙ ОБЪЕКТ 666 (/give 666) · Термоядерный гриб и оплавленный кратер тринитита!";
             });
 
