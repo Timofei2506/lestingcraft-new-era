@@ -227,7 +227,12 @@ namespace LestingCraft.Runtime
                     if (chunks.TryGetValue(affected, out adjacent)) adjacent.SpecialsDirty = true;
                 }
         }
-        public void Edit(int x, int y, int z, ushort block, bool rebuildLight = true)
+        public void Edit(int x, int y, int z, ushort block)
+        {
+            Edit(x, y, z, block, true);
+        }
+
+        public void Edit(int x, int y, int z, ushort block, bool rebuildLight)
         {
             int maxAllowed = Online && ContentVersion < 2 ? 18 :
                 ContentVersion >= 8 ? LestingCraft.Gameplay.ExpandedContent.MaxBlock :
