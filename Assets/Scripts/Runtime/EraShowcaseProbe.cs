@@ -265,11 +265,11 @@ namespace LestingCraft.Runtime
 
                 if (cabin)
                 {
-                    Vector3 eyeWorld = cabin.transform.TransformPoint(new Vector3(-0.38f, 43.82f, 4.68f));
-                    Vector3 lookWorld = cabin.transform.TransformPoint(new Vector3(0.10f, 43.46f, 6.20f));
+                    Vector3 eyeWorld = cabin.transform.TransformPoint(new Vector3(-0.36f, 43.48f, 4.66f));
+                    Vector3 lookWorld = cabin.transform.TransformPoint(new Vector3(0.12f, 43.05f, 5.75f));
                     player.transform.SetParent(null, true);
                     player.TeleportTo(eyeWorld - Vector3.up * 1.5f, false);
-                    cam.fieldOfView = 75f;
+                    cam.fieldOfView = 76f;
                     cam.nearClipPlane = 0.04f;
                     cam.farClipPlane = 1200f;
                     cam.transform.position = eyeWorld;
@@ -430,14 +430,14 @@ namespace LestingCraft.Runtime
                     var galaxyObj = GameObject.Find("NeighborSpiralGalaxyBackdrop");
                     if (primeObj)
                     {
-                        primeObj.transform.position = cam.transform.position + cam.transform.forward * 92f - cam.transform.right * 18f + cam.transform.up * 6f;
+                        primeObj.transform.position = cam.transform.position + cam.transform.forward * 88f + cam.transform.right * 24f + cam.transform.up * 12f;
                         primeObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(26f, -36f, 14f);
                         primeObj.transform.localScale = Vector3.one * 1.38f;
                     }
                     if (galaxyObj)
                     {
                         galaxyObj.SetActive(true);
-                        galaxyObj.transform.position = cam.transform.position + cam.transform.forward * 146f + cam.transform.right * 32f + cam.transform.up * 24f;
+                        galaxyObj.transform.position = cam.transform.position + cam.transform.forward * 145f - cam.transform.right * 30f + cam.transform.up * 26f;
                         galaxyObj.transform.rotation = cam.transform.rotation * Quaternion.Euler(56f, 18f, -24f);
                     }
                 }
@@ -604,10 +604,18 @@ namespace LestingCraft.Runtime
             foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (l && l.type != LightType.Directional) l.shadows = LightShadows.None;
             if (cam) cam.enabled = true;
-            if (hands && hands.ViewCamera) hands.ViewCamera.enabled = showHands;
+            if (hands)
+            {
+                if (hands.ViewCamera) hands.ViewCamera.enabled = showHands;
+                foreach (var r in hands.GetComponentsInChildren<Renderer>(true))
+                    if (r) r.enabled = showHands;
+            }
             if (lockPose != null) lockPose();
             yield return new WaitForEndOfFrame();
             var snap = ScreenCapture.CaptureScreenshotAsTexture();
+            if (hands)
+                foreach (var r in hands.GetComponentsInChildren<Renderer>(true))
+                    if (r) r.enabled = true;
             SetCamerasActive(cam, hands, false);
             if (!snap)
             {

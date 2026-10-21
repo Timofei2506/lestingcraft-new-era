@@ -120,8 +120,8 @@ namespace LestingCraft.Runtime
 
             var readoutGo = new GameObject("MfdReadoutText");
             readoutGo.transform.SetParent(mfdRoot, false);
-            readoutGo.transform.localPosition = new Vector3(-0.225f, 0.108f, -0.021f);
-            readoutGo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            readoutGo.transform.localPosition = new Vector3(-0.228f, 0.108f, -0.021f);
+            readoutGo.transform.localRotation = Quaternion.identity;
             readoutGo.transform.localScale = Vector3.one * 0.0062f;
             mfdReadout = readoutGo.AddComponent<TextMesh>();
             mfdReadout.characterSize = 1f;

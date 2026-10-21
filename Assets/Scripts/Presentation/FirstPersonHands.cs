@@ -57,7 +57,8 @@ namespace LestingCraft.Presentation
         void LateUpdate()
         {
             if(!view||!player)return;
-            view.enabled=player.Active&&player.World&&player.World.Ready;
+            bool inSpaceHelm=player.Game&&player.Game.SpaceHelm!=null&&player.Game.SpaceHelm.Active;
+            view.enabled=player.Active&&player.World&&player.World.Ready&&!inSpaceHelm;
             bool hasTorch=player.Game&&player.Game.Session&&player.Game.Session.Inventory.offhand.count>0;left.gameObject.SetActive(hasTorch);
             if(!view.enabled)return;
             int item=player.Game&&player.Game.Session&&player.Game.Session.Inventory.Active.count>0?player.Game.Session.Inventory.Active.item:0;
