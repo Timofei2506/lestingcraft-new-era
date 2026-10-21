@@ -818,20 +818,22 @@ namespace LestingCraft.Runtime
             // SHOT 12: Secret Command «/give 666» Thermonuclear Detonation —
             //          Colossal 95m 3D Fireball & Mushroom Cloud, Wilson Ring & Trinitite Crater!
             // =========================================================================
+            inv.slots[0] = default;
             ChatCommands.Execute("/give 666", false, true, inv, radiaWorld.Seed, player.transform.position, 1);
-            inv.selected = Array.FindIndex(inv.slots, s => s.item == Items.ThermonukeId);
-            if (inv.selected < 0) inv.selected = 0;
+            inv.selected = 0;
             inv.revision++;
+            yield return null;
+            yield return null;
 
             Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 26.0f);
-            Vector3 shot12Cam = new Vector3(icx + 2.0f, igy + 22.0f, icz - 36.0f);
+            Vector3 shot12Cam = new Vector3(icx + 2.0f, igy + 22.0f, icz - 44.0f);
             ClearSightCorridor(radiaWorld, shot12Cam, nukeOrigin + Vector3.up * 6f, 16);
             player.TeleportTo(nukeOrigin + Vector3.up * 4f, false);
             yield return WaitWorldMeshed(radiaWorld, 15f);
             player.TeleportTo(shot12Cam, false);
             game.Tech.ArmExplosive(nukeOrigin, true);
-            // Advance 9.6s so 8.0s countdown completes and 3D Mushroom Cloud rises in peak glowing glory
-            for (int nStep = 0; nStep < 48; nStep++)
+            // Advance 17.0s (85 * 0.20s) so 12.0s countdown detonates, carves vitrified crater & 3D Mushroom Cloud rises 55m high!
+            for (int nStep = 0; nStep < 85; nStep++)
                 game.Tech.StepRuntime(0.20f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
             yield return WaitWorldMeshed(radiaWorld, 15f);
 

@@ -481,7 +481,6 @@ namespace LestingCraft.Presentation
             chatInput.placeholder=Label(chatBox.transform,"Сообщение…",12,0,538,49,15,Muted,false,TextAnchor.MiddleLeft);
             chatInput.gameObject.SetActive(false);chatRoot.SetActive(false);chatRevision=-1;
             noticeHUD=Label(content.transform,"",320,620,640,51,18,Accent,false,TextAnchor.MiddleCenter);BuildUsabilityHUD();
-            if(ready)Update();
         }
         void Update()
         {
