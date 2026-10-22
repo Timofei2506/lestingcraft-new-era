@@ -838,9 +838,9 @@ namespace LestingCraft.Runtime
             yield return null;
 
             Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 8.0f);
-            // ~60m from the epicenter: outside the 38m kill radius, but close enough to read the crater at ground level.
-            // Keep a side-on view through the cleared yard so both the crater and full cloud fit the frame.
-            Vector3 shot12Cam = new Vector3(icx + 58.0f, igy + 20.0f, icz + 8.0f);
+            // ~80m from the epicenter: outside the 38m kill radius with enough distance to fit the full cap.
+            // A lower aim point and cleared line of sight keep the trinitite crater visible beneath the cloud.
+            Vector3 shot12Cam = new Vector3(icx + 58.0f, igy + 30.0f, icz - 40.0f);
             if (Vector3.Distance(shot12Cam, nukeOrigin) < 45f)
             {
                 Fail("Shot 12 camera must stay safely outside the 38m thermonuclear kill radius.");
@@ -866,10 +866,10 @@ namespace LestingCraft.Runtime
                 game.Session.Data.clock = 900.0; // The sun sits on the horizon: readable crater, storm clouds and orange nuclear fireball.
                 RenderSettings.fog = true;
                 RenderSettings.fogDensity = 0.0018f;
-                cam.fieldOfView = 80f;
+                cam.fieldOfView = 86f;
                 cam.farClipPlane = 800f;
                 cam.transform.position = shot12Cam;
-                cam.transform.LookAt(nukeOrigin + Vector3.up * 35.5f);
+                cam.transform.LookAt(nukeOrigin + Vector3.up * 28f);
                 game.Session.Notice = "☢ СЕКРЕТНЫЙ ОБЪЕКТ 666 (/give 666) · Термоядерный гриб и оплавленный кратер тринитита!";
             });
 

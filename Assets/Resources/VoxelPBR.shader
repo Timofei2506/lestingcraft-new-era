@@ -46,6 +46,7 @@ Shader "LestingCraft/VoxelPBR"
             TEXTURE2D_ARRAY(_NormalArray); SAMPLER(sampler_NormalArray);
             TEXTURE2D_ARRAY(_MaskArray); SAMPLER(sampler_MaskArray);
             float _LCAmbientOcclusionProbe, _GlobalWetness, _GlobalSnow, _LCParallaxSteps, _LCUltra;
+            float _EnvironmentWaterReflection;
             struct Attributes
             {
                 float4 positionOS:POSITION;
@@ -89,6 +90,7 @@ Shader "LestingCraft/VoxelPBR"
                 float2 dx=ddx(i.uv.xy),dy=ddy(i.uv.xy);
                 bool leaf=abs(i.uv.z-6)<.25;
                 bool lava=abs(i.uv.z-9)<.25;
+                bool cherenkov=abs(i.uv.z-94)<.25;
                 float fade=(1-smoothstep(8,24,cameraDistance))*smoothstep(.10,.35,abs(viewTS.z));
                 float2 surfaceUV=i.uv.xy;
                 float reliefShadow=1;
@@ -177,8 +179,10 @@ Shader "LestingCraft/VoxelPBR"
                 if(abs(i.uv.z-15)<.25)snow=max(snow,.9);
                 half ao=saturate(mask.g*i.color.r);
                 SurfaceData surface=(SurfaceData)0;
-                surface.albedo=lerp(albedo.rgb*macro*(1-wet*porosity*.24)*reliefShadow,
-                    half3(.73,.79,.84),snow);
+                half3 baseAlbedo=albedo.rgb*macro*(1-wet*porosity*.24)*reliefShadow;
+                // The submerged Cherenkov rows are intentionally blue-on-black, not white LEDs. Suppress their surface luminance only in Radia; other worlds keep the authored material.
+                if(cherenkov)baseAlbedo*=lerp(.26,1,saturate(_EnvironmentWaterReflection));
+                surface.albedo=lerp(baseAlbedo,half3(.73,.79,.84),snow);
                 surface.metallic=mask.r;
                 surface.specular=half3(.04,.04,.04);
                 surface.smoothness=saturate(lerp(lerp(mask.a+wet*.20,.92,puddle),.24,snow));
