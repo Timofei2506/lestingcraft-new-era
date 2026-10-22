@@ -65,10 +65,29 @@ namespace LestingCraft.Gameplay
         public ItemStack[] grid=new ItemStack[9];public ItemStack cursor=new ItemStack();public FurnaceState furnace=new FurnaceState();
         public ItemStack[] slots=new ItemStack[SlotCount];public int selected;public int revision;
         public Inventory(){for(int i=0;i<equipment.Length;i++)equipment[i]=new ItemStack();for(int i=0;i<slots.Length;i++)slots[i]=new ItemStack();for(int i=0;i<9;i++)grid[i]=new ItemStack();}
-        public ItemStack Active=>slots[Math.Max(0,Math.Min(HotbarCount-1,selected))];
-        public int Count(int item){int n=0;foreach(var s in slots)if(s.item==item)n+=s.count;return n;}
+        static void EnsureStackArray(ref ItemStack[] stacks,int length)
+        {
+            if(stacks==null)stacks=new ItemStack[length];
+            else if(stacks.Length!=length)Array.Resize(ref stacks,length);
+            for(int i=0;i<stacks.Length;i++)if(stacks[i]==null)stacks[i]=new ItemStack();
+        }
+        public ItemStack Active{get{NormalizeNulls();int idx=Math.Max(0,Math.Min(HotbarCount-1,selected));return slots[idx];}}
+        public void NormalizeNulls()
+        {
+            if(offhand==null)offhand=new ItemStack();
+            if(cursor==null)cursor=new ItemStack();
+            if(furnace==null)furnace=new FurnaceState();
+            if(furnace.input==null)furnace.input=new ItemStack();
+            if(furnace.fuel==null)furnace.fuel=new ItemStack();
+            if(furnace.output==null)furnace.output=new ItemStack();
+            EnsureStackArray(ref equipment,Equipment.Count);
+            EnsureStackArray(ref grid,9);
+            EnsureStackArray(ref slots,SlotCount);
+        }
+        public int Count(int item){NormalizeNulls();int n=0;foreach(var s in slots)if(s.item==item)n+=s.count;return n;}
         public bool CanAdd(int item,int count)
         {
+            NormalizeNulls();
             if(!Items.Exists(item)||count<=0)return false;int room=0,max=Items.Get(item).MaxStack;
             foreach(var s in slots)if(s.count==0)room+=max;else if(s.item==item)room+=max-s.count;
             return room>=count;
@@ -82,19 +101,21 @@ namespace LestingCraft.Gameplay
         }
         public bool Remove(int item,int count)
         {
+            NormalizeNulls();
             if(count<=0||Count(item)<count)return false;
             foreach(var s in slots)if(s.item==item){int take=Math.Min(count,s.count);s.count-=take;count-=take;if(s.count==0){s.item=0;s.durability=0;}if(count==0)break;}
             revision++;return true;
         }
         public void Transfer(int from,int to)
         {
+            NormalizeNulls();
             if(from<0||to<0||from>=SlotCount||to>=SlotCount||from==to)return;
             var a=slots[from];var b=slots[to];
             if(a.count>0&&a.item==b.item&&Items.Get(a.item).MaxStack>1)
             {int amount=Math.Min(a.count,Items.Get(a.item).MaxStack-b.count);a.count-=amount;b.count+=amount;if(a.count==0){a.item=0;a.durability=0;}}
             else {slots[from]=b;slots[to]=a;}revision++;
         }
-        public Inventory Clone(){var n=new Inventory();n.offhand=offhand.Clone();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();for(int i=0;i<9;i++)n.grid[i]=grid[i].Clone();for(int i=0;i<Equipment.Count;i++)n.equipment[i]=equipment[i].Clone();n.cursor=cursor.Clone();n.furnace=furnace.Clone();n.selected=selected;n.revision=revision;return n;}
+        public Inventory Clone(){NormalizeNulls();var n=new Inventory();n.offhand=offhand.Clone();for(int i=0;i<SlotCount;i++)n.slots[i]=slots[i].Clone();for(int i=0;i<9;i++)n.grid[i]=grid[i].Clone();for(int i=0;i<Equipment.Count;i++)n.equipment[i]=equipment[i].Clone();n.cursor=cursor.Clone();n.furnace=furnace.Clone();n.selected=selected;n.revision=revision;return n;}
         public static ItemStack Clean(ItemStack s)
         {
             if(s==null||!Items.Exists(s.item)||s.count<=0)return new ItemStack();
@@ -102,6 +123,7 @@ namespace LestingCraft.Gameplay
         }
         public bool AddStack(ItemStack stack)
         {
+            NormalizeNulls();
             if(stack==null||stack.count<=0)return true;if(!CanAdd(stack.item,stack.count))return false;
             // Non-stackable equipment must retain its actual wear, not be repaired by transfer/save.
             if(Items.Get(stack.item).MaxStack==1){for(int n=0;n<stack.count;n++){int free=Array.FindIndex(slots,s=>s.count==0);slots[free]=new ItemStack{item=stack.item,count=1,durability=stack.durability};}revision++;return true;}
@@ -109,6 +131,7 @@ namespace LestingCraft.Gameplay
         }
         public bool ToggleOffhand()
         {
+            NormalizeNulls();
             if(offhand.count>0){if(!AddStack(offhand))return false;offhand=new ItemStack();revision++;return true;}
             if((Active.item!=Items.Torch&&Active.item!=54)||Active.count<1)return false;
             offhand=new ItemStack{item=Active.item,count=1};Active.count--;if(Active.count==0){Active.item=0;Active.durability=0;}revision++;return true;
@@ -121,17 +144,16 @@ namespace LestingCraft.Gameplay
             return recovered;
         }
         public ItemStack[] ExtraStacks()
-        {var all=new ItemStack[13+Equipment.Count+(offhand.count>0?1:0)];if(offhand.count>0)all[21]=offhand.Clone();for(int i=0;i<Equipment.Count;i++)all[13+i]=equipment[i].Clone();for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
+        {NormalizeNulls();var all=new ItemStack[13+Equipment.Count+(offhand.count>0?1:0)];if(offhand.count>0)all[21]=offhand.Clone();for(int i=0;i<Equipment.Count;i++)all[13+i]=equipment[i].Clone();for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
         public void WearTool()
         {if(Active.count>0&&Items.Get(Active.item).Durability>0){Active.durability--;if(Active.durability<=0){Active.count=0;Active.item=0;Active.durability=0;}revision++;}}
         public void Normalize()
         {
-            if(slots==null||slots.Length!=SlotCount)slots=new ItemStack[SlotCount];
+            NormalizeNulls();
             for(int i=0;i<SlotCount;i++)
             {if(slots[i]==null)slots[i]=new ItemStack();var s=slots[i];if(!Items.Exists(s.item)||s.count<=0){s.item=0;s.count=0;s.durability=0;}else{s.count=Math.Min(s.count,Items.Get(s.item).MaxStack);s.durability=Math.Max(0,Math.Min(Items.Get(s.item).Durability,s.durability));}}
-            if(equipment==null||equipment.Length!=Equipment.Count)equipment=new ItemStack[Equipment.Count];
             for(int i=0;i<Equipment.Count;i++){equipment[i]=Clean(equipment[i]);if(equipment[i].count>0&&!Equipment.Accept(i,equipment[i].item)){if(!AddStack(equipment[i]))throw new InvalidOperationException("Неверный слот экипировки: нет места для восстановления предмета");equipment[i]=new ItemStack();}}
-            if(grid==null||grid.Length!=9)grid=new ItemStack[9];for(int i=0;i<9;i++)grid[i]=Clean(grid[i]);cursor=Clean(cursor);if(furnace==null)furnace=new FurnaceState();furnace.Normalize();
+            for(int i=0;i<9;i++)grid[i]=Clean(grid[i]);cursor=Clean(cursor);furnace.Normalize();
             offhand=Clean(offhand);if(offhand.count>0&&((offhand.item!=Items.Torch&&offhand.item!=54)||offhand.count!=1)){if(!AddStack(offhand))throw new InvalidOperationException("Неверная левая рука: нет места для восстановления");offhand=new ItemStack();}
             selected=Math.Max(0,Math.Min(8,selected));
         }

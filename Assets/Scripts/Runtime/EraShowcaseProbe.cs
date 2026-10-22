@@ -13,8 +13,8 @@ using LestingCraft.Presentation;
 namespace LestingCraft.Runtime
 {
     /// <summary>
-    /// Renders 8 authentic 1920x1080 in-engine Ultra URP gameplay screenshots covering
-    /// every major feature in LestingCraft New Era (era-v8 / rules13 / contentVersion 8).
+    /// Renders 14 authentic 1920x1080 in-engine ERA-V9 Ultra URP gameplay screenshots.
+    /// Covers the spaceflight, Radia, industrial and secret thermonuclear features (rules14 / contentVersion 9).
     /// Activated strictly when "-lc-showcase" is passed on the command line.
     /// </summary>
     public sealed class EraShowcaseProbe : MonoBehaviour
@@ -25,7 +25,7 @@ namespace LestingCraft.Runtime
         static void Install()
         {
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "-lc-showcase") < 0) return;
-            var obj = new GameObject("Era v8 Showcase Capture");
+            var obj = new GameObject("ERA-V9 Showcase Capture");
             DontDestroyOnLoad(obj);
             obj.AddComponent<EraShowcaseProbe>();
         }
@@ -43,9 +43,7 @@ namespace LestingCraft.Runtime
         void OnLog(string condition, string trace, LogType type)
         {
             if (!finishing && (type == LogType.Exception || type == LogType.Error))
-            {
-                Debug.LogWarning("[Showcase] Observed runtime error: " + condition + "\n" + trace);
-            }
+                Fail("Unhandled Unity " + type + ": " + condition + "\n" + trace);
         }
 
         IEnumerator Start()
@@ -818,15 +816,34 @@ namespace LestingCraft.Runtime
             // SHOT 12: Secret Command «/give 666» Thermonuclear Detonation —
             //          Colossal 95m 3D Fireball & Mushroom Cloud, Wilson Ring & Trinitite Crater!
             // =========================================================================
-            inv.slots[0] = default;
-            ChatCommands.Execute("/give 666", false, true, inv, radiaWorld.Seed, player.transform.position, 1);
+            inv = game.Session.Inventory;
+            if (inv == null)
+            {
+                Fail("Session inventory is null before secret /give 666 showcase shot.");
+                yield break;
+            }
+            inv.NormalizeNulls();
+            inv.slots[0] = new ItemStack();
+            var nukeGrant = ChatCommands.Execute("/give 666", false, true, inv, radiaWorld.Seed, player.transform.position, 1);
+            if (nukeGrant.Action != "thermonuke" || inv.Count(Items.ThermonukeId) != 1)
+            {
+                Fail("Secret /give 666 failed: " + nukeGrant.Message);
+                yield break;
+            }
             inv.selected = 0;
             inv.revision++;
             yield return null;
             yield return null;
 
             Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 8.0f);
-            Vector3 shot12Cam = new Vector3(icx + 2.0f, igy + 16.5f, icz - 18.0f);
+            // 56m from the epicenter: outside the 38m survival kill radius and still inside the streamed chunk window.
+            // The ~48m horizontal view distance frames the full ~68m cloud plus vitrified crater at 80° FOV.
+            Vector3 shot12Cam = new Vector3(icx + 45.0f, igy + 30.0f, icz - 13.0f);
+            if (Vector3.Distance(shot12Cam, nukeOrigin) < 40f)
+            {
+                Fail("Shot 12 camera must stay at least 40m from the thermonuclear epicenter.");
+                yield break;
+            }
             player.TeleportTo(nukeOrigin + Vector3.up * 4f, false);
             yield return WaitWorldMeshed(radiaWorld, 15f);
             player.TeleportTo(shot12Cam, false);
@@ -845,7 +862,7 @@ namespace LestingCraft.Runtime
                 cam.fieldOfView = 80f;
                 cam.farClipPlane = 800f;
                 cam.transform.position = shot12Cam;
-                cam.transform.LookAt(nukeOrigin + Vector3.up * 16.0f);
+                cam.transform.LookAt(nukeOrigin + Vector3.up * 28.5f);
                 game.Session.Notice = "☢ СЕКРЕТНЫЙ ОБЪЕКТ 666 (/give 666) · Термоядерный гриб и оплавленный кратер тринитита!";
             });
 
@@ -1181,9 +1198,11 @@ namespace LestingCraft.Runtime
 
         void Fail(string msg)
         {
+            if (finishing) return;
             finishing = true;
+            StopAllCoroutines();
             Debug.LogError("[Showcase] FAIL: " + msg);
-            Application.Quit(2);
+            Application.Quit(1);
         }
     }
 }

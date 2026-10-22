@@ -280,14 +280,12 @@ namespace LestingCraft.Gameplay
             }
             Grid = summary;
 
-            // Inventory radioactive cargo check (carrying unshielded Uranium Ore / Fuel Rods!)
-            if (inv != null)
-            {
-                int uOre = inv.Count(BlockRegistry.UraniumOreId);
-                int uRods = inv.Count(Items.UraniumRod) + inv.Count(BlockRegistry.UraniumBlockId) * 9;
-                if (uOre > 0 || uRods > 0)
-                    ambientMsvHr += uOre * 85f + uRods * 140f;
-            }
+            // Inventory radioactive cargo check (carrying unshielded Uranium Ore / Fuel Rods!).
+            // Count() also repairs null/legacy slot arrays before scanning them.
+            int uOre = inv?.Count(BlockRegistry.UraniumOreId) ?? 0;
+            int uRods = inv == null ? 0 : inv.Count(Items.UraniumRod) + inv.Count(BlockRegistry.UraniumBlockId) * 9;
+            if (uOre > 0 || uRods > 0)
+                ambientMsvHr += uOre * 85f + uRods * 140f;
 
             // Nuclear fallout craters
             foreach (var fz in FalloutZones)
