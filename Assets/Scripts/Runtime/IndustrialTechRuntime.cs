@@ -380,10 +380,12 @@ namespace LestingCraft.Runtime
             StepExplosivesAndMushroomClouds(dt, world, player, session);
             StepRadiaVisualsAndBosses(dt, world, player, session, out requestRadiaExit);
 
-            VisualSettings.EnsurePostProcessingVolume(
-                Sim.RadiationDose01,
-                world.Dimension == Dimension.Radia,
-                ActiveNukeFlash01);
+            // Presentation singletons require a play-mode scene; keep runtime simulation safe in EditMode tests.
+            if (Application.isPlaying)
+                VisualSettings.EnsurePostProcessingVolume(
+                    Sim.RadiationDose01,
+                    world.Dimension == Dimension.Radia,
+                    ActiveNukeFlash01);
         }
 
         void Sync3DPowerWires(VoxelWorld world)
@@ -581,6 +583,13 @@ namespace LestingCraft.Runtime
             }
         }
 
+        static void DestroyGeneratedObject(UnityEngine.Object generated)
+        {
+            if (!generated) return;
+            if (Application.isPlaying) UnityEngine.Object.Destroy(generated);
+            else UnityEngine.Object.DestroyImmediate(generated);
+        }
+
         void StepExplosivesAndMushroomClouds(float dt, VoxelWorld world, FirstPersonController player, SurvivalSession session)
         {
             for (int i = activeCharges.Count - 1; i >= 0; i--)
@@ -595,7 +604,7 @@ namespace LestingCraft.Runtime
                 if (ch.Timer > 0f) continue;
 
                 DetonateCharge(ch, world, player, session);
-                if (ch.Visual) Destroy(ch.Visual);
+                DestroyGeneratedObject(ch.Visual);
                 activeCharges.RemoveAt(i);
             }
 
@@ -607,7 +616,7 @@ namespace LestingCraft.Runtime
                 float t = m.Elapsed / m.Duration;
                 if (t >= 1f)
                 {
-                    if (m.Root) Destroy(m.Root);
+                    DestroyGeneratedObject(m.Root);
                     activeNukes.RemoveAt(i);
                     continue;
                 }
