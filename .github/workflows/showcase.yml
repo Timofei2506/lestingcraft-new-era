@@ -70,7 +70,7 @@ jobs:
           chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
           ls -lh Builds/StandaloneLinux64/
           mkdir -p Builds/StandaloneLinux64/ShowcaseResults Builds/Logs
-          timeout -k 10 420 xvfb-run -a -s "-screen 0 1920x1080x24" \
+          timeout -k 10 900 xvfb-run -a -s "-screen 0 1920x1080x24" \
             env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
             ./Builds/StandaloneLinux64/LestingCraft.x86_64 \
             -force-glcore \

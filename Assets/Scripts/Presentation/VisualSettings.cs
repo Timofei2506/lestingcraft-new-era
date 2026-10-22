@@ -120,7 +120,7 @@ namespace LestingCraft.Presentation
 
             if (globalColorAdj != null)
             {
-                globalColorAdj.postExposure.Override(Mathf.Lerp(inRadiaAbyss ? -0.10f : 0.08f, 3.8f, Mathf.Clamp01(nukeFlash01)));
+                globalColorAdj.postExposure.Override(Mathf.Lerp(inRadiaAbyss ? -0.25f : 0.08f, 3.8f, Mathf.Clamp01(nukeFlash01)));
                 globalColorAdj.contrast.Override(inRadiaAbyss ? 22f : 9f);
                 globalColorAdj.saturation.Override(inRadiaAbyss ? -46f : Mathf.Lerp(6f, -35f, Mathf.Clamp01(radiationDose01)));
                 globalColorAdj.colorFilter.Override(inRadiaAbyss

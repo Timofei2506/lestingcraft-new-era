@@ -24,6 +24,7 @@ Shader "LestingCraft/Water"
             #include "../Shaders/VoxelSky.hlsl"
             TEXTURE2D_ARRAY(_NormalArray); SAMPLER(sampler_NormalArray);
             float4 _EnvironmentShallowWater, _EnvironmentDeepWater;
+            float _EnvironmentWaterReflection;
             float _LCWaterSteps, _LCWaterReflectionProbe;
             struct A { float4 p:POSITION; float3 n:NORMAL; float4 t:TANGENT; };
             struct V
@@ -177,6 +178,7 @@ Shader "LestingCraft/Water"
                 half fresnel=.02+.98*pow(1-saturate(dot(n,view)),5);
                 half confidence;
                 half3 reflected=ReflectScene(i.ws,n,view,LC_SkyRadiance(reflect(-view,n))*sky,confidence);
+                reflected=lerp(body,reflected,saturate(_EnvironmentWaterReflection));
                 if(_LCWaterReflectionProbe>.5)
                     return half4(confidence>.02?half3(1,0,1):half3(0,0,1),1);
                 half nv=max(.04,saturate(dot(n,view)));

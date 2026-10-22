@@ -9,7 +9,7 @@ namespace LestingCraft.Presentation
     {
         public readonly Vector3 SunDirection, MoonDirection;
         public readonly Color Zenith, Horizon, SunColor, AmbientSky, AmbientEquator, AmbientGround, ShallowWater, DeepWater;
-        public readonly float Daylight, DirectIntensity, SolarAngle;
+        public readonly float Daylight, DirectIntensity, SolarAngle, WaterReflection;
         public readonly bool MoonIsPrimary;
 
         public static float CloudCoverageForRealm(Dimension realm, float baseClouds)
@@ -104,6 +104,7 @@ namespace LestingCraft.Presentation
 
             ShallowWater = new Color(.18f, .43f, .36f);
             DeepWater = new Color(.018f, .095f, .12f);
+            WaterReflection = realm == Dimension.Radia ? 0.12f : 1f;
 
             float effClouds = CloudCoverageForRealm(realm, clouds);
             float effPrecip = precipitation * PrecipitationScaleForRealm(realm);
@@ -254,15 +255,15 @@ namespace LestingCraft.Presentation
             else if (realm == Dimension.Radia)
             {
                 // Overcast monochrome storm sky, mirror-black flooded water & piercing cyan underglow (image-1.png!)
-                Zenith = new Color(.34f, .36f, .38f);
-                Horizon = new Color(.55f, .58f, .60f);
-                SunColor = new Color(.76f, .80f, .84f);
-                DirectIntensity = .42f;
-                AmbientSky = new Color(.28f, .30f, .33f);
-                AmbientEquator = new Color(.22f, .24f, .26f);
-                AmbientGround = new Color(.06f, .07f, .09f);
-                ShallowWater = new Color(.032f, .048f, .072f);
-                DeepWater = new Color(.008f, .013f, .022f);
+                Zenith = new Color(.18f, .19f, .20f);
+                Horizon = new Color(.34f, .35f, .37f);
+                SunColor = new Color(.48f, .50f, .52f);
+                DirectIntensity = .24f;
+                AmbientSky = new Color(.12f, .13f, .14f);
+                AmbientEquator = new Color(.09f, .10f, .12f);
+                AmbientGround = new Color(.025f, .03f, .04f);
+                ShallowWater = new Color(.022f, .034f, .050f);
+                DeepWater = new Color(.004f, .008f, .014f);
             }
         }
 
@@ -290,6 +291,7 @@ namespace LestingCraft.Presentation
             Shader.SetGlobalFloat("_EnvironmentTime", (float)(clock % 86400));
             Shader.SetGlobalColor("_EnvironmentShallowWater", ShallowWater);
             Shader.SetGlobalColor("_EnvironmentDeepWater", DeepWater);
+            Shader.SetGlobalFloat("_EnvironmentWaterReflection", WaterReflection);
         }
     }
 }

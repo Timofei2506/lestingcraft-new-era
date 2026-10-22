@@ -4,6 +4,7 @@ using UnityEngine;
 using LestingCraft.Gameplay;
 using LestingCraft.Runtime;
 using LestingCraft.World;
+using LestingCraft.Presentation;
 
 namespace LestingCraft.Tests
 {
@@ -70,6 +71,17 @@ namespace LestingCraft.Tests
                 UnityEngine.Object.DestroyImmediate(playerObject);
                 UnityEngine.Object.DestroyImmediate(worldObject);
             }
+        }
+
+        [Test]
+        public void RadiaAtmosphereDarkensFloodWaterAndRestoresReflectionOutsideTheDimension()
+        {
+            var radia = AtmosphereLighting.At(760.0, Dimension.Radia, 0.94f, 1f);
+            var earth = AtmosphereLighting.At(760.0, Dimension.Lestingia, 0.28f, 0f);
+            Assert.AreEqual(0.12f, radia.WaterReflection, 0.0001f,
+                "Cherenkov basin water must not mirror the bright sky; blue underwater rows should remain legible.");
+            Assert.AreEqual(1f, earth.WaterReflection, 0.0001f,
+                "Leaving Radia must restore normal water reflections for ordinary worlds.");
         }
     }
 }
