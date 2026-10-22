@@ -593,6 +593,7 @@ namespace LestingCraft.Runtime
             game.Tech.Sim.ResetRadiaEncounter();
             game.Tech.Sim.RadiationDose01 = 0.64f;
             var spaceVisV9 = SpaceFlightVisuals.Ensure(null);
+            WorldAtmosphere.Configure(cam, (int)Dimension.Radia, 760.0);
             spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Radia, player, cam);
             VisualSettings.EnsurePostProcessingVolume(1f, true, 0f);
 
@@ -696,11 +697,11 @@ namespace LestingCraft.Runtime
                 game.Session.Data.clock = 760.0;
                 RenderSettings.fog = true;
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogDensity = 0.0085f;
-                RenderSettings.fogColor = new Color(0.46f, 0.48f, 0.50f, 1f);
-                RenderSettings.ambientLight = new Color(0.14f, 0.15f, 0.17f, 1f);
-                cam.transform.position = new Vector3(0.5f, 52.8f, -8.5f);
-                cam.transform.LookAt(new Vector3(1.5f, 60.5f, 92.0f));
+                RenderSettings.fogDensity = 0.0105f;
+                RenderSettings.fogColor = new Color(0.24f, 0.26f, 0.28f, 1f);
+                RenderSettings.ambientLight = new Color(0.10f, 0.11f, 0.12f, 1f);
+                cam.transform.position = new Vector3(0.5f, 54.0f, -22.0f);
+                cam.transform.LookAt(new Vector3(0.5f, 72.0f, 92.0f));
                 game.Session.Notice = "";
             });
             Destroy(vignetteCanvasGo);
@@ -728,6 +729,7 @@ namespace LestingCraft.Runtime
             game.Tech.Sim.PostEscapeImmunityTimer = 999f;
             game.Tech.Sim.RadiationDose01 = 0f;
             radiaWorld.SwitchPlanet(Dimension.Lestingia, Array.Empty<SavedBlock>());
+            WorldAtmosphere.Configure(cam, (int)Dimension.Lestingia, 585.0);
             spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Lestingia, player, cam);
             cam.clearFlags = CameraClearFlags.Skybox;
             int icx = 32, icz = 32, igy = 48;
@@ -836,12 +838,12 @@ namespace LestingCraft.Runtime
             yield return null;
 
             Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 8.0f);
-            // 56m from the epicenter: outside the 38m survival kill radius and still inside the streamed chunk window.
-            // The ~48m horizontal view distance frames the full ~68m cloud plus vitrified crater at 80° FOV.
-            Vector3 shot12Cam = new Vector3(icx + 45.0f, igy + 30.0f, icz - 13.0f);
-            if (Vector3.Distance(shot12Cam, nukeOrigin) < 40f)
+            // ~79m from the epicenter: outside the 38m kill radius, but within the loaded chunk window.
+            // A distant, elevated view frames the full cloud, shockwave and trinitite crater without first-person hands.
+            Vector3 shot12Cam = new Vector3(icx + 58.0f, igy + 30.0f, icz - 40.0f);
+            if (Vector3.Distance(shot12Cam, nukeOrigin) < 45f)
             {
-                Fail("Shot 12 camera must stay at least 40m from the thermonuclear epicenter.");
+                Fail("Shot 12 camera must stay safely outside the 38m thermonuclear kill radius.");
                 yield break;
             }
             player.TeleportTo(nukeOrigin + Vector3.up * 4f, false);
@@ -853,8 +855,11 @@ namespace LestingCraft.Runtime
             for (int nStep = 0; nStep < 15; nStep++)
                 game.Tech.StepRuntime(1.0f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
             yield return WaitWorldMeshed(radiaWorld, 15f);
+            game.Session.Data.clock = 1140.0;
+            WorldAtmosphere.Configure(cam, (int)Dimension.Lestingia, game.Session.Data.clock);
+            spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Lestingia, player, cam);
 
-            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "12-secret-666-thermonuclear-mushroom.png"), () =>
+            yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "12-secret-666-thermonuclear-mushroom.png"), () =>
             {
                 game.Session.Data.clock = 1140.0; // Dramatic dusk lighting so incandescent mushroom cloud illuminates sky & crater!
                 RenderSettings.fog = true;
@@ -862,7 +867,7 @@ namespace LestingCraft.Runtime
                 cam.fieldOfView = 80f;
                 cam.farClipPlane = 800f;
                 cam.transform.position = shot12Cam;
-                cam.transform.LookAt(nukeOrigin + Vector3.up * 28.5f);
+                cam.transform.LookAt(nukeOrigin + Vector3.up * 35.5f);
                 game.Session.Notice = "☢ СЕКРЕТНЫЙ ОБЪЕКТ 666 (/give 666) · Термоядерный гриб и оплавленный кратер тринитита!";
             });
 

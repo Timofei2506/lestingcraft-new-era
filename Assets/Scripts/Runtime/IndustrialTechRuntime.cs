@@ -33,6 +33,7 @@ namespace LestingCraft.Runtime
         {
             public GameObject Root;
             public Transform Fireball, Stem, Cap, ShockRing;
+            public Mesh ShockRingMesh;
             public Light BlastLight;
             public float Elapsed;
             public float Duration = 34f;
@@ -76,7 +77,7 @@ namespace LestingCraft.Runtime
         QuadDroneActor activeDrone;
         GameObject escapeRiftVisual;
         ParticleSystem radiaAshParticles;
-        Material darkSteelMat, hazardYellowMat, copperMat, cyanGlowMat, redBeaconMat, whiteTrussMat, blastFireMat, smokeCloudMat;
+        Material darkSteelMat, hazardYellowMat, copperMat, cyanGlowMat, redBeaconMat, whiteTrussMat, blastFireMat, smokeCloudMat, shockWaveMat;
 
         public bool IsRidingTrain { get; private set; }
         public bool IsDroneFpv => activeDrone != null && activeDrone.FpvActive;
@@ -107,7 +108,8 @@ namespace LestingCraft.Runtime
             redBeaconMat = CreateMat(sh, new Color(1.0f, 0.16f, 0.12f), new Color(2.8f, 0.25f, 0.18f), 0.1f, 0.8f);
             whiteTrussMat = CreateMat(sh, new Color(0.86f, 0.89f, 0.92f), Color.black, 0.45f, 0.45f);
             blastFireMat = CreateMat(sh, new Color(1.0f, 0.62f, 0.18f), new Color(4.2f, 1.95f, 0.45f), 0.0f, 0.25f);
-            smokeCloudMat = CreateMat(sh, new Color(0.26f, 0.24f, 0.23f), new Color(0.45f, 0.18f, 0.06f), 0.0f, 0.12f);
+            smokeCloudMat = CreateMat(sh, new Color(0.34f, 0.34f, 0.35f), new Color(0.20f, 0.14f, 0.10f), 0.0f, 0.08f);
+            shockWaveMat = CreateMat(sh, new Color(1.0f, 0.78f, 0.43f), new Color(2.6f, 1.15f, 0.28f), 0.0f, 0.12f);
         }
 
         static Material CreateMat(Shader sh, Color baseCol, Color emission, float metallic, float smooth)
@@ -124,15 +126,53 @@ namespace LestingCraft.Runtime
             return m;
         }
 
-        static Transform PartCube(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
+        static Transform PartPrimitive(PrimitiveType shape, string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var go = GameObject.CreatePrimitive(shape);
             go.name = name;
             go.transform.SetParent(parent, false);
             go.transform.localPosition = pos;
             go.transform.localScale = scale;
             var col = go.GetComponent<Collider>();
             if (col) { if (Application.isPlaying) Destroy(col); else DestroyImmediate(col); }
+            go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            return go.transform;
+        }
+
+        static Transform PartCube(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
+            => PartPrimitive(PrimitiveType.Cube, name, parent, pos, scale, mat);
+
+        static Transform PartSphere(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
+            => PartPrimitive(PrimitiveType.Sphere, name, parent, pos, scale, mat);
+
+        static Transform PartCylinder(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
+            => PartPrimitive(PrimitiveType.Cylinder, name, parent, pos, scale, mat);
+
+        static Transform PartShockwaveAnnulus(string name, Transform parent, Material mat, out Mesh mesh)
+        {
+            const int segments = 64;
+            const float innerRadius = 0.98f;
+            var vertices = new Vector3[segments * 2];
+            var triangles = new int[segments * 6];
+            for (int i = 0; i < segments; i++)
+            {
+                float a = i * Mathf.PI * 2f / segments;
+                float x = Mathf.Cos(a), z = Mathf.Sin(a);
+                vertices[i * 2] = new Vector3(x, 0f, z);
+                vertices[i * 2 + 1] = new Vector3(x * innerRadius, 0f, z * innerRadius);
+                int next = ((i + 1) % segments) * 2;
+                int t = i * 6;
+                triangles[t] = i * 2; triangles[t + 1] = i * 2 + 1; triangles[t + 2] = next;
+                triangles[t + 3] = next; triangles[t + 4] = i * 2 + 1; triangles[t + 5] = next + 1;
+            }
+            mesh = new Mesh { name = name + "Mesh" };
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(parent, false);
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
             return go.transform;
         }
@@ -590,6 +630,18 @@ namespace LestingCraft.Runtime
             else UnityEngine.Object.DestroyImmediate(generated);
         }
 
+        void OnDestroy()
+        {
+            for (int i = 0; i < activeNukes.Count; i++)
+            {
+                var nuke = activeNukes[i];
+                if (nuke == null) continue;
+                DestroyGeneratedObject(nuke.Root);
+                DestroyGeneratedObject(nuke.ShockRingMesh);
+            }
+            activeNukes.Clear();
+        }
+
         void StepExplosivesAndMushroomClouds(float dt, VoxelWorld world, FirstPersonController player, SurvivalSession session)
         {
             for (int i = activeCharges.Count - 1; i >= 0; i--)
@@ -617,6 +669,7 @@ namespace LestingCraft.Runtime
                 if (t >= 1f)
                 {
                     DestroyGeneratedObject(m.Root);
+                    DestroyGeneratedObject(m.ShockRingMesh);
                     activeNukes.RemoveAt(i);
                     continue;
                 }
@@ -700,11 +753,30 @@ namespace LestingCraft.Runtime
             {
                 Sim.FalloutZones.Add(new FalloutZone { Center = ch.Position, Radius = 44f, RemainingSeconds = 240f });
                 var root = new GameObject("Thermonuke666_MushroomCloud");
+                root.transform.SetParent(transform, false);
                 root.transform.position = ch.Position;
-                var stem = PartCube("MushroomStem", root.transform, Vector3.up * 6f, new Vector3(8f, 12f, 8f), smokeCloudMat);
-                var ball = PartCube("NuclearFireball", root.transform, Vector3.up * 12f, new Vector3(14f, 10f, 14f), blastFireMat);
-                var cap = PartCube("PyrocumulusCap", root.transform, Vector3.up * 15f, new Vector3(18f, 6f, 18f), smokeCloudMat);
-                var ring = PartCube("SupersonicWilsonRing", root.transform, Vector3.up * 2.5f, new Vector3(12f, 2f, 12f), whiteTrussMat);
+                // Smooth 3D plume: a rising spherical stem, incandescent fireball, and a multi-lobed cap.
+                var stem = PartSphere("MushroomStem", root.transform, Vector3.up * 6f, new Vector3(8f, 12f, 8f), smokeCloudMat);
+                var ball = PartSphere("NuclearFireball", root.transform, Vector3.up * 12f, new Vector3(14f, 10f, 14f), blastFireMat);
+                var cap = new GameObject("PyrocumulusCap").transform;
+                cap.SetParent(root.transform, false);
+                cap.localPosition = Vector3.up * 15f;
+                Vector3[] lobePositions =
+                {
+                    Vector3.zero, new Vector3(-0.34f, -0.08f, 0f), new Vector3(0.34f, -0.08f, 0f),
+                    new Vector3(0f, -0.06f, -0.34f), new Vector3(0f, -0.06f, 0.34f),
+                    new Vector3(-0.20f, 0.11f, 0.19f), new Vector3(0.20f, 0.11f, -0.19f)
+                };
+                Vector3[] lobeScales =
+                {
+                    new Vector3(0.74f, 0.82f, 0.74f), new Vector3(0.50f, 0.62f, 0.52f), new Vector3(0.50f, 0.62f, 0.52f),
+                    new Vector3(0.52f, 0.60f, 0.52f), new Vector3(0.52f, 0.60f, 0.52f),
+                    new Vector3(0.42f, 0.52f, 0.44f), new Vector3(0.42f, 0.52f, 0.44f)
+                };
+                for (int lobe = 0; lobe < lobePositions.Length; lobe++)
+                    PartSphere("PyrocumulusLobe_" + lobe, cap, lobePositions[lobe], lobeScales[lobe], smokeCloudMat);
+                var ring = PartShockwaveAnnulus("SupersonicWilsonRing", root.transform, shockWaveMat, out Mesh ringMesh);
+                ring.localPosition = Vector3.up * 1.2f;
                 var lGo = new GameObject("ThermonukeFlashLight");
                 lGo.transform.SetParent(root.transform, false);
                 lGo.transform.localPosition = Vector3.up * 28f;
@@ -713,7 +785,7 @@ namespace LestingCraft.Runtime
                 lt.color = new Color(1.0f, 0.78f, 0.42f);
                 lt.range = 190f;
                 lt.intensity = 48f;
-                activeNukes.Add(new MushroomCloudVfx { Root = root, Fireball = ball, Stem = stem, Cap = cap, ShockRing = ring, BlastLight = lt });
+                activeNukes.Add(new MushroomCloudVfx { Root = root, Fireball = ball, Stem = stem, Cap = cap, ShockRing = ring, ShockRingMesh = ringMesh, BlastLight = lt });
                 session.Notice = "☢ ДЕТОНАЦИЯ ОБЪЕКТА 666! Кратер остеклован в тринитит — эпицентр заражён радиацией!";
             }
             else

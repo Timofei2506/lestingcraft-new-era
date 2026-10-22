@@ -1233,7 +1233,9 @@ namespace LestingCraft.Runtime
             player.TeleportTo(new Vector3(0.5f,50.2f,-11.5f),false);
             player.transform.rotation=Quaternion.identity;
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
-            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Radia,player,Camera.main);
+            var radiaCamera=Camera.main;
+            if(radiaCamera)WorldAtmosphere.Configure(radiaCamera,(int)Dimension.Radia,Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Radia,player,radiaCamera);
             VisualSettings.EnsurePostProcessingVolume(1f,true,0f);
             SetCursor(true);
             Session.Notice="☢ ЛУЧЕВОЙ КОЛЛАПС -> ЧЕРЕНКОВСКИЙ ЗАТОН! Чтобы открыть шлюз плотины: добудьте 6 светящихся излучателей со дна и убейте всех 3 Боссов Спирали!";
@@ -1256,7 +1258,9 @@ namespace LestingCraft.Runtime
             Session.Inventory.Add(Items.CherenkovCore,4);
             player.TeleportTo(retPos+Vector3.up*0.6f,true);
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
-            spaceVisuals.ApplyPlanetAtmosphereAndGravity(retDim,player,Camera.main);
+            var returnCamera=Camera.main;
+            if(returnCamera)WorldAtmosphere.Configure(returnCamera,(int)retDim,Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(retDim,player,returnCamera);
             if(sharedLaunchSite.HasValue&&!launchVisual&&retDim!=Dimension.Radia)
                 launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,retDim);
             VisualSettings.EnsurePostProcessingVolume(0f,false,0f);
