@@ -196,6 +196,8 @@ Shader "LestingCraft/Water"
                 half crest=smoothstep(.35,.65,foamNoise);
                 half foam=shore*crest*top;
                 color=lerp(color,half3(.78,.83,.79)*lerp(.16,1,_EnvironmentDaylight),foam*.58*sky);
+                // Radia's black flooded basin keeps just a trace of sky glint; otherwise the gray storm ceiling washes out the submerged blue rows.
+                color=lerp(body,color,saturate(_EnvironmentWaterReflection));
                 return half4(MixFog(color,i.fog),1);
             }
             ENDHLSL

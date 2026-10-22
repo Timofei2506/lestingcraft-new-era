@@ -838,9 +838,9 @@ namespace LestingCraft.Runtime
             yield return null;
 
             Vector3 nukeOrigin = new Vector3(icx + 2.0f, igy + 1.0f, icz + 8.0f);
-            // ~79m from the epicenter: outside the 38m kill radius, but within the loaded chunk window.
-            // A distant, elevated view frames the full cloud, shockwave and trinitite crater without first-person hands.
-            Vector3 shot12Cam = new Vector3(icx + 58.0f, igy + 30.0f, icz - 40.0f);
+            // ~60m from the epicenter: outside the 38m kill radius, but close enough to read the crater at ground level.
+            // Keep a side-on view through the cleared yard so both the crater and full cloud fit the frame.
+            Vector3 shot12Cam = new Vector3(icx + 58.0f, igy + 20.0f, icz + 8.0f);
             if (Vector3.Distance(shot12Cam, nukeOrigin) < 45f)
             {
                 Fail("Shot 12 camera must stay safely outside the 38m thermonuclear kill radius.");
@@ -850,18 +850,20 @@ namespace LestingCraft.Runtime
             yield return WaitWorldMeshed(radiaWorld, 15f);
             player.TeleportTo(shot12Cam, false);
             yield return WaitWorldMeshed(radiaWorld, 10f);
+            ClearSightCorridor(radiaWorld, shot12Cam, nukeOrigin + Vector3.up * 14f, 2);
+            yield return WaitWorldMeshed(radiaWorld, 10f);
             game.Tech.ArmExplosive(nukeOrigin, true);
             // Advance 15.0s (15 * 1.0s) so 12.0s countdown detonates inside loaded chunks, carves trinitite crater & 3D Mushroom Cloud rises!
             for (int nStep = 0; nStep < 15; nStep++)
                 game.Tech.StepRuntime(1.0f, radiaWorld, player, game.Session, cam, 0f, 0f, 0f, 0f, 0f, out _, out _);
             yield return WaitWorldMeshed(radiaWorld, 15f);
-            game.Session.Data.clock = 1140.0;
+            game.Session.Data.clock = 900.0;
             WorldAtmosphere.Configure(cam, (int)Dimension.Lestingia, game.Session.Data.clock);
             spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Lestingia, player, cam);
 
             yield return RenderAndCapture(cam, hands, false, Path.Combine(outDir, "12-secret-666-thermonuclear-mushroom.png"), () =>
             {
-                game.Session.Data.clock = 1140.0; // Dramatic dusk lighting so incandescent mushroom cloud illuminates sky & crater!
+                game.Session.Data.clock = 900.0; // The sun sits on the horizon: readable crater, storm clouds and orange nuclear fireball.
                 RenderSettings.fog = true;
                 RenderSettings.fogDensity = 0.0018f;
                 cam.fieldOfView = 80f;
