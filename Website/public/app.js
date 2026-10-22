@@ -50,16 +50,66 @@
     .then((d) => {
       if (d && d.online === true) {
         status.dataset.state = 'online';
-        statusText.textContent = 'Сервер онлайн';
+        statusText.textContent = 'Кооператив доступен';
       } else {
         status.dataset.state = 'offline';
-        statusText.textContent = 'Сервер офлайн';
+        statusText.textContent = 'Кооператив недоступен';
       }
     })
     .catch(() => {
       status.dataset.state = 'unknown';
-      statusText.textContent = 'Статус недоступен';
+      statusText.textContent = 'Статус кооператива недоступен';
     });
+
+  // ---------- Direct platform downloads ----------
+  const downloadPanel = document.getElementById('download-builds');
+  const downloadStatus = document.getElementById('download-status');
+  if (downloadPanel && downloadStatus) {
+    const linksByPlatform = Object.fromEntries(
+      [...downloadPanel.querySelectorAll('[data-download]')].map((link) => [link.dataset.download, link])
+    );
+    const formatSize = (bytes) => {
+      const value = Number(bytes);
+      if (!Number.isFinite(value) || value <= 0) return '';
+      return value >= 1024 * 1024 * 1024
+        ? `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`
+        : `${(value / (1024 * 1024)).toFixed(1)} MB`;
+    };
+    fetch('/api/releases', { headers: { Accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((data) => {
+        const release = Array.isArray(data.releases)
+          ? data.releases.find((item) => item.windows?.url && item.android?.url)
+          : null;
+        if (!release) {
+          downloadStatus.dataset.state = 'empty';
+          downloadStatus.textContent = 'Проверенные сборки ещё не опубликованы. Когда выйдет комплект для Windows и Android, загрузка начнётся по одной кнопке.';
+          return;
+        }
+        for (const platform of ['windows', 'android']) {
+          const link = linksByPlatform[platform];
+          const asset = release[platform];
+          if (!link || !asset || typeof asset.url !== 'string') continue;
+          link.href = asset.url;
+          link.removeAttribute('aria-disabled');
+          link.removeAttribute('tabindex');
+          link.rel = 'noreferrer';
+          const meta = downloadPanel.querySelector(`[data-build-meta="${platform}"]`);
+          if (meta) {
+            const details = [release.name || release.tag, formatSize(asset.size), asset.digest]
+              .filter(Boolean);
+            meta.textContent = details.join(' · ');
+          }
+        }
+        downloadStatus.dataset.state = 'ready';
+        const releaseKind = release.prerelease ? 'Предварительная сборка' : 'Стабильная сборка';
+        downloadStatus.textContent = `${releaseKind} ${release.name || release.tag}. Нажмите кнопку платформы — загрузка файла начнётся сразу.`;
+      })
+      .catch(() => {
+        downloadStatus.dataset.state = 'error';
+        downloadStatus.textContent = 'Не удалось получить список сборок. Попробуйте обновить страницу позже.';
+      });
+  }
 
   // ---------- Gallery lightbox ----------
   const dialog = document.getElementById('lightbox');

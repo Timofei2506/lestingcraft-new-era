@@ -1,7 +1,7 @@
-# Только Windows x64. WebGL и публикация GitHub Pages отложены.
-# Лицензия — онлайн-вход по Unity ID (Personal), без .ulf-файлов.
+# Публикационные цели: Windows x64 ZIP + Android ARM64 APK.
+# Android подписывается временным Unity debug key; для будущего обновления может понадобиться переустановка.
 # Запуск: тег v* или вручную (workflow_dispatch). Требует UNITY_USERNAME / UNITY_PASSWORD.
-name: Build Windows
+name: Build Windows and Android
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
             echo "has=true" >> "$GITHUB_OUTPUT"
           else
             echo "has=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Секреты UNITY_USERNAME/UNITY_PASSWORD не заданы — Windows не собран. Инструкция: Docs/Сборка-в-облаке.md"
+            echo "::error::Секреты UNITY_USERNAME/UNITY_PASSWORD не заданы — Windows и Android не собраны. Инструкция: Docs/Сборка-в-облаке.md"
             exit 1
           fi
 
@@ -185,10 +185,95 @@ jobs:
           path: Builds/Logs
           if-no-files-found: warn
 
+  build-android:
+    name: Build Android ARM64 APK (temporary debug signature)
+    needs: [check-secrets, build]
+    if: needs.check-secrets.outputs.has == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free runner disk space for Android modules
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Verify current source and generated material inputs
+        run: |
+          python -m pip install Pillow numpy
+          python Tools/check_art.py
+          python Tools/check_content.py
+          python Tools/build_source_receipt.py Builds/Logs/source-receipt.json
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-build-Android-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Art/PBR/**') }}
+          restore-keys: |
+            Library-build-Android-
+            Library-
+
+      - name: Install Unity Editor + Android modules
+        uses: buildalon/unity-setup@v2
+        with:
+          hub-version: 3.12.0
+          cache-installation: true
+          build-targets: Android
+
+      - name: Activate Unity license (Personal)
+        id: activate-android
+        continue-on-error: true
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Brief backoff after licensing-client failure
+        if: steps.activate-android.outcome == 'failure'
+        run: sleep 15
+
+      - name: Retry Unity license activation once
+        if: steps.activate-android.outcome == 'failure'
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Build Android ARM64 APK
+        uses: buildalon/unity-action@v3
+        with:
+          log-name: build-android-arm64
+          build-target: Android
+          args: -quit -batchmode -nographics -executeMethod BuildScript.BuildAndroidArm64
+
+      - name: Verify APK output
+        run: test -s Builds/Android/LestingCraft-Android-arm64.apk
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-android-arm64
+          path: Builds/Android/LestingCraft-Android-arm64.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Android Unity logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BuildLogs-Android
+          path: Builds/Logs
+          if-no-files-found: warn
+
   release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build
+    needs: [build, build-android]
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
@@ -196,11 +281,14 @@ jobs:
         with:
           path: artifacts
 
-      - name: Pack zips
+      - name: Package Windows ZIP and Android APK
         run: |
-          cd artifacts
-          for d in build-*; do (cd "$d" && zip -qr "../$d.zip" .); done
-          ls -la *.zip
+          set -euo pipefail
+          test -s artifacts/build-StandaloneWindows64/LestingCraft.exe
+          test -s artifacts/build-android-arm64/LestingCraft-Android-arm64.apk
+          (cd artifacts/build-StandaloneWindows64 && zip -qr ../build-StandaloneWindows64.zip . -x 'SmokeResults/*')
+          cp artifacts/build-android-arm64/LestingCraft-Android-arm64.apk artifacts/LestingCraft-Android-arm64.apk
+          ls -lh artifacts/*.zip artifacts/*.apk
 
       # A public tag is NOT permission to ship an unfinished space demo. Require
       # screenshots from the actual smoke-tested EXE, not Blender or concept art.
@@ -225,6 +313,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip
+          files: |
+            artifacts/*.zip
+            artifacts/LestingCraft-Android-arm64.apk
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}

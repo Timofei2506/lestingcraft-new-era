@@ -50,13 +50,15 @@ float3 LC_SkyRadiance(float3 direction)
 
     float sun = saturate(mu);
     float solarVisibility = smoothstep(-.025, .025, sunElevation);
-    float disk = smoothstep(.99996, .999985, sun);
+    // Approximate the real solar angular diameter (~0.53°), not a wide game-style glow.
+    float disk = smoothstep(.999986, .999996, sun);
     float aureole = pow(sun, 256) * .08 + pow(sun, 4096) * .45;
     sky += _EnvironmentSunColor.rgb * (disk * 18 + aureole * atmosphere) * solarVisibility;
 
     float moon = saturate(dot(ray, _EnvironmentMoonDirection.xyz));
     float night = 1 - daylight;
-    sky += float3(.44, .57, .80) * smoothstep(.99988, .99993, moon) * night * 1.2;
+    // Lunar angular diameter is also about 0.5°; surface rendering uses a matching cubic voxel Moon.
+    sky += float3(.44, .57, .80) * smoothstep(.9999845, .999995, moon) * night * 1.2;
 
     float2 angular = float2(atan2(ray.x, ray.z) * .15915494 + .5,
         asin(clamp(ray.y, -1, 1)) * .63661977);

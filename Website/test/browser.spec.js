@@ -1,9 +1,10 @@
 import {test,expect} from '@playwright/test';
 
-const pages=['/','/press/','/privacy/'];
+const pages=['/','/press/','/privacy/','/license/'];
 
 test.beforeEach(async({page})=>{
-  await page.route('**/api/status',r=>r.fulfill({json:{online:true,server:'https://example.test',checkedAt:new Date().toISOString()}}));
+  await page.route('**/api/status',r=>r.fulfill({json:{online:true,checkedAt:new Date().toISOString()}}));
+  await page.route('**/api/releases',r=>r.fulfill({json:{available:true,releases:[{tag:'v1.0.0-test',name:'Test build',prerelease:true,windows:{name:'build-StandaloneWindows64.zip',size:1024,url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v1/build-StandaloneWindows64.zip',digest:'sha256:windows'},android:{name:'LestingCraft-Android-arm64.apk',size:2048,url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v1/LestingCraft-Android-arm64.apk',digest:'sha256:android'}}]}}));
 });
 
 test('every page renders without JavaScript errors or failed same-origin requests',async({page})=>{
@@ -48,18 +49,37 @@ test('mobile menu opens, navigates and closes with Escape',async({page})=>{
   await expect(toggle).toHaveAttribute('aria-expanded','false');
 });
 
-test('server status reflects the API answer',async({page})=>{
+test('cooperative status is generic and reflects the API answer without exposing an address',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('#server-status')).toHaveAttribute('data-state','online');
-  await expect(page.locator('#server-status span').last()).toHaveText('Сервер онлайн');
+  const status=page.locator('#server-status');
+  await expect(status).toHaveAttribute('data-state','online');
+  await expect(status.locator('span').last()).toHaveText('Кооператив доступен');
+  await expect(status).not.toContainText(/workers\.dev|https?:|lestingcraft-coop/i);
 });
 
-test('server status shows an honest unknown state when the API fails',async({page})=>{
+test('cooperative status shows an honest unknown state when the API fails',async({page})=>{
   await page.unroute('**/api/status');
   await page.route('**/api/status',r=>r.abort());
   await page.goto('/');
   await expect(page.locator('#server-status')).toHaveAttribute('data-state','unknown');
-  await expect(page.locator('#server-status span').last()).toHaveText('Статус недоступен');
+  await expect(page.locator('#server-status span').last()).toHaveText('Статус кооператива недоступен');
+});
+
+test('download page exposes one-click Windows and Android links from the complete release',async({page})=>{
+  await page.goto('/#download');
+  await expect(page.locator('[data-download="windows"]')).toHaveAttribute('href',/build-StandaloneWindows64\.zip$/);
+  await expect(page.locator('[data-download="android"]')).toHaveAttribute('href',/LestingCraft-Android-arm64\.apk$/);
+  await expect(page.locator('#download-status')).toHaveAttribute('data-state','ready');
+  await expect(page.locator('.download-warning')).toContainText('временную подпись');
+});
+
+test('download buttons stay disabled when no complete platform release is available',async({page})=>{
+  await page.unroute('**/api/releases');
+  await page.route('**/api/releases',r=>r.fulfill({json:{available:true,releases:[]}}));
+  await page.goto('/#download');
+  await expect(page.locator('#download-status')).toHaveAttribute('data-state','empty');
+  await expect(page.locator('[data-download="windows"]')).toHaveAttribute('aria-disabled','true');
+  await expect(page.locator('[data-download="android"]')).toHaveAttribute('aria-disabled','true');
 });
 
 test('gallery opens a lightbox and closes it with Escape',async({page})=>{

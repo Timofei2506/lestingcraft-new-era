@@ -1,13 +1,14 @@
 export const REPO = 'Timofei2506/lestingcraft-new-era';
-export const SERVER = 'https://lestingcraft-coop.kroterallitir.workers.dev';
+const SERVER = 'https://lestingcraft-coop.kroterallitir.workers.dev';
 export function readyReleases(releases) {
   if (!Array.isArray(releases)) throw new Error('Invalid release response');
-  return releases.filter(r => !r.draft && !r.prerelease).map(r => {
+  return releases.filter(r => !r.draft).map(r => {
     const assets = (r.assets || []).filter(a => a.state === 'uploaded' && a.size > 0 && a.browser_download_url?.startsWith(`https://github.com/${REPO}/releases/download/`));
     const windows = assets.find(a => a.name === 'build-StandaloneWindows64.zip');
-    if (!windows) return null;
+    const android = assets.find(a => a.name === 'LestingCraft-Android-arm64.apk');
+    if (!windows || !android) return null;
     const asset = a => ({ name:a.name, size:a.size, url:a.browser_download_url, digest:a.digest || null });
-    return {tag:r.tag_name,name:r.name || r.tag_name,date:r.published_at,url:`https://github.com/${REPO}/releases/tag/${encodeURIComponent(r.tag_name)}`,windows:asset(windows)};
+    return {tag:r.tag_name,name:r.name || r.tag_name,date:r.published_at,prerelease:!!r.prerelease,url:`https://github.com/${REPO}/releases/tag/${encodeURIComponent(r.tag_name)}`,windows:asset(windows),android:asset(android)};
   }).filter(Boolean);
 }
 async function timedFetch(url,options={},ms=8000) {
@@ -35,7 +36,7 @@ export async function api(path,env={}) {
   if (path === '/api/status') {
     let online=false;
     try {const r=env.COOP?await env.COOP.fetch(new Request(SERVER+'/health')):await timedFetch(SERVER+'/health',{},5000);if(r.ok){const d=await r.json();online=d.ok===true&&d.version===1;}else console.warn('Health upstream status',r.status,'binding=',Boolean(env.COOP),(await r.text()).slice(0,150));}catch(e){console.warn('Health fetch failed',e.message);}
-    return {online,server:SERVER,checkedAt:new Date().toISOString()};
+    return {online,checkedAt:new Date().toISOString()};
   }
   return null;
 }

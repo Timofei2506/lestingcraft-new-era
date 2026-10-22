@@ -6,4 +6,4 @@ const releases=readyReleases(await response.json());
 const file=new URL('./public/releases.json',import.meta.url);
 if(fs.existsSync(file)){const old=JSON.parse(fs.readFileSync(file,'utf8'));if(JSON.stringify(old.releases)===JSON.stringify(releases)){console.log('Release index unchanged');process.exit(0);}}
 const feed={available:true,releases,checkedAt:new Date().toISOString()};
-fs.writeFileSync(new URL('./public/releases.json',import.meta.url),JSON.stringify(feed,null,2)+'\n');console.log('Synced stable ready releases:',feed.releases.length);
+fs.writeFileSync(new URL('./public/releases.json',import.meta.url),JSON.stringify(feed,null,2)+'\n');console.log('Synced complete platform releases:',feed.releases.length);

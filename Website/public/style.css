@@ -155,6 +155,20 @@ h3{font-size:19px;font-family:var(--body);font-weight:700;letter-spacing:0}
 .stage[data-status="planned"] li{color:var(--dim)}
 .stage[data-status="planned"] li::before{background:transparent;border:1.5px dashed var(--dim)}
 
+/* ---------- One-click downloads ---------- */
+.download-section{padding-top:clamp(48px,7vw,88px)}
+.download-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;max-width:960px}
+.download-card{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:clamp(24px,4vw,38px);border:1px solid var(--line-2);border-radius:var(--radius);background:linear-gradient(155deg,rgba(239,186,105,.07),transparent 60%),var(--panel)}
+.download-card h3{font-family:var(--display);font-size:23px;font-weight:600}
+.download-card p{margin:0;color:var(--muted);font-size:15px}
+.download-card .download-link{margin-top:auto}
+.download-link[aria-disabled="true"]{opacity:.5;pointer-events:none;cursor:wait;box-shadow:none}
+.download-meta{min-height:24px;font-size:12px!important;color:var(--dim)!important;overflow-wrap:anywhere}
+.download-status{min-height:24px;margin:18px 0 0}
+.download-status[data-state="ready"]{color:var(--green)}
+.download-status[data-state="empty"]{color:var(--gold-hi)}
+.download-status[data-state="error"]{color:var(--red)}
+
 /* ---------- Test / waitlist ---------- */
 .section-test{padding-top:40px}
 .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(30px,5vw,70px);align-items:start;background:linear-gradient(140deg,rgba(239,186,105,.07),transparent 40%),var(--bg-2);border:1px solid var(--line);border-radius:28px;padding:clamp(28px,4vw,56px)}
@@ -230,6 +244,7 @@ h3{font-size:19px;font-family:var(--body);font-weight:700;letter-spacing:0}
   .test-grid{grid-template-columns:1fr}
 }
 @media (max-width:760px){
+  .download-grid{grid-template-columns:1fr}
   .hero{min-height:auto;padding-top:110px;padding-bottom:90px}
   .hero-grid{grid-template-columns:1fr}
   .hero-shot{order:-1}

@@ -3,8 +3,9 @@
 /game/* /#game 301
 /worlds /#game 301
 /worlds/* /#game 301
-/downloads / 301
-/downloads/* / 301
+/downloads /#download 301
+/downloads/* /#download 301
+/license /license/ 301
 /roadmap /#progress 301
 /roadmap/* /#progress 301
 /journal /#progress 301

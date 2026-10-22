@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LestingCraft: New Era — воксельная песочница на Unity 6</title>
-<meta name="description" content="LestingCraft: New Era — ранняя воксельная песочница на Unity 6: добыча, крафт, сюжетные сцены и кооператив для друзей. Ранний прототип для Windows x64.">
+<meta name="description" content="LestingCraft: New Era — ранняя воксельная песочница на Unity 6 для Windows x64 и Android ARM64: добыча, крафт, сюжетные сцены и кооператив.">
 <meta name="theme-color" content="#07090a">
 <link rel="canonical" href="https://lestingcraft.kroterallitir.workers.dev/">
 <meta property="og:type" content="website">
@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/style.css">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"VideoGame","name":"LestingCraft: New Era","description":"Ранняя воксельная песочница на Unity 6: крафт, сюжетные сцены и кооператив.","gamePlatform":"Windows","operatingSystem":"Windows x64","applicationCategory":"Game","author":{"@type":"Person","name":"EHOT_EHOTbI4.music"},"url":"https://lestingcraft.kroterallitir.workers.dev/"}
+{"@context":"https://schema.org","@type":"VideoGame","name":"LestingCraft: New Era","description":"Ранняя воксельная песочница на Unity 6: крафт, сюжетные сцены и кооператив.","gamePlatform":["Windows","Android"],"operatingSystem":"Windows x64, Android ARM64 (Android 8.0+)","applicationCategory":"Game","author":{"@type":"Person","name":"EHOT_EHOTbI4.music"},"url":"https://lestingcraft.kroterallitir.workers.dev/"}
 </script>
 </head>
 <body>
@@ -30,6 +30,7 @@
   </a>
   <nav class="nav-links" id="nav-links" aria-label="Основное">
     <a href="#game">Игра</a>
+    <a href="#download">Скачать</a>
     <a href="#shots">Кадры</a>
     <a href="#progress">Прогресс</a>
     <a href="#test">Тест</a>
@@ -37,8 +38,8 @@
     <a href="/press/">Пресса</a>
   </nav>
   <div class="nav-right">
-    <span class="status" id="server-status" data-state="unknown"><i></i><span>Сервер: проверка…</span></span>
-    <a class="btn small" href="#waitlist">Тестовый доступ</a>
+    <span class="status" id="server-status" data-state="unknown"><i></i><span>Кооператив: проверка…</span></span>
+    <a class="btn small" href="#download">Скачать</a>
     <button class="menu-toggle" id="menu-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Меню">
       <span></span><span></span>
     </button>
@@ -52,7 +53,7 @@
   <canvas id="voxel-bg" aria-hidden="true"></canvas>
   <div class="hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow reveal">Ранний прототип · Windows x64</p>
+      <p class="eyebrow reveal">Ранний прототип · Windows x64 и Android ARM64</p>
       <h1 class="reveal">
         <span class="h1-main">LESTINGCRAFT</span>
         <span class="h1-sub">NEW ERA</span>
@@ -61,6 +62,7 @@
       <div class="cta reveal">
         <a class="btn primary" href="#waitlist">Записаться в тест</a>
         <a class="btn ghost" href="#game">Что уже работает</a>
+        <a class="btn ghost" href="#download">Скачать для ПК или Android</a>
       </div>
       <ul class="facts reveal">
         <li><b>2×2 и 3×3</b><span>крафт и верстак</span></li>
@@ -76,6 +78,34 @@
     </figure>
   </div>
   <a class="scroll-cue" href="#game" aria-label="Перейти к описанию"><span></span></a>
+</section>
+
+<!-- ONE-CLICK PLATFORM DOWNLOADS -->
+<section class="section download-section" id="download" aria-labelledby="download-title">
+  <header class="section-head reveal">
+    <p class="eyebrow">Официальные сборки</p>
+    <h2 id="download-title">Скачать игру</h2>
+    <p class="muted">Выберите платформу — кнопка сразу начнёт загрузку последней проверенной версии. Аккаунт и лаунчер не нужны.</p>
+  </header>
+  <div class="download-grid" id="download-builds" data-state="loading">
+    <article class="download-card reveal">
+      <span class="tag">Windows x64</span>
+      <h3>Для ПК</h3>
+      <p>ZIP-архив с игрой. Распакуйте папку и запустите <b>LestingCraft.exe</b>.</p>
+      <a class="btn primary wide download-link" data-download="windows" href="#download" aria-disabled="true" tabindex="-1">Загрузка списка сборок…</a>
+      <p class="download-meta" data-build-meta="windows">Сборка появится после публикации релиза.</p>
+    </article>
+    <article class="download-card reveal">
+      <span class="tag">Android · ARM64</span>
+      <h3>Для телефона</h3>
+      <p>APK для Android. После загрузки подтвердите установку приложения из браузера.</p>
+      <a class="btn primary wide download-link" data-download="android" href="#download" aria-disabled="true" tabindex="-1">Загрузка списка сборок…</a>
+      <p class="download-meta" data-build-meta="android">Сборка появится после публикации релиза.</p>
+      <p class="download-warning fine">Первая APK использует временную подпись; перед будущим обновлением может понадобиться удалить и установить игру заново.</p>
+    </article>
+  </div>
+  <p class="download-status fine" id="download-status" role="status" aria-live="polite">Проверяем наличие сборок…</p>
+  <p class="fine">Исходный код доступен для просмотра, но его повторное использование ограничено. <a href="/license/">Лицензия и условия игры</a>.</p>
 </section>
 
 <div class="marquee" aria-hidden="true">
@@ -210,11 +240,11 @@
     <div class="reveal">
       <p class="eyebrow">Тестовый доступ</p>
       <h2 id="test-title">Попробуйте первыми</h2>
-      <p class="muted">Сейчас игра доступна только приглашённым тестерам. Публичного скачивания нет. Оставьте почту, и мы напишем, когда откроем доступ.</p>
+      <p class="muted">Проверенные сборки Windows и Android публикуются в разделе «Скачать». Оставьте почту, чтобы получать новости о тестовых версиях, обновлениях и дополнительных приглашениях.</p>
       <ol class="steps">
         <li><b>Оставьте почту</b><span>Мы не рассылаем рекламу и не передаём адреса третьим лицам.</span></li>
-        <li><b>Получите приглашение</b><span>Письмо с кодом доступа и инструкцией для лаунчера.</span></li>
-        <li><b>Запустите лаунчер</b><span>Установка проверяет каждый файл. Прежняя версия не меняется, пока новая не готова.</span></li>
+        <li><b>Получайте новости</b><span>Сообщим о тестовых версиях и изменениях игры.</span></li>
+        <li><b>Скачайте сборку</b><span>Windows: распакуйте ZIP и запустите игру. Android: установите APK из загрузок.</span></li>
       </ol>
     </div>
 
@@ -253,12 +283,12 @@
       <p>Нет. Это ранний прототип. Крафт, мир, сюжетные сцены и кооператив работают, но многое ещё в планах.</p>
     </details>
     <details>
-      <summary>Почему нет публичного скачивания?</summary>
-      <p>Сборки пока проверяются тестерами по приглашению. Публичный доступ откроем, когда проверка будет стабильной и понятной.</p>
+      <summary>Где скачать игру?</summary>
+      <p>Откройте раздел «Скачать» и выберите Windows или Android. Кнопка ведёт напрямую к последней опубликованной проверенной сборке. Если релиза ещё нет, страница честно покажет, что он пока не опубликован.</p>
     </details>
     <details>
       <summary>Нужна ли Unity или .NET для запуска?</summary>
-      <p>Нет. Лаунчер — самостоятельный Windows-файл. Unity Editor и установка .NET не нужны. Игра запускается офлайн после установки.</p>
+      <p>Нет. Windows-версия запускается из распакованного ZIP без Unity Editor. Для Android установите APK. Для сетевой игры потребуется доступ к интернету; одиночный режим не требует лаунчера.</p>
     </details>
     <details>
       <summary>Что делает лаунчер?</summary>
@@ -274,7 +304,7 @@
     </details>
     <details>
       <summary>Где исходный код?</summary>
-      <p>Репозиторий открыт на <a href="https://github.com/Timofei2506/lestingcraft-new-era" rel="noopener">GitHub</a>. Там же история изменений и сборки.</p>
+      <p>Исходники доступны для просмотра в репозитории на <a href="https://github.com/Timofei2506/lestingcraft-new-era" rel="noopener">GitHub</a>; повторное использование ограничено. См. <a href="/license/">условия лицензии</a>.</p>
     </details>
   </div>
 </section>
@@ -300,8 +330,10 @@
     <p class="muted">Ранний прототип. Не законченная игра.</p>
   </div>
   <nav class="footer-links" aria-label="Подвал">
+    <a href="#download">Скачать</a>
     <a href="/press/">Пресса</a>
     <a href="/privacy/">Конфиденциальность</a>
+    <a href="/license/">Лицензия</a>
     <a href="https://github.com/Timofei2506/lestingcraft-new-era" rel="noopener">GitHub</a>
     <a href="#top">Наверх</a>
   </nav>
