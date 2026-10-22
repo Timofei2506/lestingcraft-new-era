@@ -667,7 +667,7 @@ namespace LestingCraft.Runtime
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
             Vector3 stationOrigin=new Vector3(0f,320f,0f);
             spaceVisuals.SpawnOrbitalStationInterior(world.Seed,stationOrigin);
-            spaceVisuals.ApplyPlanetAtmosphereAndGravity(world.Dimension,player,Camera.main);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(world.Dimension,player,Camera.main,true);
             player.TeleportTo(spaceVisuals.StationSpawnWorldPos,true);
             Session.Data.dockedAtStation=true;
             Session.Checkpoint();
@@ -1009,7 +1009,6 @@ namespace LestingCraft.Runtime
 
         public bool IsConnecting=>busy;
         public string LastError=>lastError;
-        public string ServerLabel=>endpoint.Replace("https://","").Replace("http://","");
         public string WorldSeed=>seedText;
         public string PlayerName {get=>playerName;set=>playerName=value;}
         public string RoomCode {get=>code;set=>code=value.Trim();}

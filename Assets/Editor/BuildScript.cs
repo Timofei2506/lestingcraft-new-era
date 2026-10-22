@@ -28,6 +28,19 @@ public static class BuildScript
         Build(BuildTarget.StandaloneLinux64, "Builds/StandaloneLinux64/LestingCraft.x86_64");
     }
 
+    public static void BuildAndroidArm64()
+    {
+        var android = UnityEditor.Build.NamedBuildTarget.Android;
+        PlayerSettings.SetApplicationIdentifier(android, "com.lestingcraft.newera");
+        PlayerSettings.SetScriptingBackend(android, ScriptingImplementation.IL2CPP);
+        PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+        PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
+        PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
+        PlayerSettings.Android.useCustomKeystore = false; // Temporary Unity debug signing; no private keystore is stored in CI.
+        EditorUserBuildSettings.buildAppBundle = false;
+        Build(BuildTarget.Android, "Builds/Android/LestingCraft-Android-arm64.apk");
+    }
+
     private static void Build(BuildTarget target, string outputPath)
     {
         if (Scenes.Length == 0)

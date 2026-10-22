@@ -1369,9 +1369,10 @@ namespace LestingCraft.Runtime
             }
         }
 
-        public void ApplyPlanetAtmosphereAndGravity(Dimension dim, FirstPersonController player, Camera cam)
+        public void ApplyPlanetAtmosphereAndGravity(Dimension dim, FirstPersonController player, Camera cam, bool stationInterior = false)
         {
             BuildCelestialRig();
+            bool showStationSky = stationInterior && IsStationSpawned && dim == Dimension.Lestingia;
             if (player) player.GravityScale = GravityForDimension(dim);
             if (plumeRoot) plumeRoot.SetActive(false);
             foreach (var kv in atlasBodyObjects) if (kv.Value) kv.Value.SetActive(false);
@@ -1394,11 +1395,43 @@ namespace LestingCraft.Runtime
 
             if (dreamWatcherRoot) dreamWatcherRoot.SetActive(false);
 
-            if (dim == Dimension.Lestingia && !IsStationSpawned)
+            if (dim == Dimension.Lestingia && !showStationSky)
             {
-                if (spaceDomeRoot) spaceDomeRoot.SetActive(false);
+                // Ground view: never leave the space-flight starfield or full-size planets hanging in the sky.
+                // Keep one correctly sub-degree cubic Moon only when it is above the local horizon.
+                if (spaceDomeRoot)
+                {
+                    spaceDomeRoot.SetActive(true);
+                    if (cam) spaceDomeRoot.transform.position = cam.transform.position;
+                }
+                if (spaceKeyLight) spaceKeyLight.enabled = false;
+                if (domeRenderer) domeRenderer.enabled = false;
+                if (starfieldObj) starfieldObj.SetActive(false);
+                if (sunObj) sunObj.SetActive(false);
+                foreach (var kv in planetSpheres) if (kv.Value) kv.Value.SetActive(false);
+                foreach (var kv in atlasBodyObjects) if (kv.Value) kv.Value.SetActive(false);
+                if (spiralGalaxyObj) spiralGalaxyObj.SetActive(false);
+                if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
                 RenderSettings.fog = false;
                 if (cam) cam.backgroundColor = new Color(0.42f, 0.66f, 0.78f);
+
+                GameObject moon;
+                if (cam && atlasBodyObjects.TryGetValue(CelestialBodyId.Moon, out moon) && moon)
+                {
+                    Vector3 sunDirection = RenderSettings.sun
+                        ? -RenderSettings.sun.transform.forward
+                        : Vector3.down;
+                    Vector3 moonDirection = (-sunDirection).normalized;
+                    bool moonAboveHorizon = moonDirection.y > 0.035f;
+                    moon.SetActive(moonAboveHorizon);
+                    if (moonAboveHorizon)
+                    {
+                        // Camera.farClipPlane is 256 m in the surface world. A 2.0 m voxel Moon at 220 m subtends ~0.52°.
+                        moon.transform.localPosition = moonDirection * 220f;
+                        moon.transform.localScale = Vector3.one * 0.20f;
+                        ApplyPlanetShaderLighting(moon, sunDirection, 0.16f, 0.025f, 0f);
+                    }
+                }
                 return;
             }
 
@@ -1411,13 +1444,13 @@ namespace LestingCraft.Runtime
             if (domeRenderer) domeRenderer.enabled = false;
             foreach (var kv in planetSpheres) if (kv.Value) kv.Value.SetActive(false);
 
-            bool showDaytimeStars = IsStationSpawned || dim == Dimension.Moon || dim == Dimension.Mercury ||
+            bool showDaytimeStars = showStationSky || dim == Dimension.Moon || dim == Dimension.Mercury ||
                                     dim == Dimension.Europa || dim == Dimension.Pluto || dim == Dimension.AndromedaPrime || dim == Dimension.Somnia;
             float sunScale = 1.0f;
             CelestialBodyId? heroSkyParent = null;
             float heroSkyScale = 1.0f;
 
-            if (IsStationSpawned)
+            if (showStationSky)
             {
                 heroSkyParent = CelestialBodyId.Earth;
                 heroSkyScale = 3.2f;
@@ -1502,7 +1535,7 @@ namespace LestingCraft.Runtime
             if (heroSkyParent.HasValue && atlasBodyObjects.TryGetValue(heroSkyParent.Value, out var skyPlanet) && skyPlanet)
             {
                 skyPlanet.SetActive(true);
-                skyPlanet.transform.localPosition = IsStationSpawned ? new Vector3(0f, -68f, 44f) : new Vector3(44f, 88f, 155f);
+                skyPlanet.transform.localPosition = showStationSky ? new Vector3(0f, -68f, 44f) : new Vector3(44f, 88f, 155f);
                 skyPlanet.transform.localRotation = Quaternion.Euler(22f, 34f, -12f);
                 skyPlanet.transform.localScale = Vector3.one * heroSkyScale;
                 ApplyPlanetShaderLighting(skyPlanet, new Vector3(-0.62f, 0.54f, 0.56f).normalized, 1.15f, 0.025f, 0.04f);

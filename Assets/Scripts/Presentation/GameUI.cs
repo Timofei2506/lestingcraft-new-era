@@ -229,7 +229,7 @@ namespace LestingCraft.Presentation
             // Reusable input anchored in the card rather than relying on browser forms.
             var input=Input("КОД КОМНАТЫ",game.RoomCode,"32 символа от хозяина комнаты",823,540,350,v=>game.RoomCode=v);
             actions.Add(Button("Войти  →",404,111,307,64,game.JoinRoom,true,right.transform));
-            Label(right.transform,"Сервер: "+game.ServerLabel,28,211,685,64,14,Muted);
+            Label(right.transform,"Подключение защищено: вход только по коду комнаты.",28,211,685,64,14,Muted);
             Label(content.transform,"Совместный космический полёт ещё разрабатывается.",64,777,795,25,14,Muted);
             status=Label(content.transform,"",250,816,930,48,16,Accent);
         }
