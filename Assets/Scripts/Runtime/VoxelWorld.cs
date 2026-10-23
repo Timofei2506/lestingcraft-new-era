@@ -73,7 +73,7 @@ namespace LestingCraft.Runtime
         Task<ChunkMeshData> meshTask;
         int detailQuality, editRevision, budgetFrame = -1;
         bool destroying;
-        const double BudgetMilliseconds = 3.0;
+        const double BudgetMilliseconds = 4.0;
 
         public int ContentVersion { get; private set; }
         public int Seed { get; private set; }
@@ -349,51 +349,56 @@ namespace LestingCraft.Runtime
             RenderSettings.fogStartDistance = Mathf.Max(18, Radius * 10);
             RenderSettings.fogEndDistance = Radius * 16;
             if (BudgetExpired) return;
-            if (work == null)
+            // Spend the whole per-frame streaming budget: when one chunk step
+            // finishes, start the next in the same frame while budget remains.
+            // Previously a single MoveNext ran per frame, so streaming throughput
+            // was capped by frame rate and most of the budget went idle. The
+            // budget itself is only slightly wider (3 -> 4 ms) and still bounds
+            // main-thread chunk work per frame.
+            while (!BudgetExpired)
             {
-                Vector2Int key;
-                if (FindDirty(center, out key)) work = Rebuild(key, chunks[key]);
-                else if (FindMissing(center, out key)) work = Generate(key);
-                else
+                if (work == null)
                 {
-                    Ready = true;
-                    remove.Clear();
-                    foreach (var pair in chunks)
-                        if (Mathf.Abs(pair.Key.x - center.x) > Radius + 1 ||
-                            Mathf.Abs(pair.Key.y - center.y) > Radius + 1) remove.Add(pair.Key);
-                    if (remove.Count != 0)
+                    Vector2Int key;
+                    if (FindDirty(center, out key)) work = Rebuild(key, chunks[key]);
+                    else if (FindMissing(center, out key)) work = Generate(key);
+                    else
                     {
-                        key = remove[0];
-                        View v = chunks[key];
-                        if (!v.Baking || v.Bake.IsCompleted)
+                        Ready = true;
+                        remove.Clear();
+                        foreach (var pair in chunks)
+                            if (Mathf.Abs(pair.Key.x - center.x) > Radius + 1 ||
+                                Mathf.Abs(pair.Key.y - center.y) > Radius + 1) remove.Add(pair.Key);
+                        if (remove.Count != 0)
                         {
-                            DisposeView(v);
-                            chunks.Remove(key);
-                            dirty.Remove(key);
-                            Skylight.Remove(key.x, key.y);
-                            if (skyVolume) skyVolume.InvalidateStreaming();
+                            key = remove[0];
+                            View v = chunks[key];
+                            if (!v.Baking || v.Bake.IsCompleted)
+                            {
+                                DisposeView(v);
+                                chunks.Remove(key);
+                                dirty.Remove(key);
+                                Skylight.Remove(key.x, key.y);
+                                if (skyVolume) skyVolume.InvalidateStreaming();
+                            }
                         }
+                        break;
                     }
                 }
-            }
-            if (work != null && !BudgetExpired)
-            {
-                try
-                {
-                    if (!work.MoveNext())
-                    {
-                        var disposable = work as IDisposable;
-                        if (disposable != null) disposable.Dispose();
-                        work = null;
-                    }
-                }
+                bool advanced;
+                try { advanced = work.MoveNext(); }
                 catch (Exception exception)
                 {
                     UnityEngine.Debug.LogException(exception, this);
                     var disposable = work as IDisposable;
                     if (disposable != null) disposable.Dispose();
                     work = null;
+                    break;
                 }
+                if (advanced) break; // yielded: waiting on a job/task or on the budget
+                var finished = work as IDisposable;
+                if (finished != null) finished.Dispose();
+                work = null;
             }
         }
 

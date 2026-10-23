@@ -114,10 +114,12 @@ namespace LestingCraft.Presentation
             Horizon = Color.Lerp(nightHorizon, Color.Lerp(dayHorizon, new Color(.32f, .37f, .40f), overcast), Daylight);
             Horizon = Color.Lerp(Horizon, new Color(.65f, .29f, .15f), golden * (1 - overcast) * .25f);
             SunColor = MoonIsPrimary ? new Color(.44f, .57f, .85f) : Color.Lerp(noon, warm, golden * .8f);
-            DirectIntensity = (MoonIsPrimary ? .09f : Mathf.Lerp(.08f, 1.9f, daylightBeam)) * (1 - overcast * .70f);
-            AmbientSky = Color.Lerp(new Color(.025f, .040f, .072f), Color.Lerp(daySky, dayHorizon, .62f) * .82f, Daylight);
-            AmbientEquator = Color.Lerp(new Color(.014f, .020f, .034f), Color.Lerp(dayHorizon, new Color(.19f, .22f, .18f), .66f), Daylight);
-            AmbientGround = Color.Lerp(new Color(.007f, .010f, .018f), new Color(.075f, .085f, .063f), Daylight);
+            DirectIntensity = (MoonIsPrimary ? .09f : Mathf.Lerp(.08f, 2.05f, daylightBeam)) * (1 - overcast * .70f);
+            // Day ambient lifted (was *0.82 sky / dark equator-ground): shadow sides of
+            // foliage and terrain crushed to near-black in real EXE captures.
+            AmbientSky = Color.Lerp(new Color(.025f, .040f, .072f), Color.Lerp(daySky, dayHorizon, .62f) * 1.02f, Daylight);
+            AmbientEquator = Color.Lerp(new Color(.014f, .020f, .034f), Color.Lerp(dayHorizon, new Color(.27f, .30f, .25f), .66f), Daylight);
+            AmbientGround = Color.Lerp(new Color(.007f, .010f, .018f), new Color(.11f, .12f, .09f), Daylight);
 
             if (realm == Dimension.Moon)
             {
