@@ -138,15 +138,29 @@ namespace LestingCraft.Runtime
             Debug.Log("[Smoke] SHUTTLE_INTERIOR: "+shuttleColliders+" physical colliders, six chairs, two MFDs, 28m animated lift and airlock interlock");
             Camera.main.transform.localRotation=Quaternion.Euler(10,35,0);
             var fireCell=Vector3Int.FloorToInt(player.transform.position+new Vector3(1,0,2));game.Session.World.Edit(fireCell.x,fireCell.y,fireCell.z,15);
-            yield return null;yield return null;yield return new WaitForEndOfFrame();
-            var placed=GameObject.Find("Placed voxel model 15");if(!placed||placed.GetComponent<MeshFilter>().sharedMesh!=VoxelItemModels.MeshFor(15)){Fail("Placed campfire must use authored icon geometry");yield break;}
+            // Placed models appear at the end of an async chunk rebuild; waiting a
+            // fixed number of frames is a frame-rate race on software renderers.
+            // Poll with a bounded deadline and drive the same rebuild pump instead.
+            deadline=Time.realtimeSinceStartup+60;GameObject placed=null;
+            while(Time.realtimeSinceStartup<deadline&&failure==null)
+            {if(game.Session&&game.Session.World)game.Session.World.ShowcasePumpSync();
+             placed=GameObject.Find("Placed voxel model 15");
+             if(placed&&placed.GetComponent<MeshFilter>()&&placed.GetComponent<MeshFilter>().sharedMesh==VoxelItemModels.MeshFor(15))break;
+             placed=null;yield return null;}
+            yield return new WaitForEndOfFrame();
+            if(!placed||failure!=null){Fail("Placed campfire must use authored icon geometry: found="+(placed!=null)+" failure="+failure);yield break;}
             Debug.Log("[Smoke] CAMPFIRE_PARITY: same shared mesh as icon/held model, no opaque cube");
             var crystalCell=Vector3Int.FloorToInt(player.transform.position)+new Vector3Int(2,0,3);
             game.Session.World.Edit(crystalCell.x,crystalCell.y-1,crystalCell.z,1);
             game.Session.World.Edit(crystalCell.x,crystalCell.y,crystalCell.z,11);
             game.Session.World.Edit(crystalCell.x,crystalCell.y+1,crystalCell.z,0);
-            yield return null;yield return null;
-            var crystal=GameObject.Find("Placed crystal clusters");if(!crystal||!crystal.GetComponent<MeshCollider>().sharedMesh){Fail("Authored crystal render/collision missing");yield break;}
+            deadline=Time.realtimeSinceStartup+90;GameObject crystal=null;
+            while(Time.realtimeSinceStartup<deadline&&failure==null)
+            {if(game.Session&&game.Session.World)game.Session.World.ShowcasePumpSync();
+             crystal=GameObject.Find("Placed crystal clusters");
+             if(crystal&&crystal.GetComponent<MeshCollider>()&&crystal.GetComponent<MeshCollider>().sharedMesh)break;
+             crystal=null;yield return null;}
+            if(!crystal||failure!=null){Fail("Authored crystal render/collision missing: found="+(crystal!=null)+" failure="+failure);yield break;}
             game.Session.World.Edit(crystalCell.x,crystalCell.y,crystalCell.z-1,0);
             var crystalOrigin=(Vector3)crystalCell+new Vector3(.5f,.5f,-1);
             if(!VoxelRaycast.Trace(crystalOrigin,Vector3.forward,3,game.Session.World.GetBlock,out var crystalHit)||crystalHit.Cell!=crystalCell){Fail("Native crystal voxel targeting mismatch");yield break;}
