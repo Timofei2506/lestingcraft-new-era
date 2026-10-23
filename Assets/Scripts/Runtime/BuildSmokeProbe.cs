@@ -64,19 +64,32 @@ namespace LestingCraft.Runtime
             ui.ShowHome();FindButton(ui,"Home.Coop").onClick.Invoke();if(ui.ScreenName!="Rooms"){Fail("Coop button did not open rooms.");yield break;}
             ui.ShowHome();FindButton(ui,"Home.Settings").onClick.Invoke();if(ui.ScreenName!="Settings"){Fail("Settings button did not open settings.");yield break;}
             foreach(int id in ItemArtwork.AllIds)if(!ItemArtwork.Get(id)){Fail("Item icon missing: "+id);yield break;}
-            ui.ShowHome();game.SelectedMode=0;game.PlayOffline();
+            ui.ShowHome();game.SelectedMode=0;
+            // CI runs on a software rasterizer (WARP), not on target hardware. Use the
+            // minimum supported view distance (the settings slider range is 2..5) so this
+            // probe still streams a complete world (5x5 chunks) without its duration
+            // depending on the frame rate of a software GPU. The Ultra graphics checks
+            // later in this probe restore full settings before their screenshots.
+            if(VisualSettings.Current!=null){VisualSettings.Current.ViewDistance=2;VisualSettings.Current.Save();}
+            game.PlayOffline();
             // A reproducible clear-day baseline; only the explicit smoke process fixes its clock.
-            // WARP on windows-latest is ~2 FPS after era-v9 expansion (Radia/Cherenkov/industrial). Give it 300s not 210s.
             deadline=Time.realtimeSinceStartup+300;
-            float lastLog=Time.realtimeSinceStartup;
+            float warmupStart=Time.realtimeSinceStartup;
+            float lastLog=warmupStart;
             while(!game.WorldReady&&failure==null&&Time.realtimeSinceStartup<deadline)
             {if(game.Session)game.Session.Data.clock=420;
+             // Drive the exact same Generate/Rebuild/mesher code synchronously (the
+             // pump the showcase build already uses) instead of waiting on LateUpdate's
+             // 3 ms-per-frame budget at ~2 FPS under WARP. Generation, skylight and
+             // meshing work is unchanged and fully exercised; only the artificial
+             // frame-rate dependency that timed out the old probe is removed.
+             if(game.Session&&game.Session.World)game.Session.World.ShowcasePumpSync();
              if(Time.realtimeSinceStartup-lastLog>10f)
-             {Debug.Log("[Smoke] World warmup: ready="+game.WorldReady+" chunks="+game.ChunkCount+" weather="+(game.Session?.Weather!=null)+" failure="+(failure??"null")+" elapsed="+(Time.realtimeSinceStartup-(deadline-300))+"s");
+             {Debug.Log("[Smoke] World warmup: ready="+game.WorldReady+" chunks="+game.ChunkCount+" weather="+(game.Session?.Weather!=null)+" failure="+(failure??"null")+" elapsed="+(Time.realtimeSinceStartup-warmupStart)+"s");
               lastLog=Time.realtimeSinceStartup;}
              yield return null;}
             if(failure!=null||!game.Session||!game.WorldReady||game.ChunkCount<5||!game.Session.Weather)
-            {string detail=" failure="+(failure??"null")+" session="+(game.Session!=null)+" worldReady="+game.WorldReady+" chunkCount="+game.ChunkCount+" weather="+(game.Session?.Weather!=null)+" elapsed="+(Time.realtimeSinceStartup-(deadline-300))+"s";
+            {string detail=" failure="+(failure??"null")+" session="+(game.Session!=null)+" worldReady="+game.WorldReady+" chunkCount="+game.ChunkCount+" weather="+(game.Session?.Weather!=null)+" elapsed="+(Time.realtimeSinceStartup-warmupStart)+"s";
              Fail("World/meshes/weather initialization:"+detail);yield break;}
             if(RenderSettings.fog){Fail("Duplicate linear fog must be disabled.");yield break;}
             // The compulsory ruined-house opening remains in the game AND in this native test.

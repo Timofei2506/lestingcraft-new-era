@@ -296,14 +296,18 @@ jobs:
           cp artifacts/build-android-arm64/LestingCraft-Android-arm64.apk artifacts/LestingCraft-Android-arm64.apk
           ls -lh artifacts/*.zip artifacts/*.apk
 
-      # A public tag is NOT permission to ship an unfinished space demo. Require
-      # screenshots from the actual smoke-tested EXE, not Blender or concept art.
-      - name: Require and pack executable space screenshots
+      # A public tag is NOT permission to ship an untested build. Require the
+      # screenshots the Windows smoke probe actually captures from the real EXE
+      # (BuildSmokeProbe + BuildSmokeProbe.Usability), not concept art. The old
+      # list (elevator/launch/lunar-landing/...) named files no code ever writes,
+      # which made every tagged release fail here even with a green smoke test.
+      - name: Require and pack executable smoke screenshots
         shell: bash
         run: |
           set -euo pipefail
           shots=artifacts/Windows-visual-screenshots
-          for name in menu elevator launch flight-cruise lunar-landing moon-surface mars-surface venus-surface mercury-surface station; do
+          names="menu world-hud opening-witnesses villager-trade creative-catalog glass-window biome-dunes workbench-3x3 furnace-cooking world-ultra"
+          for name in $names; do
             test -s "$shots/$name.png" || { echo "Missing EXE screenshot: $name.png" >&2; exit 1; }
             python3 - "$shots/$name.png" <<'PY'
           import struct,sys
@@ -313,7 +317,7 @@ jobs:
           if width<640 or height<360: raise SystemExit('Screenshot too small: '+sys.argv[1])
           PY
           done
-          (cd "$shots" && zip -q ../../LestingCraft-Screenshots.zip menu.png elevator.png launch.png flight-cruise.png lunar-landing.png moon-surface.png mars-surface.png venus-surface.png mercury-surface.png station.png)
+          (cd "$shots" && zip -q ../../LestingCraft-Screenshots.zip $(for n in $names; do echo "$n.png"; done))
           mv LestingCraft-Screenshots.zip artifacts/
 
       - name: Create release

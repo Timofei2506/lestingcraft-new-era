@@ -108,7 +108,10 @@ namespace LestingCraft.Runtime
             redBeaconMat = CreateMat(sh, new Color(1.0f, 0.16f, 0.12f), new Color(2.8f, 0.25f, 0.18f), 0.1f, 0.8f);
             whiteTrussMat = CreateMat(sh, new Color(0.86f, 0.89f, 0.92f), Color.black, 0.45f, 0.45f);
             blastFireMat = CreateMat(sh, new Color(1.0f, 0.62f, 0.18f), new Color(4.2f, 1.95f, 0.45f), 0.0f, 0.25f);
-            smokeCloudMat = CreateMat(sh, new Color(0.34f, 0.34f, 0.35f), new Color(0.20f, 0.14f, 0.10f), 0.0f, 0.08f);
+            // Warm light-grey plume: the old 0.34 grey rendered as pure-black blobs
+            // at dusk/night (showcase shot 12). Brighter albedo + warm emissive keeps
+            // the cloud readable against a dark sky without changing its daylight look.
+            smokeCloudMat = CreateMat(sh, new Color(0.55f, 0.52f, 0.48f), new Color(0.38f, 0.24f, 0.13f), 0.0f, 0.08f);
             shockWaveMat = CreateMat(sh, new Color(1.0f, 0.78f, 0.43f), new Color(2.6f, 1.15f, 0.28f), 0.0f, 0.12f);
         }
 

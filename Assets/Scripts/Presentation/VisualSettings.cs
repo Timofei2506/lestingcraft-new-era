@@ -120,9 +120,12 @@ namespace LestingCraft.Presentation
 
             if (globalColorAdj != null)
             {
-                globalColorAdj.postExposure.Override(Mathf.Lerp(inRadiaAbyss ? -0.25f : 0.08f, 3.8f, Mathf.Clamp01(nukeFlash01)));
+                // Radia stays cold and moody, but the old -0.25 EV / -46 sat / 0.44
+                // vignette stack crushed every dark surface to pure black (showcase
+                // shot 10). Lift exposure and soften the vignette; hue is unchanged.
+                globalColorAdj.postExposure.Override(Mathf.Lerp(inRadiaAbyss ? -0.08f : 0.08f, 3.8f, Mathf.Clamp01(nukeFlash01)));
                 globalColorAdj.contrast.Override(inRadiaAbyss ? 22f : 9f);
-                globalColorAdj.saturation.Override(inRadiaAbyss ? -46f : Mathf.Lerp(6f, -35f, Mathf.Clamp01(radiationDose01)));
+                globalColorAdj.saturation.Override(inRadiaAbyss ? -38f : Mathf.Lerp(6f, -35f, Mathf.Clamp01(radiationDose01)));
                 globalColorAdj.colorFilter.Override(inRadiaAbyss
                     ? new Color(0.86f, 0.92f, 0.98f, 1f)
                     : Color.Lerp(Color.white, new Color(0.82f, 1.0f, 0.86f, 1f), Mathf.Clamp01(radiationDose01 * 0.7f)));
@@ -130,7 +133,7 @@ namespace LestingCraft.Presentation
 
             if (globalVignette != null)
             {
-                float vig = inRadiaAbyss ? 0.44f : Mathf.Lerp(0.14f, 0.52f, Mathf.Clamp01(radiationDose01));
+                float vig = inRadiaAbyss ? 0.34f : Mathf.Lerp(0.14f, 0.52f, Mathf.Clamp01(radiationDose01));
                 globalVignette.intensity.Override(vig);
                 globalVignette.smoothness.Override(0.45f);
                 globalVignette.color.Override(inRadiaAbyss ? new Color(0.02f, 0.03f, 0.05f) : new Color(0.03f, 0.06f, 0.03f));

@@ -61,7 +61,7 @@ public static class BuildScript
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
         // Developer playtest build from the space branch; not a public release until Unity smoke passes.
-        PlayerSettings.bundleVersion = "0.5.2-era-v9-smoke-fix";
+        PlayerSettings.bundleVersion = "0.5.2-era-v9";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");
