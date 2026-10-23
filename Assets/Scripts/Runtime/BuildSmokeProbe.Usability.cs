@@ -45,7 +45,11 @@ namespace LestingCraft.Runtime
    int previousMode=s.Data.mode;s.Data.mode=2;game.ToggleInventory();yield return null;yield return null;
    if(ui.ScreenName!="Creative"||CreativeCatalog.Query("",0).Length!=ItemArtwork.AllIds.Length){Fail("Creative mode did not open complete catalog");yield break;}
    var search=ui.GetComponentInChildren<InputField>();if(!search){Fail("Creative catalog search missing");yield break;}search.text="СТЕКЛО";yield return null;yield return null;
-   var entry=ui.GetComponentInChildren<CreativeCatalogSlot>();if(ui.CatalogVisibleCount!=1||!entry||entry.Item!=44){Fail("Native Russian catalog search/filter failed");yield break;}
+   // "СТЕКЛО" legitimately matches Стекло / Бронированное стекло / Остеклованный
+   // тринитит in the current catalog; expecting exactly 1 result went stale when
+   // the later blocks were added. Compare against the real query API instead.
+   var expectedCatalog=CreativeCatalog.Query("СТЕКЛО",0);
+   var entry=ui.GetComponentInChildren<CreativeCatalogSlot>();if(expectedCatalog.Length==0||ui.CatalogVisibleCount!=expectedCatalog.Length||!entry||entry.Item!=expectedCatalog[0]){Fail("Native Russian catalog search/filter failed: visible="+ui.CatalogVisibleCount+", expected="+expectedCatalog.Length+", entry="+(entry?entry.Item:-1));yield break;}
    ExecuteEvents.Execute(entry.gameObject,new PointerEventData(EventSystem.current){button=PointerEventData.InputButton.Left},ExecuteEvents.pointerClickHandler);
    if(s.Inventory.cursor.item!=44||s.Inventory.cursor.count!=64){Fail("Catalog click did not supply full legal stack");yield break;}
    ui.InventoryClick(s.Inventory.selected,false,false);if(s.Inventory.Active.item!=44){Fail("Catalog cursor could not place item into hotbar");yield break;}
