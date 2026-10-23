@@ -65,9 +65,14 @@ namespace LestingCraft.Runtime
    if(world.GetBlock(window.x+1,window.y,window.z)!=44){Fail("Native glass placement missing");yield break;}
    Debug.Log("[Smoke] VISIBLE_GLASS: native transmitting glass material density="+glass.GetFloat("_Density")+", edge="+glass.GetFloat("_GlassEdge")+"; actual placed window captured, not opaque replacement");
    // Visit one actual generated exterior; deterministic six-biome and legacy parity are also tested in managed/Node suites.
+   // Biome layout depends on content version (v7 = 6 biomes, v8+ = 12 biomes).
+   // Selecting a dune with the v7 sampler while the live world generates with
+   // its own version can pick a point that is a different biome in-game, so
+   // sample and validate with world.ContentVersion throughout.
+   int biomeContentVersion=world.ContentVersion;
    Vector3 biomePoint=Vector3.zero;bool found=false;
    for(int radius=192;radius<=896&&!found;radius+=64)for(int z=-radius;z<=radius&&!found;z+=32)for(int side=-1;side<=1;side+=2)
-   {int x=side*radius,h=TerrainGenerator.Height(x,z,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x,z,world.Seed)!=BiomeKind.Dunes||h<44||h>60||ExpeditionGenerator.At(x,z,world.Seed).Surface||TerrainGenerator.SampleContent(x,h,z,world.Seed,Dimension.Lestingia,7)!=6)continue;int good=0;for(int dz=-24;dz<=24;dz+=24)for(int dx=-24;dx<=24;dx+=24){int nh=TerrainGenerator.Height(x+dx,z+dz,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x+dx,z+dz,world.Seed)==BiomeKind.Dunes&&nh>=44&&nh<=62)good++;}if(good<8)continue;biomePoint=new Vector3(x+.5f,h+4,z+.5f);found=true;break;}
+   {int x=side*radius,h=TerrainGenerator.Height(x,z,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x,z,world.Seed,biomeContentVersion)!=BiomeKind.Dunes||h<44||h>60||ExpeditionGenerator.At(x,z,world.Seed).Surface||TerrainGenerator.SampleContent(x,h,z,world.Seed,Dimension.Lestingia,biomeContentVersion)!=6)continue;int good=0;for(int dz=-24;dz<=24;dz+=24)for(int dx=-24;dx<=24;dx+=24){int nh=TerrainGenerator.Height(x+dx,z+dz,world.Seed,Dimension.Lestingia);if(BiomeGenerator.At(x+dx,z+dz,world.Seed,biomeContentVersion)==BiomeKind.Dunes&&nh>=44&&nh<=62)good++;}if(good<8)continue;biomePoint=new Vector3(x+.5f,h+4,z+.5f);found=true;break;}
    if(!found){Fail("No new dune biome found for native exterior validation");yield break;}
    s.Data.mode=2;player.TeleportTo(biomePoint);camera.transform.localPosition=new Vector3(0,PlayerCapsule.EyeHeight,0);camera.transform.localRotation=Quaternion.Euler(35,15,0);
    float deadline=Time.realtimeSinceStartup+900;int normalInterval=UnityEngine.Rendering.OnDemandRendering.renderFrameInterval;
@@ -78,7 +83,10 @@ namespace LestingCraft.Runtime
    finally{UnityEngine.Rendering.OnDemandRendering.renderFrameInterval=normalInterval;}
    Debug.Log("[Smoke] BIOME_RING: complete="+BiomeRingLoaded(world,biomePoint)+", loaded="+world.LoadedChunks+", radius="+VisualSettings.Current.ViewDistance+", cadence="+UnityEngine.Rendering.OnDemandRendering.renderFrameInterval);
    yield return null;yield return null;
-   if(!BiomeRingLoaded(world,biomePoint)||world.GetBlock(Mathf.FloorToInt(biomePoint.x),Mathf.FloorToInt(biomePoint.y)-4,Mathf.FloorToInt(biomePoint.z))!=6){Fail("New biome did not stream matching native terrain");yield break;}
+   int biomeBlockX=Mathf.FloorToInt(biomePoint.x),biomeBlockY=Mathf.FloorToInt(biomePoint.y)-4,biomeBlockZ=Mathf.FloorToInt(biomePoint.z);
+   ushort biomeExpected=TerrainGenerator.SampleContent(biomeBlockX,biomeBlockY,biomeBlockZ,world.Seed,Dimension.Lestingia,biomeContentVersion);
+   ushort biomeActual=world.GetBlock(biomeBlockX,biomeBlockY,biomeBlockZ);
+   if(!BiomeRingLoaded(world,biomePoint)||biomeActual!=biomeExpected||biomeExpected!=6){Fail("New biome did not stream matching native terrain: point="+biomePoint+", cell=("+biomeBlockX+","+biomeBlockY+","+biomeBlockZ+"), actual="+biomeActual+", expected="+biomeExpected+", content="+biomeContentVersion+", ring="+BiomeRingLoaded(world,biomePoint)+", loaded="+world.LoadedChunks);yield break;}
    yield return CaptureGameplay(folder,"biome-dunes.png");if(finishing)yield break;s.Data.mode=previousMode;
    Debug.Log("[Smoke] BIOMES7: actual generated dune exterior streamed/rendered; six region types in content7 only; legacy1..6 samplers retained");
   }
