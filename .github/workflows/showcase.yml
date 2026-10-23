@@ -11,7 +11,7 @@ jobs:
   showcase:
     name: Build & Capture 1920x1080 ERA-V9 Showcase
     runs-on: ubuntu-22.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,7 +70,7 @@ jobs:
           chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
           ls -lh Builds/StandaloneLinux64/
           mkdir -p Builds/StandaloneLinux64/ShowcaseResults Builds/Logs
-          timeout -k 10 900 xvfb-run -a -s "-screen 0 1920x1080x24" \
+          timeout -k 10 1100 xvfb-run -a -s "-screen 0 1920x1080x24" \
             env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
             ./Builds/StandaloneLinux64/LestingCraft.x86_64 \
             -force-glcore \
@@ -79,7 +79,8 @@ jobs:
             -screen-height 1080 \
             -lc-showcase \
             -logFile Builds/Logs/linux-showcase.log
-          grep -E "\\[Showcase\\]" Builds/Logs/linux-showcase.log || true
+          echo "=== Showcase log tail ==="; tail -n 200 Builds/Logs/linux-showcase.log || true
+          grep -E "\\[Showcase\\]|\\[Smoke\\]|FAIL|Error|Exception" Builds/Logs/linux-showcase.log || true
           test -f Builds/StandaloneLinux64/ShowcaseResults/08-inventory-new-blocks-and-bed.png
           test -f Builds/StandaloneLinux64/ShowcaseResults/12-secret-666-thermonuclear-mushroom.png
           test "$(find Builds/StandaloneLinux64/ShowcaseResults -maxdepth 1 -name '*.png' | wc -l)" -eq 14

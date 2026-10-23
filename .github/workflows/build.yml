@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-build-${{ matrix.targetPlatform }}-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Art/PBR/**') }}
+          key: Library-build-${{ matrix.targetPlatform }}-v4-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Scripts/Runtime/BuildSmokeProbe.cs', 'Assets/Scripts/Runtime/PrototypeGame.cs', 'Assets/Art/PBR/**') }}
           restore-keys: |
             Library-build-${{ matrix.targetPlatform }}-
             Library-
@@ -143,11 +143,17 @@ jobs:
             throw "Windows smoke test timed out"
           }
           if (-not (Test-Path $log)) { throw "Windows smoke log missing" }
-          Get-Content $log -Tail 100
+          Write-Host "=== Smoke log tail 300 ==="
+          Get-Content $log -Tail 300
           $process.Refresh()
           $text = Get-Content $log -Raw
+          # Also show World warmup progress if present
+          $warmup = Select-String -Path $log -Pattern "\[Smoke\] World warmup" | Select-Object -Last 20
+          if ($warmup) { Write-Host "=== World warmup ==="; $warmup | ForEach-Object { Write-Host $_.Line } }
           if ($process.ExitCode -ne 0 -or $text -notmatch '\[Smoke\] PASS' -or $text -notmatch '\[Smoke\] LIVING6' -or $text -notmatch '\[Smoke\] SHUTTLE_INTERIOR' -or $text -match 'NullReferenceException|MissingReferenceException|Shader error|\[Smoke\] FAIL') {
-            throw "Windows executable smoke test failed"
+            Write-Host "=== Full smoke log for debug ==="
+            Get-Content $log
+            throw "Windows executable smoke test failed (exit=$($process.ExitCode))"
           }
 
       - name: Generate verified launcher manifest
@@ -211,7 +217,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-build-Android-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Art/PBR/**') }}
+          key: Library-build-Android-v4-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Scripts/Runtime/PrototypeGame.cs', 'Assets/Art/PBR/**') }}
           restore-keys: |
             Library-build-Android-
             Library-

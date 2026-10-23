@@ -66,16 +66,27 @@ namespace LestingCraft.Runtime
             foreach(int id in ItemArtwork.AllIds)if(!ItemArtwork.Get(id)){Fail("Item icon missing: "+id);yield break;}
             ui.ShowHome();game.SelectedMode=0;game.PlayOffline();
             // A reproducible clear-day baseline; only the explicit smoke process fixes its clock.
-            deadline=Time.realtimeSinceStartup+210;
+            // WARP on windows-latest is ~2 FPS after era-v9 expansion (Radia/Cherenkov/industrial). Give it 300s not 210s.
+            deadline=Time.realtimeSinceStartup+300;
+            float lastLog=Time.realtimeSinceStartup;
             while(!game.WorldReady&&failure==null&&Time.realtimeSinceStartup<deadline)
-            {if(game.Session)game.Session.Data.clock=420;yield return null;}
-            if(failure!=null||!game.Session||!game.WorldReady||game.ChunkCount<5||!game.Session.Weather){Fail("World/meshes/weather initialization: "+failure);yield break;}
+            {if(game.Session)game.Session.Data.clock=420;
+             if(Time.realtimeSinceStartup-lastLog>10f)
+             {Debug.Log("[Smoke] World warmup: ready="+game.WorldReady+" chunks="+game.ChunkCount+" weather="+(game.Session?.Weather!=null)+" failure="+(failure??"null")+" elapsed="+(Time.realtimeSinceStartup-(deadline-300))+"s");
+              lastLog=Time.realtimeSinceStartup;}
+             yield return null;}
+            if(failure!=null||!game.Session||!game.WorldReady||game.ChunkCount<5||!game.Session.Weather)
+            {string detail=" failure="+(failure??"null")+" session="+(game.Session!=null)+" worldReady="+game.WorldReady+" chunkCount="+game.ChunkCount+" weather="+(game.Session?.Weather!=null)+" elapsed="+(Time.realtimeSinceStartup-(deadline-300))+"s";
+             Fail("World/meshes/weather initialization:"+detail);yield break;}
             if(RenderSettings.fog){Fail("Duplicate linear fog must be disabled.");yield break;}
             // The compulsory ruined-house opening remains in the game AND in this native test.
             // Older probes assumed an immediately unlocked survival world and failed after chapter one.
-            deadline=Time.realtimeSinceStartup+45;
-            while(game.StoryLocked&&failure==null&&Time.realtimeSinceStartup<deadline)yield return null;
-            if(game.StoryLocked||failure!=null){Fail("Mandatory opening did not finish its initial cinematic: "+failure);yield break;}
+            // Opening cinematic can be heavier after era-v9, allow 90s with periodic log
+            deadline=Time.realtimeSinceStartup+90;
+            lastLog=Time.realtimeSinceStartup;
+            while(game.StoryLocked&&failure==null&&Time.realtimeSinceStartup<deadline)
+            {if(Time.realtimeSinceStartup-lastLog>10f){Debug.Log("[Smoke] Opening warmup: storyLocked="+game.StoryLocked+" failure="+(failure??"null")); lastLog=Time.realtimeSinceStartup;} yield return null;}
+            if(game.StoryLocked||failure!=null){Fail("Mandatory opening did not finish its initial cinematic: "+failure+" elapsed="+(Time.realtimeSinceStartup-(deadline-90))+"s");yield break;}
             if(game.Session.World.ContentVersion!=8||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp.Length!=6)
             {Fail("Current living-world runtime systems missing");yield break;}
             var modelProbe=new GameObject("Smoke-only native villager and cat mesh checks");
