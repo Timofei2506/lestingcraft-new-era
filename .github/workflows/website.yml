@@ -48,3 +48,21 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Cloudflare GitHub Secrets are required.'; exit 1; }
           npm run deploy
+      # Tell Bing and Yandex (IndexNow) that the pages changed. No account needed:
+      # the key file lives at the site root and proves we own the host.
+      - name: Submit pages to IndexNow
+        run: |
+          key=$(ls Website/public/*.txt | grep -v robots.txt | xargs -n1 basename | sed 's/\.txt$//' | head -1)
+          echo "IndexNow key: $key"
+          curl -sS -m 20 -X POST https://api.indexnow.org/indexnow \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            -d "$(python3 - "$key" <<'PY'
+          import json, sys
+          key = sys.argv[1]
+          base = 'https://lestingcraft.kroterallitir.workers.dev'
+          pages = ['/', '/press/', '/privacy/', '/license/']
+          print(json.dumps({'host': 'lestingcraft.kroterallitir.workers.dev',
+                            'key': key, 'keyLocation': f'{base}/{key}.txt',
+                            'urlList': [base + p for p in pages]}, ensure_ascii=False))
+          PY
+          )" -w '\nIndexNow HTTP %{http_code}\n' | tail -5
