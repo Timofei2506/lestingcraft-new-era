@@ -11,7 +11,7 @@
 <meta property="og:site_name" content="LestingCraft: New Era">
 <meta property="og:title" content="LestingCraft: New Era — воксельная песочница на Unity 6">
 <meta property="og:description" content="Ранний прототип: крафт, сюжетные сцены, кооператив для друзей. Запишитесь в тестовый доступ.">
-<meta property="og:image" content="https://lestingcraft.kroterallitir.workers.dev/media/world-hud.webp">
+<meta property="og:image" content="https://lestingcraft.kroterallitir.workers.dev/media/menu-keyart.webp">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/fonts/fonts.css">
@@ -30,6 +30,7 @@
   </a>
   <nav class="nav-links" id="nav-links" aria-label="Основное">
     <a href="#game">Игра</a>
+    <a href="#ecosystem">Экосистема</a>
     <a href="#download">Скачать</a>
     <a href="#shots">Кадры</a>
     <a href="#progress">Прогресс</a>
@@ -177,6 +178,66 @@
       </div>
     </article>
   </div>
+</section>
+
+<!-- ECOSYSTEM: marketplace, friends, currency, skins -->
+<section class="section" id="ecosystem" aria-labelledby="ecosystem-title">
+  <header class="section-head reveal">
+    <p class="eyebrow">Экосистема</p>
+    <h2 id="ecosystem-title">Аккаунт, друзья и обмен вместо одноразовых комнат</h2>
+    <p class="muted">Схема аккаунтов, кошелька, маркетплейса и друзей уже спроектирована и проверена в базе. В клиенте эти экраны появятся следующими — до тех пор раздел честно помечен как планы.</p>
+  </header>
+
+  <div class="bento">
+    <article class="card reveal" data-status="planned">
+      <div class="card-body">
+        <span class="tag planned">В планах</span>
+        <h3>Маркетплейс предметов</h3>
+        <p>Скины и косметика продаются игрок-игроку за монеты. Лот держится в эскроу, комиссия площадки — 5%, сделка защищена базой, а не обещанием.</p>
+      </div>
+    </article>
+
+    <article class="card reveal" data-status="planned">
+      <div class="card-body">
+        <span class="tag planned">В планах</span>
+        <h3>Друзья и статусы</h3>
+        <p>Список друзей, заявки по игровому ключу и быстрый вход на сервер друга. Ключ игрока не публикуется в общих списках.</p>
+      </div>
+    </article>
+
+    <article class="card reveal" data-status="planned">
+      <div class="card-body">
+        <span class="tag planned">В планах</span>
+        <h3>Монеты за реальные деньги</h3>
+        <p>Пополнение паками по фиксированной цене сервера. Стартовых монет нет: баланс нового аккаунта — ровно ноль. Каждое движение пишется в журнал.</p>
+      </div>
+    </article>
+
+    <article class="card reveal" data-status="planned">
+      <div class="card-body">
+        <span class="tag planned">В планах</span>
+        <h3>Свои скины</h3>
+        <p>Купленный скин надевается на персонажа и виден другим игрокам в кооперативе.</p>
+      </div>
+    </article>
+
+    <article class="card reveal" data-status="planned">
+      <div class="card-body">
+        <span class="tag planned">В планах</span>
+        <h3>Сервер по адресу</h3>
+        <p>Экран мультиплеера со списком серверов и полем «адрес + порт», как в привычных песочницах. Сервер из одиночного мира поднимается прямо из меню паузы.</p>
+      </div>
+    </article>
+
+    <article class="card reveal" data-status="planned">
+      <div class="card-body">
+        <span class="tag planned">В планах</span>
+        <h3>Новый интерфейс</h3>
+        <p>Меню, HUD и сайт переезжают на новую визуальную систему: стекло, тёплый янтарь и мятный акцент на фоне художественного арта.</p>
+      </div>
+    </article>
+  </div>
+  <p class="fine">Техническая часть (таблицы, правила доступа, идемпотентные платежи) уже в репозитории: каталог <code>Supabase/</code>.</p>
 </section>
 
 <!-- GALLERY -->
