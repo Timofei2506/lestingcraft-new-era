@@ -8,12 +8,10 @@ binding = "ASSETS"
 not_found_handling = "404-page"
 run_worker_first = ["/api/*"]
 
-# Waitlist storage. Optional: without it POST /api/waitlist answers 503.
-# To enable, create the namespace (npx wrangler kv namespace create WAITLIST)
-# and add its id here as:
-# [[kv_namespaces]]
-# binding = "WAITLIST"
-# id = "<namespace id from the command output>"
+# Waitlist storage: KV namespace created 2026-10-24 for the production account.
+[[kv_namespaces]]
+binding = "WAITLIST"
+id = "29a69f0f51924b8c8ded71c75c7a7409"
 
 [[services]]
 binding = "COOP"
