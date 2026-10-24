@@ -223,8 +223,9 @@ namespace LestingCraft.Presentation
             Label(content.transform,names,64,382,1000,320,24,White);
             if(game.IsHost)Button("Начать игру  →",1120,392,416,68,game.StartLobby,true);
             else Label(content.transform,"Ждём, когда хозяин начнёт игру",1120,398,416,70,22,Accent);
-            var invite=Button("Скопировать адрес сервера",1120,486,416,58,()=>GUIUtility.systemCopyBuffer=game.EndpointAddress);invite.name="Lobby.Address";
-            Button("Выйти",1120,556,416,58,game.ReturnToMenu);
+            var invite=Button("Скопировать приглашение",1120,486,416,58,()=>GUIUtility.systemCopyBuffer=game.InviteText,true);invite.name="Lobby.Invite";
+            Label(content.transform,"Скопирует текст с адресом и ссылкой на скачивание — можно сразу отправить другу.",1120,548,416,54,13,Muted);
+            Button("Выйти",1120,612,416,58,game.ReturnToMenu);
             status=Label(content.transform,"Друзьям нужен только этот адрес: мир уже опубликован на сервере.",64,806,1000,32,15,Muted);
             if(game.IsHost&&game.AutoStartLobby&&!game.IsConnecting)game.StartLobby();
         }

@@ -200,5 +200,26 @@ namespace LestingCraft.Runtime
         {
             get { return EndpointAddress + (string.IsNullOrEmpty(hostedServerName) ? string.Empty : "  ·  " + hostedServerName); }
         }
+
+        /// <summary>Where a new player downloads the game. Shown in the invite text.</summary>
+        public const string WebsiteUrl = "https://lestingcraft.kroterallitir.workers.dev";
+
+        /// <summary>
+        /// A message a host can paste into any chat. It never contains a room code:
+        /// the friend downloads the game, opens "Мультиплеер", adds the address and
+        /// sees the world in the list.
+        /// </summary>
+        public string InviteText
+        {
+            get
+            {
+                string world = string.IsNullOrEmpty(hostedServerName) ? "мой мир" : "«" + hostedServerName + "»";
+                return "Заходи в LestingCraft — " + world + ".\n" +
+                       "1. Скачай игру: " + WebsiteUrl + "\n" +
+                       "2. Мультиплеер → «Добавить сервер»\n" +
+                       "3. Адрес: " + EndpointAddress + "  (порт 443)\n" +
+                       "Мир появится в списке, останется нажать «Войти».";
+            }
+        }
     }
 }
