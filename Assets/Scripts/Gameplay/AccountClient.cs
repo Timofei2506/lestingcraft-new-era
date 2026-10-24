@@ -97,6 +97,7 @@ namespace LestingCraft.Gameplay
   }
   /// <summary>Reloads wallet, market or friends without blocking the UI.</summary>
   public void CloudRefreshQuiet(){if(Logged&&!CloudBusy)StartCoroutine(CloudRoutine("state","{}",json=>{try{Wallet=JsonUtility.FromJson<CloudState>(json);}catch{}},null,false));}
+  public void Logout(Action done){if(!Logged||Busy)return;SaveQueue();StartCoroutine(Request("logout",new AccountRequest(),()=>{token=null;Profile=null;RecoveryCode=null;active.Clear();Message="Вы вышли из аккаунта. Несинхронизированные события сохранены локально для следующего входа.";done?.Invoke();}));}
   public int Counter(string key){if(Profile?.stats==null)return 0;foreach(var s in Profile.stats)if(s.key==key)return s.value;return 0;}
   public void Record(string key,int value=1,bool maximum=false){if(!Logged||value<=0)return;if(!active.TryGetValue(key,out var e)){e=new ProfileEvent{key=key,mode=maximum?"max":"add"};active[key]=e;}e.value=maximum?Math.Max(e.value,value):Math.Min(1000000,e.value+value);}
   void SaveQueue(){if(!Logged)return;queue.active=new List<ProfileEvent>(active.Values).ToArray();PlayerPrefs.SetString("LC.ProfileQueue."+Profile.uid,JsonUtility.ToJson(queue));PlayerPrefs.Save();}
