@@ -115,6 +115,23 @@
   <p class="fine">Исходный код доступен для просмотра, но его повторное использование ограничено. <a href="/license/">Лицензия и условия игры</a>.</p>
 </section>
 
+<!-- TEASER -->
+<section class="section" id="teaser" aria-labelledby="teaser-title">
+  <header class="section-head reveal">
+    <p class="eyebrow">Как это выглядит</p>
+    <h2 id="teaser-title">18 секунд настоящего геймплея</h2>
+    <p class="muted">Кадры записаны автоматически самой игрой во время сборки — это не рендер и не иллюстрация.</p>
+  </header>
+  <div class="teaser-wrap reveal">
+    <video class="teaser" src="/media/teaser.mp4" poster="/media/teaser-poster.webp" width="1080" height="1350"
+           controls muted loop playsinline preload="metadata" aria-label="Короткое видео: меню, мир, крафт и кооператив"></video>
+    <div class="teaser-actions">
+      <a class="btn primary" href="#download">Скачать игру</a>
+      <a class="btn ghost" href="/media/teaser.mp4" download="lestingcraft-teaser.mp4">Сохранить видео</a>
+    </div>
+  </div>
+</section>
+
 <!-- PLAY WITH A FRIEND -->
 <section class="section" id="coop" aria-labelledby="coop-title">
   <header class="section-head reveal">
@@ -144,6 +161,14 @@
         <p>Кнопка <b>«Скопировать приглашение»</b> кладёт в буфер готовый текст: адрес мира и ссылка на скачивание. Друг открывает «Мультиплеер» → «Добавить сервер» и жмёт «Войти».</p>
       </div>
     </article>
+  </div>
+  <div class="worlds reveal" id="worlds" data-state="loading">
+    <div class="worlds-head">
+      <h3>Открытые миры прямо сейчас</h3>
+      <p class="worlds-summary" id="worlds-summary" role="status" aria-live="polite">Проверяем сервер…</p>
+    </div>
+    <ul class="worlds-list" id="worlds-list"></ul>
+    <p class="fine">Список обновляется сам. Чтобы попасть в мир, скопируйте его код из карточки и вставьте в игре: «Мультиплеер» → «Добавить сервер».</p>
   </div>
   <p class="fine">Мир живёт, пока открыт у хозяина: изменения блоков видят все, у каждого свой инвентарь и сохранение. До 8 игроков.</p>
 </section>

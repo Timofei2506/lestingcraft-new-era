@@ -117,6 +117,52 @@
       statusText.textContent = 'Статус кооператива недоступен';
     });
 
+  // ---------- Open worlds (social proof, honest when empty) ----------
+  const worlds = document.getElementById('worlds');
+  const worldsList = document.getElementById('worlds-list');
+  const worldsSummary = document.getElementById('worlds-summary');
+  if (worlds && worldsList && worldsSummary) {
+    const render = (data) => {
+      const list = Array.isArray(data && data.worlds) ? data.worlds : [];
+      worldsList.innerHTML = '';
+      if (!list.length) {
+        worlds.dataset.state = 'empty';
+        worldsSummary.textContent = 'Сейчас никто не открыл мир. Откройте свой — и он появится здесь.';
+        return;
+      }
+      worlds.dataset.state = 'ready';
+      const players = list.reduce((sum, w) => sum + (Number(w.players) || 0), 0);
+      worldsSummary.textContent = `Открыто миров: ${list.length} · игроков в них: ${players}`;
+      list.slice(0, 6).forEach((world) => {
+        const row = document.createElement('li');
+        const name = document.createElement('b');
+        name.textContent = world.name || 'Мир';
+        const meta = document.createElement('span');
+        meta.textContent = `${world.players}/${world.maxPlayers} игроков${world.started ? '' : ' · лобби'}`;
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'btn ghost tiny';
+        copy.textContent = 'Код мира';
+        copy.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(world.code);
+            copy.textContent = 'Скопировано';
+            setTimeout(() => { copy.textContent = 'Код мира'; }, 2000);
+          } catch { window.prompt('Код мира', world.code); }
+        });
+        row.append(name, meta, copy);
+        worldsList.append(row);
+      });
+    };
+    fetch('/api/worlds', { headers: { Accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then(render)
+      .catch(() => {
+        worlds.dataset.state = 'error';
+        worldsSummary.textContent = 'Список миров сейчас недоступен — сервер не ответил.';
+      });
+  }
+
   // ---------- Direct platform downloads ----------
   const downloadPanel = document.getElementById('download-builds');
   const downloadStatus = document.getElementById('download-status');

@@ -5,6 +5,7 @@ const pages=['/','/press/','/privacy/','/license/'];
 test.beforeEach(async({page})=>{
   await page.route('**/api/hit',r=>r.fulfill({json:{ok:true}}));
   await page.route('**/api/status',r=>r.fulfill({json:{online:true,checkedAt:new Date().toISOString()}}));
+  await page.route('**/api/worlds',r=>r.fulfill({json:{available:true,worlds:[],players:0,checkedAt:new Date().toISOString()}}));
   await page.route('**/api/releases',r=>r.fulfill({json:{available:true,releases:[{tag:'v1.0.0-test',name:'Test build',prerelease:true,windows:{name:'build-StandaloneWindows64.zip',size:1024,url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v1/build-StandaloneWindows64.zip',digest:'sha256:windows'},android:{name:'LestingCraft-Android-arm64.apk',size:2048,url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v1/LestingCraft-Android-arm64.apk',digest:'sha256:android'}}]}}));
 });
 
@@ -12,7 +13,8 @@ test('every page renders without JavaScript errors or failed same-origin request
   const errors=[];const failed=[];
   page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
-  page.on('requestfailed',r=>failed.push(r.url()));
+  // Chromium aborts a preload=metadata video once it has the header — that is not a failure.
+  page.on('requestfailed',r=>{if(r.failure()?.errorText==='net::ERR_ABORTED'&&/\.(mp4|webm)$/.test(r.url()))return;failed.push(r.url());});
   for(const route of pages){
     await page.goto(route);
     await expect(page.locator('main h1')).toBeVisible();
@@ -167,4 +169,21 @@ test('the share button copies a tracked link',async({page,context})=>{
   await page.waitForTimeout(300);
   const text=await page.evaluate(()=>navigator.clipboard.readText());
   expect(text).toContain('/?ref=share');
+});
+
+test('open worlds are listed with names, not codes in the open',async({page})=>{
+  await page.route('**/api/worlds',r=>r.fulfill({json:{available:true,players:2,worlds:[
+    {name:'Вечерний лес',players:2,maxPlayers:8,code:'a'.repeat(32),started:true,offline:false}
+  ]}}));
+  await page.goto('/#coop');
+  await page.waitForTimeout(500);
+  await expect(page.locator('#worlds-summary')).toHaveText(/Открыто миров: 1 · игроков в них: 2/);
+  await expect(page.locator('#worlds-list li b')).toHaveText('Вечерний лес');
+  expect(await page.locator('#worlds-list').innerText()).not.toContain('aaaaaaaa');
+});
+
+test('empty world list says so honestly instead of hiding',async({page})=>{
+  await page.goto('/#coop');
+  await page.waitForTimeout(400);
+  await expect(page.locator('#worlds-summary')).toContainText('Сейчас никто не открыл мир');
 });

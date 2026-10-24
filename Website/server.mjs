@@ -8,10 +8,13 @@ const previewHeaders={...securityHeaders};
 delete previewHeaders['X-Frame-Options'];
 previewHeaders['Content-Security-Policy']=previewHeaders['Content-Security-Policy'].replace("; frame-ancestors 'self'",'');
 const root=path.resolve('public'),port=Number(process.env.PORT||3900);
-const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json','.webp':'image/webp','.jpg':'image/jpeg','.svg':'image/svg+xml','.woff2':'font/woff2','.ttf':'font/ttf','.txt':'text/plain; charset=utf-8','.xml':'application/xml; charset=utf-8'};
+const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json','.webp':'image/webp','.mp4':'video/mp4','.jpg':'image/jpeg','.svg':'image/svg+xml','.woff2':'font/woff2','.ttf':'font/ttf','.txt':'text/plain; charset=utf-8','.xml':'application/xml; charset=utf-8'};
 const notFound=(res)=>{const file=path.join(root,'404.html');res.writeHead(404,{'Content-Type':types['.html'],...previewHeaders});fs.createReadStream(file).pipe(res);};
 http.createServer(async(req,res)=>{
  const url=new URL(req.url,'http://site');
+ if(url.pathname==='/api/worlds') {
+  try {const data=await api('/api/worlds');res.writeHead(200,{'Content-Type':'application/json',...previewHeaders});res.end(JSON.stringify(data));}catch{res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({available:false,worlds:[],players:0}));}return;
+ }
  if(url.pathname==='/api/hit'||url.pathname==='/api/stats') {
   const body=req.method==='POST'?await readBody(req):undefined;
   const probe=new Request('http://site'+url.pathname,{method:req.method,headers:{'Content-Type':req.headers['content-type']||'application/json','Content-Length':String(body?body.length:0)},body});
@@ -31,5 +34,7 @@ http.createServer(async(req,res)=>{
   res.writeHead(301,{Location:url.pathname+'/'});res.end();return;
  }
  if(!fs.existsSync(file)||fs.statSync(file).isDirectory()){notFound(res);return;}
- res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream',...previewHeaders});fs.createReadStream(file).pipe(res);
+ const mime=types[path.extname(file)]||'application/octet-stream',size=fs.statSync(file).size,range=req.headers.range;
+ if(mime==='video/mp4'&&range){const m=/^bytes=(\d*)-(\d*)$/.exec(range);if(m){const start=Number(m[1]||0),end=m[2]?Math.min(Number(m[2]),size-1):size-1;if(start>=size){res.writeHead(416,{'Content-Range':`bytes */${size}`});res.end();return;}res.writeHead(206,{'Content-Type':mime,'Content-Length':end-start+1,'Content-Range':`bytes ${start}-${end}/${size}`,'Accept-Ranges':'bytes',...previewHeaders});fs.createReadStream(file,{start,end}).pipe(res);return;}}
+ res.writeHead(200,{'Content-Type':mime,'Accept-Ranges':'bytes',...previewHeaders});fs.createReadStream(file).pipe(res);
 }).listen(port,'0.0.0.0',()=>console.log('LestingCraft website on '+port));

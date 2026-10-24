@@ -36,6 +36,28 @@ export async function api(path,env={}) {
       return {...feed,source:'verified-index'};
     }
   }
+  if (path === '/api/worlds') {
+    // Public world directory of the co-op server: names, players, no owner keys.
+    const request = env.COOP ? env.COOP.fetch(new Request(SERVER + '/api/servers')) : timedFetch(SERVER + '/api/servers', {}, 5000);
+    const response = await request;
+    if (!response.ok) throw new Error('Directory upstream status ' + response.status);
+    const data = await response.json();
+    const servers = Array.isArray(data?.servers) ? data.servers : [];
+    const worlds = servers.map(s => ({
+      name: String(s.name ?? '').slice(0, 40),
+      players: Math.max(0, Number(s.players) || 0),
+      maxPlayers: Math.max(1, Number(s.maxPlayers) || 8),
+      code: String(s.code ?? ''),
+      started: s.started === true,
+      offline: s.offline === true,
+    })).filter(w => w.code.length === 32 && !w.offline);
+    return {
+      available: true,
+      worlds,
+      players: worlds.reduce((sum, w) => sum + w.players, 0),
+      checkedAt: new Date().toISOString(),
+    };
+  }
   if (path === '/api/status') {
     let online=false;
     try {const r=env.COOP?await env.COOP.fetch(new Request(SERVER+'/health')):await timedFetch(SERVER+'/health',{},5000);if(r.ok){const d=await r.json();online=d.ok===true&&d.version===1;}else console.warn('Health upstream status',r.status,'binding=',Boolean(env.COOP),(await r.text()).slice(0,150));}catch(e){console.warn('Health fetch failed',e.message);}
