@@ -19,6 +19,26 @@ function fakeSupabase(handler) {
   return { fetch, calls };
 }
 
+test('the fetch wrapper survives a receiver change (Workers "Illegal invocation")', async () => {
+  // A Worker's global fetch rejects being called as a method of another object.
+  const strictFetch = function (url, init) {
+    if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+    return Promise.resolve(new Response('{"balance":7}', { status: 200 }));
+  };
+  const service = new CloudService('https://example.supabase.co', 'k', strictFetch);
+  assert.deepEqual(await service.state(KEY), { balance: 7 });
+});
+
+test('a transport failure carries an operator-facing code but a calm message', async () => {
+  const service = new CloudService('https://example.supabase.co', 'k', async () => { throw new TypeError('Illegal invocation'); });
+  await assert.rejects(() => service.state(KEY), (error) => {
+    assert.equal(error.status, 503);
+    assert.ok(error.message.includes('недоступен'));
+    assert.ok(error.code.startsWith('unreachable:'));
+    return true;
+  });
+});
+
 test('the service sends the service key and never exposes it to callers', async () => {
   const { fetch, calls } = fakeSupabase(() => ({ balance: 0 }));
   const service = new CloudService('https://example.supabase.co/', 'secret-key', fetch);

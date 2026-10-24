@@ -40,7 +40,9 @@ export class CloudService {
     if (!url || !key) throw new CloudError('Cloud is not configured', 503, 'not_configured');
     this.base = String(url).replace(/\/+$/, '');
     this.key = key;
-    this.fetch = fetchImpl;
+    // Wrapped in an arrow on purpose: a Worker's global fetch throws
+    // "Illegal invocation" when it is called with any other receiver.
+    this.fetch = (target, init) => fetchImpl(target, init);
   }
 
   async rpc(name, args = {}) {
@@ -56,8 +58,10 @@ export class CloudService {
         },
         body: JSON.stringify(args),
       });
-    } catch {
-      throw new CloudError('Сервис экономики недоступен. Попробуйте позже.', 503, 'unreachable');
+    } catch (error) {
+      // The message is deliberately generic for players; the code tells the
+      // server operator what actually broke.
+      throw new CloudError('Сервис экономики недоступен. Попробуйте позже.', 503, `unreachable:${error?.message ?? error}`);
     }
     const text = await response.text();
     let payload = null;
@@ -145,6 +149,7 @@ export async function handleCloudRequest(request, { service, resolvePlayer, cors
   } catch (error) {
     const status = error instanceof CloudError ? error.status : 502;
     const message = error instanceof CloudError ? error.message : 'Сервис экономики недоступен. Попробуйте позже.';
-    return json({ ok: false, message }, status);
+    // "code" never contains player data: it is a short operator-facing tag.
+    return json({ ok: false, message, code: error instanceof CloudError ? error.code : `internal:${error?.name ?? 'Error'}` }, status);
   }
 }
