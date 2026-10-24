@@ -1,0 +1,12 @@
+{
+  "name": "lestingcraft-supabase",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Economy, marketplace, friends and cosmetics schema for LestingCraft: New Era",
+  "scripts": {
+    "db:apply": "node apply.mjs schema",
+    "db:verify": "node apply.mjs verify",
+    "db:all": "node apply.mjs schema verify"
+  }
+}
