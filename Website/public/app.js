@@ -4,6 +4,62 @@
   root.classList.remove('no-js');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+  // ---------- Honest visit counter (aggregate only, no cookies) ----------
+  // One hit per tab per UTC day. The source tells us which channel actually works:
+  // a shared link (?ref=share), GitHub, a search engine, or a direct visit.
+  (() => {
+    const allowed = new Set(['direct', 'github', 'share', 'search', 'friend', 'press']);
+    const pick = () => {
+      const params = new URLSearchParams(location.search);
+      const raw = (params.get('ref') || params.get('utm_source') || '').toLowerCase().replace(/[^a-z_-]/g, '').slice(0, 16);
+      if (allowed.has(raw)) return raw;
+      const referrer = document.referrer || '';
+      let host = '';
+      try { host = referrer ? new URL(referrer).hostname : ''; } catch { host = ''; }
+      if (!host) return 'direct';
+      if (host.endsWith('github.com') || host.endsWith('githubusercontent.com') || host.endsWith('github.io')) return 'github';
+      if (/(^|\.)(ya\.ru|yandex|bing\.com|google\.|duckduckgo|mail\.ru)$/.test(host) || /yandex|google|bing|duckduckgo/.test(host)) return 'search';
+      if (host.endsWith('lestingcraft.kroterallitir.workers.dev')) return 'direct';
+      return 'friend';
+    };
+    const day = new Date().toISOString().slice(0, 10);
+    const key = `lc_hit_${day}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch { /* private mode: count once per load */ }
+    fetch('/api/hit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: pick() }),
+      keepalive: true,
+    }).catch(() => {});
+  })();
+
+  // ---------- Share ----------
+  const shareButtons = document.querySelectorAll('[data-share]');
+  if (shareButtons.length) {
+    const label = (button, text) => {
+      const original = button.dataset.label || button.textContent;
+      button.dataset.label = original;
+      button.textContent = text;
+      setTimeout(() => { button.textContent = original; }, 2400);
+    };
+    shareButtons.forEach((button) => button.addEventListener('click', async () => {
+      const url = `${location.origin}/?ref=share`;
+      const text = 'LestingCraft: New Era — воксельная песочница, Windows и Android, кооператив до 8 игроков.';
+      if (navigator.share) {
+        try { await navigator.share({ title: 'LestingCraft: New Era', text, url }); return; } catch { /* user cancelled */ }
+      }
+      try {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        label(button, 'Ссылка скопирована');
+      } catch {
+        window.prompt('Скопируйте ссылку', url);
+      }
+    }));
+  }
+
   // ---------- Nav ----------
   const nav = document.getElementById('nav');
   if (nav) {

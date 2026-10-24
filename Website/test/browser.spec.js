@@ -3,6 +3,7 @@ import {test,expect} from '@playwright/test';
 const pages=['/','/press/','/privacy/','/license/'];
 
 test.beforeEach(async({page})=>{
+  await page.route('**/api/hit',r=>r.fulfill({json:{ok:true}}));
   await page.route('**/api/status',r=>r.fulfill({json:{online:true,checkedAt:new Date().toISOString()}}));
   await page.route('**/api/releases',r=>r.fulfill({json:{available:true,releases:[{tag:'v1.0.0-test',name:'Test build',prerelease:true,windows:{name:'build-StandaloneWindows64.zip',size:1024,url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v1/build-StandaloneWindows64.zip',digest:'sha256:windows'},android:{name:'LestingCraft-Android-arm64.apk',size:2048,url:'https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v1/LestingCraft-Android-arm64.apk',digest:'sha256:android'}}]}}));
 });
@@ -147,4 +148,23 @@ test.describe('waitlist form',()=>{
     await page.locator('#waitlist button[type="submit"]').click();
     await expect(page.locator('#form-status')).toContainText('Нет связи');
   });
+});
+
+test('a visit is counted once per tab and reports a known source',async({page})=>{
+  const hits=[];await page.route('**/api/hit',async r=>{hits.push(r.request().postDataJSON());await r.fulfill({json:{ok:true}});});
+  await page.goto('/?ref=friend');
+  await page.waitForTimeout(600);
+  await page.reload();
+  await page.waitForTimeout(600);
+  expect(hits).toEqual([{source:'friend'}]);
+});
+
+test('the share button copies a tracked link',async({page,context})=>{
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
+  await page.goto('/');
+  const button=page.locator('[data-share]').first();
+  await button.click();
+  await page.waitForTimeout(300);
+  const text=await page.evaluate(()=>navigator.clipboard.readText());
+  expect(text).toContain('/?ref=share');
 });

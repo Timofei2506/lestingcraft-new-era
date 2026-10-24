@@ -1,4 +1,8 @@
 import http from 'node:http';import fs from 'node:fs';import path from 'node:path';import {api,securityHeaders} from './src/api.mjs';
+import {handleHit,handleStats} from './src/hits.mjs';
+// Local preview mirrors the production counter with an in-memory KV.
+const mem=new Map(),localKV={async get(k){return mem.get(k)??null;},async put(k,v){mem.set(k,v);}};
+const readBody=req=>new Promise(resolve=>{let data='';req.on('data',c=>{data+=c;if(data.length>4096)req.destroy();});req.on('end',()=>resolve(data));req.on('error',()=>resolve(''));});
 // Local preview server. Mirrors production routing: /dir and /dir/ serve dir/index.html, unknown pages get 404.html with status 404.
 const previewHeaders={...securityHeaders};
 delete previewHeaders['X-Frame-Options'];
@@ -8,6 +12,12 @@ const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8'
 const notFound=(res)=>{const file=path.join(root,'404.html');res.writeHead(404,{'Content-Type':types['.html'],...previewHeaders});fs.createReadStream(file).pipe(res);};
 http.createServer(async(req,res)=>{
  const url=new URL(req.url,'http://site');
+ if(url.pathname==='/api/hit'||url.pathname==='/api/stats') {
+  const body=req.method==='POST'?await readBody(req):undefined;
+  const probe=new Request('http://site'+url.pathname,{method:req.method,headers:{'Content-Type':req.headers['content-type']||'application/json','Content-Length':String(body?body.length:0)},body});
+  const answer=url.pathname==='/api/hit'?await handleHit(probe,{WAITLIST:localKV}):await handleStats(probe,{WAITLIST:localKV});
+  res.writeHead(answer.status,{'Content-Type':'application/json',...previewHeaders});res.end(await answer.text());return;
+ }
  if(url.pathname.startsWith('/api/')) {
   try {const data=await api(url.pathname);res.writeHead(data?200:404,{'Content-Type':'application/json',...previewHeaders});res.end(JSON.stringify(data||{error:'Not found'}));}catch{res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({available:false,releases:[]}));}return;
  }
