@@ -187,3 +187,16 @@ test('empty world list says so honestly instead of hiding',async({page})=>{
   await page.waitForTimeout(400);
   await expect(page.locator('#worlds-summary')).toContainText('Сейчас никто не открыл мир');
 });
+
+test('a ready download button says what it downloads and its line fits a phone',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#download');
+  await expect(page.locator('[data-download="windows"]')).toHaveText('Скачать для Windows');
+  await expect(page.locator('[data-download="android"]')).toHaveText('Скачать APK для Android');
+  const overflow=await page.evaluate(()=>{
+    const box=document.getElementById('download-builds');
+    return [...box.querySelectorAll('*')].filter(el=>el.scrollWidth>el.clientWidth+2&&getComputedStyle(el).overflow==='visible').map(el=>el.className||el.tagName);
+  });
+  expect(overflow).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+});

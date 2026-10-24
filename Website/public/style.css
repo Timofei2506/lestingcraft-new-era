@@ -71,7 +71,7 @@ p{margin:0}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:9px;
   padding:15px 25px;border-radius:14px;font-weight:800;font-size:14.5px;
-  text-decoration:none;border:1px solid transparent;cursor:pointer;white-space:nowrap;
+  text-decoration:none;border:1px solid transparent;cursor:pointer;white-space:nowrap;max-width:100%;
   transition:transform .22s var(--ease),box-shadow .3s var(--ease),background .2s,border-color .2s,color .2s;
 }
 .btn:active{transform:scale(.975)}
@@ -90,7 +90,7 @@ p{margin:0}
   background:rgba(255,178,87,.14);border-color:rgba(255,178,87,.36);color:var(--amber-hi);
 }
 .btn.small:hover{background:rgba(255,178,87,.24)}
-.btn.wide{width:100%}
+.btn.wide{width:100%;white-space:normal;text-align:center}
 .btn[disabled],.btn[aria-disabled="true"]{opacity:.5;cursor:not-allowed;pointer-events:none}
 
 /* ---------- Nav ---------- */
@@ -285,11 +285,12 @@ h1{margin:0 0 18px;line-height:.92}
 
 /* ---------- Download ---------- */
 .download-section .download-grid{
-  display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start;
+  display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start;min-width:0;
 }
+.download-section .download-grid>*{min-width:0}
 .download-card{
   border-radius:var(--radius);border:1px solid var(--line);background:var(--panel);
-  padding:22px;backdrop-filter:blur(14px);
+  padding:22px;backdrop-filter:blur(14px);min-width:0;
 }
 .download-card.primary-card{
   background:
@@ -307,7 +308,7 @@ h1{margin:0 0 18px;line-height:.92}
 .download-link::before{content:'';width:16px;height:16px;border-radius:5px;background:var(--amber);opacity:.9}
 .download-link[data-download="android"]::before{border-radius:50%;background:var(--mint)}
 .download-link[aria-disabled="true"]{opacity:.55}
-.download-meta{display:block;margin-top:9px;font-size:12px;color:var(--dim);font-family:ui-monospace,monospace,var(--body)}
+.download-meta{display:block;margin-top:9px;font-size:12px;color:var(--dim);font-family:ui-monospace,monospace,var(--body);overflow-wrap:anywhere}
 .download-status,.form-status{
   margin-top:6px;font-size:13.5px;line-height:1.55;color:var(--muted);
   padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.25);

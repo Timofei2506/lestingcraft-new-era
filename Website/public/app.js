@@ -196,11 +196,15 @@
           link.removeAttribute('aria-disabled');
           link.removeAttribute('tabindex');
           link.rel = 'noreferrer';
+          // The template label says "Загрузка списка сборок…" — replace it, or the
+          // button looks broken right when it starts to work.
+          link.textContent = platform === 'windows' ? 'Скачать для Windows' : 'Скачать APK для Android';
           const meta = downloadPanel.querySelector(`[data-build-meta="${platform}"]`);
           if (meta) {
-            const details = [release.name || release.tag, formatSize(asset.size), asset.digest]
-              .filter(Boolean);
+            // Keep the visible line short: a full sha256 digest does not wrap on a phone.
+            const details = [release.name || release.tag, formatSize(asset.size)].filter(Boolean);
             meta.textContent = details.join(' · ');
+            if (asset.digest) meta.title = `Контрольная сумма: ${asset.digest}`;
           }
         }
         downloadStatus.dataset.state = 'ready';
