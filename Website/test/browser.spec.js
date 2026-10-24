@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 
-const pages=['/','/press/','/privacy/','/license/'];
+const pages=['/','/press/','/privacy/','/license/','/play-with-friends/'];
 
 test.beforeEach(async({page})=>{
   await page.route('**/api/hit',r=>r.fulfill({json:{ok:true}}));

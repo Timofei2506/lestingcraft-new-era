@@ -60,7 +60,7 @@ jobs:
           import json, sys
           key = sys.argv[1]
           base = 'https://lestingcraft.kroterallitir.workers.dev'
-          pages = ['/', '/press/', '/privacy/', '/license/']
+          pages = ['/', '/press/', '/privacy/', '/license/', '/play-with-friends/']
           print(json.dumps({'host': 'lestingcraft.kroterallitir.workers.dev',
                             'key': key, 'keyLocation': f'{base}/{key}.txt',
                             'urlList': [base + p for p in pages]}, ensure_ascii=False))

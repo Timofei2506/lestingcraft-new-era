@@ -2,7 +2,7 @@
 // Blocks marked as planned (data-status="planned" and data-planned) are the only place such phrases may appear.
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';
 const root=path.resolve('public');
-const pages=['index.html','press/index.html','privacy/index.html','license/index.html','404.html'];
+const pages=['index.html','press/index.html','privacy/index.html','license/index.html','404.html','play-with-friends/index.html'];
 const forbidden=[
   /пять\s+измерен|5\s+измерен/i,
   /портал/i,
