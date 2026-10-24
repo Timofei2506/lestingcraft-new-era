@@ -55,6 +55,66 @@ SUPABASE_ACCESS_TOKEN=sbp_... SUPABASE_PROJECT_REF=dcrtynmqrywsrgqxmmid npm run 
 
 Токен и `service_role` живут только в секретах CI/Cloudflare, не в репозитории.
 
+## Мост «игровой сервер → Supabase» (v2)
+
+Файл `schema-v2-game-bridge.sql` применяется после `schema.sql` и делает экономику
+доступной из игры, не отдавая клиенту ни URL, ни ключ.
+
+| Что | Как |
+| --- | --- |
+| Кто платит/покупает | `player_key` из 32 hex. Для залогиненных это `uid` аккаунта (`Server/src/accounts.js` уже выдаёт uid в этом формате) |
+| Кто вызывает | только `service_role`; каждый `svc_*` начинается с `assert_service_role()` |
+| Ключ Supabase | живёт в секретах воркера (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`), в клиент не попадает |
+| Вход игрока | токен аккаунта в `Authorization: Bearer` → воркер проверяет его в Durable Object аккаунтов → получает `uid` |
+
+Функции-обёртки с явным профилем (`_store_buy`, `_market_buy`, `_friend_list`, …) —
+единственный источник правды: и «веб»-версия через `auth.uid()`, и `svc_*`-версия
+для игры вызывают их, поэтому правила не могут разойтись.
+
+```
+svc_ensure_profile(player_key, display_name)  -- создаёт профиль и кошелёк с балансом 0
+svc_state(player_key)                         -- профиль, баланс, инвентарь, магазин, паки, лоты, леджер
+svc_store_buy / svc_equip_skin
+svc_market_board / svc_market_list / svc_market_cancel / svc_market_buy
+svc_friends / svc_friend_request / svc_friend_accept / svc_friend_decline / svc_friend_remove
+svc_topup_credit_key(player_key, …)           -- платёжный вебхук: создаёт профиль, если его ещё нет
+```
+
+### Эндпоинты игры
+
+`POST /api/cloud/<action>` с `Authorization: Bearer <токен аккаунта>`:
+
+`state`, `buy {code}`, `equip {code}`, `market`, `list {code,price}`,
+`cancel {id}`, `purchase {id}`, `friends`, `friend/request {key,message}`,
+`friend/accept {id}`, `friend/decline {id}`, `friend/remove {key}`.
+
+Ответ всегда `{ok:true,…}` или `{ok:false,message}` на русском. Аргументы
+проверяются до базы (коды предметов `^[a-z0-9_]{2,40}$`, id лота — UUID, цена 1…1 000 000).
+Неизвестные ошибки PostgreSQL наружу не уходят: игрок видит «Сервис экономики
+недоступен», а не текст SQL.
+
+### Проверка
+
+```
+cd Supabase
+SUPABASE_ACCESS_TOKEN=… SUPABASE_PROJECT_REF=dcrtynmqrywsrgqxmmid npm run db:bridge
+```
+
+`db:bridge` = `schema-v2-game-bridge.sql` + `verify-v2.sql`. Проверка идёт внутри
+транзакции с `ROLLBACK` и прогоняет 11 шагов: ноль монет у нового игрока, отказ
+покупки без денег, однократное начисление пака, покупка и надевание скина,
+эскроу и продажа с комиссией 5%, друзья (заявка → принять → список → удалить),
+неотличимость неизвестного и своего ключа, отказ на кривой ключ, приватность
+кошельков под RLS.
+
+### Что в игре показывает клиент
+
+Меню → «Аккаунт» → «Кошелёк и скины»: баланс, история операций, магазин скинов
+(купить/надеть), «Маркетплейс» (лоты, продажа своих скинов, снятие лота) и
+«Друзья» (список, заявки, добавление по ключу). Надетый скин тонирует блок-тело
+персонажа. Кнопка «Создать сервер» на экране мультиплеера и пауза работают
+независимо от аккаунта.
+
 ## Что ещё не подключено (осознанно)
 
 1. **Платёжный провайдер.** Паки заведены, но `active = false`: включать, когда
@@ -63,5 +123,9 @@ SUPABASE_ACCESS_TOKEN=sbp_... SUPABASE_PROJECT_REF=dcrtynmqrywsrgqxmmid npm run 
    который не может списать деньги.
 2. **Supabase Auth на сайте.** Схема готова (`profiles.auth_user_id`), но сайт пока
    без входа. Нужен экран входа и привязка `player_key` одноразовым кодом.
-3. **Worker → Supabase.** Игровой сервер пока не знает про Supabase. Следующий шаг:
-   `worker.js` вызывает `friend_list`/`store_buy` с `service_role`-ключом из секрета.
+3. ~~**Worker → Supabase.**~~ Готово: `Server/src/cloud.js`, `/api/cloud/*`, секреты
+   `SUPABASE_URL` и `SUPABASE_SERVICE_KEY` синхронизируются в воркер из GitHub Actions.
+4. **Скины других игроков.** Свой скин виден всем (тонирование модели), но скин
+   удалённого игрока пока не передаётся через комнату: нужен `avatar_skin` в
+   пакете `player` и кэш каталога на клиенте.
+5. **Вход через Supabase Auth на сайте.** Схема готова, сайт пока без входа.

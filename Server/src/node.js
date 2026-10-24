@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {publicConfig,RoomState,createConfig,randomCode,newPeer,MAX_PLAYERS,validCode,RULES_VERSION,CONTENT_VERSION,MAX_MESSAGE,acceptsClient,packetError} from './protocol.js';
 import {ServerDirectory,serverRecord,publicServer,sortServers} from './server-registry.js';
+import {CloudService,handleCloudRequest} from './cloud.js';
 const port=Number(process.env.PORT||8787),dataDir=path.resolve(process.env.DATA_DIR||'./data');fs.mkdirSync(dataDir,{recursive:true});
 class FileAccountStore extends MemoryAccountStore {constructor(file){super(fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{});this.file=file;this.lastGood=JSON.stringify(this.data);}async flush(){const raw=JSON.stringify(this.data);try{fs.writeFileSync(this.file+'.tmp',raw,{mode:0o600});fs.renameSync(this.file+'.tmp',this.file);this.lastGood=raw;}catch(e){this.data=JSON.parse(this.lastGood);throw e;}}}
 const accountStore=new FileAccountStore(path.join(dataDir,'accounts.private.json')),accounts=new AccountService(accountStore);
@@ -13,6 +14,13 @@ const directory=new ServerDirectory(fs.existsSync(serversFile)?JSON.parse(fs.rea
 function saveServers(){const temp=serversFile+'.tmp';fs.writeFileSync(temp,JSON.stringify(directory.toJSON()));fs.renameSync(temp,serversFile);}
 function roomStatus(code){const room=rooms.get(code);if(!room)return null;return {players:peers(code).length,maxPlayers:MAX_PLAYERS,started:room.config.started===true};}
 const rooms=new Map(),sockets=new Map(),quota=new Map();
+// Economy bridge: enabled only when the environment provides Supabase credentials.
+const cloudService=process.env.SUPABASE_URL&&process.env.SUPABASE_SERVICE_KEY?new CloudService(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY):null;
+async function resolvePlayer(token){
+  if(!/^[a-f0-9]{64}$/.test(token||''))return null;
+  const result=await accounts.handle('me','GET',{},token,'cloud');
+  return result?.ok&&typeof result.profile?.uid==='string'?result.profile.uid.toLowerCase():null;
+}
 function load(code) {
   if(rooms.has(code))return rooms.get(code);const file=path.join(dataDir,code+'.json');if(!fs.existsSync(file))return null;
   const stored=JSON.parse(fs.readFileSync(file,'utf8')),room=new RoomState(stored.config,stored.edits,stored.players||[]);rooms.set(code,room);return room;
@@ -25,6 +33,13 @@ const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://server');
   if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'});res.end();return;}
   if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){try{let parts=[],bytes=0;for await(const part of req){bytes+=part.length;if(bytes>24576)return reply(res,413,{message:'Body too large'});parts.push(part);}const raw=Buffer.concat(parts).toString('utf8');const result=await accounts.handle(url.pathname.split('/').pop(),req.method,raw?JSON.parse(raw):{},req.headers.authorization?.replace(/^Bearer /,'')||'',req.socket.remoteAddress);return reply(res,200,result);}catch(e){await accountStore.flush().catch(()=>{});return reply(res,e.status||503,{ok:false,message:e.status?e.message:'Сервис аккаунтов временно недоступен.'});}}
+  if(url.pathname.startsWith('/api/cloud/')){
+    if(!cloudService)return reply(res,503,{ok:false,message:'Экономика не настроена: нужны SUPABASE_URL и SUPABASE_SERVICE_KEY'});
+    let body='';for await(const chunk of req){body+=chunk;if(body.length>2048)return reply(res,413,{ok:false,message:'Body too large'});}
+    const proxy=new Request('http://local'+url.pathname+url.search,{method:req.method,headers:{authorization:req.headers.authorization||'',...(body?{'content-type':'application/json'}:{})},body:req.method==='POST'?(body||'{}'):undefined});
+    const response=await handleCloudRequest(proxy,{service:cloudService,resolvePlayer,cors:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'}});
+    res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));return;
+  }
   if(url.pathname==='/health')return reply(res,200,{ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,contentVersion:CONTENT_VERSION,transport:'websocket',storage:'local-json',maxPlayers:8,commit:process.env.GIT_SHA||'dev',serverNow:Date.now()});
   if(req.method==='POST'&&url.pathname==='/api/rooms') {
     try {

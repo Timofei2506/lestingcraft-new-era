@@ -20,8 +20,83 @@ namespace LestingCraft.Gameplay
   public void ChangePassword(string current,string next,Action done){if(Logged&&!Busy)StartCoroutine(Request("password",new AccountRequest{password=current,newPassword=next},done));}
   public void Delete(string password,Action done){if(Logged&&!Busy)StartCoroutine(Request("delete",new AccountRequest{password=password},()=>{if(Message=="Готово"){PlayerPrefs.DeleteKey("LC.ProfileQueue."+Profile.uid);PlayerPrefs.DeleteKey("LC.ProfileDevice."+Profile.uid);token=null;Profile=null;active.Clear();}done?.Invoke();}));}
   public void DismissRecovery(){RecoveryCode=null;}
-  public void Logout(Action done){if(!Logged||Busy)return;SaveQueue();StartCoroutine(Request("logout",new AccountRequest(),()=>{token=null;Profile=null;RecoveryCode=null;active.Clear();Message="Вы вышли из аккаунта. Несинхронизированные события сохранены локально для следующего входа.";done?.Invoke();}));}
 
+  // === Economy and friends through the game server (Supabase lives behind it) ===
+  public CloudState Wallet {get;private set;}public CloudBoard Board {get;private set;}public CloudFriendsReply Friends {get;private set;}
+  public string CloudMessage="";public bool CloudBusy {get;private set;}
+  public bool CloudReady=>Logged&&Wallet!=null;
+  public void CloudState(Action done=null)=>Cloud("state","{}",json=>{Wallet=JsonUtility.FromJson<CloudState>(json);},done,false);
+  public void CloudMarket(Action done=null)=>Cloud("market","{}",json=>{Board=JsonUtility.FromJson<CloudBoard>(json);},done,false);
+  public void CloudFriends(Action done=null)=>Cloud("friends","{}",json=>{Friends=JsonUtility.FromJson<CloudFriendsReply>(json);},done,false);
+  public void CloudBuy(string code,Action done=null)=>Cloud("buy",CodeBody(code),json=>{Wallet=JsonUtility.FromJson<CloudState>(json);},done,true);
+  public void CloudEquip(string code,Action done=null)=>Cloud("equip",CodeBody(code),json=>{Wallet=JsonUtility.FromJson<CloudState>(json);},done,true);
+  public void CloudList(string code,long price,Action done=null)=>Cloud("list","{\"code\":\""+Esc(code)+"\",\"price\":"+price+"}",null,done,true);
+  public void CloudCancel(string id,Action done=null)=>Cloud("cancel","{\"id\":\""+Esc(id)+"\"}",null,done,true);
+  public void CloudPurchase(string id,Action done=null)=>Cloud("purchase","{\"id\":\""+Esc(id)+"\"}",json=>{Wallet=JsonUtility.FromJson<CloudState>(json);},done,true);
+  public void CloudFriendRequest(string key,Action done=null)=>Cloud("friend/request","{\"key\":\""+Esc(key)+"\"}",null,done,true);
+  public void CloudFriendAccept(long id,Action done=null)=>Cloud("friend/accept","{\"id\":"+id+"}",null,done,true);
+  public void CloudFriendDecline(long id,Action done=null)=>Cloud("friend/decline","{\"id\":"+id+"}",null,done,true);
+  public void CloudFriendRemove(string key,Action done=null)=>Cloud("friend/remove","{\"key\":\""+Esc(key)+"\"}",null,done,true);
+  static string CodeBody(string code){return "{\"code\":\""+Esc(code)+"\"}";}
+  static string Esc(string value){return (value??"").Replace("\\","\\\\").Replace("\"","\\\"");}
+  /// <summary>
+  /// One call to /api/cloud/&lt;action&gt;. The player never sees Supabase: the game
+  /// server holds the key and turns the account token into a player identity.
+  /// After a successful change the wallet is reloaded so the UI shows the truth.
+  /// </summary>
+  void Cloud(string action,string body,Action<string> parse,Action done,bool refresh=true)
+  {
+   if(CloudBusy)return;
+   if(!Logged){CloudMessage="Войдите в аккаунт, чтобы открыть кошелёк, магазин и друзей.";done?.Invoke();return;}
+   StartCoroutine(CloudRoutine(action,body,parse,done,refresh));
+  }
+  IEnumerator CloudRoutine(string action,string body,Action<string> parse,Action done,bool refresh)
+  {
+   if(!CloudEndpointOk()){done?.Invoke();yield break;}
+   CloudBusy=true;
+   string error=null,json=null;
+   yield return Post(action,body,text=>json=text,message=>error=message);
+   if(error!=null)CloudMessage=error;
+   else
+   {
+    CloudMessage="";
+    if(parse!=null)try{parse(json);}catch{CloudMessage="Сервер вернул неожиданный ответ.";}
+    if(refresh)
+    {
+     yield return Post("state","{}",text=>{try{Wallet=JsonUtility.FromJson<CloudState>(text);}catch{}},message=>CloudMessage=message);
+     // A change in one domain reloads it: the next screen must not show stale data.
+     if(action.StartsWith("friend"))
+      yield return Post("friends","{}",text=>{try{Friends=JsonUtility.FromJson<CloudFriendsReply>(text);}catch{}},message=>CloudMessage=message);
+     else if(action=="market"||action=="list"||action=="cancel"||action=="purchase")
+      yield return Post("market","{}",text=>{try{Board=JsonUtility.FromJson<CloudBoard>(text);}catch{}},message=>CloudMessage=message);
+    }
+   }
+   CloudBusy=false;done?.Invoke();
+  }
+  IEnumerator Post(string action,string body,Action<string> ok,Action<string> fail)
+  {
+   using(var request=new UnityWebRequest(Endpoint+"/api/cloud/"+action,"POST"))
+   {
+    request.uploadHandler=new UploadHandlerRaw(Encoding.UTF8.GetBytes(body));request.downloadHandler=new DownloadHandlerBuffer();
+    request.SetRequestHeader("Content-Type","application/json");if(!string.IsNullOrEmpty(token))request.SetRequestHeader("Authorization","Bearer "+token);request.timeout=25;
+    yield return request.SendWebRequest();
+    string json=request.downloadHandler!=null?request.downloadHandler.text:"";
+    if(request.result!=UnityWebRequest.Result.Success)
+    {
+     string message=null;try{message=JsonUtility.FromJson<CloudReply>(json)?.message;}catch{}
+     fail(string.IsNullOrEmpty(message)?(request.responseCode==401?"Сессия истекла — войдите снова.":"Сервис экономики недоступен."):message);
+     yield break;
+    }
+    ok(json);
+   }
+  }
+  bool CloudEndpointOk()
+  {
+   Uri address;if(!Uri.TryCreate(Endpoint,UriKind.Absolute,out address)||(address.Scheme!="https"&&!address.IsLoopback)){CloudMessage="Для экономики нужен HTTPS-сервис.";return false;}
+   return true;
+  }
+  /// <summary>Reloads wallet, market or friends without blocking the UI.</summary>
+  public void CloudRefreshQuiet(){if(Logged&&!CloudBusy)StartCoroutine(CloudRoutine("state","{}",json=>{try{Wallet=JsonUtility.FromJson<CloudState>(json);}catch{}},null,false));}
   public int Counter(string key){if(Profile?.stats==null)return 0;foreach(var s in Profile.stats)if(s.key==key)return s.value;return 0;}
   public void Record(string key,int value=1,bool maximum=false){if(!Logged||value<=0)return;if(!active.TryGetValue(key,out var e)){e=new ProfileEvent{key=key,mode=maximum?"max":"add"};active[key]=e;}e.value=maximum?Math.Max(e.value,value):Math.Min(1000000,e.value+value);}
   void SaveQueue(){if(!Logged)return;queue.active=new List<ProfileEvent>(active.Values).ToArray();PlayerPrefs.SetString("LC.ProfileQueue."+Profile.uid,JsonUtility.ToJson(queue));PlayerPrefs.Save();}

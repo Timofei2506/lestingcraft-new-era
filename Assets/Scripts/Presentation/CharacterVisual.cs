@@ -5,10 +5,26 @@ namespace LestingCraft.Presentation
     /// <summary>Original block adventurer: cuboid head, torso, arms and legs, textured cloth and equipment.</summary>
     public sealed class CharacterVisual : MonoBehaviour
     {
-        Transform leftLeg,rightLeg,leftArm,rightArm;Vector3 previous;float phase;Material material,metal;readonly List<GameObject> extras=new List<GameObject>();string gearKey="";
+        Transform leftLeg,rightLeg,leftArm,rightArm;Vector3 previous;float phase;Material material,metal;string skinKey="";readonly List<GameObject> extras=new List<GameObject>();string gearKey="";
         GameObject carried;int carriedId=-1;bool resting;int restingVariant;
         public void SetRestPose(int variant){resting=true;restingVariant=variant;ApplyRestPose();}
         void ApplyRestPose(){if(!leftLeg)return;leftLeg.localRotation=Quaternion.Euler(restingVariant==0?-8:12,0,restingVariant==0?-9:13);rightLeg.localRotation=Quaternion.Euler(restingVariant==0?14:-7,0,restingVariant==0?16:-8);leftArm.localRotation=Quaternion.Euler(restingVariant==0?-10:24,0,restingVariant==0?28:-38);rightArm.localRotation=Quaternion.Euler(restingVariant==0?12:-25,0,restingVariant==0?-17:35);}
+        /// <summary>
+        /// Tints the block body with the colours of an equipped store skin.
+        /// null restores the default fabric. Safe to call every frame.
+        /// </summary>
+        public void SetSkin(string[] palette)
+        {
+            string key=palette==null?"default":"skins:"+string.Join(",",LestingCraft.Gameplay.SkinPalette.Sanitize(palette));
+            if(key==skinKey)return;skinKey=key;
+            if(!material)return;
+            if(palette==null){material.SetColor("_BaseColor",Color.white);return;}
+            var colors=LestingCraft.Gameplay.SkinPalette.Sanitize(palette);
+            material.SetColor("_BaseColor",new Color(
+                LestingCraft.Gameplay.SkinPalette.Channel(colors[0],0),
+                LestingCraft.Gameplay.SkinPalette.Channel(colors[0],1),
+                LestingCraft.Gameplay.SkinPalette.Channel(colors[0],2),1f));
+        }
         public void SetOffhand(int id,bool lighting=true){if(carriedId==id)return;carriedId=id;if(carried)Destroy(carried);if(id!=148||!leftArm)return;carried=new GameObject("Visible left-hand torch");carried.transform.SetParent(leftArm,false);carried.transform.localPosition=new Vector3(0,-.38f,.22f);carried.transform.localRotation=Quaternion.Euler(-20,0,0);carried.transform.localScale=Vector3.one*.75f;carried.AddComponent<TorchVisual>().Build(lighting);}
         public void Build()
         {

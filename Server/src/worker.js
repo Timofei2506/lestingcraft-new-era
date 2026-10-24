@@ -1,6 +1,27 @@
 export {AccountDirectory} from './accounts-worker.js';
 import {publicConfig,RoomState,createConfig,validCode,randomCode,newPeer,MAX_PLAYERS,RULES_VERSION,CONTENT_VERSION,acceptsClient,packetError} from './protocol.js';
 import {MAX_SERVERS,serverRecord,publicServer,sortServers,serverName} from './server-registry.js';
+import {CloudService,handleCloudRequest} from './cloud.js';
+
+// One client per isolate: the service key never leaves this module.
+let cloudService=null;
+function cloud(env){
+  if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_KEY)return null;
+  if(!cloudService||cloudService.base!==String(env.SUPABASE_URL).replace(/\/+$/,'')||cloudService.key!==env.SUPABASE_SERVICE_KEY)
+    cloudService=new CloudService(env.SUPABASE_URL,env.SUPABASE_SERVICE_KEY);
+  return cloudService;
+}
+
+// The game account token is validated by the accounts Durable Object; its uid is
+// the player_key the economy tables use.
+async function resolvePlayer(request,env,token){
+  if(!/^[a-f0-9]{64}$/.test(token||''))return null;
+  const response=await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts-v1')).fetch('https://accounts/api/accounts/me',{
+    method:'GET',headers:{Authorization:`Bearer ${token}`,'CF-Connecting-IP':request.headers.get('CF-Connecting-IP')||'cloud'}});
+  if(!response.ok)return null;
+  const body=await response.json().catch(()=>null);
+  return body?.ok&&typeof body.profile?.uid==='string'?body.profile.uid.toLowerCase():null;
+}
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const error=(message,status=400)=>json({type:'error',message},status);
@@ -9,6 +30,11 @@ export default {
     const url=new URL(request.url);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
     if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){const response=await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts-v1')).fetch(request);return new Response(response.body,{status:response.status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});}
+    if(url.pathname.startsWith('/api/cloud/')) {
+      const service=cloud(env);
+      if(!service)return error('Экономика не настроена: нужны SUPABASE_URL и SUPABASE_SERVICE_KEY',503);
+      return handleCloudRequest(request,{service,resolvePlayer:token=>resolvePlayer(request,env,token),cors});
+    }
     if(url.pathname==='/health')return json({ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,contentVersion:CONTENT_VERSION,transport:'websocket',maxPlayers:8,storage:'durable-object-sqlite',commit:env.GIT_SHA||'dev',serverNow:Date.now()});
     if(url.pathname==='/api/rooms'&&request.method==='POST') {
       try {

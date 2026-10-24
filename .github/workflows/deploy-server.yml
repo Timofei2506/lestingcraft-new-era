@@ -49,6 +49,24 @@ jobs:
         working-directory: Server
         run: npm ci && npm test
 
+      # Экономика (Supabase) живёт только в секретах воркера. Если секретов в
+      # репозитории нет — шаг молча пропускается, воркер отвечает 503 на /api/cloud,
+      # и игра продолжает работать без магазина.
+      - name: Sync economy secrets
+        working-directory: Server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
+            echo "::warning::SUPABASE_URL / SUPABASE_SERVICE_KEY не заданы — экономика на проде выключена"
+            exit 0
+          fi
+          printf '%s' "$SUPABASE_URL" | npx wrangler secret put SUPABASE_URL
+          printf '%s' "$SUPABASE_SERVICE_KEY" | npx wrangler secret put SUPABASE_SERVICE_KEY
+
       - name: Deploy existing Worker (no new paid services)
         working-directory: Server
         env:

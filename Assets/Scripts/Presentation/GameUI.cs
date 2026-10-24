@@ -13,7 +13,7 @@ namespace LestingCraft.Presentation
     /// <summary>Native scalable uGUI, no IMGUI or embedded webpage. All fonts/art are local.</summary>
     public sealed partial class GameUI : MonoBehaviour
     {
-        enum Page{Account,Achievements,Home,World,Rooms,AddServer,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby,Journal}
+        enum Page{Account,Achievements,Home,World,Rooms,AddServer,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby,Journal,Store,Market,Friends}
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
@@ -154,6 +154,7 @@ namespace LestingCraft.Presentation
             var version=Box(content.transform,1190,61,346,39,new Color(.035f,.055f,.065f,.86f));
             Label(version.transform,"WINDOWS  /  РАННЯЯ ВЕРСИЯ",15,0,316,39,12,White,false,TextAnchor.MiddleCenter);
             var account=Button("Аккаунт · достижения",1190,114,346,52,ShowAccount);account.name="Home.Account";
+            if(game.Accounts!=null&&game.Accounts.Logged){var walletEntry=Button("Кошелёк и друзья",1190,174,346,48,ShowStore);walletEntry.name="Home.Store";}
             var panel=Box(content.transform,56,189,710,610,new Color(.023f,.047f,.055f,.87f));
             panel.raycastTarget=false;
             Box(content.transform,56,189,4,610,Accent,false);
@@ -591,6 +592,11 @@ namespace LestingCraft.Presentation
                 Button("Скопировать код",64,620,450,64,()=>GUIUtility.systemCopyBuffer=a.RecoveryCode);Button("Код сохранён →",550,620,450,64,()=>{a.DismissRecovery();ShowAccount();},true);return;
             }
             Label(content.transform,"Охота: "+a.Counter("kills")+" · Страж: "+a.Counter("bosses")+" · Добыто: "+a.Counter("mined")+" · Построено: "+a.Counter("placed")+" · Создано: "+a.Counter("crafted")+" · Смертей: "+a.Counter("deaths")+" · В игре: "+(a.Counter("alive_s")/60)+" мин",64,310,1460,64,19,White);
+            if(a.Wallet==null)a.CloudState(()=>{if(page==Page.Account)ShowAccount();});
+            string walletLine=a.Wallet==null?"Кошелёк: загружается…":"Кошелёк: "+CloudFormat.Coins(a.Wallet.balance)+" монет"+(a.Wallet.profile!=null&&!string.IsNullOrEmpty(a.Wallet.profile.avatar_skin)?" · скин "+a.Wallet.profile.avatar_skin:" · скин не выбран");
+            Label(content.transform,walletLine,64,372,1460,30,17,Accent);
+            var walletButton=Button("Кошелёк и скины  →",64,690,440,54,ShowStore,true);walletButton.name="Account.Store";
+            var friendsButton=Button("Друзья  →",530,690,440,54,()=>{a.CloudFriends(AfterCloud);ShowFriends();});friendsButton.name="Account.Friends";
             Button("200 достижений →",64,405,440,62,()=>{achievementPage=0;ShowAchievements();},true);
             Button("Синхронизировать",530,405,440,62,()=>a.Sync(RefreshAccountIfOpen));
             Button("Сменить титул",996,405,440,62,()=>{var titles=new List<string>{""};foreach(var d in a.Achievements)if(!string.IsNullOrEmpty(d.title)&&Array.IndexOf(p.achievements,d.id)>=0)titles.Add(d.id);a.ChangeTitle(titles[(titles.IndexOf(p.title)+1)%titles.Count],RefreshAccountIfOpen);});
@@ -598,7 +604,7 @@ namespace LestingCraft.Presentation
             var fresh=Input("НОВЫЙ ПАРОЛЬ",next,"Минимум 12 символов",780,510,660,v=>next=v);fresh.contentType=InputField.ContentType.Password;fresh.characterLimit=128;
             Button("Изменить пароль",64,625,440,55,()=>{string c=current,n=next;old.text="";fresh.text="";a.ChangePassword(c,n,RefreshAccountIfOpen);});
             bool confirm=false;Button("Удалить аккаунт (двойное подтверждение)",530,625,660,55,()=>{if(!confirm){confirm=true;a.Message="Повторное нажатие удалит профиль, достижения и статистику. Нужен текущий пароль.";if(status)status.text=a.Message;return;}string c=current;old.text="";a.Delete(c,RefreshAccountIfOpen);});
-            Button("Выйти из аккаунта",64,715,440,55,()=>a.Logout(RefreshAccountIfOpen));status=Label(content.transform,a.Message,530,715,900,70,18,Accent);
+            Button("Выйти из аккаунта",64,752,440,50,()=>a.Logout(RefreshAccountIfOpen));status=Label(content.transform,a.Message,996,686,540,70,16,Accent);
         }
         void ShowAchievements()
         {
