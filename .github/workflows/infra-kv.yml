@@ -1,0 +1,35 @@
+name: Infra · create KV namespaces
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  kv:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - working-directory: Website
+        run: npm ci
+      - name: List existing namespaces
+        working-directory: Website
+        run: npx wrangler kv namespace list
+      - name: Create WAITLIST namespace (idempotent)
+        working-directory: Website
+        run: |
+          set +e
+          npx wrangler kv namespace create WAITLIST 2>&1 | tee /tmp/create.log
+          echo "---"
+          npx wrangler kv namespace list | tee /tmp/list.json
+          {
+            echo '### KV namespaces'
+            echo '```json'
+            cat /tmp/list.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
