@@ -24,9 +24,12 @@ export async function api(path,env={}) {
     } catch {
       // Shared Cloudflare egress can exhaust unauthenticated GitHub API limits.
       // An Actions-generated public index is the fallback; no PAT lives in the site.
+      // Prefer the index that was deployed with this very worker: it is guaranteed
+      // to be at least as new as the code. raw.githubusercontent lags behind by a
+      // few minutes because of its own CDN cache, so it is only the second choice.
       let response;
-      try {response=await timedFetch(`https://raw.githubusercontent.com/${REPO}/main/Website/public/releases.json`);}catch{}
-      if(!response?.ok && env.ASSETS)response=await env.ASSETS.fetch(new Request('https://site.internal/releases.json'));
+      if(env.ASSETS){try{const local=await env.ASSETS.fetch(new Request('https://site.internal/releases.json'));if(local.ok)response=local;}catch{}}
+      if(!response?.ok){try{response=await timedFetch(`https://raw.githubusercontent.com/${REPO}/main/Website/public/releases.json`);}catch{}}
       if(!response?.ok)throw new Error('Release index unavailable');
       const feed=await response.json();
       if(feed.available!==true||!Array.isArray(feed.releases)||!feed.checkedAt)throw new Error('Invalid verified index');
