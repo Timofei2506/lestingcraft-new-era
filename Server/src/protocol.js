@@ -1,7 +1,7 @@
 import {initialStory,StoryEngine} from './story.js';
 import {protectedSite} from './story-world.js';
-import {weapons} from './weapons.js';
-import {Fauna} from './wildlife.js';
+import {weapons,weapon} from './weapons.js';
+import {Fauna,sample as sampleWorld} from './wildlife.js';
 import {Living,ownerTag,transact,toolDrop} from './living.js';
 import {stationWalk,stationTrade} from './station-visit.js';
 import {beginMoonMission,beginSolarMission,advanceMission,setCruiseAutopilot,landMission,missionView} from './space-mission.js';
@@ -9,14 +9,25 @@ import {launchSite} from './launch-site.js';
 import {height as terrainHeight} from './terrain-legacy.js';
 import {emptyLift,liftAt,liftSnapshot,operateLift} from './shuttle-lift.js';
 import {preflight} from './shuttle-preflight.js';
+import {WorldBosses,BOSS_KINDS} from './world-boss.js';
 
 export const VERSION = 1;
-export const RULES_VERSION = 14;
+export const RULES_VERSION = 15;
+
+// Day/night drives nocturnal spawns and boss behaviour. One cycle is 20 minutes:
+// 13 minutes of day, dusk, then 7 minutes of night. Deterministic per room.
+export const DAY_CYCLE = 20 * 60 * 1000;
+export const NIGHT_STARTS = 0.65;
+export function dayNight(now = Date.now(), startedAt = now) {
+  const elapsed = Math.max(0, now - (startedAt ?? now));
+  const phase = (elapsed % DAY_CYCLE) / DAY_CYCLE;
+  return {phase, night: phase >= NIGHT_STARTS, cycleMs: DAY_CYCLE};
+}
 
 // Content generations are derived from the rules generation in exactly one place:
 // a live room, a rehydrated room and /health must never disagree about it.
 export function contentVersionFor(rulesVersion) {
-  return rulesVersion>=14?9:rulesVersion>=13?8:rulesVersion>=10?7:rulesVersion>=9?6:rulesVersion>=8?5:rulesVersion>=7?4:rulesVersion>=6?3:rulesVersion===5?2:1;
+  return rulesVersion>=15?10:rulesVersion>=14?9:rulesVersion>=13?8:rulesVersion>=10?7:rulesVersion>=9?6:rulesVersion>=8?5:rulesVersion>=7?4:rulesVersion>=6?3:rulesVersion===5?2:1;
 }
 export const CONTENT_VERSION = contentVersionFor(RULES_VERSION);
 export const MAX_MESSAGE = 16384;
@@ -36,8 +47,8 @@ const allowedFlightBodies = contentVersion => contentVersion >= 9 ? flightBodies
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
     throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
-  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,11,12,13,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
-  if([2,3,4,5,6,7,8,9,10,11,12,13,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
+  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,11,12,13,14,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
+  if([2,3,4,5,6,7,8,9,10,11,12,13,14,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
   return {launchSite:value.rulesVersion>=11?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=11?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:contentVersionFor(value.rulesVersion),version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,11,12,13,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
@@ -73,7 +84,7 @@ export function validateEdit(p,peer,edits,now,maxBlock=18,bound=64) {
   return {key,x:p.x,y:p.y,z:p.z,block:p.block};
 }
 export class RoomState {
-  constructor(config,edits=[],savedPlayers=[]) {this.config={...config,contentVersion:config.contentVersion??contentVersionFor(config.rulesVersion)};this.members=new Map();this.storyEngine=new StoryEngine();this.observers=new Map();this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));this.fauna=new Fauna(config.seed,config.wildlife||{},this.edits,this.config.contentVersion);this.living=new Living(config.seed,config.living||{},this.edits,this.config.contentVersion);this.living.restorePending();this.fauna.dynamicCells=this.living.cells;}
+  constructor(config,edits=[],savedPlayers=[]) {this.config={...config,contentVersion:config.contentVersion??contentVersionFor(config.rulesVersion)};this.members=new Map();this.storyEngine=new StoryEngine();this.observers=new Map();this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));this.fauna=new Fauna(config.seed,config.wildlife||{},this.edits,this.config.contentVersion);this.living=new Living(config.seed,config.living||{},this.edits,this.config.contentVersion);this.living.restorePending();this.fauna.dynamicCells=this.living.cells;this.bosses=new WorldBosses(config.seed,config.worldBosses||{},this.config.contentVersion,this.edits);}
   setMembers(peers){this.members=new Map(peers.map(p=>[p.id,p]));const connected=new Set(peers.map(p=>p.playerKey)),ackKey=this.config.story?`${this.config.story.stage}:${this.config.story.line}`:'';for(const key of this.storyEngine.ready)if(!connected.has(key))this.storyEngine.ready.delete(key);this.storyEngine.acks=new Set(peers.filter(p=>p.storyAckKey===ackKey&&ackKey!=='').map(p=>p.playerKey));for(const p of peers){if(p.storyReady)this.storyEngine.ready.add(p.playerKey);if(p.lastStoryHit)this.storyEngine.hits.set(p.playerKey,p.lastStoryHit);}}
 
   // Keep the established lunar transition and its public signature unchanged.
@@ -116,6 +127,16 @@ export class RoomState {
   }
 
   clock(now=Date.now()){return 420+Math.max(0,(now-(this.config.startedAt||now))/1000);}
+  // Server-side line of sight for boss hits: the same rule fauna uses.
+  lineClearBoss(x,y,z,tx,ty,tz) {
+    const dx=tx-x,dy=ty-y,dz=tz-z,n=Math.ceil(Math.hypot(dx,dy,dz)/.12);
+    for(let i=1;i<n;i++){
+      const t=i/n;
+      const block=sampleWorld(Math.floor(x+dx*t),Math.floor(y+dy*t),Math.floor(z+dz*t),this.config.seed,this.edits,this.config.contentVersion);
+      if(block>0&&block!==7&&block!==8)return false;
+    }
+    return true;
+  }
   lobbyState(){return {clock:this.clock(),type:'lobby',started:!!this.config.started,hostId:[...this.members.values()].find(p=>p.playerKey===this.config.ownerKey)?.id||'',players:[...this.members.values()].filter(p=>!p.inDream).map(publicPeer),story:this.config.story,serverNow:Date.now()};}
   disconnect(peer,persist=()=>{}){this.members.delete(peer.id);this.observers.delete(peer.id);this.storyEngine.ready.delete(peer.playerKey);this.storyEngine.acks.delete(peer.playerKey);this.storyEngine.hits.delete(peer.playerKey);let next=this.config;
     // A disconnected rider cannot strand the only platform forever; it continues its
@@ -127,7 +148,7 @@ export class RoomState {
   welcome(peer,peers) {
     this.setMembers([...peers.filter(p=>p.id!==peer.id),peer]);
     const {wildlife,ownerKey,living,spaceVisit,spaceMission,launchLift,padVisited,shuttleSeats,...publicConfig}=this.config,save=this.savedPlayers.get(peer.playerKey)||null;
-    return {seats:(shuttleSeats||[null,null]).map(key=>[...this.members.values()].find(m=>m.playerKey===key)?.id||''),hatchOpen:!!this.config.launchHatch,lift:this.config.launchSite?.active?liftSnapshot(launchLift||emptyLift(),Date.now(),[...this.members.values()]):undefined,space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey,seatIndex:spaceMission.crew.indexOf(peer.playerKey)}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{active:true,dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peer.inDream?[]:peers.filter(p=>p.id!==peer.id&&p.positioned&&!p.inDream).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[])};
+    return {seats:(shuttleSeats||[null,null]).map(key=>[...this.members.values()].find(m=>m.playerKey===key)?.id||''),hatchOpen:!!this.config.launchHatch,lift:this.config.launchSite?.active?liftSnapshot(launchLift||emptyLift(),Date.now(),[...this.members.values()]):undefined,space:spaceMission?.crew?.includes(peer.playerKey)?{...safeMission(advanceMission(spaceMission,Math.max(Date.now(),spaceMission.lastAt)),Date.now()),pilot:spaceMission.pilot===peer.playerKey,seatIndex:spaceMission.crew.indexOf(peer.playerKey)}:undefined,station:spaceVisit?.dock?.latched&&spaceVisit.crew?.includes(peer.playerKey)&&Array.isArray(spaceVisit.positions?.[peer.playerKey])?{active:true,dock:{...spaceVisit.dock},local:[...spaceVisit.positions[peer.playerKey]],crewCount:spaceVisit.crew.length}:undefined,stationRequestId:spaceVisit?.crew?.includes(peer.playerKey)?spaceVisit.tradeRequests?.[peer.playerKey]||0:0,living:this.config.contentVersion>=6?this.living.save():undefined,ownerTag:ownerTag(peer.playerKey||peer.id),host:peer.playerKey===ownerKey,serverNow:Date.now(),type:'welcome',serverRulesVersion:RULES_VERSION,clock:420+Math.max(0,(Date.now()-(this.config.startedAt||Date.now()))/1000),...publicConfig,id:peer.id,edits:[...this.edits.values()],save,players:peer.inDream?[]:peers.filter(p=>p.id!==peer.id&&p.positioned&&!p.inDream).map(publicPeer),animals:this.config.contentVersion>=2?this.fauna.snapshots():[],loot:this.fauna.pending(peer.playerKey,save?.claimedAnimalLoot||[]),...(this.config.contentVersion>=10?{bosses:this.bosses.snapshots(),dayNight:dayNight(Date.now(),this.config.startedAt||Date.now())}:{})};
   }
   handle(peer,raw,now,persistEdit,persistPlayer=()=>{},persistFauna=()=>{}) {
     if(!consumeRate(peer,now))throw new Error('Rate limit');
@@ -338,6 +359,7 @@ export class RoomState {
       persistFauna(next);this.config=next;this.storyEngine=result.engine;if(p.type==='story_ready')peer.storyReady=true;if(p.action==='ack')peer.storyAckKey=`${p.stage}:${p.line}`;if(p.action==='hit')peer.lastStoryHit=now;return {clock:this.clock(now),type:'story',story:result.story,damageEvents:result.damageEvents,serverNow:now,campaign:this.config.campaign};
     }
     if(p.type==='position') {
+      const day=dayNight(now,this.config.startedAt||now);
       const site=this.config.launchSite;
       if(site?.active&&peer.positioned&&now-peer.lastPosition>0&&now-peer.lastPosition<5000&&
          Math.abs(peer.x-site.x)<70&&Math.abs(peer.z-site.z)<70&&
@@ -350,7 +372,17 @@ export class RoomState {
       for(const [id,observer] of this.observers)if(now-observer.seen>5000)this.observers.delete(id);
       if(this.config.contentVersion>=2&&!this.config.runEnded){
         const active=[...this.observers.values()].filter(p=>this.savedPlayers.get(p.playerKey)?.survival?.health!==0);
-        const tick=this.fauna.tick(now,active);if(tick){Object.assign(message,tick);if(this.config.mode===2)message.damageEvents=[];if(now-this.fauna.lastPersist>=5000){const next={...this.config,wildlife:this.fauna.save()};persistFauna(next);this.config=next;this.fauna.lastPersist=now;}}
+        const tick=this.fauna.tick(now,active,day.night);if(tick){Object.assign(message,tick);if(this.config.mode===2)message.damageEvents=[];if(now-this.fauna.lastPersist>=5000){const next={...this.config,wildlife:this.fauna.save()};persistFauna(next);this.config=next;this.fauna.lastPersist=now;}}
+      }
+      if(this.config.contentVersion>=10&&!this.config.runEnded){
+        const bossObservers=[...this.observers.values()].filter(p=>this.savedPlayers.get(p.playerKey)?.survival?.health!==0);
+        const bossTick=this.bosses.tick(now,bossObservers,this.config.mode===2);
+        if(bossTick){
+          message.bosses=bossTick.bosses;message.dayNight=day;
+          if(this.config.mode!==2)message.damageEvents=[...(message.damageEvents||[]),...bossTick.damageEvents];
+          const next={...this.config,worldBosses:this.bosses.save()};
+          persistFauna(next);this.config=next;
+        }
       }
       if(this.config.contentVersion>=6&&!this.config.runEnded){const candidate=new Living(this.config.seed,this.living.save(),this.edits,this.config.contentVersion);candidate.last=this.living.last;candidate.flow=this.living.flow;candidate.fluidPass=this.living.fluidPass;candidate.queue=this.living.queue.map(p=>({...p}));candidate.queued=new Set(this.living.queued);candidate.paths=new Map(this.living.paths);if(candidate.tick(now,this.clock(now),[...this.observers.values()].filter(p=>this.savedPlayers.get(p.playerKey)?.survival?.health!==0))){const next={...this.config,living:candidate.save()};persistFauna(next);this.config=next;this.living=candidate;this.fauna.dynamicCells=candidate.cells;message.living=candidate.save();if(this.config.mode!==2)message.damageEvents=[...(message.damageEvents||[]),...candidate.impacts];}}
       if(this.config.story){const result=this.storyEngine.process(this.config,{type:'tick'},peer,[...this.members.values()],now);if(result.changed){const next={...this.config,story:result.story};persistFauna(next);this.config=next;this.storyEngine=result.engine;message.story=result.story;message.serverNow=now;message.damageEvents=[...(message.damageEvents||[]),...result.damageEvents];}}
@@ -360,6 +392,32 @@ export class RoomState {
       return message;
     }
     if(p.type==='arrow_shot') {if(this.config.contentVersion<5||this.config.runEnded||!peer.positioned||this.savedPlayers.get(peer.playerKey)?.survival?.health===0||now-(peer.lastBowShot||0)<1300||!Number.isInteger(p.requestId)||p.requestId<1||p.requestId>2147483647)throw Error('Invalid bow shot / cooldown');peer.bowShots=Object.fromEntries(Object.entries(peer.bowShots||{}).filter(([id,s])=>s.until>now));if(Object.keys(peer.bowShots).length>=4)throw Error('Too many flying arrows');peer.bowShots[p.requestId]={x:peer.x,y:peer.y,z:peer.z,until:now+2500};peer.lastBowShot=now;return {type:'arrow_shot',id:peer.id,requestId:p.requestId};}
+    if(p.type==='boss_hit') {
+      if(this.config.contentVersion<10||this.config.runEnded)throw Error('World bosses are unavailable');
+      const bossId=typeof p.boss==='string'?p.boss:null,boss=bossId?this.bosses.active.find(b=>b.id===bossId&&!b.dead):null;
+      if(!boss)throw Error('Boss is no longer here');
+      if(!Number.isInteger(p.requestId)||p.requestId<1||p.requestId<=Math.max(peer.lastBossRequest||0,0))throw Error('Boss hit replay');
+      if(p.weapon!==undefined&&p.weapon!==0&&![100,101,102,103].includes(p.weapon)&&!Object.hasOwn(weapons,p.weapon))throw Error('Invalid visible weapon');
+      const spec=weapon(p.weapon);
+      if(now-(peer.lastBossHit||0)<spec.cooldown)throw Error('Boss hit cooldown');
+      const candidate=new WorldBosses(this.config.seed,{active:this.bosses.active.map(b=>({id:b.id,kind:b.kind,x:b.x,y:b.y,z:b.z,health:b.health})),defeated:[...this.bosses.defeated].map(([id,at])=>({id,at}))},this.config.contentVersion,this.edits);
+      candidate.lastTick=this.bosses.lastTick;candidate.now=now;
+      const result=candidate.hit(peer,bossId,p.weapon,spec.damage,now,spec.reach,this.config.mode===2,(x,y,z,target)=>{
+        const h=BOSS_KINDS[target.kind].height;
+        return this.lineClearBoss(x,y,z,target.x,target.y+h*.5,target.z);
+      });
+      let livingCandidate=this.living;
+      if(result.defeated&&result.loot.length){
+        livingCandidate=new Living(this.config.seed,this.living.save(),this.edits,this.config.contentVersion);
+        livingCandidate.last=this.living.last;livingCandidate.flow=this.living.flow;livingCandidate.fluidPass=this.living.fluidPass;
+        livingCandidate.queue=this.living.queue.map(q=>({...q}));livingCandidate.queued=new Set(this.living.queued);livingCandidate.paths=new Map(this.living.paths);
+        for(const entry of result.loot)livingCandidate.drop(entry.item,entry.count,0,boss.x,boss.y+1.5,boss.z);
+      }
+      const next={...this.config,worldBosses:candidate.save(),...(result.defeated?{living:livingCandidate.save()}:{})};
+      persistFauna(next);this.config=next;this.bosses=candidate;peer.lastBossHit=now;peer.lastBossRequest=p.requestId;
+      if(result.defeated){this.living=livingCandidate;this.fauna.dynamicCells=this.living.cells;}
+      return {...result,serverNow:now,living:result.defeated?livingCandidate.save():undefined};
+    }
     if(p.type==='animal_hit') {
       if(this.config.contentVersion<2||this.config.runEnded||this.savedPlayers.get(peer.playerKey)?.survival?.health===0)throw Error('Wildlife interactions unavailable');
       if(!Number.isInteger(p.requestId)||p.requestId<0||p.requestId>2147483647)throw Error('Invalid attack request ID');
@@ -422,7 +480,7 @@ export class RoomState {
       return {type:'edit',...record,id:peer.id,living:candidate?candidate.save():undefined};
     }
     if(p.type==='state') {
-      if(![2,3,4,5,6,7,8,9,10,11,12,13,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
+      if(![2,3,4,5,6,7,8,9,10,11,12,13,14,RULES_VERSION].includes(this.config.rulesVersion)||!validCode(peer.playerKey))throw new Error('Persistent player key required');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
       const save=validatePlayerSave(p.save,this.config.contentVersion>=2,this.config.contentVersion>=4,this.config.contentVersion>=5,this.config.contentVersion>=8,this.config.contentVersion>=9);if((save.claimedStoryRewards&~(this.config.story?.rewards||0))!==0||((this.savedPlayers.get(peer.playerKey)?.claimedStoryRewards||0)&~save.claimedStoryRewards)!==0)throw Error("Invalid story rewards / rollback");const dead=save.survival.health<=0,previous=this.savedPlayers.get(peer.playerKey),firstDeath=dead&&(!previous||previous.survival.health>0);
       if(previous&&save.inventory.revision<previous.inventory.revision)throw Error('Stale inventory after confirmed transaction');
@@ -485,7 +543,7 @@ export function validateEquipmentIds(ids){
 }
 
 // New content must never reach a pre-expansion client (unknown IDs would become air).
-export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.rulesVersion>=14?14:config.rulesVersion>=13?13:config.rulesVersion>=12?12:config.launchSite?.active?11:config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
+export function acceptsClient(config,clientRules){const n=Number(clientRules),min=config.rulesVersion>=15?15:config.rulesVersion>=14?14:config.rulesVersion>=13?13:config.rulesVersion>=12?12:config.launchSite?.active?11:config.contentVersion>=7?10:config.contentVersion>=6?9:config.contentVersion>=5?8:config.contentVersion>=4?7:config.contentVersion>=3?6:config.contentVersion>=2?5:2;return config.contentVersion<2&&(clientRules===null||clientRules===undefined)||Number.isInteger(n)&&n>=min&&n<=RULES_VERSION;}
 
 export function packetError(raw,error){let p={};try{if(typeof raw==='string'&&raw.length<=MAX_MESSAGE)p=JSON.parse(raw)||{};}catch{}return {type:'error',message:error.message,code:typeof p.type==='string'?p.type:'',requestId:Number.isInteger(p.requestId)?p.requestId:0};}
 

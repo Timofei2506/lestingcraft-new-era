@@ -9,7 +9,7 @@ import {Fauna, wildlifeHabitat, animalHeight} from '../src/wildlife.js';
 const KEY = 'e'.repeat(32);
 
 test('ERA-V9 rules14 / contentVersion 9 supports blocks 70..89, items 190..195 + secret 666, uranium veins and Radia mutants 20..29', () => {
-  assert.equal(RULES_VERSION, 14);
+  assert.equal(RULES_VERSION, 15);
   const cfg9 = createConfig({version: 1, ownerKey: KEY, seed: 2506, dimension: 0, mode: 0, rulesVersion: 14});
   assert.equal(cfg9.contentVersion, 9);
   assert.equal(acceptsClient(cfg9, 14), true);

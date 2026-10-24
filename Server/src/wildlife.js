@@ -21,14 +21,24 @@ export function sample(x, y, z, seed, edits, contentVersion = 2) {
     return contentVersion >= 5 ? sampleExpedition(x, y, z, seed, raw, contentVersion) : raw;
 }
 
-const HEALTH = [30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55, 78, 130, 64, 58, 145, 72, 118, 66, 96, 84];
-const HEIGHT = [2.2, .8, .95, 1.25, 1.95, .9, 2.05, 1.65, 1.05, .7, .55, .9, .75, .95, 2.35, .55, .62, 2.45, .82, .85, 1.45, 2.55, 1.15, 1.25, 2.65, 1.35, 2.30, 1.40, 1.85, 2.10];
-const RADIUS = [.43, .21, .45, .38, .72, .27, .76, .32, .34, .35, .38, .36, .30, .28, .58, .36, .40, .74, .36, .55, .48, .66, .62, .45, .82, .52, .72, .46, .64, .54];
-const MEAT = [3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2, 3, 5, 2, 2, 6, 3, 5, 3, 4, 3];
-const HIDE = [2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3, 3, 5, 3, 2, 6, 3, 4, 3, 4, 4];
-const ATTACK = [0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0, 14, 18, 12, 11, 20, 13, 17, 15, 16, 14];
-const WALK = [.65, .75, .65, 1.15, .65, 1.25, .55, .9, 1.05, .55, .5, 2.8, 2.4, .62, .72, .95, .35, .60, .58, 2.6, 1.45, 1.05, 1.55, 3.1, 0.95, 1.35, 1.15, 3.0, 1.25, 1.30];
-const RUN = [3.8, 4.2, 3.8, 4.6, 3.3, 4.8, 3.4, 3.6, 4.4, 2.1, 2.7, 4.5, 4.1, 2.4, 3.5, 3.6, 1.2, 3.9, 2.8, 4.6, 5.4, 4.2, 5.1, 5.5, 3.9, 4.9, 4.4, 5.6, 4.6, 4.8];
+// Indices 0..29 are the historical species and must keep their order and values.
+// 30..39 are content 10 additions: nocturnal hostiles, mountain and bog fauna.
+const HEALTH = [30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55, 78, 130, 64, 58, 145, 72, 118, 66, 96, 84,
+    60, 140, 70, 45, 120, 12, 95, 35, 85, 220];
+const HEIGHT = [2.2, .8, .95, 1.25, 1.95, .9, 2.05, 1.65, 1.05, .7, .55, .9, .75, .95, 2.35, .55, .62, 2.45, .82, .85, 1.45, 2.55, 1.15, 1.25, 2.65, 1.35, 2.30, 1.40, 1.85, 2.10,
+    .85, 2.50, 1.20, .70, 2.20, .40, 1.50, .50, 1.60, 2.70];
+const RADIUS = [.43, .21, .45, .38, .72, .27, .76, .32, .34, .35, .38, .36, .30, .28, .58, .36, .40, .74, .36, .55, .48, .66, .62, .45, .82, .52, .72, .46, .64, .54,
+    .50, .60, .45, .45, .80, .20, .50, .30, .50, .85];
+const MEAT = [3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2, 3, 5, 2, 2, 6, 3, 5, 3, 4, 3,
+    1, 2, 2, 1, 7, 1, 4, 1, 2, 4];
+const HIDE = [2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3, 3, 5, 3, 2, 6, 3, 4, 3, 4, 4,
+    1, 4, 2, 1, 5, 1, 4, 1, 2, 6];
+const ATTACK = [0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0, 14, 18, 12, 11, 20, 13, 17, 15, 16, 14,
+    9, 16, 11, 6, 0, 0, 0, 8, 10, 22];
+const WALK = [.65, .75, .65, 1.15, .65, 1.25, .55, .9, 1.05, .55, .5, 2.8, 2.4, .62, .72, .95, .35, .60, .58, 2.6, 1.45, 1.05, 1.55, 3.1, 0.95, 1.35, 1.15, 3.0, 1.25, 1.30,
+    .90, .80, 1.20, .50, .60, 1.40, .90, 1.60, .70, .55];
+const RUN = [3.8, 4.2, 3.8, 4.6, 3.3, 4.8, 3.4, 3.6, 4.4, 2.1, 2.7, 4.5, 4.1, 2.4, 3.5, 3.6, 1.2, 3.9, 2.8, 4.6, 5.4, 4.2, 5.1, 5.5, 3.9, 4.9, 4.4, 5.6, 4.6, 4.8,
+    3.4, 3.9, 5.2, 2.2, 3.2, 3.0, 4.4, 4.2, 3.6, 2.9];
 const HABITATS = [
     [0, 0, 1, 1, 5, 6, 6, 11],
     [0, 0, 1, 2, 2, 3, 4, 5, 8, 11],
@@ -46,10 +56,26 @@ const HABITATS_V8 = [
     [1, 3, 7, 8, 11, 12, 15, 17, 19],
     [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
 ];
+// Content 10 habitats. The first six pools keep their historic entries and add
+// the new species; pool 6 keeps the content 9 exotics.
+const HABITATS_V10 = HABITATS_V8.map((pool, i) => {
+    const extra = [
+        [32, 33, 36, 38],
+        [30, 32, 35, 38],
+        [31, 34, 36, 38],
+        [32, 33, 39],
+        [33, 39, 31],
+        [34, 36, 31, 39]
+    ][i] || [];
+    return [...pool, ...extra];
+}).concat([[35, 37, 38]]);
+const NOCTURNAL = new Set([30, 31, 32, 33, 37, 39]);
+const FLYING = new Set([11, 12, 19, 23, 27, 35, 37]);
+const SPECIES_LIMIT = contentVersion => contentVersion >= 10 ? 40 : contentVersion >= 9 ? 30 : contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3;
 const EMPTY_EDITS = new Map();
 const solid = id => id > 0 && id !== 7 && id !== 8;
-const index = s => Number.isInteger(s) && s >= 0 && s < 30 ? s : 2;
-const flyingSpecies = s => s === 11 || s === 12 || s === 19 || s === 23 || s === 27;
+const index = s => Number.isInteger(s) && s >= 0 && s < 40 ? s : 2;
+const flyingSpecies = s => FLYING.has(s);
 const health = s => HEALTH[index(s)];
 export const animalHeight = s => HEIGHT[index(s)];
 const radius = s => RADIUS[index(s)];
@@ -93,7 +119,7 @@ export class Fauna {
             if (this.animals.length >= 256) break;
             if (!source || typeof source.id !== 'string' || ids.has(source.id) ||
                 !Number.isInteger(source.species) || source.species < 0 ||
-                source.species >= (contentVersion >= 9 ? 30 : contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3) ||
+                source.species >= SPECIES_LIMIT(contentVersion) ||
                 ![source.x, source.y, source.z, source.yaw].every(finite)) continue;
             const a = {...source};
             ids.add(a.id);
@@ -191,7 +217,7 @@ export class Fauna {
         return Number.isFinite(y) ? y + offset : NaN;
     }
 
-    spawn(p) {
+    spawn(p, night = false) {
         if (p.alive === false || !finite(p.x) || !finite(p.z)) return;
         const abundantV8 = this.contentVersion >= 8;
         const cellSize = abundantV8 ? 18 : 24;
@@ -214,9 +240,20 @@ export class Fauna {
                 if (this.contentVersion >= 7) {
                     const ix = Math.floor(x), iz = Math.floor(z);
                     const surface = this.block(ix, height(ix, iz, this.seed), iz);
-                    const pool = this.contentVersion >= 8 ? HABITATS_V8 : HABITATS;
+                    const pool = this.contentVersion >= 10 ? HABITATS_V10 : this.contentVersion >= 8 ? HABITATS_V8 : HABITATS;
                     const choices = pool[wildlifeHabitat(surface, ix, iz, this.seed)];
-                    species = choices[(h >>> 16) % choices.length];
+                    let slot = (h >>> 16) % choices.length;
+                    species = choices[slot];
+                    // Nocturnal hostiles only exist after dusk; during the day the
+                    // same slot walks the pool until it finds a daytime species, so
+                    // the cell still spawns something rather than staying empty.
+                    if (this.contentVersion >= 10 && !night && NOCTURNAL.has(species)) {
+                        for (let step = 1; step <= choices.length; step++) {
+                            const candidate = choices[(slot + step) % choices.length];
+                            if (!NOCTURNAL.has(candidate)) { species = candidate; break; }
+                        }
+                        if (NOCTURNAL.has(species)) continue;
+                    }
                 }
                 const herdCount = abundantV8 ? (flyingSpecies(species) ? 2 : 2 + (h % 2)) : 1;
                 for (let m = 0; m < herdCount && this.animals.length < maxTotal; m++) {
@@ -239,13 +276,14 @@ export class Fauna {
         }
     }
 
-    tick(now, observers) {
+    tick(now, observers, night = false) {
         if (now - this.lastTick < 400) return null;
         let dt = this.lastTick ? Math.max(0, Math.min(.5, (now - this.lastTick) / 1000)) : .25;
         const steps = Math.max(1, Math.ceil(dt / .1));
         dt /= steps;
         this.lastTick = now;
-        for (const p of observers) this.spawn(p);
+        this.night = !!night;
+        for (const p of observers) this.spawn(p, this.night);
         const damageEvents = [];
         for (let sub = 0; sub < steps; sub++) {
             const count = this.animals.length;
@@ -255,14 +293,14 @@ export class Fauna {
             for (; visited < count; visited++) {
                 const a = this.animals[(start + visited) % count];
                 if (a.dead) continue;
-                let nearest = null, best = this.contentVersion >= 8 ? 5625 : 3600;
+                let nearest = null, best = this.contentVersion >= 10 ? 8100 : this.contentVersion >= 8 ? 5625 : 3600;
                 for (const p of observers) {
                     if (p.alive === false) continue;
                     const d = (a.x - p.x) ** 2 + (a.z - p.z) ** 2;
                     if (d < best) { best = d; nearest = p; }
                 }
                 if (!nearest) continue;
-                if (active++ >= (this.contentVersion >= 8 ? 96 : 32)) break;
+                if (active++ >= (this.contentVersion >= 10 ? 128 : this.contentVersion >= 8 ? 96 : 32)) break;
                 const s = a.species;
                 if (flyingSpecies(s)) {
                     const old = a.flightHeight;
@@ -302,7 +340,15 @@ export class Fauna {
                 a.timer -= dt;
                 const hostile = (s === 2 || s === 6 || s === 8 || s === 19) && a.anger > 0 ||
                     (s === 3 || s === 12) && (a.anger > 0 || best < 81) ||
-                    (s === 4 || s === 15) && (a.anger > 0 || best < 36);
+                    (s === 4 || s === 15) && (a.anger > 0 || best < 36) ||
+                    // content 10: nocturnal hunters stalk from further away, the
+                    // cave spider and slime only bite up close, the golem is slow
+                    // but sees almost everything.
+                    (s === 32 || s === 31) && (a.anger > 0 || best < 100) ||
+                    (s === 30 || s === 33) && (a.anger > 0 || best < 64) ||
+                    s === 37 && best < 49 ||
+                    s === 39 && (a.anger > 0 || best < 144) ||
+                    s === 38 && a.anger > 0;
                 const defending = hostile && best < 196 && Math.abs(a.y - nearest.y) < 8;
                 const flee = best < (s === 1 ? 100 : 64) && !defending &&
                     Math.abs(a.y - nearest.y) < 8 && !flyingSpecies(s);
