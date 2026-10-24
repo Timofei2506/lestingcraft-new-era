@@ -1,6 +1,7 @@
 export {AccountDirectory} from './accounts-worker.js';
 import {publicConfig,RoomState,createConfig,validCode,randomCode,newPeer,MAX_PLAYERS,RULES_VERSION,CONTENT_VERSION,acceptsClient,packetError} from './protocol.js';
-const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'};
+import {MAX_SERVERS,serverRecord,publicServer,sortServers,serverName} from './server-registry.js';
+const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const error=(message,status=400)=>json({type:'error',message},status);
 export default {
@@ -23,6 +24,55 @@ export default {
         if(!created.ok)return error('Room could not be created',503);
         return json({type:'created',code,...publicConfig(config)},201);
       }catch(e){return error(e.message);}
+    }
+    if(url.pathname==='/api/servers'&&request.method==='POST') {
+      try {
+        const text=await request.text();if(text.length>2048)return error('Body too large',413);
+        const body=JSON.parse(text),config=createConfig({version:1,...body});
+        const gate=env.DIRECTORY.get(env.DIRECTORY.idFromName('creation-limits-v1'));
+        const reserve=await gate.fetch('https://directory/reserve',{method:'POST',body:request.headers.get('CF-Connecting-IP')||'unknown'});
+        if(!reserve.ok)return error('Server creation quota reached; retry later',429);
+        const {code}=await reserve.json();
+        const created=await env.ROOMS.get(env.ROOMS.idFromName(code)).fetch('https://room/create',{method:'POST',body:JSON.stringify(config)});
+        if(!created.ok)return error('Server could not be created',503);
+        const record=serverRecord(config,body.name,Date.now(),config.ownerKey);
+        const registry=env.SERVERS.get(env.SERVERS.idFromName('servers-v1'));
+        await registry.fetch('https://registry/add',{method:'POST',body:JSON.stringify({code,record})});
+        return json({type:'created',code,server:publicServer(code,record,{players:0,maxPlayers:MAX_PLAYERS,started:config.started===true}),...publicConfig(config)},201);
+      }catch(e){return error(e.message);}
+    }
+    if(url.pathname==='/api/servers'&&request.method==='GET') {
+      const registry=env.SERVERS.get(env.SERVERS.idFromName('servers-v1'));
+      const listed=await registry.fetch('https://registry/list');
+      const rows=listed.ok?await listed.json():[];
+      const servers=await Promise.all(rows.map(async row=>{
+        let status=null;
+        try {
+          const response=await env.ROOMS.get(env.ROOMS.idFromName(row.code)).fetch('https://room/status');
+          if(response.ok)status=await response.json();
+        } catch {}
+        return publicServer(row.code,row,status);
+      }));
+      return json({type:'servers',servers:sortServers(servers)});
+    }
+    const serverMatch=url.pathname.match(/^\/api\/servers\/([a-f0-9]{32})$/);
+    if(serverMatch&&validCode(serverMatch[1])) {
+      const registry=env.SERVERS.get(env.SERVERS.idFromName('servers-v1'));
+      if(request.method==='DELETE') {
+        const response=await registry.fetch('https://registry/remove',{method:'POST',body:JSON.stringify({code:serverMatch[1],owner:url.searchParams.get('owner')||''})});
+        if(!response.ok)return error(await response.text()||'Server not found',response.status);
+        return json({type:'removed',code:serverMatch[1]});
+      }
+      const listed=await registry.fetch('https://registry/list');
+      const rows=listed.ok?await listed.json():[];
+      const row=rows.find(r=>r.code===serverMatch[1]);
+      if(!row)return error('Server not found',404);
+      let status=null;
+      try {
+        const response=await env.ROOMS.get(env.ROOMS.idFromName(row.code)).fetch('https://room/status');
+        if(response.ok)status=await response.json();
+      } catch {}
+      return json({type:'server',server:publicServer(row.code,row,status)});
     }
     const match=url.pathname.match(/^\/api\/rooms\/([a-f0-9]{32})\/ws$/);
     if(match&&validCode(match[1])&&request.method==='GET') {
@@ -63,6 +113,10 @@ export class GameRoom {
       const config=JSON.parse(await request.text());if(this.room)return new Response('Already created',{status:409});
       this.ctx.storage.sql.exec('INSERT INTO meta VALUES (1,?)',JSON.stringify(config));this.room=new RoomState(config);return new Response('Created',{status:201});
     }
+    if(new URL(request.url).pathname==='/status') {
+      if(!this.room)return error('Room not found',404);
+      return json({players:this.ctx.getWebSockets().length,maxPlayers:MAX_PLAYERS,started:this.room.config.started===true,rulesVersion:this.room.config.rulesVersion,contentVersion:this.room.config.contentVersion,rev:this.room.config.rev||0});
+    }
     if(!this.room)return error('Room not found',404);
     if(this.ctx.getWebSockets().length>=MAX_PLAYERS)return error('Room full',409);
     const url=new URL(request.url),key=url.searchParams.get('key');
@@ -96,4 +150,35 @@ export class GameRoom {
   broadcast(message,exclude=null) {const raw=JSON.stringify(message);for(const socket of this.ctx.getWebSockets())if(socket!==exclude&&!socket.deserializeAttachment()?.inDream)try{socket.send(raw);}catch{}}
   webSocketClose(socket) {const p=socket.deserializeAttachment();if(this.room){this.room.setMembers(this.ctx.getWebSockets().filter(s=>s!==socket).map(s=>s.deserializeAttachment()));this.room.disconnect(p,config=>this.ctx.storage.sql.exec('UPDATE meta SET json=? WHERE id=1',JSON.stringify(config)));if(this.room.config.lobby)this.broadcast(this.room.lobbyState(),socket);}try{socket.close(1000,'Disconnected');}catch{}this.broadcast({type:'leave',id:p.id},socket);}
   webSocketError(socket) {try{socket.close(1011,'Socket error');}catch{}}
+}
+
+export class ServerRegistry {
+  constructor(ctx) {
+    this.ctx=ctx;
+    ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS servers (code TEXT PRIMARY KEY,name TEXT NOT NULL,mode INTEGER NOT NULL,seed INTEGER NOT NULL,dimension INTEGER NOT NULL,rulesVersion INTEGER NOT NULL,contentVersion INTEGER NOT NULL,createdAt INTEGER NOT NULL,owner TEXT)');
+  }
+  rows() {return this.ctx.storage.sql.exec('SELECT code,name,mode,seed,dimension,rulesVersion,contentVersion,createdAt,owner FROM servers ORDER BY createdAt DESC').toArray();}
+  async fetch(request) {
+    const url=new URL(request.url),route=url.pathname;
+    if(route==='/list')return json(this.rows());
+    if(route==='/add'&&request.method==='POST') {
+      const {code,record}=JSON.parse(await request.text());
+      if(!validCode(code))return error('Invalid server code',400);
+      if(!record||typeof record.name!=='string')return error('Server name required',400);
+      try {record.name=serverName(record.name,'Мир');} catch(e) {return error(e.message,400);}
+      this.ctx.storage.sql.exec('INSERT INTO servers VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(code) DO UPDATE SET name=excluded.name,mode=excluded.mode,seed=excluded.seed,contentVersion=excluded.contentVersion',
+        code,record.name,record.mode,record.seed,record.dimension,record.rulesVersion,record.contentVersion,record.createdAt,record.owner||null);
+      this.ctx.storage.sql.exec('DELETE FROM servers WHERE code NOT IN (SELECT code FROM servers ORDER BY createdAt DESC LIMIT ?)',MAX_SERVERS);
+      return json({ok:true});
+    }
+    if(route==='/remove'&&request.method==='POST') {
+      const {code,owner}=JSON.parse(await request.text());
+      const row=this.ctx.storage.sql.exec('SELECT code,owner FROM servers WHERE code=?',code).toArray()[0];
+      if(!row)return new Response('Server not found',{status:404});
+      if(row.owner&&row.owner!==owner)return new Response('Only the creator can remove this server',{status:403});
+      this.ctx.storage.sql.exec('DELETE FROM servers WHERE code=?',code);
+      return json({ok:true});
+    }
+    return error('Not found',404);
+  }
 }

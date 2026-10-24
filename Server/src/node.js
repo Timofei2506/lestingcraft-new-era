@@ -4,9 +4,14 @@ import {WebSocketServer} from 'ws';
 import fs from 'node:fs';
 import path from 'node:path';
 import {publicConfig,RoomState,createConfig,randomCode,newPeer,MAX_PLAYERS,validCode,RULES_VERSION,CONTENT_VERSION,MAX_MESSAGE,acceptsClient,packetError} from './protocol.js';
+import {ServerDirectory,serverRecord,publicServer,sortServers} from './server-registry.js';
 const port=Number(process.env.PORT||8787),dataDir=path.resolve(process.env.DATA_DIR||'./data');fs.mkdirSync(dataDir,{recursive:true});
 class FileAccountStore extends MemoryAccountStore {constructor(file){super(fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{});this.file=file;this.lastGood=JSON.stringify(this.data);}async flush(){const raw=JSON.stringify(this.data);try{fs.writeFileSync(this.file+'.tmp',raw,{mode:0o600});fs.renameSync(this.file+'.tmp',this.file);this.lastGood=raw;}catch(e){this.data=JSON.parse(this.lastGood);throw e;}}}
 const accountStore=new FileAccountStore(path.join(dataDir,'accounts.private.json')),accounts=new AccountService(accountStore);
+const serversFile=path.join(dataDir,'servers.json');
+const directory=new ServerDirectory(fs.existsSync(serversFile)?JSON.parse(fs.readFileSync(serversFile,'utf8')):[]);
+function saveServers(){const temp=serversFile+'.tmp';fs.writeFileSync(temp,JSON.stringify(directory.toJSON()));fs.renameSync(temp,serversFile);}
+function roomStatus(code){const room=rooms.get(code);if(!room)return null;return {players:peers(code).length,maxPlayers:MAX_PLAYERS,started:room.config.started===true};}
 const rooms=new Map(),sockets=new Map(),quota=new Map();
 function load(code) {
   if(rooms.has(code))return rooms.get(code);const file=path.join(dataDir,code+'.json');if(!fs.existsSync(file))return null;
@@ -18,7 +23,7 @@ function peers(code) {return [...(sockets.get(code)||[])].filter(s=>s.readyState
 function broadcast(code,message,except) {const raw=JSON.stringify(message);for(const s of peers(code))if(s!==except&&!s.peer?.inDream)s.send(raw);}
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://server');
-  if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'});res.end();return;}
+  if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'});res.end();return;}
   if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){try{let parts=[],bytes=0;for await(const part of req){bytes+=part.length;if(bytes>24576)return reply(res,413,{message:'Body too large'});parts.push(part);}const raw=Buffer.concat(parts).toString('utf8');const result=await accounts.handle(url.pathname.split('/').pop(),req.method,raw?JSON.parse(raw):{},req.headers.authorization?.replace(/^Bearer /,'')||'',req.socket.remoteAddress);return reply(res,200,result);}catch(e){await accountStore.flush().catch(()=>{});return reply(res,e.status||503,{ok:false,message:e.status?e.message:'Сервис аккаунтов временно недоступен.'});}}
   if(url.pathname==='/health')return reply(res,200,{ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,contentVersion:CONTENT_VERSION,transport:'websocket',storage:'local-json',maxPlayers:8,commit:process.env.GIT_SHA||'dev',serverNow:Date.now()});
   if(req.method==='POST'&&url.pathname==='/api/rooms') {
@@ -29,6 +34,32 @@ const server=http.createServer(async(req,res)=>{
       if((quota.get(key)||0)>=4||rooms.size>=32)return reply(res,429,{type:'error',message:'Room quota reached (4/hour/IP,32 loaded rooms)'});
       quota.set(key,(quota.get(key)||0)+1);const code=randomCode();save(code,config,[]);rooms.set(code,new RoomState(config));return reply(res,201,{type:'created',code,...publicConfig(config)});
     }catch(e){return reply(res,400,{type:'error',message:e.message});}
+  }
+  if(url.pathname==='/api/servers'&&req.method==='POST') {
+    try {
+      let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>2048){reply(res,413,{type:'error',message:'Body too large'});return;}}
+      const body=JSON.parse(raw),config=createConfig({version:1,...body});
+      const hour=Math.floor(Date.now()/3600000),ip=req.socket.remoteAddress,key=`${hour}:${ip}`;
+      for(const k of quota.keys())if(!k.startsWith(hour+':'))quota.delete(k);
+      if((quota.get(key)||0)>=4||rooms.size>=32)return reply(res,429,{type:'error',message:'Server quota reached (4/hour/IP,32 worlds)'});
+      quota.set(key,(quota.get(key)||0)+1);
+      const code=randomCode();save(code,config,[]);rooms.set(code,new RoomState(config));
+      const record=directory.add(code,serverRecord(config,body.name,Date.now(),config.ownerKey));
+      saveServers();
+      return reply(res,201,{type:'created',code,server:publicServer(code,record,roomStatus(code)),...publicConfig(config)});
+    }catch(e){return reply(res,400,{type:'error',message:e.message});}
+  }
+  if(url.pathname==='/api/servers'&&req.method==='GET')
+    return reply(res,200,{type:'servers',servers:sortServers(directory.entries.map(e=>publicServer(e.code,e,roomStatus(e.code)))).map(s=>({...s,offline:!rooms.has(s.code)}))});
+  const serverMatch=url.pathname.match(/^\/api\/servers\/([a-f0-9]{32})$/);
+  if(serverMatch&&validCode(serverMatch[1])) {
+    const entry=directory.get(serverMatch[1]);
+    if(!entry)return reply(res,404,{type:'error',message:'Server not found'});
+    if(req.method==='DELETE') {
+      try {directory.remove(entry.code,url.searchParams.get('owner')||'');saveServers();return reply(res,200,{type:'removed',code:entry.code});}
+      catch(e){return reply(res,403,{type:'error',message:e.message});}
+    }
+    return reply(res,200,{type:'server',server:publicServer(entry.code,entry,roomStatus(entry.code))});
   }
   reply(res,404,{type:'error',message:'Not found'});
 });

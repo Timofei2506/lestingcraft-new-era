@@ -7,7 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 bindings = [
   { name = "ROOMS", class_name = "GameRoom" },
   { name = "DIRECTORY", class_name = "RoomDirectory" },
-  { name = "ACCOUNTS", class_name = "AccountDirectory" }
+  { name = "ACCOUNTS", class_name = "AccountDirectory" },
+  { name = "SERVERS", class_name = "ServerRegistry" }
 ]
 [[migrations]]
 tag = "v1"
@@ -18,3 +19,7 @@ new_sqlite_classes = ["GameRoom", "RoomDirectory"]
 [[migrations]]
 tag = "v2-accounts"
 new_sqlite_classes = ["AccountDirectory"]
+
+[[migrations]]
+tag = "v3-servers"
+new_sqlite_classes = ["ServerRegistry"]

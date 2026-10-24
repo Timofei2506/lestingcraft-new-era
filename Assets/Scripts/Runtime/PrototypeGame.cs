@@ -14,7 +14,7 @@ namespace LestingCraft.Runtime
 {
     [Serializable] class NetworkConfig {public string endpoint;}
     [Serializable] class CreateRoomRequest {public string ownerKey;public int seed,dimension=0,version=1,rulesVersion=GameRules.Version,mode;}
-    public sealed class PrototypeGame : MonoBehaviour
+    public sealed partial class PrototypeGame : MonoBehaviour
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap(){if(!FindAnyObjectByType<PrototypeGame>())new GameObject("LestingCraft").AddComponent<PrototypeGame>();}
@@ -1602,7 +1602,8 @@ namespace LestingCraft.Runtime
             if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);
             if(packet.space!=null&&packet.space.active)ApplyMoonFlight(packet.space);
             if(packet.station!=null&&packet.station.active)CompleteOfflineStationDocking();
-            status="Комната подключена • "+code;
+            status="Мир подключён • "+code;
+            BeginHostMigration();
         }
         void SetAvatar(NetPlayer peer)
         {

@@ -13,7 +13,7 @@ namespace LestingCraft.Presentation
     /// <summary>Native scalable uGUI, no IMGUI or embedded webpage. All fonts/art are local.</summary>
     public sealed partial class GameUI : MonoBehaviour
     {
-        enum Page{Account,Achievements,Home,World,Rooms,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby,Journal}
+        enum Page{Account,Achievements,Home,World,Rooms,AddServer,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby,Journal}
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
@@ -167,12 +167,12 @@ namespace LestingCraft.Presentation
             {
                 HomeAction("Продолжить экспедицию","Вернуться к своему сохранённому миру",546,game.ContinueOffline,true,"Home.Continue");
                 HomeAction("Новая экспедиция","Внимание: заменит прежнее локальное сохранение",624,ShowWorld,false,"Home.Play");
-                HomeAction("Играть с друзьями","Создать комнату или войти по коду",702,ShowRooms,false,"Home.Coop");
+                HomeAction("Мультиплеер","Добавить сервер по IP и порту",702,ShowRooms,false,"Home.Coop");
             }
             else
             {
                 HomeAction("Начать экспедицию","Выбрать режим и создать свой мир",546,ShowWorld,true,"Home.Play");
-                HomeAction("Играть с друзьями","Создать комнату или войти по коду",624,ShowRooms,false,"Home.Coop");
+                HomeAction("Мультиплеер","Добавить сервер по IP и порту",624,ShowRooms,false,"Home.Coop");
             }
             var settings=Button("Настройки",88,821,200,52,()=>ShowSettings(Page.Home));settings.name="Home.Settings";
             var quit=Button("Выйти",302,821,170,52,()=>Application.Quit());quit.name="Home.Quit";
@@ -213,25 +213,19 @@ namespace LestingCraft.Presentation
         }
         int lobbyRevision=-1;
         public void ShowLobby()
-        {Clear(Page.Lobby);lobbyRevision=game.LobbyRevision;Header("Лобби · "+game.ModeName);Label(content.transform,"Код: "+game.RoomCode,90,220,1400,70,26,White);string names="";foreach(var peer in game.LobbyPlayers)names+=peer.name+(peer.id==game.HostId?" · хозяин":"")+"\n";Label(content.transform,names,90,320,1100,350,25,White);Button("Скопировать код",1120,230,360,62,()=>GUIUtility.systemCopyBuffer=game.RoomCode);if(game.IsHost)Button("Начать игру →",1120,660,360,68,game.StartLobby,true);else Label(content.transform,"Ждём, когда хозяин нажмёт «Старт»",90,690,1000,70,24,Accent);Button("Выйти",90,790,300,58,game.ReturnToMenu);}
-        public void ShowRooms()
         {
-            Clear(Page.Rooms);Header("Кооператив · до 8 игроков");
-            Label(content.transform,"ОДИН МИР. ВМЕСТЕ.",64,171,1400,67,36,White,true);
-            Label(content.transform,"Создай комнату, передай код друзьям и отправляйтесь исследовать Лестингию вместе.",66,247,1380,42,19,Muted);
-            Input("ТВОЁ ИМЯ",game.PlayerName,"Исследователь",64,321,440,v=>game.PlayerName=v);
-            Button("Режим: "+GameRules.ModeNames[game.SelectedMode],542,355,430,58,()=>{game.SelectedMode=(game.SelectedMode+1)%4;ShowRooms();});
-            var left=Box(content.transform,64,454,710,305,Panel);var right=Box(content.transform,795,454,741,305,Panel);
-            Label(left.transform,"НОВАЯ КОМНАТА",28,28,655,41,25,White,true);
-            Label(left.transform,GameRules.ModeNames[game.SelectedMode]+" · Лестингия\nОбщий мир и сохранение персонажей.",28,96,650,76,17,Muted);
-            actions.Add(Button("Создать и пригласить",28,204,652,64,game.CreateRoom,true,left.transform));
-            Label(right.transform,"ПРИСОЕДИНИТЬСЯ",28,28,680,41,25,White,true);
-            // Reusable input anchored in the card rather than relying on browser forms.
-            var input=Input("КОД КОМНАТЫ",game.RoomCode,"32 символа от хозяина комнаты",823,540,350,v=>game.RoomCode=v);
-            actions.Add(Button("Войти  →",404,111,307,64,game.JoinRoom,true,right.transform));
-            Label(right.transform,"Подключение защищено: вход только по коду комнаты.",28,211,685,64,14,Muted);
-            Label(content.transform,"Совместный космический полёт ещё разрабатывается.",64,777,795,25,14,Muted);
-            status=Label(content.transform,"",250,816,930,48,16,Accent);
+            Clear(Page.Lobby);lobbyRevision=game.LobbyRevision;Header("Сервер · "+game.ModeName);
+            Label(content.transform,"МИР ГОТОВ К ЗАХОДУ",64,160,1000,48,30,White,true);
+            LobbyAddressCard(content.transform,64,222,1472);
+            string names="";int count=0;foreach(var peer in game.LobbyPlayers){names+=peer.name+(peer.id==game.HostId?" · хозяин":"")+"\n";count++;}
+            if(count==0)names="Пока только вы.\nПозовите друзей: Мультиплеер → «Добавить сервер» → "+game.EndpointAddress;
+            Label(content.transform,names,64,382,1000,320,24,White);
+            if(game.IsHost)Button("Начать игру  →",1120,392,416,68,game.StartLobby,true);
+            else Label(content.transform,"Ждём, когда хозяин начнёт игру",1120,398,416,70,22,Accent);
+            var invite=Button("Скопировать адрес сервера",1120,486,416,58,()=>GUIUtility.systemCopyBuffer=game.EndpointAddress);invite.name="Lobby.Address";
+            Button("Выйти",1120,556,416,58,game.ReturnToMenu);
+            status=Label(content.transform,"Друзьям нужен только этот адрес: мир уже опубликован на сервере.",64,806,1000,32,15,Muted);
+            if(game.IsHost&&game.AutoStartLobby&&!game.IsConnecting)game.StartLobby();
         }
         public void ShowPause()
         {
@@ -248,7 +242,9 @@ namespace LestingCraft.Presentation
             Button("Настройки",64,619,395,58,()=>ShowSettings(Page.Pause));
             Button("В главное меню",64,698,395,58,game.ReturnToMenu);
             Label(content.transform,"ESC — продолжить · E — инвентарь · Шаттл: SHIFT/CTRL — тяга, X — тормоз, G — цель, J — прыжок, L — посадка",952,535,584,84,15,Muted);
-            if(game.Online)Button("Скопировать код комнаты",505,619,420,58,()=>GUIUtility.systemCopyBuffer=game.RoomCode);
+            if(game.Online)Button("Скопировать адрес сервера",505,619,420,58,()=>GUIUtility.systemCopyBuffer=game.EndpointAddress);
+            else {var hostServer=Button("Создать сервер",952,630,584,62,()=>game.OpenWorldAsServer("Мир "+game.PlayerName),true);hostServer.name="Pause.HostServer";
+                  Label(content.transform,"Мир откроется для друзей по адресу "+game.EndpointAddress+".",952,696,584,54,14,Muted);}
         }
         public void ShowStoryJournal()
         {

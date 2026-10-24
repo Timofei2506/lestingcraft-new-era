@@ -35,6 +35,18 @@ test('rules 15 ships content 10 and keeps rules 14 rooms playable', () => {
     assert.equal(acceptsClient(legacy.config, 15), true);
 });
 
+test('rules 14 rooms keep the mode their creator chose', () => {
+    for (const mode of [0, 1, 2, 3]) {
+        const config = createConfig({version: 1, rulesVersion: 14, mode, dimension: 0, seed: 12, ownerKey: 'a'.repeat(32)});
+        assert.equal(config.mode, mode, 'mode ' + mode + ' must survive createConfig');
+        assert.equal(config.contentVersion, 9);
+    }
+    assert.throws(() => createConfig({version: 1, rulesVersion: 14, mode: 0, dimension: 3, seed: 12, ownerKey: 'a'.repeat(32)}), /mode 0\.\.3/);
+    const v10 = createConfig({version: 1, rulesVersion: 15, mode: 1, dimension: 0, seed: 12, ownerKey: 'a'.repeat(32)});
+    assert.equal(v10.mode, 1);
+    assert.equal(v10.contentVersion, 10);
+});
+
 test('content 9 rooms still generate exactly the old world', () => {
     // Same inputs must give the same blocks as before this change; the new
     // structure kinds and species are gated, not merged into old worlds.
