@@ -62,7 +62,8 @@ async function supabase() {
 async function server() {
   const health = await json(`${coop}/health`);
   const status = await json(`${site}/api/status`).catch(() => ({}));
-  return {health, online: status.online};
+  const stats = await json(`${site}/api/stats`).catch(() => null);
+  return {health, online: status.online, stats};
 }
 
 const report = {};
@@ -79,6 +80,10 @@ if (report.github) {
 if (report.supabase) {
   line('Аккаунтов создано в игре', report.supabase.profiles ?? '?');
   line('Кошельков / лотов', `${report.supabase.wallets ?? '?'} / ${report.supabase.lots ?? '?'}`);
+}
+if (report.server?.stats?.ok) {
+  line('Посещений сайта всего', report.server.stats.total);
+  line('Посещений сегодня', report.server.stats.today);
 }
 if (report.server) {
   line('Сервер жив', `${report.server.health.ok} (rules ${report.server.health.rulesVersion}, commit ${String(report.server.health.commit).slice(0, 7)})`);
