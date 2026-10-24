@@ -3,7 +3,7 @@ import http from 'node:http';
 import {WebSocketServer} from 'ws';
 import fs from 'node:fs';
 import path from 'node:path';
-import {publicConfig,RoomState,createConfig,randomCode,newPeer,MAX_PLAYERS,validCode,RULES_VERSION,MAX_MESSAGE,acceptsClient,packetError} from './protocol.js';
+import {publicConfig,RoomState,createConfig,randomCode,newPeer,MAX_PLAYERS,validCode,RULES_VERSION,CONTENT_VERSION,MAX_MESSAGE,acceptsClient,packetError} from './protocol.js';
 const port=Number(process.env.PORT||8787),dataDir=path.resolve(process.env.DATA_DIR||'./data');fs.mkdirSync(dataDir,{recursive:true});
 class FileAccountStore extends MemoryAccountStore {constructor(file){super(fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{});this.file=file;this.lastGood=JSON.stringify(this.data);}async flush(){const raw=JSON.stringify(this.data);try{fs.writeFileSync(this.file+'.tmp',raw,{mode:0o600});fs.renameSync(this.file+'.tmp',this.file);this.lastGood=raw;}catch(e){this.data=JSON.parse(this.lastGood);throw e;}}}
 const accountStore=new FileAccountStore(path.join(dataDir,'accounts.private.json')),accounts=new AccountService(accountStore);
@@ -20,7 +20,7 @@ const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://server');
   if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'});res.end();return;}
   if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){try{let parts=[],bytes=0;for await(const part of req){bytes+=part.length;if(bytes>24576)return reply(res,413,{message:'Body too large'});parts.push(part);}const raw=Buffer.concat(parts).toString('utf8');const result=await accounts.handle(url.pathname.split('/').pop(),req.method,raw?JSON.parse(raw):{},req.headers.authorization?.replace(/^Bearer /,'')||'',req.socket.remoteAddress);return reply(res,200,result);}catch(e){await accountStore.flush().catch(()=>{});return reply(res,e.status||503,{ok:false,message:e.status?e.message:'Сервис аккаунтов временно недоступен.'});}}
-  if(url.pathname==='/health')return reply(res,200,{ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,transport:'websocket',storage:'local-json',maxPlayers:8});
+  if(url.pathname==='/health')return reply(res,200,{ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,contentVersion:CONTENT_VERSION,transport:'websocket',storage:'local-json',maxPlayers:8,commit:process.env.GIT_SHA||'dev',serverNow:Date.now()});
   if(req.method==='POST'&&url.pathname==='/api/rooms') {
     try {
       let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>1024){reply(res,413,{type:'error',message:'Body too large'});return;}}

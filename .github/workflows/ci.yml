@@ -8,6 +8,9 @@ on:
     paths-ignore:
       - 'Website/**'
       - 'Launcher/**'
+      - 'Server/**'
+      - '.github/workflows/deploy-server.yml'
+      - '.github/workflows/server.yml'
       - 'Tools/build_launcher_manifest.py'
       - '.github/workflows/build.yml'
       - '.github/workflows/launcher.yml'
@@ -22,6 +25,9 @@ on:
     paths-ignore:
       - 'Website/**'
       - 'Launcher/**'
+      - 'Server/**'
+      - '.github/workflows/deploy-server.yml'
+      - '.github/workflows/server.yml'
       - 'Tools/build_launcher_manifest.py'
       - '.github/workflows/build.yml'
       - '.github/workflows/launcher.yml'

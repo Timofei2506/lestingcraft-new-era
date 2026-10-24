@@ -12,6 +12,13 @@ import {preflight} from './shuttle-preflight.js';
 
 export const VERSION = 1;
 export const RULES_VERSION = 14;
+
+// Content generations are derived from the rules generation in exactly one place:
+// a live room, a rehydrated room and /health must never disagree about it.
+export function contentVersionFor(rulesVersion) {
+  return rulesVersion>=14?9:rulesVersion>=13?8:rulesVersion>=10?7:rulesVersion>=9?6:rulesVersion>=8?5:rulesVersion>=7?4:rulesVersion>=6?3:rulesVersion===5?2:1;
+}
+export const CONTENT_VERSION = contentVersionFor(RULES_VERSION);
 export const MAX_MESSAGE = 16384;
 export const MAX_PLAYERS = 8;
 export const MAX_EDITS = 4096;
@@ -32,7 +39,7 @@ export function createConfig(value) {
   if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,11,12,13,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
   if([2,3,4,5,6,7,8,9,10,11,12,13,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
-  return {launchSite:value.rulesVersion>=11?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=11?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:value.rulesVersion>=14?9:value.rulesVersion>=13?8:value.rulesVersion>=10?7:value.rulesVersion>=9?6:value.rulesVersion>=8?5:value.rulesVersion>=7?4:value.rulesVersion>=6?3:value.rulesVersion===5?2:1,version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,11,12,13,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
+  return {launchSite:value.rulesVersion>=11?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=11?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:contentVersionFor(value.rulesVersion),version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,11,12,13,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
 const safeMission=(m,now)=>{const v=missionView(m,now);return {active:true,from:v.from,to:v.to,seconds:v.seconds,phase:v.phase,elapsed:v.elapsed,position:v.position,autopilot:v.autopilot,landingBurn:v.landingBurn,crewCount:v.crew.length,ignitionAt:m.ignitionAt};};
 export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),inDream:false,lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
@@ -66,7 +73,7 @@ export function validateEdit(p,peer,edits,now,maxBlock=18,bound=64) {
   return {key,x:p.x,y:p.y,z:p.z,block:p.block};
 }
 export class RoomState {
-  constructor(config,edits=[],savedPlayers=[]) {this.config={...config,contentVersion:config.contentVersion??(config.rulesVersion>=14?9:config.rulesVersion>=13?8:config.rulesVersion>=10?7:config.rulesVersion>=9?6:config.rulesVersion>=8?5:config.rulesVersion>=7?4:config.rulesVersion>=6?3:config.rulesVersion>=5?2:1)};this.members=new Map();this.storyEngine=new StoryEngine();this.observers=new Map();this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));this.fauna=new Fauna(config.seed,config.wildlife||{},this.edits,this.config.contentVersion);this.living=new Living(config.seed,config.living||{},this.edits,this.config.contentVersion);this.living.restorePending();this.fauna.dynamicCells=this.living.cells;}
+  constructor(config,edits=[],savedPlayers=[]) {this.config={...config,contentVersion:config.contentVersion??contentVersionFor(config.rulesVersion)};this.members=new Map();this.storyEngine=new StoryEngine();this.observers=new Map();this.savedPlayers=new Map(savedPlayers.map(s=>[s.key,s.save]));this.edits=new Map(edits.map(e=>[`${e.x},${e.y},${e.z}`,e]));this.fauna=new Fauna(config.seed,config.wildlife||{},this.edits,this.config.contentVersion);this.living=new Living(config.seed,config.living||{},this.edits,this.config.contentVersion);this.living.restorePending();this.fauna.dynamicCells=this.living.cells;}
   setMembers(peers){this.members=new Map(peers.map(p=>[p.id,p]));const connected=new Set(peers.map(p=>p.playerKey)),ackKey=this.config.story?`${this.config.story.stage}:${this.config.story.line}`:'';for(const key of this.storyEngine.ready)if(!connected.has(key))this.storyEngine.ready.delete(key);this.storyEngine.acks=new Set(peers.filter(p=>p.storyAckKey===ackKey&&ackKey!=='').map(p=>p.playerKey));for(const p of peers){if(p.storyReady)this.storyEngine.ready.add(p.playerKey);if(p.lastStoryHit)this.storyEngine.hits.set(p.playerKey,p.lastStoryHit);}}
 
   // Keep the established lunar transition and its public signature unchanged.

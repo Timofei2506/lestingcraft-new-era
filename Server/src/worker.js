@@ -1,5 +1,5 @@
 export {AccountDirectory} from './accounts-worker.js';
-import {publicConfig,RoomState,createConfig,validCode,randomCode,newPeer,MAX_PLAYERS,RULES_VERSION,acceptsClient,packetError} from './protocol.js';
+import {publicConfig,RoomState,createConfig,validCode,randomCode,newPeer,MAX_PLAYERS,RULES_VERSION,CONTENT_VERSION,acceptsClient,packetError} from './protocol.js';
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const error=(message,status=400)=>json({type:'error',message},status);
@@ -8,7 +8,7 @@ export default {
     const url=new URL(request.url);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
     if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){const response=await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts-v1')).fetch(request);return new Response(response.body,{status:response.status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});}
-    if(url.pathname==='/health')return json({ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,transport:'websocket',maxPlayers:8,storage:'durable-object-sqlite'});
+    if(url.pathname==='/health')return json({ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,contentVersion:CONTENT_VERSION,transport:'websocket',maxPlayers:8,storage:'durable-object-sqlite',commit:env.GIT_SHA||'dev',serverNow:Date.now()});
     if(url.pathname==='/api/rooms'&&request.method==='POST') {
       try {
         if(Number(request.headers.get('Content-Length'))>1024)return error('Body too large',413);

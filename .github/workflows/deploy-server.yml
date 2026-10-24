@@ -1,24 +1,54 @@
 name: Deploy coop server
+
+# Почему так: раньше этот workflow запускался только вручную. В итоге main ушёл
+# на rules 14, а прод на workers.dev продолжал отвечать rules 12 — и текущий
+# клиент вообще не мог создать комнату ("Unsupported game rules"). Теперь любое
+# изменение Server/** на main деплоится само и сразу проверяется по живому URL,
+# а раз в 6 часов проверяется дрейф версии без деплоя.
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'Server/**'
+      - '.github/workflows/deploy-server.yml'
   workflow_dispatch:
+  schedule:
+    # Ночной контроль: прод обязан отвечать той же rules-версией, что и main.
+    - cron: '17 */6 * * *'
+
 permissions:
   contents: read
+
 concurrency:
   group: coop-server-deploy
   cancel-in-progress: false
+
+env:
+  WORKER_URL: https://lestingcraft-coop.kroterallitir.workers.dev
+
 jobs:
   deploy:
+    name: Test and deploy Worker
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: Server/package-lock.json
-      - run: npm ci && npm test
+
+      - name: Show protocol generation being shipped
         working-directory: Server
+        run: node --input-type=module -e "import('./src/protocol.js').then(m=>console.log('Deploying rules',m.RULES_VERSION,'content',m.CONTENT_VERSION))"
+
+      - name: Unit and protocol tests
+        working-directory: Server
+        run: npm ci && npm test
+
       - name: Deploy existing Worker (no new paid services)
         working-directory: Server
         env:
@@ -26,4 +56,47 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Add Cloudflare credentials in GitHub Secrets, not in chat/source.'; exit 1; }
-          npm run deploy
+          # GIT_SHA попадает в /health, поэтому проверка ниже доказывает, что на
+          # проде именно этот коммит, а не «что-нибудь когда-нибудь задеплоенное».
+          npm run deploy -- --var GIT_SHA:${{ github.sha }}
+
+  verify:
+    name: Verify live Worker
+    needs: deploy
+    if: always() && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Server/package-lock.json
+
+      - name: Install test dependencies
+        working-directory: Server
+        run: npm ci
+
+      - name: Assert production speaks this commit's protocol
+        if: github.event_name != 'schedule'
+        working-directory: Server
+        env:
+          TEST_ENDPOINT: https://lestingcraft-coop.kroterallitir.workers.dev
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: node test/deploy-smoke.mjs
+
+      # На schedule деплоя не было, сравнивать с sha расписания нечестно:
+      # проверяем только совпадение живой rules/content-версии с main.
+      - name: Assert production matches main (drift check)
+        if: github.event_name == 'schedule'
+        working-directory: Server
+        env:
+          TEST_ENDPOINT: https://lestingcraft-coop.kroterallitir.workers.dev
+        run: node test/deploy-smoke.mjs
+
+      - name: Reminder when production drifted
+        if: failure()
+        run: |
+          echo "::error::Прод на ${WORKER_URL} не совпадает с main. Сервер отстал от клиента: перезапустите 'Deploy coop server' (workflow_dispatch) или проверьте секреты CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID."
