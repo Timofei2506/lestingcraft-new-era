@@ -530,7 +530,10 @@ language sql stable security definer set search_path = public, pg_temp as $$
     from public.friendships f
     join me on true
     join public.profiles p
-      on p.id = case when f.low_id = me.id then f.high_id else f.low_id end;
+      on p.id = case when f.low_id = me.id then f.high_id else f.low_id end
+   -- Without this filter the join returned one side of EVERY friendship in the
+   -- database, so a player could read other people's friend lists.
+   where f.low_id = me.id or f.high_id = me.id;
 $$;
 
 -- ---------------------------------------------------------------------------

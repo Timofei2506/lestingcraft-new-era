@@ -145,7 +145,19 @@ begin
   if v_req is null then raise exception 'request not delivered'; end if;
   perform public.friend_accept(v_req);
 
+  -- Privacy: a friendship between two completely different players must never
+  -- show up in this player's list (the join used to expose one side of every row).
+  insert into public.profiles (player_key, display_name) values (repeat('c',32), 'E2E Carol');
+  insert into public.profiles (player_key, display_name) values (repeat('d',32), 'E2E Dave');
+  insert into public.friendships (low_id, high_id)
+  select least(c.id, d.id), greatest(c.id, d.id)
+    from public.profiles c, public.profiles d
+   where c.player_key = repeat('c',32) and d.player_key = repeat('d',32);
+
   if (select count(*) from public.friend_list()) <> 1 then raise exception 'friend list should have 1 entry'; end if;
+  if exists (select 1 from public.friend_list() where display_name in ('E2E Carol','E2E Dave')) then
+    raise exception 'SECURITY: friend_list leaked a friendship between other players';
+  end if;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_uid_a, 'role', 'authenticated')::text, true);
   v_res := public.friend_remove(repeat('b',32));
