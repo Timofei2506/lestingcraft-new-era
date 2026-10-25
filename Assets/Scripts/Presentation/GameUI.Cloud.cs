@@ -193,7 +193,7 @@ namespace LestingCraft.Presentation
             if (friends == null)
                 Label(left.transform, "Загружаю список…", 26, 70, 600, 30, 16, Muted);
             else if (friends.friends == null || friends.friends.Length == 0)
-                Label(left.transform, "Пока никого. Добавьте друга по ключу игрока —\nключ виден в его профиле и копируется кнопкой.", 26, 66, 640, 90, 16, Muted);
+                Label(left.transform, "Пока никого. Добавьте друга по ключу игрока:\nсвой ключ виден на экране «Аккаунт», кнопка «Скопировать мой ключ».", 26, 66, 640, 90, 16, Muted);
             else
                 for (int i = 0; i < Mathf.Min(friends.friends.Length, 7); i++)
                 {

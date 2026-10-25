@@ -20,7 +20,9 @@ export class AccountService {
   const issue=async(u,recoveryCode='')=>{const token=random();s.putSession(digest(token),{username:u.username,uid:u.uid,expires:now+7*86400000,created:now});s.trimSessions(u.uid,now);await s.flush();return {ok:true,token,recoveryCode,profile:publicProfile(u)};};
   if(path==='register'&&method==='POST'){
    const username=nameOf(b.username),password=passwordOf(b.password);
-   if(!s.limit('registration:'+digest(ip),now,3,3600000))fail('Лимит регистраций: попробуйте позже.',429);
+   // 20/hour per address, not 3: friends and classmates often share one NAT address,
+   // and the goal is that a group can start playing together. Mass creation stays capped.
+   if(!s.limit('registration:'+digest(ip),now,20,3600000))fail('Лимит регистраций: попробуйте позже.',429);
    if(s.user(username))fail('Этот логин недоступен.',409);
    const salt=random(),hash=await derive(password,salt,PASSWORD_KDF),recoveryCode=random();
    const u={username,uid:randomBytes(16).toString('hex'),salt,hash,kdf:PASSWORD_KDF,recovery:digest(recoveryCode),stats:{},earned:[],xp:0,title:'',revision:0,batches:[],created:now};s.putUser(u);return issue(u,recoveryCode);

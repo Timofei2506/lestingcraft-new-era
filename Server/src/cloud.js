@@ -76,6 +76,9 @@ export class CloudService {
     return payload;
   }
 
+  // Creates the economy profile as soon as an account exists, so a friend can
+  // send a request to a player who has never opened the wallet.
+  ensureProfile(playerKey, name) { return this.rpc('svc_ensure_profile', { p_player_key: playerKey, p_display_name: name ?? null }); }
   state(playerKey) { return this.rpc('svc_state', { p_player_key: playerKey }); }
   buy(playerKey, code) { return this.rpc('svc_store_buy', { p_player_key: playerKey, p_item_code: code }); }
   equip(playerKey, code) { return this.rpc('svc_equip_skin', { p_player_key: playerKey, p_item_code: code }); }

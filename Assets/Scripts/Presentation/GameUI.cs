@@ -596,6 +596,10 @@ namespace LestingCraft.Presentation
             if(a.Wallet==null)a.CloudState(()=>{if(page==Page.Account)ShowAccount();});
             string walletLine=a.Wallet==null?"Кошелёк: загружается…":"Кошелёк: "+CloudFormat.Coins(a.Wallet.balance)+" монет"+(a.Wallet.profile!=null&&!string.IsNullOrEmpty(a.Wallet.profile.avatar_skin)?" · скин "+a.Wallet.profile.avatar_skin:" · скин не выбран");
             Label(content.transform,walletLine,64,372,1460,30,17,Accent);
+            // The friend list asks for a 32-symbol player key, so the player has to be
+            // able to see and copy their own key — otherwise nobody can add anybody.
+            Label(content.transform,"Мой ключ для друзей: "+a.Profile.uid,64,470,900,30,17,White);
+            Button("Скопировать мой ключ",996,466,440,44,()=>GUIUtility.systemCopyBuffer=a.Profile.uid);
             var walletButton=Button("Кошелёк и скины  →",64,690,440,54,ShowStore,true);walletButton.name="Account.Store";
             var friendsButton=Button("Друзья  →",530,690,440,54,()=>{a.CloudFriends(AfterCloud);ShowFriends();});friendsButton.name="Account.Friends";
             Button("200 достижений →",64,405,440,62,()=>{achievementPage=0;ShowAchievements();},true);

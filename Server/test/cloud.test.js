@@ -176,3 +176,27 @@ test('the action table covers exactly the documented endpoints', () => {
     'friends', 'list', 'market', 'purchase', 'state',
   ]);
 });
+
+// === An account that never opened the wallet must still be reachable for friends ===
+test('ensureProfile creates the row so a friend request is not dropped', async () => {
+  const calls = [];
+  const service = new CloudService('https://example.supabase.co', 'service-key', async (url, init) => {
+    calls.push({ url: String(url), body: init?.body });
+    return new Response(JSON.stringify({ id: 'uuid-1' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+  const key = 'a'.repeat(32);
+  await service.ensureProfile(key, 'Игрок');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /rpc\/svc_ensure_profile$/);
+  assert.deepEqual(JSON.parse(calls[0].body), { p_player_key: key, p_display_name: 'Игрок' });
+});
+
+test('ensureProfile without a name still sends null, not "undefined"', async () => {
+  let body = null;
+  const service = new CloudService('https://example.supabase.co', 'service-key', async (url, init) => {
+    body = JSON.parse(init.body);
+    return new Response('{}', { status: 200 });
+  });
+  await service.ensureProfile('b'.repeat(32));
+  assert.equal(body.p_display_name, null);
+});

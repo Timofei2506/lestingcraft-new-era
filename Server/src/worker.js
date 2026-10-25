@@ -29,7 +29,20 @@ export default {
   async fetch(request,env) {
     const url=new URL(request.url);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
-    if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){const response=await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts-v1')).fetch(request);return new Response(response.body,{status:response.status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});}
+    if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){
+      const response=await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts-v1')).fetch(request);
+      // Best effort: give the new account an economy profile right away. Without it
+      // a friend request to a player who never opened the wallet is dropped silently.
+      if(/\/(register|login)$/.test(url.pathname)&&response.ok){
+        const copy=response.clone();
+        copy.json().then(body=>{
+          const uid=String(body?.profile?.uid||'').toLowerCase();
+          const service=cloud(env);
+          if(service&&/^[a-f0-9]{32}$/.test(uid))service.ensureProfile(uid,body?.profile?.username).catch(()=>{});
+        }).catch(()=>{});
+      }
+      return new Response(response.body,{status:response.status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
+    }
     if(url.pathname.startsWith('/api/cloud/')) {
       const service=cloud(env);
       if(!service)return error('Экономика не настроена: нужны SUPABASE_URL и SUPABASE_SERVICE_KEY',503);

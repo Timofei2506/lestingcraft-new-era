@@ -18,3 +18,4 @@ test('production-compatible Argon2id, versioned legacy hashes, and explicit Buff
  assert(!JSON.stringify(registered.profile).includes(PASSWORD_KDF));
  await s.handle('delete','POST',{password:pw},registered.token);
 });
+test('a group behind one address can register: the per-IP cap is 20 per hour, not 3',async()=>{const store=new MemoryAccountStore(),s=new AccountService(store);const ip='203.0.113.7';for(let i=0;i<20;i++){const r=await s.handle('register','POST',{username:'friend'+i,password:pw},'',ip);assert.equal(r.ok,true);}await assert.rejects(()=>s.handle('register','POST',{username:'friend20',password:pw},'',ip),/Лимит регистраций/);const other=await s.handle('register','POST',{username:'friend20',password:pw},'','198.51.100.9');assert.equal(other.ok,true);});
