@@ -52,9 +52,12 @@ for id,name in [(100,'Деревянная кирка'),(101,'Каменная �
  for y in [2,6,10,14]:box(m,8,y,2,11,y+1,7,18)
  if id in [100,101]:
   edge=18 if id==100 else 20;face=16 if id==100 else 19
-  box(m,2,19,2,18,23,7,edge);box(m,3,20,2,17,22,7,face)
-  box(m,0,16,2,3,21,7,edge);box(m,17,16,2,20,21,7,edge)
-  box(m,-1,14,3,1,18,6,face);box(m,19,14,3,21,18,6,face)
+  # Curved pick head: raised collar over the shaft, arms stepping down to long tips.
+  box(m,6,20,3,14,24,6,edge);box(m,7,24,3,13,25,5,face)
+  box(m,3,19,3,7,23,6,edge);box(m,0,17,3,4,21,6,edge)
+  box(m,-3,14,4,1,18,6,edge);box(m,-2,14,4,0,16,5,face)
+  box(m,13,19,3,17,23,6,edge);box(m,16,17,3,20,21,6,edge)
+  box(m,19,14,4,23,18,6,edge);box(m,20,14,4,22,16,5,face)
  elif id==102:
   box(m,4,17,1,12,24,8,20);box(m,2,18,1,8,25,8,19);box(m,0,19,2,3,24,7,19);box(m,8,20,0,11,22,9,24)
  else:
@@ -64,7 +67,7 @@ for id,name in [(100,'Деревянная кирка'),(101,'Каменная �
  # Square rivets and chipped stone edges add authored structure, not smooth bevels.
  if id in [100,101,102]:
   box(m,9,20,7,10,21,8,24)
-  for cell in [(2,22,2),(17,22,6),(0,20,2),(20,17,5)]:m['voxels'].pop(cell,None)
+  for cell in [(1,19,3),(19,19,3),(4,22,3),(16,22,3)]:m['voxels'].pop(cell,None)
  models.append(m)
 m=model(104,'Тёплая накидка');box(m,3,0,1,17,15,5,23);box(m,4,1,4,16,16,7,22);box(m,5,16,2,15,21,7,23);box(m,7,17,5,13,20,8,18)
 for x in [4,7,10,13,16]:box(m,x,0,4,x+1,2,7,30)

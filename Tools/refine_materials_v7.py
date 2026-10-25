@@ -7,6 +7,11 @@ Conventions are unchanged: 512px seamless tiles, albedo JPEG q95 4:4:4,
 lossless packed mask (R metallic, G AO, B height, A smoothness), normal maps
 estimated from luminance. Run LAST: after refine_materials_v4/v5,
 build_materials_v6 and build_living_materials.
+
+Icons are re-rendered from the shared catalog, so after editing textures:
+  python Tools/build_voxel_items.py && python Tools/build_era_v9_assets.py
+The second step re-appends the sculpted 190..195/666 models; running only the
+first one truncates the catalog and check_content.py rejects it.
 """
 from pathlib import Path
 import json
