@@ -31,8 +31,8 @@ Shader "LestingCraft/CrystalGlass"
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-            #include "../Shaders/VoxelSky.hlsl"
             #include "../Shaders/EnvironmentLighting.hlsl"
+            #include "../Shaders/VoxelSky.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareOpaqueTexture.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
             TEXTURE2D_ARRAY(_NormalArray); SAMPLER(sampler_NormalArray);
