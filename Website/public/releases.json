@@ -2,6 +2,25 @@
   "available": true,
   "releases": [
     {
+      "tag": "v0.6.4",
+      "name": "LestingCraft: New Era v0.6.4 — вода, стекло, мобы и бесконечный космос",
+      "date": "2026-10-25T11:24:35Z",
+      "prerelease": false,
+      "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/tag/v0.6.4",
+      "windows": {
+        "name": "build-StandaloneWindows64.zip",
+        "size": 256647806,
+        "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.6.4/build-StandaloneWindows64.zip",
+        "digest": "sha256:aa5d26c06d4c542f4991128b0b0c02c7556a66da6fe345686b9a1cf418568a2f"
+      },
+      "android": {
+        "name": "LestingCraft-Android-arm64.apk",
+        "size": 252128453,
+        "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.6.4/LestingCraft-Android-arm64.apk",
+        "digest": "sha256:0e2a98a166ea296e9112e43f725c203ecc4264b11cf436b43c5f65c82280bf50"
+      }
+    },
+    {
       "tag": "v0.6.3",
       "name": "LestingCraft: New Era v0.6.3 — друзья по нику и новые текстуры",
       "date": "2026-10-25T06:03:34Z",
@@ -97,5 +116,5 @@
       }
     }
   ],
-  "checkedAt": "2026-10-25T06:04:34.188Z"
+  "checkedAt": "2026-10-25T11:25:35.085Z"
 }
