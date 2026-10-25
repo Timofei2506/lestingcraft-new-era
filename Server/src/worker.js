@@ -22,6 +22,16 @@ async function resolvePlayer(request,env,token){
   const body=await response.json().catch(()=>null);
   return body?.ok&&typeof body.profile?.uid==='string'?body.profile.uid.toLowerCase():null;
 }
+// Nickname -> account id, used by the friend request by name.
+async function resolveUsername(request,env,username){
+  if(!/^[a-zA-Z0-9_]{3,24}$/.test(String(username||'')))return null;
+  const response=await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts-v1')).fetch('https://accounts/api/accounts/lookup',{
+    method:'POST',headers:{'Content-Type':'application/json','CF-Connecting-IP':request.headers.get('CF-Connecting-IP')||'cloud'},
+    body:JSON.stringify({username})});
+  if(!response.ok)return null;
+  const body=await response.json().catch(()=>null);
+  return body?.ok&&body.found&&typeof body.uid==='string'?{uid:body.uid.toLowerCase(),username:String(body.username||username).toLowerCase()}:null;
+}
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const error=(message,status=400)=>json({type:'error',message},status);
@@ -50,7 +60,7 @@ export default {
     if(url.pathname.startsWith('/api/cloud/')) {
       const service=cloud(env);
       if(!service)return error('Экономика не настроена: нужны SUPABASE_URL и SUPABASE_SERVICE_KEY',503);
-      return handleCloudRequest(request,{service,resolvePlayer:token=>resolvePlayer(request,env,token),cors});
+      return handleCloudRequest(request,{service,resolvePlayer:token=>resolvePlayer(request,env,token),resolveUsername:name=>resolveUsername(request,env,name),cors});
     }
     if(url.pathname==='/health')return json({ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,contentVersion:CONTENT_VERSION,transport:'websocket',maxPlayers:8,storage:'durable-object-sqlite',commit:env.GIT_SHA||'dev',serverNow:Date.now()});
     if(url.pathname==='/api/rooms'&&request.method==='POST') {

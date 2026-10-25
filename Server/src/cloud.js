@@ -88,6 +88,14 @@ export class CloudService {
   purchase(playerKey, id) { return this.rpc('svc_market_buy', { p_player_key: playerKey, p_listing: id }); }
   friends(playerKey) { return this.rpc('svc_friends', { p_player_key: playerKey }); }
   friendRequest(playerKey, target, message) { return this.rpc('svc_friend_request', { p_player_key: playerKey, p_target_key: target, p_message: message ?? null }); }
+  /** Adds by nickname: resolves the name to a player id, then sends the request. */
+  async friendRequestByName(playerKey, username, message, resolveUsername) {
+    const found = await resolveUsername(username);
+    if (!found?.uid) throw new CloudError(`Игрок «${username}» не найден. Проверьте ник.`, 404, 'not_found');
+    // Make sure the profile carries the nickname people see, not the default label.
+    await this.ensureProfile(found.uid, found.username);
+    return this.friendRequest(playerKey, found.uid, message);
+  }
   friendAccept(playerKey, id) { return this.rpc('svc_friend_accept', { p_player_key: playerKey, p_request: id }); }
   friendDecline(playerKey, id) { return this.rpc('svc_friend_decline', { p_player_key: playerKey, p_request: id }); }
   friendRemove(playerKey, target) { return this.rpc('svc_friend_remove', { p_player_key: playerKey, p_other_key: target }); }
@@ -112,7 +120,19 @@ export const CLOUD_ACTIONS = {
   cancel: (s, p, b) => { if (!UUID.test(b?.id ?? '')) throw new CloudError('Лот не найден', 400, 'listing'); return s.cancel(p, b.id); },
   purchase: (s, p, b) => { if (!UUID.test(b?.id ?? '')) throw new CloudError('Лот не найден', 400, 'listing'); return s.purchase(p, b.id); },
   friends: (s, p) => s.friends(p),
-  'friend/request': (s, p, b) => { if (!KEY.test(b?.key ?? '')) throw new CloudError('Нужен ключ игрока из 32 символов', 400, 'key'); return s.friendRequest(p, b.key, typeof b?.message === 'string' ? b.message : null); },
+  // A request can name a player either by nickname (what the UI shows) or by the
+  // internal key. The nickname path answers honestly when nobody has it; the key
+  // path keeps the old indistinguishability rule.
+  'friend/request': (s, p, b, ctx) => {
+    const message = typeof b?.message === 'string' ? b.message : null;
+    if (typeof b?.username === 'string' && b.username.trim()) {
+      const name = b.username.trim();
+      if (!/^[a-zA-Z0-9_]{3,24}$/.test(name)) throw new CloudError('Ник: 3–24 латинские буквы, цифры или _.', 400, 'username');
+      return s.friendRequestByName(p, name, message, ctx.resolveUsername);
+    }
+    if (!KEY.test(b?.key ?? '')) throw new CloudError('Введите ник игрока.', 400, 'username');
+    return s.friendRequest(p, b.key, message);
+  },
   'friend/accept': (s, p, b) => { if (!Number.isSafeInteger(b?.id) || b.id <= 0) throw new CloudError('Заявка не найдена', 400, 'request'); return s.friendAccept(p, b.id); },
   'friend/decline': (s, p, b) => { if (!Number.isSafeInteger(b?.id) || b.id <= 0) throw new CloudError('Заявка не найдена', 400, 'request'); return s.friendDecline(p, b.id); },
   'friend/remove': (s, p, b) => { if (!KEY.test(b?.key ?? '')) throw new CloudError('Нужен ключ игрока из 32 символов', 400, 'key'); return s.friendRemove(p, b.key); },
@@ -122,7 +142,7 @@ export const CLOUD_ACTIONS = {
  * POST /api/cloud/<action>, authenticated by the game account token.
  * `resolvePlayer(token)` returns a 32 hex player_key or null.
  */
-export async function handleCloudRequest(request, { service, resolvePlayer, cors = {} }) {
+export async function handleCloudRequest(request, { service, resolvePlayer, resolveUsername, cors = {} }) {
   const json = (data, status = 200) => new Response(JSON.stringify(data), {
     status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
@@ -146,7 +166,7 @@ export async function handleCloudRequest(request, { service, resolvePlayer, cors
   }
 
   try {
-    const result = await action(service, playerKey, body);
+    const result = await action(service, playerKey, body, { resolveUsername });
     // `ok` is written last: a database payload must never be able to mask it.
     return json({ ...(result && typeof result === 'object' ? result : { value: result }), ok: true });
   } catch (error) {

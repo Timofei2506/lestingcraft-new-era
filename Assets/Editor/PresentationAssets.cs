@@ -343,13 +343,22 @@ public static class PresentationAssets
 
     static void EnsureMenuBackdrop()
     {
+        const string source = "Assets/Resources/UI/MenuBackground.jpg";
         const string path = Folder + "/MenuBackdrop.asset";
-        if (AssetDatabase.LoadAssetAtPath<Texture2D>(path)) return;
-        var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
+        // Versioned by the artwork hash: replacing the JPEG must replace the baked texture,
+        // otherwise a cached project keeps showing the previous menu background.
+        string stamp;
+        using (var hash = SHA256.Create())
+        using (var stream = File.OpenRead(source))
+            stamp = BitConverter.ToString(hash.ComputeHash(stream)).Replace("-", "").Substring(0, 12);
+        var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        if (texture && texture.name == "MenuBackdrop-" + stamp) return;
+        if (texture) AssetDatabase.DeleteAsset(path);
+        texture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
         {
-            name = "MenuBackdrop", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear
+            name = "MenuBackdrop-" + stamp, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear
         };
-        if (!texture.LoadImage(File.ReadAllBytes("Assets/Resources/UI/MenuBackground.jpg"), false))
+        if (!texture.LoadImage(File.ReadAllBytes(source), false))
             throw new InvalidOperationException("Cannot decode menu backdrop");
         AssetDatabase.CreateAsset(texture, path);
     }

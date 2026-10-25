@@ -38,6 +38,14 @@ export class AccountService {
    const u=s.user(username);if(!u||typeof b.recoveryCode!=='string'||!equal(digest(b.recoveryCode),u.recovery))fail('Неверный логин или код восстановления.',401);
    u.salt=random();u.hash=await derive(b.password,u.salt,PASSWORD_KDF);u.kdf=PASSWORD_KDF;const code=random();u.recovery=digest(code);s.deleteSessions(u.uid);s.putUser(u);return issue(u,code);
   }
+  // Internal route: the game server turns a nickname into a player id so friends
+  // can be added by the name a person actually sees. Not reachable from the
+  // internet — a Durable Object answers only its own Worker.
+  if(path==='lookup'){
+   if(!s.limit('lookup:'+digest(ip),now,120,60000))fail('Слишком много запросов.',429);
+   const username=nameOf(b.username);const found=s.user(username);
+   return {ok:true,found:!!found,uid:found?found.uid:null,username:found?found.username:null};
+  }
   const u=await auth();
   // The Unity client posts to every endpoint; both verbs answer the same.
   if(path==='me'&&(method==='GET'||method==='POST'))return {ok:true,profile:publicProfile(u)};

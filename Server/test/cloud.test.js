@@ -200,3 +200,42 @@ test('ensureProfile without a name still sends null, not "undefined"', async () 
   await service.ensureProfile('b'.repeat(32));
   assert.equal(body.p_display_name, null);
 });
+
+// === Friends by nickname: the UI shows names, not keys ===
+test('friend request by nickname resolves the name and creates the profile with it', async () => {
+  const calls = [];
+  const service = new CloudService('https://example.supabase.co', 'service-key', async (url, init) => {
+    calls.push({ url: String(url), body: init?.body ? JSON.parse(init.body) : null });
+    return new Response(JSON.stringify({ result: 'sent' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+  const me = 'a'.repeat(32);
+  const target = 'b'.repeat(32);
+  const result = { ok: true };
+  const body = { username: 'EHOT_Night', message: 'привет' };
+  const action = CLOUD_ACTIONS['friend/request'];
+  const out = await action(service, me, body, { resolveUsername: async name => ({ uid: target, username: name.toLowerCase() }) });
+  assert.equal(out.result, 'sent');
+  assert.match(calls[0].url, /rpc\/svc_ensure_profile$/);
+  assert.equal(calls[0].body.p_display_name, 'ehot_night');
+  assert.match(calls[1].url, /rpc\/svc_friend_request$/);
+  assert.equal(calls[1].body.p_target_key, target);
+
+});
+
+test('an unknown nickname says so instead of pretending the request was sent', async () => {
+  const service = new CloudService('https://example.supabase.co', 'service-key', async () => new Response('{}', { status: 200 }));
+  const action = CLOUD_ACTIONS['friend/request'];
+  await assert.rejects(
+    async () => action(service, 'a'.repeat(32), { username: 'nobody_here' }, { resolveUsername: async () => null }),
+    error => error instanceof CloudError && error.status === 404 && /не найден/.test(error.message) && error.code === 'not_found',
+  );
+});
+
+test('a nickname with forbidden characters is rejected before any lookup', async () => {
+  const service = new CloudService('https://example.supabase.co', 'service-key', async () => new Response('{}', { status: 200 }));
+  const action = CLOUD_ACTIONS['friend/request'];
+  await assert.rejects(
+    async () => action(service, 'a'.repeat(32), { username: '<script>' }, { resolveUsername: async () => ({ uid: 'x' }) }),
+    error => error instanceof CloudError && error.status === 400,
+  );
+});

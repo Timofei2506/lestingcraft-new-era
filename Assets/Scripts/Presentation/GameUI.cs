@@ -592,24 +592,30 @@ namespace LestingCraft.Presentation
                 Label(content.transform,a.RecoveryCode,64,465,1400,100,23,Accent);
                 Button("Скопировать код",64,620,450,64,()=>GUIUtility.systemCopyBuffer=a.RecoveryCode);Button("Код сохранён →",550,620,450,64,()=>{a.DismissRecovery();ShowAccount();},true);return;
             }
-            Label(content.transform,"Охота: "+a.Counter("kills")+" · Страж: "+a.Counter("bosses")+" · Добыто: "+a.Counter("mined")+" · Построено: "+a.Counter("placed")+" · Создано: "+a.Counter("crafted")+" · Смертей: "+a.Counter("deaths")+" · В игре: "+(a.Counter("alive_s")/60)+" мин",64,310,1460,64,19,White);
+            Label(content.transform,"@"+p.username+"  ·  уровень "+p.level+"  ·  "+p.xp+" XP",64,196,1450,44,26,White,true);
+            Label(content.transform,p.titleName+"  ·  "+p.achievements.Length+" / 200 достижений",64,246,1450,32,19,Accent);
+            Label(content.transform,"Охота: "+a.Counter("kills")+" · Страж: "+a.Counter("bosses")+" · Добыто: "+a.Counter("mined")+" · Построено: "+a.Counter("placed")+" · Создано: "+a.Counter("crafted")+" · Смертей: "+a.Counter("deaths")+" · В игре: "+(a.Counter("alive_s")/60)+" мин",64,284,1460,40,17,White);
             if(a.Wallet==null)a.CloudState(()=>{if(page==Page.Account)ShowAccount();});
             string walletLine=a.Wallet==null?"Кошелёк: загружается…":"Кошелёк: "+CloudFormat.Coins(a.Wallet.balance)+" монет"+(a.Wallet.profile!=null&&!string.IsNullOrEmpty(a.Wallet.profile.avatar_skin)?" · скин "+a.Wallet.profile.avatar_skin:" · скин не выбран");
-            Label(content.transform,walletLine,64,372,1460,30,17,Accent);
-            // The friend list asks for a 32-symbol player key, so the player has to be
-            // able to see and copy their own key — otherwise nobody can add anybody.
-            Label(content.transform,"Мой ключ для друзей: "+a.Profile.uid,64,470,900,30,17,White);
-            Button("Скопировать мой ключ",996,466,440,44,()=>GUIUtility.systemCopyBuffer=a.Profile.uid);
-            var walletButton=Button("Кошелёк и скины  →",64,690,440,54,ShowStore,true);walletButton.name="Account.Store";
-            var friendsButton=Button("Друзья  →",530,690,440,54,()=>{a.CloudFriends(AfterCloud);ShowFriends();});friendsButton.name="Account.Friends";
-            Button("200 достижений →",64,405,440,62,()=>{achievementPage=0;ShowAchievements();},true);
-            Button("Синхронизировать",530,405,440,62,()=>a.Sync(RefreshAccountIfOpen));
-            Button("Сменить титул",996,405,440,62,()=>{var titles=new List<string>{""};foreach(var d in a.Achievements)if(!string.IsNullOrEmpty(d.title)&&Array.IndexOf(p.achievements,d.id)>=0)titles.Add(d.id);a.ChangeTitle(titles[(titles.IndexOf(p.title)+1)%titles.Count],RefreshAccountIfOpen);});
-            string current="",next="";var old=Input("ТЕКУЩИЙ ПАРОЛЬ",current,"Для смены пароля / удаления",64,510,660,v=>current=v);old.contentType=InputField.ContentType.Password;old.characterLimit=128;
-            var fresh=Input("НОВЫЙ ПАРОЛЬ",next,"Минимум 12 символов",780,510,660,v=>next=v);fresh.contentType=InputField.ContentType.Password;fresh.characterLimit=128;
-            Button("Изменить пароль",64,625,440,55,()=>{string c=current,n=next;old.text="";fresh.text="";a.ChangePassword(c,n,RefreshAccountIfOpen);});
-            bool confirm=false;Button("Удалить аккаунт (двойное подтверждение)",530,625,660,55,()=>{if(!confirm){confirm=true;a.Message="Повторное нажатие удалит профиль, достижения и статистику. Нужен текущий пароль.";if(status)status.text=a.Message;return;}string c=current;old.text="";a.Delete(c,RefreshAccountIfOpen);});
-            Button("Выйти из аккаунта",64,752,440,50,()=>a.Logout(RefreshAccountIfOpen));status=Label(content.transform,a.Message,996,686,540,70,16,Accent);
+            Label(content.transform,walletLine,64,330,1460,28,17,Accent);
+            // Friends are added by nickname, so the nickname is the visible identity:
+            // one compact card with the name and a copy button, nothing technical.
+            var nick=Box(content.transform,64,372,760,92,new Color(.055f,.085f,.10f,.98f));
+            Label(nick.transform,"ВАШ НИК",22,10,300,22,13,Accent,true);
+            Label(nick.transform,"@"+a.Profile.username,22,32,520,42,26,White,true);
+            Label(nick.transform,"Друзья находят вас по этому нику",22,76,560,14,12,Muted);
+            Button("Скопировать",600,26,140,42,()=>GUIUtility.systemCopyBuffer=a.Profile.username,false,nick.transform);
+            Button("200 достижений  →",64,486,440,50,()=>{achievementPage=0;ShowAchievements();},true);
+            Button("Синхронизировать",530,486,440,50,()=>a.Sync(RefreshAccountIfOpen));
+            Button("Сменить титул",996,486,440,50,()=>{var titles=new List<string>{""};foreach(var d in a.Achievements)if(!string.IsNullOrEmpty(d.title)&&Array.IndexOf(p.achievements,d.id)>=0)titles.Add(d.id);a.ChangeTitle(titles[(titles.IndexOf(p.title)+1)%titles.Count],RefreshAccountIfOpen);});
+            string current="",next="";var old=Input("ТЕКУЩИЙ ПАРОЛЬ",current,"Для смены пароля / удаления",64,556,660,v=>current=v);old.contentType=InputField.ContentType.Password;old.characterLimit=128;
+            var fresh=Input("НОВЫЙ ПАРОЛЬ",next,"Минимум 12 символов",780,556,660,v=>next=v);fresh.contentType=InputField.ContentType.Password;fresh.characterLimit=128;
+            Button("Изменить пароль",64,664,440,52,()=>{string c=current,n=next;old.text="";fresh.text="";a.ChangePassword(c,n,RefreshAccountIfOpen);});
+            bool confirm=false;Button("Удалить аккаунт (двойное подтверждение)",530,664,660,52,()=>{if(!confirm){confirm=true;a.Message="Повторное нажатие удалит профиль, достижения и статистику. Нужен текущий пароль.";if(status)status.text=a.Message;return;}string c=current;old.text="";a.Delete(c,RefreshAccountIfOpen);});
+            var walletButton=Button("Кошелёк и скины  →",64,732,440,50,ShowStore,true);walletButton.name="Account.Store";
+            var friendsButton=Button("Друзья  →",530,732,440,50,()=>{a.CloudFriends(AfterCloud);ShowFriends();});friendsButton.name="Account.Friends";
+            Button("Выйти из аккаунта",64,798,440,44,()=>a.Logout(RefreshAccountIfOpen));
+            status=Label(content.transform,a.Message,996,732,440,110,16,Accent);
         }
         void ShowAchievements()
         {

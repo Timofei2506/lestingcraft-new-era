@@ -34,6 +34,8 @@ namespace LestingCraft.Gameplay
   public void CloudCancel(string id,Action done=null)=>Cloud("cancel","{\"id\":\""+Esc(id)+"\"}",null,done,true);
   public void CloudPurchase(string id,Action done=null)=>Cloud("purchase","{\"id\":\""+Esc(id)+"\"}",json=>{Wallet=JsonUtility.FromJson<CloudState>(json);},done,true);
   public void CloudFriendRequest(string key,Action done=null)=>Cloud("friend/request","{\"key\":\""+Esc(key)+"\"}",null,done,true);
+  /// <summary>Adds a friend by the nickname shown in the profile — no keys for players.</summary>
+  public void CloudFriendRequestByName(string username,Action done=null)=>Cloud("friend/request","{\"username\":\""+Esc(username)+"\"}",null,done,true);
   public void CloudFriendAccept(long id,Action done=null)=>Cloud("friend/accept","{\"id\":"+id+"}",null,done,true);
   public void CloudFriendDecline(long id,Action done=null)=>Cloud("friend/decline","{\"id\":"+id+"}",null,done,true);
   public void CloudFriendRemove(string key,Action done=null)=>Cloud("friend/remove","{\"key\":\""+Esc(key)+"\"}",null,done,true);

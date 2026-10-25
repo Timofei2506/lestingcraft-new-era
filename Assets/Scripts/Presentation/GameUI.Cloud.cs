@@ -193,13 +193,13 @@ namespace LestingCraft.Presentation
             if (friends == null)
                 Label(left.transform, "Загружаю список…", 26, 70, 600, 30, 16, Muted);
             else if (friends.friends == null || friends.friends.Length == 0)
-                Label(left.transform, "Пока никого. Добавьте друга по ключу игрока:\nсвой ключ виден на экране «Аккаунт», кнопка «Скопировать мой ключ».", 26, 66, 640, 90, 16, Muted);
+                Label(left.transform, "Пока никого. Введите ник друга справа —\nсвой ник виден на экране «Аккаунт».", 26, 66, 640, 90, 16, Muted);
             else
                 for (int i = 0; i < Mathf.Min(friends.friends.Length, 7); i++)
                 {
                     var friend = friends.friends[i];
                     var row = Box(left.transform, 22, 62 + i * 66, 656, 58, new Color(.05f, .08f, .09f, .98f));
-                    Label(row.transform, string.IsNullOrEmpty(friend.name) ? CloudFormat.ShortKey(friend.key) : friend.name, 18, 8, 380, 26, 18, White, true);
+                    Label(row.transform, string.IsNullOrEmpty(friend.name) ? "Игрок" : "@" + friend.name, 18, 8, 380, 26, 18, White, true);
                     Label(row.transform, friend.online ? "в игре" : "не в сети", 18, 32, 380, 20, 13, friend.online ? Accent : Muted);
                     Button("Удалить", 470, 6, 176, 46, () => a.CloudFriendRemove(friend.key, AfterCloud), false, row.transform);
                 }
@@ -213,7 +213,7 @@ namespace LestingCraft.Presentation
                     if (shown >= 3) break;
                     long id = request.id;
                     var row = Box(right.transform, 22, 62 + shown * 74, 704, 66, new Color(.05f, .08f, .09f, .98f));
-                    Label(row.transform, (string.IsNullOrEmpty(request.name) ? CloudFormat.ShortKey(request.key) : request.name) + " хочет в друзья", 18, 8, 460, 26, 17, White, true);
+                    Label(row.transform, (string.IsNullOrEmpty(request.name) ? "Игрок" : "@" + request.name) + " хочет в друзья", 18, 8, 460, 26, 17, White, true);
                     Label(row.transform, string.IsNullOrEmpty(request.message) ? "без сообщения" : request.message, 18, 34, 460, 22, 13, Muted);
                     Button("Принять", 500, 8, 94, 50, () => a.CloudFriendAccept(id, AfterCloud), true, row.transform);
                     Button("Нет", 604, 8, 90, 50, () => a.CloudFriendDecline(id, AfterCloud), false, row.transform);
@@ -221,22 +221,23 @@ namespace LestingCraft.Presentation
                 }
             if (shown == 0) Label(right.transform, "Новых заявок нет.", 26, 66, 600, 26, 15, Muted);
 
-            Label(right.transform, "ДОБАВИТЬ ПО КЛЮЧУ ИГРОКА", 26, 300, 700, 26, 14, Accent, true);
-            Input("КЛЮЧ · 32 символа", friendKey, "например 4f2c90fa05094bdc887c19e7f7c69a85", 812, 340, 560, v => friendKey = v);
-            Button("Отправить заявку", 812, 434, 300, 54, () =>
+            Label(right.transform, "ДОБАВИТЬ ДРУГА ПО НИКУ", 26, 296, 700, 26, 14, Accent, true);
+            Input("НИК ИГРОКА · 3–24 символа", friendKey, "например ehot_night", 812, 336, 560, v => friendKey = v);
+            Button("Отправить заявку", 812, 430, 300, 54, () =>
             {
-                string key = (friendKey ?? "").Trim().ToLowerInvariant();
-                if (key.Length != 32) { cloudNotice = "Ключ игрока — 32 символа латиницей и цифрами."; ShowFriends(); return; }
+                string nick = (friendKey ?? "").Trim();
+                if (!System.Text.RegularExpressions.Regex.IsMatch(nick, "^[A-Za-z0-9_]{3,24}$"))
+                { cloudNotice = "Ник: 3–24 латинские буквы, цифры или подчёркивание."; ShowFriends(); return; }
                 cloudNotice = "";
-                a.CloudFriendRequest(key, AfterCloud);
+                a.CloudFriendRequestByName(nick, AfterCloud);
                 friendKey = "";
             }, true);
-            Label(right.transform, "Заявка не выдаёт, существует ли такой игрок: ответ всегда один и тот же.", 812, 498, 700, 40, 13, Muted);
+            Label(right.transform, "Ник виден в вашем профиле и в профиле друга — копируется одной кнопкой.", 812, 494, 700, 40, 13, Muted);
 
             Button("← Кошелёк и скины", 64, 806, 420, 56, () => { cloudNotice = ""; ShowStore(); });
             Button("Обновить", 500, 806, 260, 56, () => a.CloudFriends(AfterCloud));
             Button("← Назад", 1260, 806, 276, 56, () => { cloudNotice = ""; ShowAccount(); });
-            status = Label(content.transform, !string.IsNullOrEmpty(cloudNotice) ? cloudNotice : string.IsNullOrEmpty(a.CloudMessage) ? "Друзья видны на всех устройствах и на сайте." : a.CloudMessage,
+            status = Label(content.transform, !string.IsNullOrEmpty(cloudNotice) ? cloudNotice : string.IsNullOrEmpty(a.CloudMessage) ? "Друзья видны на всех устройствах, где вы вошли в аккаунт." : a.CloudMessage,
                 64, 730, 1400, 40, 15, Accent);
         }
     }

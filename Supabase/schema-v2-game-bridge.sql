@@ -38,7 +38,13 @@ begin
 
   insert into public.profiles (player_key, display_name)
   values (p_player_key, left(coalesce(nullif(btrim(p_display_name), ''), 'Игрок'), 24))
-  on conflict (player_key) do nothing;
+  on conflict (player_key) do update
+    -- The nickname is what friends see. A placeholder written before the account
+    -- existed, or a name changed later in the game, must be replaced here.
+    set display_name = case
+      when coalesce(btrim(excluded.display_name), '') = '' then public.profiles.display_name
+      when public.profiles.display_name in ('Игрок', '') then excluded.display_name
+      else public.profiles.display_name end;
 
   select id into v_id from public.profiles where player_key = p_player_key;
   insert into public.wallets (profile_id) values (v_id) on conflict (profile_id) do nothing;
