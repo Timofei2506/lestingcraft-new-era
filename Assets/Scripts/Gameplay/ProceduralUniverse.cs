@@ -10,7 +10,7 @@ namespace LestingCraft.Gameplay
     public enum WorldClass { Rock, Desert, Ocean, Ice, Lava, Toxic, GasGiant, IceGiant, Barren, Rogue }
 
     /// <summary>Weather system. Intensity is a separate 0..1 value, so any world can be calm or violent.</summary>
-    public enum WeatherKind { Clear, Dust, Rain, Snow, Storm, AcidRain, Ashfall, SolarFlare, Hail, IonStorm }
+    public enum UniverseWeather { Clear, Dust, Rain, Snow, Storm, AcidRain, Ashfall, SolarFlare, Hail, IonStorm }
 
     /// <summary>Something worth flying to inside a star system.</summary>
     public enum StructureKind { Station, Derelict, AsteroidField, Monolith, Wormhole, PirateOutpost, Comet, Probe, Ruin }
@@ -94,7 +94,7 @@ namespace LestingCraft.Gameplay
         public float InclinationDeg;
         public float GravityG;
         public double TemperatureC;
-        public WeatherKind Weather;
+        public UniverseWeather Weather;
         public float WeatherIntensity;
         public float AtmosphereDensity;
         public float AtmoR, AtmoG, AtmoB;
@@ -343,14 +343,14 @@ namespace LestingCraft.Gameplay
 
                 // Weather: the colder, the more snow; the hotter, the more ash and flare.
                 float w = r.NextFloat();
-                if (p.AtmosphereDensity < 0.02f) p.Weather = WeatherKind.Clear;
-                else if (p.TemperatureC < -25) p.Weather = w < .52f ? WeatherKind.Snow : w < .72f ? WeatherKind.Hail : w < .86f ? WeatherKind.Storm : WeatherKind.Clear;
-                else if (p.TemperatureC > 160) p.Weather = w < .40f ? WeatherKind.Ashfall : w < .62f ? WeatherKind.SolarFlare : w < .80f ? WeatherKind.Dust : WeatherKind.Clear;
-                else if (p.Class == WorldClass.Toxic) p.Weather = w < .58f ? WeatherKind.AcidRain : w < .80f ? WeatherKind.IonStorm : WeatherKind.Storm;
-                else if (p.Class == WorldClass.Desert) p.Weather = w < .64f ? WeatherKind.Dust : w < .84f ? WeatherKind.Storm : WeatherKind.Clear;
-                else if (p.Class == WorldClass.Ocean) p.Weather = w < .62f ? WeatherKind.Rain : w < .80f ? WeatherKind.Storm : WeatherKind.Clear;
-                else p.Weather = w < .40f ? WeatherKind.Rain : w < .58f ? WeatherKind.Snow : w < .74f ? WeatherKind.Storm : w < .86f ? WeatherKind.Dust : WeatherKind.Clear;
-                p.WeatherIntensity = p.Weather == WeatherKind.Clear ? 0f : r.Range(.25f, 1f);
+                if (p.AtmosphereDensity < 0.02f) p.Weather = UniverseWeather.Clear;
+                else if (p.TemperatureC < -25) p.Weather = w < .52f ? UniverseWeather.Snow : w < .72f ? UniverseWeather.Hail : w < .86f ? UniverseWeather.Storm : UniverseWeather.Clear;
+                else if (p.TemperatureC > 160) p.Weather = w < .40f ? UniverseWeather.Ashfall : w < .62f ? UniverseWeather.SolarFlare : w < .80f ? UniverseWeather.Dust : UniverseWeather.Clear;
+                else if (p.Class == WorldClass.Toxic) p.Weather = w < .58f ? UniverseWeather.AcidRain : w < .80f ? UniverseWeather.IonStorm : UniverseWeather.Storm;
+                else if (p.Class == WorldClass.Desert) p.Weather = w < .64f ? UniverseWeather.Dust : w < .84f ? UniverseWeather.Storm : UniverseWeather.Clear;
+                else if (p.Class == WorldClass.Ocean) p.Weather = w < .62f ? UniverseWeather.Rain : w < .80f ? UniverseWeather.Storm : UniverseWeather.Clear;
+                else p.Weather = w < .40f ? UniverseWeather.Rain : w < .58f ? UniverseWeather.Snow : w < .74f ? UniverseWeather.Storm : w < .86f ? UniverseWeather.Dust : UniverseWeather.Clear;
+                p.WeatherIntensity = p.Weather == UniverseWeather.Clear ? 0f : r.Range(.25f, 1f);
 
                 p.HasRings = (p.Class == WorldClass.GasGiant || p.Class == WorldClass.IceGiant) ? r.Chance(.62f) : r.Chance(.07f);
                 if (p.HasRings)
@@ -499,19 +499,19 @@ namespace LestingCraft.Gameplay
             }
         }
 
-        public static string WeatherName(WeatherKind weather)
+        public static string WeatherName(UniverseWeather weather)
         {
             switch (weather)
             {
-                case WeatherKind.Dust: return "пыльные бури";
-                case WeatherKind.Rain: return "дожди";
-                case WeatherKind.Snow: return "снегопады";
-                case WeatherKind.Storm: return "штормы";
-                case WeatherKind.AcidRain: return "кислотные дожди";
-                case WeatherKind.Ashfall: return "пеплопад";
-                case WeatherKind.SolarFlare: return "солнечные вспышки";
-                case WeatherKind.Hail: return "град";
-                case WeatherKind.IonStorm: return "ионные бури";
+                case UniverseWeather.Dust: return "пыльные бури";
+                case UniverseWeather.Rain: return "дожди";
+                case UniverseWeather.Snow: return "снегопады";
+                case UniverseWeather.Storm: return "штормы";
+                case UniverseWeather.AcidRain: return "кислотные дожди";
+                case UniverseWeather.Ashfall: return "пеплопад";
+                case UniverseWeather.SolarFlare: return "солнечные вспышки";
+                case UniverseWeather.Hail: return "град";
+                case UniverseWeather.IonStorm: return "ионные бури";
                 default: return "без осадков";
             }
         }
@@ -523,7 +523,7 @@ namespace LestingCraft.Gameplay
                 : planet.AtmosphereDensity < 0.35f ? "разреженная атмосфера"
                 : planet.AtmosphereDensity < 0.75f ? "плотная атмосфера"
                 : "сверхплотная атмосфера";
-            string weather = planet.Weather == WeatherKind.Clear ? "без осадков"
+            string weather = planet.Weather == UniverseWeather.Clear ? "без осадков"
                 : WeatherName(planet.Weather) + " (" + (int)(planet.WeatherIntensity * 100) + "%)";
             return WorldClassName(planet.Class) + " · " + atmosphere + " · " + weather +
                 " · " + (int)planet.TemperatureC + " °C · радиация " + planet.Hazard + "/5";

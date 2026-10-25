@@ -30,7 +30,7 @@ class UniverseCheck
         // 4. Wide variety of stars, worlds, weathers and structures across a region.
         var kinds = new HashSet<StarKind>();
         var worlds = new HashSet<WorldClass>();
-        var weathers = new HashSet<WeatherKind>();
+        var weathers = new HashSet<UniverseWeather>();
         var structures = new HashSet<StructureKind>();
         int planets = 0, withAtmosphere = 0, withLife = 0, withRings = 0, gasGiants = 0, blackHoles = 0, nebulae = 0, binaries = 0;
 
@@ -70,7 +70,7 @@ class UniverseCheck
                         if (p.HasLife) withLife++;
                         if (p.HasRings) { withRings++; Ok(p.RingOuterScale > p.RingInnerScale && p.RingInnerScale >= 1, "ring scales ordered"); }
                         if (p.Class == WorldClass.GasGiant) gasGiants++;
-                        if (p.Weather == WeatherKind.Clear ? p.WeatherIntensity == 0 : true) { }
+                        if (p.Weather == UniverseWeather.Clear ? p.WeatherIntensity == 0 : true) { }
                         if (p.HasLife) Ok(p.TemperatureC > -60 && p.TemperatureC < 90, "life only inside a survivable band");
                     }
 
@@ -135,7 +135,7 @@ class UniverseCheck
         // 8. Russian text used by the cockpit is complete for every enum value.
         foreach (StarKind k in Enum.GetValues(typeof(StarKind))) Ok(!string.IsNullOrEmpty(ProceduralUniverse.StarKindName(k)), "star name ru: " + k);
         foreach (WorldClass w in Enum.GetValues(typeof(WorldClass))) Ok(!string.IsNullOrEmpty(ProceduralUniverse.WorldClassName(w)), "world name ru: " + w);
-        foreach (WeatherKind w in Enum.GetValues(typeof(WeatherKind))) Ok(!string.IsNullOrEmpty(ProceduralUniverse.WeatherName(w)), "weather name ru: " + w);
+        foreach (UniverseWeather w in Enum.GetValues(typeof(UniverseWeather))) Ok(!string.IsNullOrEmpty(ProceduralUniverse.WeatherName(w)), "weather name ru: " + w);
 
         Console.WriteLine("PASS: " + checks + " universe assertions; " + planets + " worlds sampled, " + kinds.Count +
             " star classes, " + worlds.Count + " world classes, " + weathers.Count + " weather systems, " +
