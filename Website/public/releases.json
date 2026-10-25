@@ -2,6 +2,25 @@
   "available": true,
   "releases": [
     {
+      "tag": "v0.6.2",
+      "name": "LestingCraft: New Era v0.6.2 — рабочие друзья",
+      "date": "2026-10-25T04:27:18Z",
+      "prerelease": false,
+      "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/tag/v0.6.2",
+      "windows": {
+        "name": "build-StandaloneWindows64.zip",
+        "size": 236480797,
+        "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.6.2/build-StandaloneWindows64.zip",
+        "digest": "sha256:2dcd59a4bb01baf782c2b5cfe0010d339bdff461c7e9ea0adbbfb1fb45a615a7"
+      },
+      "android": {
+        "name": "LestingCraft-Android-arm64.apk",
+        "size": 231765595,
+        "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.6.2/LestingCraft-Android-arm64.apk",
+        "digest": "sha256:b17ddb495c11ac8616fb78c89498218c516a4e1b8157dc908a35c9d020650a32"
+      }
+    },
+    {
       "tag": "v0.6.1",
       "name": "LestingCraft: New Era v0.6.1 — кооператив по IP",
       "date": "2026-10-24T18:51:15Z",
@@ -59,5 +78,5 @@
       }
     }
   ],
-  "checkedAt": "2026-10-24T18:51:54.712Z"
+  "checkedAt": "2026-10-25T04:29:17.288Z"
 }
