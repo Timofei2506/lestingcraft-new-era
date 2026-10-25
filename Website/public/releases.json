@@ -2,6 +2,25 @@
   "available": true,
   "releases": [
     {
+      "tag": "v0.6.3",
+      "name": "LestingCraft: New Era v0.6.3 — друзья по нику и новые текстуры",
+      "date": "2026-10-25T06:03:34Z",
+      "prerelease": false,
+      "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/tag/v0.6.3",
+      "windows": {
+        "name": "build-StandaloneWindows64.zip",
+        "size": 255602546,
+        "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.6.3/build-StandaloneWindows64.zip",
+        "digest": "sha256:5b0891afbcf6cbf8247ec5a2751268f66922079f1e03253f14495fad69cb9ad4"
+      },
+      "android": {
+        "name": "LestingCraft-Android-arm64.apk",
+        "size": 250921967,
+        "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.6.3/LestingCraft-Android-arm64.apk",
+        "digest": "sha256:38185027a501bc0f5cc5db97da67cacda66063d43903b9628c95bc6d94e8542e"
+      }
+    },
+    {
       "tag": "v0.6.2",
       "name": "LestingCraft: New Era v0.6.2 — рабочие друзья",
       "date": "2026-10-25T04:27:18Z",
@@ -78,5 +97,5 @@
       }
     }
   ],
-  "checkedAt": "2026-10-25T04:29:17.288Z"
+  "checkedAt": "2026-10-25T06:04:34.188Z"
 }
