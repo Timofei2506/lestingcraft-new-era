@@ -26,7 +26,7 @@ const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GE
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const error=(message,status=400)=>json({type:'error',message},status);
 export default {
-  async fetch(request,env) {
+  async fetch(request,env,ctx) {
     const url=new URL(request.url);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
     if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){
@@ -34,12 +34,16 @@ export default {
       // Best effort: give the new account an economy profile right away. Without it
       // a friend request to a player who never opened the wallet is dropped silently.
       if(/\/(register|login)$/.test(url.pathname)&&response.ok){
-        const copy=response.clone();
-        copy.json().then(body=>{
+        // waitUntil keeps the isolate alive until the write finishes: a plain
+        // .then() was silently cancelled on some responses and the profile stayed missing.
+        const provisioning=(async()=>{
+          const body=await response.clone().json();
           const uid=String(body?.profile?.uid||'').toLowerCase();
           const service=cloud(env);
-          if(service&&/^[a-f0-9]{32}$/.test(uid))service.ensureProfile(uid,body?.profile?.username).catch(()=>{});
-        }).catch(()=>{});
+          if(service&&/^[a-f0-9]{32}$/.test(uid))await service.ensureProfile(uid,body?.profile?.username);
+        })().catch(()=>{});
+        if(ctx&&typeof ctx.waitUntil==='function')ctx.waitUntil(provisioning);
+        else await provisioning;
       }
       return new Response(response.body,{status:response.status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
     }

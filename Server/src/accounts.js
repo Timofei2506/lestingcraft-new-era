@@ -39,7 +39,8 @@ export class AccountService {
    u.salt=random();u.hash=await derive(b.password,u.salt,PASSWORD_KDF);u.kdf=PASSWORD_KDF;const code=random();u.recovery=digest(code);s.deleteSessions(u.uid);s.putUser(u);return issue(u,code);
   }
   const u=await auth();
-  if(path==='me'&&method==='GET')return {ok:true,profile:publicProfile(u)};
+  // The Unity client posts to every endpoint; both verbs answer the same.
+  if(path==='me'&&(method==='GET'||method==='POST'))return {ok:true,profile:publicProfile(u)};
   if(path==='logout'&&method==='POST'){s.deleteSession(digest(token));await s.flush();return {ok:true};}
   if(path==='password'&&method==='POST'){
    passwordOf(b.password);passwordOf(b.newPassword);if(!equal(await derive(b.password,u.salt,u.kdf),u.hash))fail('Неверный пароль.',401);u.salt=random();u.hash=await derive(b.newPassword,u.salt,PASSWORD_KDF);u.kdf=PASSWORD_KDF;s.deleteSessions(u.uid);s.putUser(u);return issue(u);

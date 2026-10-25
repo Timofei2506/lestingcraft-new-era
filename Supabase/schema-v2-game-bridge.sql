@@ -219,6 +219,14 @@ returns text
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_target uuid;
 begin
+  -- A player can be added before they ever open the wallet: the profile row is
+  -- created on demand. Without this the request was silently dropped, while the
+  -- sender still saw the intentionally neutral "sent" answer.
+  if p_player_key ~ '^[a-f0-9]{32}$' then
+    insert into public.profiles (player_key, display_name)
+    values (lower(p_player_key), 'Игрок')
+    on conflict (player_key) do nothing;
+  end if;
   select p.id into v_target from public.profiles p where p.player_key = lower(p_player_key);
   if v_target is null or v_target = p_me then return 'sent'; end if;
   if exists (select 1 from public.player_blocks b
