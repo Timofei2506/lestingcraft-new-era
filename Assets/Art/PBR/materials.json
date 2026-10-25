@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 7,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -279,5 +279,44 @@
     ],
     "resolution": 512,
     "maps": "AI albedo; estimated periodic normals / metallic-AO-height-smoothness, not scans"
+  },
+  "iteration12": {
+    "masters": [
+      "ArtSource/Textures/Iteration12/bark.jpg",
+      "ArtSource/Textures/Iteration12/cobblestone.jpg",
+      "ArtSource/Textures/Iteration12/dirt.jpg",
+      "ArtSource/Textures/Iteration12/grass.jpg",
+      "ArtSource/Textures/Iteration12/gravel.jpg",
+      "ArtSource/Textures/Iteration12/leaves.jpg",
+      "ArtSource/Textures/Iteration12/planks.jpg",
+      "ArtSource/Textures/Iteration12/sand.jpg",
+      "ArtSource/Textures/Iteration12/stone.jpg"
+    ],
+    "derived": [
+      "stone",
+      "cobblestone",
+      "gravel",
+      "dirt",
+      "grass",
+      "grass-side",
+      "bark",
+      "wood-end",
+      "leaves",
+      "sand",
+      "planks",
+      "ore",
+      "ore-coal",
+      "ore-copper",
+      "ore-gold",
+      "ore-silver",
+      "ore-tin",
+      "ore-quartz",
+      "ore-sulfur",
+      "mossy-stone",
+      "stone-bricks",
+      "polished-stone"
+    ],
+    "resolution": 512,
+    "maps": "AI-derived albedo; normal/metallic/AO/height/smoothness estimated from luminance, not scans"
   }
 }

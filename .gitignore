@@ -67,3 +67,7 @@ Assets/Resources/Generated.meta
 Launcher/**/bin/
 Launcher/**/obj/
 Launcher/publish/
+
+# Local Python bytecode
+__pycache__/
+*.pyc
