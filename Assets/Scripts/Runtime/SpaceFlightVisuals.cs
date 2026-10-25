@@ -1071,8 +1071,11 @@ namespace LestingCraft.Runtime
             if (!inFlight)
             {
                 if (plumeRoot) plumeRoot.SetActive(false);
+                if (proceduralDome) proceduralDome.HideAll();
                 return;
             }
+            // Scripted ascent/cruise keeps the atlas sky: the endless dome belongs to manual flight.
+            if (proceduralDome) proceduralDome.HideAll();
 
             if (spaceDomeRoot)
             {
@@ -1107,19 +1110,6 @@ namespace LestingCraft.Runtime
                         kv.Value.transform.localPosition = new Vector3(-34f, -48f, -dist);
                     }
                 }
-            }
-
-            // Endless procedural universe: nearby systems, their worlds, black holes, nebulae and galaxies.
-            if (!proceduralDome)
-            {
-                var domeObject = new GameObject("ProceduralUniverseDome");
-                domeObject.transform.SetParent(transform, false);
-                proceduralDome = domeObject.AddComponent<SpaceProceduralDome>();
-            }
-            if (proceduralDome)
-            {
-                proceduralDome.Bind(spaceDomeRoot ? spaceDomeRoot.transform : transform);
-                proceduralDome.Sync(helm, viewer);
             }
 
             EnsurePlumes(shuttleTransform);
@@ -1288,6 +1278,19 @@ namespace LestingCraft.Runtime
                     float nightAmb = body.IsStar ? 0.85f : 0.015f;
                     ApplyPlanetShaderLighting(obj, bodyToSunWS, bodyFlux, nightAmb, selfGlow);
                 }
+            }
+
+            // Endless procedural universe: nearby systems, their worlds, black holes, nebulae and galaxies.
+            if (!proceduralDome)
+            {
+                var domeObject = new GameObject("ProceduralUniverseDome");
+                domeObject.transform.SetParent(transform, false);
+                proceduralDome = domeObject.AddComponent<SpaceProceduralDome>();
+            }
+            if (proceduralDome)
+            {
+                proceduralDome.Bind(spaceDomeRoot ? spaceDomeRoot.transform : transform);
+                proceduralDome.Sync(helm, viewer);
             }
 
             EnsurePlumes(shuttleTransform);

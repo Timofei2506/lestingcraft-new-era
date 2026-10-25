@@ -124,7 +124,8 @@ namespace LestingCraft.Runtime
                     SpaceVector toStar = system.AnchorKm - (system.AnchorKm + orbitKm);
                     Vector3 sunDir = invShipRot * ToVector(toStar.Normalized);
                     if (sunDir.sqrMagnitude < 0.001f) sunDir = Vector3.up;
-                    double flux = system.Star == StarKind.BlackHole ? 0.02f : Mathf.Clamp(1.05f / Mathf.Pow((float)System.Math.Max(0.18, au), 0.55f), 0.16f, 2.4f);
+                    float flux = system.Star == StarKind.BlackHole ? 0.02f
+                        : Mathf.Clamp(1.05f / Mathf.Pow(Mathf.Max(0.18f, (float)au), 0.55f), 0.16f, 2.4f);
                     PaintWorld(body, sunDir.normalized, flux, world);
 
                     if (p == 0 && i == 0)
@@ -145,7 +146,7 @@ namespace LestingCraft.Runtime
                     double featureDistance = System.Math.Max(feature.SizeKm, featureDelta.Magnitude);
                     float featureRender = RenderDistance(featureDistance);
                     node.transform.localPosition = invShipRot * ToVector(featureDelta.Normalized) * featureRender;
-                    float angular = featureRender * Mathf.Tan((float)System.Math.Asin(System.Math.Min(0.9, feature.SizeKm / featureDistance)));
+                    float angular = featureRender * Mathf.Tan((float)System.Math.Asin((float)System.Math.Min(0.9, feature.SizeKm / featureDistance)));
                     node.transform.localScale = Vector3.one * Mathf.Max(featureRender * 0.0016f, angular);
                 }
 
