@@ -21,7 +21,8 @@ namespace LestingCraft.Presentation
             "owl-feathers","penguin-plumage","camel-coat","scorpion-chitin",
             "turtle-shell","moose-fur","capybara-fur","voidray-skin",
             "ash-hound-hide","cherenkov-leech-skin","rad-scorpion-carapace","mutant-boar-hide","slag-carapace",
-            "fallout-crow-plumage","gamma-ray-membrane","bone-stalker-hide","vitrified-golem-crust","wraith-shroud"
+            "fallout-crow-plumage","gamma-ray-membrane","bone-stalker-hide","vitrified-golem-crust","wraith-shroud",
+            "wolf-fur","scorpion-chitin","turtle-shell","voidray-skin"
         };
         public static readonly string[] SpeciesNames =
         {
@@ -30,7 +31,8 @@ namespace LestingCraft.Presentation
             "Полярная сова","Северный пингвин","Верблюд","Песчаный скорпион",
             "Болотная черепаха","Северный лось","Капибара","Эфирный скат",
             "Пепельная гончая","Черенковская пиявка","Радио-скорпион","Двухголовый секач","Шлаковый краб",
-            "Пепельный ворон","Гамма-скат","Костяной ловчий","Тринититовый голем","Фантом Спирали"
+            "Пепельный ворон","Гамма-скат","Костяной ловчий","Тринититовый голем","Фантом Спирали",
+            "Ледяной волк","Стеклянный паук","Грибной жук","Небесный кит"
         };
 
         static readonly Vector3[] D =
@@ -59,6 +61,7 @@ namespace LestingCraft.Presentation
 
         Transform rig, body, tail;
         readonly List<Transform> wingTips = new List<Transform>();
+        readonly List<Transform> ears = new List<Transform>();
         readonly List<Vector3> legPositions = new List<Vector3>();
         readonly List<string> ownedMeshes = new List<string>();
         int species, fur, underfur, keratin;
@@ -194,17 +197,17 @@ namespace LestingCraft.Presentation
             rig = new GameObject("Articulated wildlife").transform;
             rig.SetParent(transform, false);
 
-            float[] widths =      { .48f, .3f, .62f, .48f, 1.12f, .32f, 1.2f, .43f, .47f, .55f, .62f, .4f,   .38f, .42f, .72f, .52f, .68f, .92f, .54f, .96f,  .54f, .46f, .66f, .78f, .86f, .44f, 1.08f, .62f, 1.28f, .66f };
-            float[] lengths =     { 1.05f,.45f,1.08f,1.15f,1.6f,  .83f, 1.85f,.85f, .88f, .8f,  .61f, .65f,  .46f, .40f, 1.55f,.76f, .78f, 1.75f,.94f, 1.15f, 1.32f, .92f, .96f, 1.38f, .96f, .72f, 1.30f, 1.25f, 1.48f, 1.05f };
-            float[] bodyHeights = { .55f, .3f, .55f, .48f, 1.05f, .36f, 1.05f,.54f, .47f, .43f, .25f, .4f,   .42f, .68f, .74f, .22f, .38f, .88f, .50f, .20f,  .56f, .30f, .30f, .72f, .46f, .44f, .24f,  .68f, 1.24f, .98f };
-            float[] bodyYs =      { .94f, .24f,.52f, .72f, .98f,  .46f, 1.08f,.78f, .61f, .32f, .22f, .4f,   .38f, .48f, 1.18f,.24f, .28f, 1.26f,.42f, .34f,  .80f, .22f, .30f, .72f, .36f, .44f, .36f,  1.24f, 1.32f, 1.15f };
+            float[] widths =      { .48f, .3f, .62f, .48f, 1.12f, .32f, 1.2f, .43f, .47f, .55f, .62f, .4f,   .38f, .42f, .72f, .52f, .68f, .92f, .54f, .96f,  .54f, .46f, .66f, .78f, .86f, .44f, 1.08f, .62f, 1.28f, .66f,  .58f, .64f, .40f, 1.10f };
+            float[] lengths =     { 1.05f,.45f,1.08f,1.15f,1.6f,  .83f, 1.85f,.85f, .88f, .8f,  .61f, .65f,  .46f, .40f, 1.55f,.76f, .78f, 1.75f,.94f, 1.15f, 1.32f, .92f, .96f, 1.38f, .96f, .72f, 1.30f, 1.25f, 1.48f, 1.05f, 1.42f, .90f, .58f, 2.30f };
+            float[] bodyHeights = { .55f, .3f, .55f, .48f, 1.05f, .36f, 1.05f,.54f, .47f, .43f, .25f, .4f,   .42f, .68f, .74f, .22f, .38f, .88f, .50f, .20f,  .56f, .30f, .30f, .72f, .46f, .44f, .24f,  .68f, 1.24f, .98f,  .56f, .22f, .18f, .62f };
+            float[] bodyYs =      { .94f, .24f,.52f, .72f, .98f,  .46f, 1.08f,.78f, .61f, .32f, .22f, .4f,   .38f, .48f, 1.18f,.24f, .28f, 1.26f,.42f, .34f,  .80f, .22f, .30f, .72f, .36f, .44f, .36f,  1.24f, 1.32f, 1.15f, .74f, .20f, .16f, 1.05f };
             float width = widths[kind], length = lengths[kind], bh = bodyHeights[kind], by = bodyYs[kind];
 
             body = Attach("Body", rig, Vector3.zero, p =>
             {
                 Box(p, 0, by, 0, width, bh, length);
                 Mark(p, 0, by - bh * .38f, .03f, width * .77f, bh * .23f, length * .8f, cream, underfur);
-                if (kind >= 20)
+                if (kind >= 20 && kind < 30)
                 {
                     // Bioluminescent cyan Cherenkov spine shards & radiation pustules on all 10 Radia Abyss mutants!
                     int cher = Surface("cherenkov-crystal");
@@ -343,7 +346,7 @@ namespace LestingCraft.Presentation
                 {
                     float ex = hw * .51f;
                     Mark(p, side * ex, hh * .17f, .095f, .025f, .065f, .075f,
-                        kind >= 20 || kind == 19 ? new Color(.22f, .95f, 1f) : new Color(.69f, .5f, .2f), keratin);
+                        kind >= 20 && kind < 30 || kind == 19 ? new Color(.22f, .95f, 1f) : new Color(.69f, .5f, .2f), keratin);
                     Mark(p, side * (ex + .014f), hh * .17f, .105f, .012f, .046f, .04f, Color.black, keratin);
                     if (kind == 0)
                     {
@@ -430,7 +433,156 @@ namespace LestingCraft.Presentation
                 }
             }
 
+            BuildSpeciesDetail(kind, width, length, bh, by);
             ResetMotion();
+        }
+
+        /// <summary>
+        /// Silhouette detail that separates species at a glance: ears, horns, beards, manes
+        /// and brushes. Without it the rig reads as one rounded box with different fur.
+        /// </summary>
+        void BuildSpeciesDetail(int kind, float width, float length, float bodyHeight, float bodyY)
+        {
+            if (kind == 3 || kind == 4 || kind == 5 || kind == 8)
+            {
+                float ear = kind == 5 ? .17f : kind == 8 ? .15f : .12f;
+                float earHeight = kind == 5 ? .26f : kind == 8 ? .30f : kind == 4 ? .16f : .22f;
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    int s = side;
+                    var earTransform = Attach("Ear" + (side > 0 ? "R" : "L"), rig, new Vector3(s * width * .30f, bodyY + bodyHeight * .62f, length * .12f), p =>
+                    {
+                        Mark(p, 0, 0, 0, ear, earHeight, ear * .7f, coat * .97f, fur);
+                        Mark(p, 0, earHeight * .18f, ear * .16f, ear * .62f, earHeight * .5f, ear * .3f, cream * .92f, underfur);
+                    });
+                    ears.Add(earTransform);
+                }
+            }
+            if (kind == 4 || kind == 3 || kind == 6)
+            {
+                // Shoulder mantle: bears, wolves and bison carry a heavier front.
+                Attach("Mantle", rig, new Vector3(0, bodyY + bodyHeight * .42f, length * .10f), p =>
+                {
+                    Mark(p, 0, 0, 0, width * 1.16f, bodyHeight * .42f, length * .55f, coat * .92f, fur);
+                });
+            }
+            if (kind == 6 || kind == 7)
+            {
+                // Horns: bison curve up and out, goats sweep back.
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    float s = side;
+                    Attach("Horn" + (side > 0 ? "R" : "L"), rig, new Vector3(s * width * .34f, bodyY + bodyHeight * .68f, length * .34f), p =>
+                    {
+                        if (kind == 6)
+                        {
+                            Mark(p, s * .04f, .02f, 0, .10f, .16f, .10f, cream * .82f, keratin);
+                            Mark(p, s * .13f, .13f, 0, .12f, .12f, .09f, cream * .76f, keratin);
+                            Mark(p, s * .23f, .20f, 0, .10f, .08f, .08f, cream * .70f, keratin);
+                        }
+                        else
+                        {
+                            Mark(p, 0, .06f, -.02f, .09f, .18f, .09f, cream * .74f, keratin);
+                            Mark(p, 0, .20f, -.10f, .08f, .16f, .08f, cream * .66f, keratin);
+                            Mark(p, 0, .32f, -.20f, .07f, .14f, .07f, cream * .60f, keratin);
+                        }
+                    });
+                }
+            }
+            if (kind == 7)
+            {
+                Attach("Beard", rig, new Vector3(0, bodyY - bodyHeight * .42f, length * .42f), p =>
+                {
+                    Mark(p, 0, -.08f, 0, .10f, .24f, .10f, cream * .68f, underfur);
+                });
+            }
+            if (kind == 5 || kind == 8 || kind == 3)
+            {
+                // Fox brush, lynx bob, wolf plume: one tail mesh, three shapes.
+                Attach("Brush", tail, new Vector3(0, -0.04f, -.30f), p =>
+                {
+                    if (kind == 5)
+                    {
+                        Mark(p, 0, 0, -.16f, .20f, .20f, .40f, coat * .96f, fur);
+                        Mark(p, 0, 0, -.40f, .13f, .13f, .18f, cream, underfur);
+                    }
+                    else if (kind == 8)
+                    {
+                        Mark(p, 0, 0, -.10f, .13f, .13f, .18f, coat * .96f, fur);
+                        Mark(p, 0, 0, -.19f, .08f, .08f, .06f, dark, keratin);
+                    }
+                    else
+                    {
+                        Mark(p, 0, .04f, -.18f, .16f, .16f, .34f, coat * .94f, fur);
+                    }
+                });
+            }
+            if (kind == 30)
+            {
+                // Frost wolf: pale mane and a heavier ruff behind the head.
+                Attach("FrostMane", rig, new Vector3(0, bodyY + bodyHeight * .34f, length * .30f), p =>
+                {
+                    for (int i = 0; i < 4; i++)
+                        Mark(p, (i % 2 == 0 ? -1 : 1) * width * .30f, .05f, -.05f + i * .10f,
+                            .10f, .20f, .12f, cream * .96f, underfur);
+                });
+                Attach("FrostRuff", rig, new Vector3(0, bodyY + bodyHeight * .10f, length * .40f), p =>
+                {
+                    Mark(p, 0, 0, 0, width * 1.10f, bodyHeight * .34f, length * .22f, cream, underfur);
+                });
+            }
+            if (kind == 31)
+            {
+                // Glass spider: eight thin legs and a faceted abdomen.
+                for (int leg = 0; leg < 8; leg++)
+                {
+                    int index = leg;
+                    Attach("SpiderLeg" + leg, rig, new Vector3((leg % 2 == 0 ? -1 : 1) * width * .55f, bodyY, length * (.34f - (leg / 2) * .22f)), p =>
+                    {
+                        float side = index % 2 == 0 ? -1f : 1f;
+                        Mark(p, side * .05f, -.10f, 0, .05f, .34f, .05f, coat * .92f, fur);
+                        Mark(p, side * .22f, -.26f, 0, .34f, .05f, .05f, coat * .84f, fur);
+                    });
+                }
+            }
+            if (kind == 32)
+            {
+                // Fungus beetle: domed shell with a row of caps.
+                Attach("BeetleShell", rig, new Vector3(0, bodyY + bodyHeight * .30f, 0), p =>
+                {
+                    Mark(p, 0, 0, 0, width * 1.22f, bodyHeight * .62f, length * .92f, coat * .94f, fur);
+                    for (int i = 0; i < 3; i++)
+                        Mark(p, 0, bodyHeight * .34f, -length * .24f + i * length * .24f,
+                            width * .30f, .06f, width * .30f, cream * .92f, underfur);
+                });
+            }
+            if (kind == 33)
+            {
+                // Sky whale: broad flukes and a softly glowing belly strip.
+                int glow = Surface("cherenkov-crystal");
+                Attach("WhaleBelly", rig, new Vector3(0, bodyY - bodyHeight * .42f, 0), p =>
+                {
+                    for (int i = 0; i < 5; i++)
+                        Mark(p, 0, 0, -length * .34f + i * length * .17f, width * .74f, .05f, .09f,
+                            new Color(.36f, .88f, 1f), glow);
+                });
+                Attach("WhaleFlukes", tail, new Vector3(0, 0, -.22f), p =>
+                {
+                    Mark(p, -.36f, 0, -.06f, .52f, .06f, .22f, coat * .92f, fur);
+                    Mark(p, .36f, 0, -.06f, .52f, .06f, .22f, coat * .92f, fur);
+                });
+                Attach("WhaleFinL", rig, new Vector3(-width * .56f, bodyY, length * .10f), p =>
+                    Mark(p, -.12f, -.06f, 0, .34f, .05f, .22f, coat * .88f, fur));
+                Attach("WhaleFinR", rig, new Vector3(width * .56f, bodyY, length * .10f), p =>
+                    Mark(p, .12f, -.06f, 0, .34f, .05f, .22f, coat * .88f, fur));
+            }
+            if (kind == 0)
+            {
+                Attach("RumpPatch", rig, new Vector3(0, bodyY + .02f, -length * .46f), p =>
+                {
+                    Mark(p, 0, 0, -.02f, width * .52f, bodyHeight * .42f, .06f, cream, underfur);
+                });
+            }
         }
 
         public void ResetMotion()
@@ -477,9 +629,16 @@ namespace LestingCraft.Presentation
             }
             float waddleRoll = species == 13 ? Mathf.Sin(gait) * 7f * Mathf.Clamp01(filteredSpeed) : 0;
             body.localRotation = Quaternion.Euler(hopper ? Mathf.Sin(gait) * amplitude * .12f : 0, 0, waddleRoll);
+            // Breathing: a 2% chest swell reads as "alive" even when the animal stands still.
+            float breath = 1f + Mathf.Sin(elapsed * 1.9f) * .018f;
+            body.localScale = new Vector3(1f, breath, 1f);
             Head.localPosition = headPosition;
             Head.localRotation = Quaternion.Euler(Mathf.Sin(elapsed * .7f) * 3,
                 Mathf.Sin(elapsed * .4f + headPosition.y) * (species == 12 ? 22f : 7f), 0);
+            // Ears twitch independently of the head, a cheap but convincing life cue.
+            float twitch = Mathf.Sin(elapsed * 3.7f) * 6f + Mathf.Sin(elapsed * 1.3f) * 3f;
+            for (int i = 0; i < ears.Count; i++)
+                ears[i].localRotation = Quaternion.Euler(0, 0, (i == 0 ? -1 : 1) * twitch);
             float tailPitch = species == 3 || species == 5 ? 22 : species == 9 ? -8 : 0;
             tail.localRotation = Quaternion.Euler(tailPitch, Mathf.Sin(elapsed * 2.1f) * (species == 10 ? 0 : 8), 0);
             if (Wings.Count > 0)

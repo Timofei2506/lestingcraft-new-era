@@ -15,6 +15,8 @@ namespace LestingCraft.World
         public readonly List<int> OpaqueTriangles = new List<int>();
         public readonly List<int> WaterTriangles = new List<int>();
         public readonly List<int> TransparentTriangles = new List<int>();
+        /// <summary>Glacial ice keeps its own pass: frosted white, not window glass.</summary>
+        public readonly List<int> IceTriangles = new List<int>();
         public readonly List<int> DetailTriangles = new List<int>();
         public readonly List<Color32> Colors = new List<Color32>();
         public readonly List<int> Triangles = new List<int>();
@@ -41,18 +43,19 @@ namespace LestingCraft.World
             }
             else
             {
-                mesh.subMeshCount = 4;
+                mesh.subMeshCount = 5;
                 mesh.SetTriangles(OpaqueTriangles, 0, false);
                 mesh.SetTriangles(WaterTriangles, 1, false);
                 mesh.SetTriangles(DetailTriangles, 2, false);
                 mesh.SetTriangles(TransparentTriangles, 3, false);
+                mesh.SetTriangles(IceTriangles, 4, false);
                 mesh.SetNormals(Normals);
                 mesh.SetColors(Colors);
                 mesh.SetUVs(0, UVs);
                 mesh.SetTangents(Tangents);
             }
             mesh.RecalculateBounds();
-            if (!collision && (DetailTriangles.Count != 0 || WaterTriangles.Count != 0))
+            if (!collision && (DetailTriangles.Count != 0 || WaterTriangles.Count != 0 || IceTriangles.Count != 0))
             {
                 Bounds bounds = mesh.bounds;
                 bounds.Expand(.4f);
@@ -387,7 +390,8 @@ namespace LestingCraft.World
         {
             AddFace(data.Triangles, start);
             if (id != 15 && id != BlockRegistry.TorchBlockId && id != BlockRegistry.BedBlockId && id != BlockRegistry.LanternBlockId)
-                AddFace(id == 44 || id == BlockRegistry.GlacialIceId ? data.TransparentTriangles :
+                AddFace(id == BlockRegistry.GlacialIceId ? data.IceTriangles :
+                    id == 44 || id == BlockRegistry.ArmoredGlassId ? data.TransparentTriangles :
                     id == BlockRegistry.WaterId ? data.WaterTriangles : data.OpaqueTriangles, start);
             if (solid) AddFace(data.ColliderTriangles, start);
         }

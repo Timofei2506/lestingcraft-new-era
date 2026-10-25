@@ -280,7 +280,7 @@ namespace LestingCraft.Tests
             Assert.AreEqual(89, ExpandedContent.MaxBlock);
             Assert.AreEqual(112, SurfaceLayers.Names.Length);
             Assert.AreEqual(12, BiomeGenerator.Names.Length);
-            Assert.AreEqual(30, WildlifeSimulation.SpeciesCount);
+            Assert.AreEqual(34, WildlifeSimulation.SpeciesCount);
             Assert.GreaterOrEqual(TradeOffer.ProfessionCount, 10);
 
             // All 12 biomes appear deterministically in v8 while v7 remains strictly 6 biomes

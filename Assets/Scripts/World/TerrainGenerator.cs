@@ -5,25 +5,6 @@ using Unity.Mathematics;
 
 namespace LestingCraft.World
 {
-    public enum Dimension
-    {
-        Lestingia = 0,
-        Moon = 1,
-        Mars = 2,
-        Venus = 3,
-        Mercury = 4,
-        Europa = 5,
-        Titan = 6,
-        Pluto = 7,
-        ProximaB = 8,
-        Trappist1e = 9,
-        Kepler452b = 10,
-        AndromedaPrime = 11,
-        Somnia = 12,
-        Dream = 13,
-        Radia = 14
-    }
-
     // Pure integer hash + smooth value noise. Generation version 1 is part of the network protocol.
     public static class TerrainGenerator
     {

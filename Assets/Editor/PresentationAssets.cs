@@ -77,6 +77,8 @@ public static class PresentationAssets
             clear.SetFloat("_Density", clearName == "Crystal" ? .09f : .16f);
             clear.SetFloat("_Sparkle", clearName == "Crystal" ? 3 : 0);
             clear.SetFloat("_GlassEdge", clearName == "Glass" ? .42f : 0);
+            // Frosted panes for the glass block; crystal stays optically clear with dispersion.
+            if (clear.HasProperty("_Frost")) clear.SetFloat("_Frost", clearName == "Glass" ? .62f : 0f);
             EditorUtility.SetDirty(clear);
         }
         Material water = AssetDatabase.LoadAssetAtPath<Material>(Folder + "/Water.mat");
@@ -86,6 +88,9 @@ public static class PresentationAssets
             AssetDatabase.CreateAsset(water, Folder + "/Water.mat");
         }
         water.SetTexture("_NormalArray", normal);
+        // Swell amplitude derived from the new photographic ripple normals; the shader turns
+        // this into a readable horizon, so it is set here instead of drifting per import.
+        if (water.HasProperty("_WaveStrength")) water.SetFloat("_WaveStrength", .42f);
         var grass = AssetDatabase.LoadAssetAtPath<Material>(Folder + "/Grass.mat");
         if (!grass)
         {

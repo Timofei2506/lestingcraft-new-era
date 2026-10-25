@@ -195,7 +195,9 @@ namespace LestingCraft.Runtime
                     string jumpInfo=SpaceHelm.InHyperjump
                         ? $"ГИПЕРПРЫЖОК {(int)(SpaceHelm.HyperjumpProgress*100)}% → {body.NameRu}"
                         : (SpaceHelm.InLandingRange?"ГОТОВ К ПОСАДКЕ / СТЫКОВКЕ [L]!":$"Дистанция {SpaceHelm.DistanceToTargetKm():0} км");
+                    string procedural=spaceVisuals?spaceVisuals.ProceduralSkyLine:"";
                     return $"ОТКРЫТЫЙ КОСМОС 6-DOF · {CelestialAtlas.GalaxyNameRu(SpaceHelm.CurrentGalaxy)} · {CelestialAtlas.GetSystem(SpaceHelm.CurrentSystem).NameRu}\n"+
+                           (string.IsNullOrEmpty(procedural)?"":procedural+"\n")+
                            $"Цель: {body.NameRu} · {jumpInfo} · Тяга {(int)(SpaceHelm.Throttle*100)}%\n"+
                            "[M/Tab] Мышь по 3D-приборам · [WASD+Стрелки+Q/E] Штурвал · [J] Гиперпрыжок · [V] Галактика M31 · [L] Посадка";
                 }

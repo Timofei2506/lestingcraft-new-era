@@ -42,6 +42,7 @@ namespace LestingCraft.Runtime
         GameObject spiralGalaxyObj;
         GameObject asteroidBeltObj;
         GameObject dreamWatcherRoot;
+        SpaceProceduralDome proceduralDome;
         readonly Dictionary<SpaceTargetKind, GameObject> planetSpheres = new Dictionary<SpaceTargetKind, GameObject>();
         readonly Dictionary<CelestialBodyId, GameObject> atlasBodyObjects = new Dictionary<CelestialBodyId, GameObject>();
 
@@ -57,6 +58,8 @@ namespace LestingCraft.Runtime
         public Vector3 StationReturnHatchWorldPos { get; private set; }
         public bool IsStationSpawned => stationRoot != null;
         public int SpawnedAtlasBodyCount => atlasBodyObjects.Count;
+        /// <summary>Nearest procedural system + world report for the cockpit, empty outside deep space.</summary>
+        public string ProceduralSkyLine => proceduralDome != null ? proceduralDome.SkyLine : "";
 
         public static string TargetNameRu(SpaceTargetKind target)
         {
@@ -1106,6 +1109,19 @@ namespace LestingCraft.Runtime
                 }
             }
 
+            // Endless procedural universe: nearby systems, their worlds, black holes, nebulae and galaxies.
+            if (!proceduralDome)
+            {
+                var domeObject = new GameObject("ProceduralUniverseDome");
+                domeObject.transform.SetParent(transform, false);
+                proceduralDome = domeObject.AddComponent<SpaceProceduralDome>();
+            }
+            if (proceduralDome)
+            {
+                proceduralDome.Bind(spaceDomeRoot ? spaceDomeRoot.transform : transform);
+                proceduralDome.Sync(helm, viewer);
+            }
+
             EnsurePlumes(shuttleTransform);
             if (plumeRoot)
             {
@@ -1148,6 +1164,7 @@ namespace LestingCraft.Runtime
                 foreach (var kv in atlasBodyObjects) if (kv.Value) kv.Value.SetActive(false);
                 if (spiralGalaxyObj) spiralGalaxyObj.SetActive(false);
                 if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
+                if (proceduralDome) proceduralDome.HideAll();
                 if (cachedWorldAtmosphere) cachedWorldAtmosphere.SetActive(true);
                 if (Camera.main) Camera.main.clearFlags = CameraClearFlags.Skybox;
                 return;
@@ -1772,6 +1789,8 @@ namespace LestingCraft.Runtime
         public int MaxHealth { get; private set; }
         public bool Defeated { get; private set; }
         public Vector3 ArenaPosition { get; private set; }
+        public string BossTitle { get; private set; }
+        int lootSeed;
 
         public static PlanetaryBossController SpawnForPlanet(
             Transform parent,
@@ -1781,7 +1800,7 @@ namespace LestingCraft.Runtime
             bool alreadyDefeated,
             Vector3 nearAnchor)
         {
-            if (alreadyDefeated || (dim != Dimension.Mars && dim != Dimension.Venus && dim != Dimension.Mercury))
+            if (alreadyDefeated || !LestingCraft.Gameplay.BossCatalog.HasBoss(dim))
                 return null;
 
             int bx = Mathf.RoundToInt(nearAnchor.x) + 34;
@@ -1796,37 +1815,22 @@ namespace LestingCraft.Runtime
             var boss = go.AddComponent<PlanetaryBossController>();
             boss.BossDimension = dim;
             boss.ArenaPosition = arena;
+            boss.lootSeed = seed;
             boss.BuildSculpt(dim);
             return boss;
         }
 
         void BuildSculpt(Dimension dim)
         {
-            Color armorCol, trimCol, coreCol;
-            if (dim == Dimension.Mars)
-            {
-                BossName = "Железный Колосс Марса";
-                MaxHealth = 260;
-                armorCol = new Color(0.42f, 0.16f, 0.12f);
-                trimCol = new Color(0.68f, 0.34f, 0.18f);
-                coreCol = new Color(1.0f, 0.38f, 0.12f);
-            }
-            else if (dim == Dimension.Venus)
-            {
-                BossName = "Серный Левиафан Венеры";
-                MaxHealth = 320;
-                armorCol = new Color(0.32f, 0.26f, 0.11f);
-                trimCol = new Color(0.85f, 0.68f, 0.18f);
-                coreCol = new Color(0.95f, 0.85f, 0.22f);
-            }
-            else
-            {
-                BossName = "Солнечный Архонт Меркурия";
-                MaxHealth = 380;
-                armorCol = new Color(0.18f, 0.19f, 0.24f);
-                trimCol = new Color(0.92f, 0.72f, 0.32f);
-                coreCol = new Color(0.35f, 0.88f, 1.0f);
-            }
+            // Every world has its own named guardian; the catalogue stays pure data so it is testable.
+            var profile = LestingCraft.Gameplay.BossCatalog.For(dim);
+            BossName = profile.Name;
+            MaxHealth = profile.MaxHealth;
+            var armorCol = new Color(profile.ArmorR, profile.ArmorG, profile.ArmorB);
+            var trimCol = new Color(profile.TrimR, profile.TrimG, profile.TrimB);
+            var coreCol = new Color(profile.CoreR, profile.CoreG, profile.CoreB);
+            transform.localScale = Vector3.one * Mathf.Max(0.6f, profile.Scale);
+            BossTitle = profile.Title;
             Health = MaxHealth;
             baseCoreEmission = coreCol * 2.8f;
 
@@ -1871,6 +1875,8 @@ namespace LestingCraft.Runtime
             shockwaveRing = Part(PrimitiveType.Cube, "TelegraphShockwave", transform, new Vector3(0f, 0.08f, 0f), new Vector3(1f, 0.06f, 1f), coreMat);
             shockwaveRing.gameObject.SetActive(false);
 
+            ShapeForArchetype(LestingCraft.Gameplay.BossCatalog.For(dim).Archetype);
+
             var hitBox = gameObject.AddComponent<CapsuleCollider>();
             hitBox.center = new Vector3(0f, 3.6f, 0f);
             hitBox.radius = 2.4f;
@@ -1884,6 +1890,51 @@ namespace LestingCraft.Runtime
             coreLight.color = coreCol;
             coreLight.range = 24f;
             coreLight.intensity = 4.2f;
+        }
+
+        /// <summary>Small silhouette differences so guardians of different worlds do not look cloned.</summary>
+        void ShapeForArchetype(LestingCraft.Gameplay.BossArchetype archetype)
+        {
+            if (!bodyPivot) return;
+            var leftLeg = bodyPivot.Find("LeftLeg");
+            var rightLeg = bodyPivot.Find("RightLeg");
+            var chest = bodyPivot.Find("ArmoredChest");
+            var core = bodyPivot.Find("RadiantCore");
+            var helm = bodyPivot.Find("GuardianHelm");
+            if (leftLeg) leftLeg.localScale = new Vector3(0.95f, 1f, 1.05f);
+            if (rightLeg) rightLeg.localScale = new Vector3(0.95f, 1f, 1.05f);
+            switch (archetype)
+            {
+                case LestingCraft.Gameplay.BossArchetype.Archon:
+                    // Floating caster: stubby legs, longer torso, wider crown.
+                    if (leftLeg) { leftLeg.localScale = new Vector3(1f, 0.42f, 1f); leftLeg.localPosition = new Vector3(-1.05f, 2.05f, 0f); }
+                    if (rightLeg) { rightLeg.localScale = new Vector3(1f, 0.42f, 1f); rightLeg.localPosition = new Vector3(1.05f, 2.05f, 0f); }
+                    if (chest) { chest.localScale = new Vector3(3.2f, 3.0f, 1.95f); chest.localPosition = new Vector3(0f, 4.55f, 0f); }
+                    if (core) { core.localScale = new Vector3(1.6f, 1.6f, 1.05f); core.localPosition = new Vector3(0f, 4.7f, 0.95f); }
+                    if (haloRing) haloRing.localScale = new Vector3(4.6f, 0.10f, 4.6f);
+                    break;
+                case LestingCraft.Gameplay.BossArchetype.Warden:
+                    // Forest guardian: heavy shoulders, longer arms, lower head.
+                    if (chest) { chest.localScale = new Vector3(3.9f, 2.3f, 2.15f); chest.localPosition = new Vector3(0f, 4.05f, 0f); }
+                    if (helm) helm.localPosition = new Vector3(0f, 5.85f, 0.16f);
+                    if (leftArm) { leftArm.localPosition = new Vector3(-2.75f, 4.75f, 0f); leftArm.localScale = new Vector3(1f, 1.18f, 1f); }
+                    if (rightArm) { rightArm.localPosition = new Vector3(2.75f, 4.75f, 0f); rightArm.localScale = new Vector3(1f, 1.18f, 1f); }
+                    break;
+                case LestingCraft.Gameplay.BossArchetype.Titan:
+                    // Frost titan: wide stance, taller body.
+                    if (leftLeg) { leftLeg.localScale = new Vector3(1.35f, 1.22f, 1.3f); leftLeg.localPosition = new Vector3(-1.25f, 1.35f, 0f); }
+                    if (rightLeg) { rightLeg.localScale = new Vector3(1.35f, 1.22f, 1.3f); rightLeg.localPosition = new Vector3(1.25f, 1.35f, 0f); }
+                    if (chest) { chest.localScale = new Vector3(4.05f, 2.4f, 2.1f); chest.localPosition = new Vector3(0f, 4.5f, 0f); }
+                    if (helm) helm.localPosition = new Vector3(0f, 6.35f, 0.12f);
+                    break;
+                case LestingCraft.Gameplay.BossArchetype.Ember:
+                    // Burning core: compact chassis, oversized weak point.
+                    if (chest) chest.localScale = new Vector3(2.9f, 2.1f, 1.8f);
+                    if (core) { core.localScale = new Vector3(1.9f, 1.9f, 1.1f); core.localPosition = new Vector3(0f, 4.35f, 1.0f); }
+                    if (leftArm) leftArm.localScale = new Vector3(0.85f, 0.9f, 0.85f);
+                    if (rightArm) rightArm.localScale = new Vector3(0.85f, 0.9f, 0.85f);
+                    break;
+            }
         }
 
         Material MakeMat(string name, Color col, Color emission, float metal, float smooth)
@@ -2035,12 +2086,13 @@ namespace LestingCraft.Runtime
             {
                 Defeated = true;
                 defeatedNow = true;
+                LestingCraft.Gameplay.BossCatalog.LootFor(BossDimension, lootSeed, out int diamonds, out int crystals, out int shards);
                 drops = new[]
                 {
-                    new ItemStack { item = 142, count = BossDimension == Dimension.Mercury ? 10 : 6 }, // Алмазы
-                    new ItemStack { item = 11, count = 16 },                                           // Кристаллы
-                    new ItemStack { item = 123, count = 12 },                                          // Слитки металла
-                    new ItemStack { item = 111, count = 6 }                                            // Провизия
+                    new ItemStack { item = 142, count = diamonds }, // Алмазы
+                    new ItemStack { item = 11, count = crystals },  // Кристаллы
+                    new ItemStack { item = 123, count = shards },   // Слитки металла
+                    new ItemStack { item = 111, count = 6 }         // Провизия
                 };
                 if (Application.isPlaying) Destroy(gameObject, 0.1f);
                 else DestroyImmediate(gameObject);

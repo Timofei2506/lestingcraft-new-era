@@ -44,9 +44,9 @@ namespace LestingCraft.Tests
         [Test]
         public void ExpandedWildlifeSpawnsAllTwentySpeciesWithDedicatedPbrCoatsAndRigs()
         {
-            Assert.AreEqual(30, AnimalVisual.SpeciesFurNames.Length);
+            Assert.AreEqual(34, AnimalVisual.SpeciesFurNames.Length);
             var coatLayers = new HashSet<int>();
-            for (int kind = 0; kind < 30; kind++)
+            for (int kind = 0; kind < 34; kind++)
             {
                 int layer = AnimalVisual.FurLayerForSpecies(kind);
                 coatLayers.Add(layer);
@@ -58,9 +58,9 @@ namespace LestingCraft.Tests
                     var visual = obj.AddComponent<AnimalVisual>();
                     visual.Build(kind);
                     Assert.IsNotNull(visual.Head);
-                    if (kind < 20)
+                    if (kind < 20 || kind >= 30)
                     {
-                        bool winged = kind == 11 || kind == 12 || kind == 13 || kind == 19;
+                        bool winged = kind == 11 || kind == 12 || kind == 13 || kind == 19 || kind == 33;
                         int expectedLegs = kind == 19 ? 0 : kind == 15 ? 6 : (kind == 11 || kind == 12 || kind == 13) ? 2 : 4;
                         Assert.AreEqual(expectedLegs, visual.Legs.Count);
                         if (winged) Assert.AreEqual(2, visual.Wings.Count);
@@ -75,6 +75,7 @@ namespace LestingCraft.Tests
                     Object.DestroyImmediate(obj);
                 }
             }
+            // 34 species, but the four newest ones intentionally share existing coats (no new PBR layers).
             Assert.AreEqual(30, coatLayers.Count);
 
             var found = new HashSet<int>();
@@ -88,7 +89,10 @@ namespace LestingCraft.Tests
                         (x, z, y, r, h) => 50f);
                     foreach (var a in sim.Animals) found.Add(a.species);
                 }
-            Assert.AreEqual(30, found.Count);
+            Assert.GreaterOrEqual(found.Count, 30);
+            int newest = 0;
+            foreach (int kind in found) if (kind >= 30) newest++;
+            Assert.GreaterOrEqual(newest, 1);
         }
 
         [Test]

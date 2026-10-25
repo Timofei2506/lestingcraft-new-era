@@ -66,7 +66,7 @@ namespace LestingCraft.Runtime
         readonly HashSet<Vector2Int> dirty = new HashSet<Vector2Int>();
         readonly Stopwatch frameWatch = new Stopwatch();
         readonly List<Vector2Int> remove = new List<Vector2Int>();
-        Material material, waterMaterial, grassMaterial, objectMaterial, crystalMaterial, glassMaterial;
+        Material material, waterMaterial, grassMaterial, objectMaterial, crystalMaterial, glassMaterial, iceMaterial;
         NativeArray<ushort> pendingBuffer;
         JobHandle pendingJob;
         IEnumerator work;
@@ -93,6 +93,18 @@ namespace LestingCraft.Runtime
             detailQuality = LestingCraft.Presentation.VisualSettings.Current.Preset;
             crystalMaterial = new Material(Resources.Load<Material>("Generated/Crystal"));
             glassMaterial = new Material(Resources.Load<Material>("Generated/Glass"));
+            // Glacial ice shares the transmission shader but stays frosted, white and near-opaque.
+            var glassSource = Resources.Load<Material>("Generated/Glass");
+            iceMaterial = glassSource ? new Material(glassSource) : null;
+            if (iceMaterial)
+            {
+                iceMaterial.name = "GlacialIce";
+                if (iceMaterial.HasProperty("_Tint")) iceMaterial.SetColor("_Tint", new Color(.80f, .90f, 1f, 1f));
+                if (iceMaterial.HasProperty("_Density")) iceMaterial.SetFloat("_Density", .30f);
+                if (iceMaterial.HasProperty("_Frost")) iceMaterial.SetFloat("_Frost", .95f);
+                if (iceMaterial.HasProperty("_GlassEdge")) iceMaterial.SetFloat("_GlassEdge", .30f);
+                if (iceMaterial.HasProperty("_Sparkle")) iceMaterial.SetFloat("_Sparkle", .45f);
+            }
             objectMaterial = new Material(Resources.Load<Material>("Generated/VoxelObjects"));
             material = new Material(Resources.Load<Material>("Generated/VoxelPBR"));
             waterMaterial = new Material(Resources.Load<Material>("Generated/Water"));
@@ -474,7 +486,7 @@ namespace LestingCraft.Runtime
             v.Object.transform.localPosition = new Vector3(key.x * 16, 0, key.y * 16);
             v.Filter = v.Object.AddComponent<MeshFilter>();
             var renderer = v.Object.AddComponent<MeshRenderer>();
-            renderer.sharedMaterials = new[] { material, waterMaterial, grassMaterial, glassMaterial };
+            renderer.sharedMaterials = new[] { material, waterMaterial, grassMaterial, glassMaterial, iceMaterial ? iceMaterial : glassMaterial };
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             renderer.receiveShadows = true;
             v.Collider = v.Object.AddComponent<MeshCollider>();
@@ -721,6 +733,7 @@ namespace LestingCraft.Runtime
             if (objectMaterial) Destroy(objectMaterial);
             if (crystalMaterial) Destroy(crystalMaterial);
             if (glassMaterial) Destroy(glassMaterial);
+            if (iceMaterial) Destroy(iceMaterial);
         }
     }
 }

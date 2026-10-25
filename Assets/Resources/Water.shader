@@ -26,6 +26,7 @@ Shader "LestingCraft/Water"
             float4 _EnvironmentShallowWater, _EnvironmentDeepWater;
             float _EnvironmentWaterReflection;
             float _LCWaterSteps, _LCWaterReflectionProbe;
+            float _LCWaterRain;
             struct A { float4 p:POSITION; float3 n:NORMAL; float4 t:TANGENT; };
             struct V
             {
@@ -117,6 +118,28 @@ Shader "LestingCraft/Water"
                 return sky;
             }
 
+            // Concentric rain rings: each 0.55 m cell drops at its own phase, so the pattern
+            // never repeats visibly and costs one hash per fragment.
+            void RainRipples(float2 p,float time,float amount,inout float2 slope)
+            {
+                if(amount<=.01)return;
+                float2 scaled=p*1.85;
+                float2 cell=floor(scaled);
+                float2 local=frac(scaled)-.5;
+                float seed=frac(sin(dot(cell,float2(127.1,311.7)))*43758.5453);
+                float phase=frac(time*1.25+seed);
+                float radius=phase*.52;
+                float ring=1-abs(length(local)-radius)/.075;
+                ring=saturate(ring);ring*=ring*(1-phase);
+                float2 direction=local/max(.001,length(local));
+                slope+=direction*ring*amount*.55;
+                // A second, slower droplet per cell keeps the surface busy between impacts.
+                float phase2=frac(time*.79+seed*.61+0.37);
+                float ring2=saturate(1-abs(length(local*1.4)-phase2*.5)/.06);
+                ring2*=ring2*(1-phase2);
+                slope+=direction*ring2*amount*.35;
+            }
+
             half4 Frag(V i,FRONT_FACE_TYPE face:FRONT_FACE_SEMANTIC):SV_Target
             {
                 float time=_EnvironmentTime;
@@ -136,6 +159,7 @@ Shader "LestingCraft/Water"
                 Wave(i.ws.xz,float2(.72,.41),.83,.028,.72,displacement,slope);
                 Wave(i.ws.xz,float2(-.39,1.07),1.14,.016,-.91,displacement,slope);
                 Wave(i.ws.xz,float2(.91,-.27),2.2,.006*nearDetail,1.31,displacement,slope);
+                RainRipples(i.ws.xz,time,saturate(_LCWaterRain),slope);
                 half3 n=normalize(i.n),t=normalize(i.t.xyz),b=cross(n,t)*i.t.w;
                 half2 textureSlope=(na.xy+nb.xy)*(.25+_GlobalWindStrength*.30)*
                     lerp(.2,1,nearDetail)+fine;
@@ -195,6 +219,8 @@ Shader "LestingCraft/Water"
                 half shore=1-smoothstep(.03,.58,waterDepth);
                 half crest=smoothstep(.35,.65,foamNoise);
                 half foam=shore*crest*top;
+                // Rain-driven chop raises the foam line and adds a fine spray sheen.
+                foam=saturate(foam+saturate(_LCWaterRain)*.18*top*crest);
                 color=lerp(color,half3(.78,.83,.79)*lerp(.16,1,_EnvironmentDaylight),foam*.58*sky);
                 // Radia's black flooded basin keeps just a trace of sky glint; otherwise the gray storm ceiling washes out the submerged blue rows.
                 color=lerp(body,color,saturate(_EnvironmentWaterReflection));

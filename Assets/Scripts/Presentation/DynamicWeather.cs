@@ -57,6 +57,8 @@ namespace LestingCraft.Presentation
             float effPrecip=precipitation*precipScale;
             float effSnow=snowAmount*precipScale;
             Shader.SetGlobalFloat("_GlobalWindStrength",wind);Shader.SetGlobalFloat("_GlobalWetness",wetness*precipScale);Shader.SetGlobalFloat("_GlobalSnow",effSnow);
+            // Rain rings on open water: a real weather cue the surface did not have before.
+            Shader.SetGlobalFloat("_LCWaterRain",Mathf.Max(0f,effPrecip-effSnow)*(Session.Sheltered?0f:1f));
             rain.transform.position=snow.transform.position=cameraView.transform.position+Vector3.up*15;
             float outside=Session.Sheltered||inWater?0:1;
             var re=rain.emission;re.rateOverTime=outside*Mathf.Max(0f,effPrecip-effSnow)*1400;
@@ -95,7 +97,7 @@ namespace LestingCraft.Presentation
         }
         void OnDestroy()
         {
-            Shader.SetGlobalFloat("_GlobalWetness",0);Shader.SetGlobalFloat("_GlobalSnow",0);Shader.SetGlobalFloat("_GlobalWindStrength",0);
+            Shader.SetGlobalFloat("_GlobalWetness",0);Shader.SetGlobalFloat("_GlobalSnow",0);Shader.SetGlobalFloat("_GlobalWindStrength",0);Shader.SetGlobalFloat("_LCWaterRain",0);
             if(fogPlane)Destroy(fogPlane);if(fog)Destroy(fog);
         }
     }

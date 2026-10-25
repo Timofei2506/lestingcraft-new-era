@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -318,5 +318,19 @@
     ],
     "resolution": 512,
     "maps": "AI-derived albedo; normal/metallic/AO/height/smoothness estimated from luminance, not scans"
+  },
+  "iteration13": {
+    "masters": [
+      "ArtSource/Textures/Iteration13/crystal.jpg",
+      "ArtSource/Textures/Iteration13/water.jpg"
+    ],
+    "derived": [
+      "water",
+      "crystal",
+      "glacial-ice"
+    ],
+    "resolution": 512,
+    "maps": "AI-derived albedo; normal/metallic/AO/height/smoothness estimated from luminance, not scans",
+    "notes": "water normals come from the photographic ripple master; crystal feeds both Glass and CrystalGlass shaders"
   }
 }
