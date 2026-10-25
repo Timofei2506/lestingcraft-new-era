@@ -305,9 +305,9 @@ namespace LestingCraft.Presentation
                 }
             });
 
-            float[] headYs =      { 1.4f, .38f, .62f, .98f, 1.31f, .65f, 1.17f, 1.1f, .82f, .43f, .29f, .68f,  .66f, .90f, 1.88f, .26f, .28f, 1.72f, .56f, .35f,  1.06f, .28f, .34f, .92f, .42f, .72f, .38f, 1.68f, 2.02f, 1.78f };
-            float[] headWidths =  { .25f, .25f, .42f, .32f, .62f,  .25f, .69f,  .26f, .37f, .39f, .68f, .28f,  .36f, .30f, .34f,  .32f, .24f, .42f,  .34f, .52f,  .36f,  .34f, .38f, .56f, .44f, .32f, .58f, .42f,  .64f,  .44f };
-            float[] headHeights = { .3f,  .23f, .35f, .32f, .48f,  .26f, .6f,   .32f, .31f, .28f, .2f,  .28f,  .32f, .28f, .34f,  .18f, .20f, .46f,  .34f, .18f,  .34f,  .22f, .22f, .44f, .24f, .30f, .20f, .44f,  .52f,  .46f };
+            float[] headYs =      { 1.4f, .38f, .62f, .98f, 1.31f, .65f, 1.17f, 1.1f, .82f, .43f, .29f, .68f,  .66f, .90f, 1.88f, .26f, .28f, 1.72f, .56f, .35f,  1.06f, .28f, .34f, .92f, .42f, .72f, .38f, 1.68f, 2.02f, 1.78f,  .95f, .28f, .22f, 1.05f };
+            float[] headWidths =  { .25f, .25f, .42f, .32f, .62f,  .25f, .69f,  .26f, .37f, .39f, .68f, .28f,  .36f, .30f, .34f,  .32f, .24f, .42f,  .34f, .52f,  .36f,  .34f, .38f, .56f, .44f, .32f, .58f, .42f,  .64f,  .44f,  .40f, .30f, .26f, .55f };
+            float[] headHeights = { .3f,  .23f, .35f, .32f, .48f,  .26f, .6f,   .32f, .31f, .28f, .2f,  .28f,  .32f, .28f, .34f,  .18f, .20f, .46f,  .34f, .18f,  .34f,  .22f, .22f, .44f, .24f, .30f, .20f, .44f,  .52f,  .46f,  .34f, .24f, .20f, .42f };
             headPosition = new Vector3(0, headYs[kind], length * (kind == 14 ? .58f : .48f));
             float hw = headWidths[kind], hh = headHeights[kind];
             Head = Attach("Head", rig, headPosition, p =>
@@ -362,7 +362,8 @@ namespace LestingCraft.Presentation
                          : (kind == 11 || kind == 12 || kind == 13 || kind == 25 || kind == 28 || kind == 29) ? 2
                          : (kind == 15 || kind == 22 || kind == 24) ? 6 : 4;
             float[] legLengths = { .65f, .19f, .36f, .53f, .58f, .32f, .64f, .56f, .43f, .19f, .16f, .2f, .18f, .16f, .86f, .18f, .14f, .88f, .22f, 0f,
-                                   .62f, 0f, .24f, .52f, .28f, .22f, 0f, .96f, .82f, .86f };
+                                   .62f, 0f, .24f, .52f, .28f, .22f, 0f, .96f, .82f, .86f,
+                                   .62f, .30f, .18f, .18f };
             float ll = legLengths[kind];
             for (int i = 0; i < legCount; i++)
             {
@@ -410,14 +411,14 @@ namespace LestingCraft.Presentation
                 }
             });
 
-            if (kind == 11 || kind == 12 || kind == 13 || kind == 19 || kind == 25 || kind == 26)
+            if (kind == 11 || kind == 12 || kind == 13 || kind == 19 || kind == 25 || kind == 26 || kind == 33)
             {
                 for (int side = -1; side <= 1; side += 2)
                 {
                     int wingSide = side;
                     bool ray = kind == 19 || kind == 26;
-                    float wy = kind == 13 ? .54f : ray ? .35f : .48f;
-                    float span = kind == 13 ? .14f : ray ? 1.05f : .64f;
+                    float wy = kind == 13 ? .54f : ray ? .35f : kind == 33 ? .70f : .48f;
+                    float span = kind == 13 ? .14f : ray ? 1.05f : kind == 33 ? 1.25f : .64f;
                     Transform wing = Attach("Wing" + side, rig, new Vector3(side * width * .45f, wy, .03f), p =>
                     {
                         Box(p, wingSide * span * .5f, kind == 13 ? -.16f : 0, -.02f,
@@ -617,7 +618,7 @@ namespace LestingCraft.Presentation
             gait += step * Mathf.Clamp(filteredSpeed * 6, 0, 18);
             float amplitude = Mathf.Min(34, filteredSpeed * 12);
             bool hopper = species == 1 || species == 10 || species == 21;
-            bool flyer = species == 11 || species == 12 || species == 19 || species == 25 || species == 26;
+            bool flyer = species == 11 || species == 12 || species == 19 || species == 25 || species == 26 || species == 33;
             float hop = hopper ? Mathf.Max(0, Mathf.Sin(gait)) * (species == 10 ? .2f : .13f) * Mathf.Clamp01(filteredSpeed) : 0;
             rig.localPosition = new Vector3(0, hop, 0);
             for (int i = 0; i < Legs.Count; i++)
