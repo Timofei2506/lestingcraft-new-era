@@ -47,7 +47,7 @@ namespace LestingCraft.Tests
         {
             Assert.IsNotNull(Resources.Load<Material>("Generated/VoxelPBR"));
             Assert.IsNotNull(Resources.Load<Material>("Generated/Water"));
-            var textures=Resources.Load<Texture2DArray>("Generated/Albedo");Assert.IsNotNull(textures);Assert.AreEqual(SurfaceLayers.Names.Length,textures.depth);Assert.AreEqual(512,textures.width);
+            var textures=Resources.Load<Texture2DArray>("Generated/Albedo");Assert.IsNotNull(textures);Assert.AreEqual(SurfaceLayers.Names.Length,textures.depth);Assert.AreEqual(1024,textures.width);
         }
     }
 }

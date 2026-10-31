@@ -439,6 +439,14 @@ public static class PresentationAssets
             var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, linear);
             if (!texture.LoadImage(File.ReadAllBytes(MapPath(Names[i], kind))))
                 throw new InvalidOperationException("Invalid material image");
+            // Mixed 512/1024 sources are legal: photographic sets arrive at 1024 while
+            // older derived sets stay 512. Rescale on the CPU into the array element.
+            if (texture.width != size || texture.height != size)
+            {
+                var resized = ResizeBilinear(texture, size);
+                UnityEngine.Object.DestroyImmediate(texture);
+                texture = resized;
+            }
             result.SetPixels32(texture.GetPixels32(), i, 0);
             UnityEngine.Object.DestroyImmediate(texture);
         }
@@ -446,6 +454,42 @@ public static class PresentationAssets
         AssetDatabase.CreateAsset(result, path);
         return result;
     }
+
+    static Texture2D ResizeBilinear(Texture2D source, int size)
+    {
+        int sw = source.width, sh = source.height;
+        var src = source.GetPixels32();
+        var dst = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+        {
+            float sy = (y * (sh - 1f)) / (size - 1);
+            int y0 = (int)sy, y1 = Math.Min(y0 + 1, sh - 1);
+            float ty = sy - y0;
+            for (int x = 0; x < size; x++)
+            {
+                float sx = (x * (sw - 1f)) / (size - 1);
+                int x0 = (int)sx, x1 = Math.Min(x0 + 1, sw - 1);
+                float tx = sx - x0;
+                Color32 a = src[y0 * sw + x0], b = src[y0 * sw + x1];
+                Color32 c = src[y1 * sw + x0], d = src[y1 * sw + x1];
+                dst[y * size + x] = new Color32(
+                    LerpBilinear(a.r, b.r, c.r, d.r, tx, ty),
+                    LerpBilinear(a.g, b.g, c.g, d.g, tx, ty),
+                    LerpBilinear(a.b, b.b, c.b, d.b, tx, ty),
+                    LerpBilinear(a.a, b.a, c.a, d.a, tx, ty));
+            }
+        }
+        var output = new Texture2D(size, size, TextureFormat.RGBA32, false, source.linear)
+        {
+            wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear
+        };
+        output.SetPixels32(dst);
+        output.Apply(false, true);
+        return output;
+    }
+
+    static byte LerpBilinear(byte a, byte b, byte c, byte d, float tx, float ty)
+        => (byte)Mathf.Clamp(a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty + .5f, 0, 255);
 }
 
 public sealed class PresentationTextureImporter : AssetPostprocessor

@@ -75,10 +75,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-build-${{ matrix.targetPlatform }}-v4-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Scripts/Runtime/BuildSmokeProbe.cs', 'Assets/Scripts/Runtime/PrototypeGame.cs', 'Assets/Art/PBR/**') }}
+          key: Library-build-${{ matrix.targetPlatform }}-v5-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/**', 'Assets/Scripts/**', 'Assets/Art/PBR/**') }}
           restore-keys: |
-            Library-build-${{ matrix.targetPlatform }}-
-            Library-
+            Library-build-${{ matrix.targetPlatform }}-v5-
+
+      - name: Drop stale Bee build graph
+        run: rm -rf Library/Bee
 
       - name: Set up Unity Hub for licensing only
         uses: buildalon/unity-setup@v2
@@ -217,10 +219,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-build-Android-v4-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/PresentationAssets.cs', 'Assets/Scripts/Runtime/PrototypeGame.cs', 'Assets/Art/PBR/**') }}
+          key: Library-build-Android-v5-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/**', 'Assets/Scripts/**', 'Assets/Art/PBR/**') }}
           restore-keys: |
-            Library-build-Android-
-            Library-
+            Library-build-Android-v5-
+
+      - name: Drop stale Bee build graph
+        run: rm -rf Library/Bee
 
       - name: Install Unity Editor + Android modules
         uses: buildalon/unity-setup@v2

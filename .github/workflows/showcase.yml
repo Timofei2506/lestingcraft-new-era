@@ -30,12 +30,12 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: Library
-          key: Library-il2cpp-v2-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
+          key: Library-il2cpp-v3-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
           restore-keys: |
-            Library-il2cpp-v2-
-            Library-showcase-
-            Library-tests-
-            Library-
+            Library-il2cpp-v3-
+
+      - name: Drop stale Bee build graph
+        run: rm -rf Library/Bee
 
       - name: Install Unity Editor
         uses: buildalon/unity-setup@v2
@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: Library
-          key: Library-il2cpp-v2-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
+          key: Library-il2cpp-v3-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
 
       - name: Render 14 Authentic 1920x1080 ERA-V9 Screenshots in Real Game Binary
         run: |
