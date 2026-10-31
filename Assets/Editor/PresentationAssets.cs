@@ -152,10 +152,10 @@ public static class PresentationAssets
         var sky = AssetDatabase.LoadAssetAtPath<Material>(Folder + "/Sky.mat");
         sky.SetTexture("_CloudNoise", cloud);
         sky.SetFloat("_CloudBase", 144);
-        sky.SetFloat("_CloudSteps", 12);
+        sky.SetFloat("_CloudSteps", 22);
         EditorUtility.SetDirty(sky);
         var atmosphere = AssetDatabase.LoadAssetAtPath<Material>(Folder + "/Atmosphere.mat");
-        atmosphere.SetFloat("_Steps", 6);
+        atmosphere.SetFloat("_Steps", 24);
         EditorUtility.SetDirty(atmosphere);
         var rain = AssetDatabase.LoadAssetAtPath<Material>(Folder + "/RainStreaks.mat");
         if (!rain)
@@ -427,7 +427,7 @@ public static class PresentationAssets
         var existing = AssetDatabase.LoadAssetAtPath<Texture2DArray>(path);
         if (existing && existing.depth == Names.Length && existing.name == version) return existing;
         if (existing) AssetDatabase.DeleteAsset(path);
-        const int size = 512;
+        const int size = 1024;
         var result = new Texture2DArray(size, size, Names.Length, TextureFormat.RGBA32, true, linear)
         {
             name = version, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear, anisoLevel = 8
@@ -456,7 +456,7 @@ public sealed class PresentationTextureImporter : AssetPostprocessor
         importer.sRGBTexture = assetPath.Contains("_albedo");
         importer.mipmapEnabled = true;
         importer.wrapMode = TextureWrapMode.Repeat;
-        importer.maxTextureSize = 512;
+        importer.maxTextureSize = 1024;
         importer.anisoLevel = 8;
         importer.textureCompression = TextureImporterCompression.CompressedHQ;
     }

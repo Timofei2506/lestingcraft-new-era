@@ -7,6 +7,7 @@ Shader "LestingCraft/AtmosphericSky"
         _CloudCoverage("Coverage",Float)=.4
         _CloudBase("Base",Float)=144
         _CloudSteps("Cloud steps",Float)=12
+        _HorizonGlow("Horizon glow",Float)=1.0
     }
     SubShader
     {
@@ -23,6 +24,7 @@ Shader "LestingCraft/AtmosphericSky"
             TEXTURE3D(_CloudNoise); SAMPLER(sampler_CloudNoise);
             float _CloudCoverage, _CloudBase, _CloudSteps, _LCCloudSteps;
             float4 _CloudOffset;
+            float _HorizonGlow;
             struct A { float4 vertex:POSITION; };
             struct V { float4 vertex:SV_POSITION; float3 ray:TEXCOORD0; };
             V Vert(A i)
@@ -34,25 +36,28 @@ Shader "LestingCraft/AtmosphericSky"
             }
             float Density(float3 p, bool detail)
             {
-                // Two distinct layers: low cumulus and a thinner high cloud deck.
+                // Три слоя вместо двух: низкие кучевые, средний растянутый слой и тонкий высокий кокосовый приют.
                 float low=saturate((p.y-_CloudBase)/9)*saturate((_CloudBase+48-p.y)/15);
-                float high=saturate((p.y-_CloudBase-82)/8)*saturate((_CloudBase+116-p.y)/12)*.36;
-                float profile=max(low,high);
+                float mid=saturate((p.y-_CloudBase-44)/11)*saturate((_CloudBase+84-p.y)/14)*.42;
+                float high=saturate((p.y-_CloudBase-90)/8)*saturate((_CloudBase+124-p.y)/12)*.30;
+                float profile=max(max(low,mid),high);
                 if(profile<=0)return 0;
                 float3 shifted=p+_CloudOffset.xyz;
                 float2 rotated=mul(float2x2(.848,-.530,.530,.848),shifted.xz);
                 float3 uv=float3(rotated.x,shifted.y*.82,rotated.y)*.0031;
                 float base=SAMPLE_TEXTURE3D_LOD(_CloudNoise,sampler_CloudNoise,uv,0).r;
-                float threshold=.66-_CloudCoverage*.30;
-                if(base<threshold-.07)return 0;
+                float threshold=.62-_CloudCoverage*.32;
+                if(base<threshold-.08)return 0;
                 float shape=base;
                 if(detail)
                 {
                     float fine=SAMPLE_TEXTURE3D_LOD(_CloudNoise,sampler_CloudNoise,
                         uv*2.713+float3(.49,.13,.67),0).r;
-                    shape=base*.80+fine*.20;
+                    float micro=SAMPLE_TEXTURE3D_LOD(_CloudNoise,sampler_CloudNoise,
+                        uv*5.9+float3(.81,.22,.91),0).r;
+                    shape=base*.68+fine*.22+micro*.10;
                 }
-                return saturate((shape-threshold)*5)*profile;
+                return saturate((shape-threshold)*5.5)*profile;
             }
             half4 Frag(V i):SV_Target
             {
@@ -60,15 +65,16 @@ Shader "LestingCraft/AtmosphericSky"
                 half3 background=LC_SkyRadiance(ray);
                 if(ray.y<0)
                     return half4(lerp(_EnvironmentHorizon.rgb,_EnvironmentZenith.rgb*.45,saturate(-ray.y*2)),1);
-                if(ray.y<.004||_CloudCoverage<.015)return half4(background,1);
+                if(ray.y<.004||_CloudCoverage<.015)
+                    return half4(background,1);
                 float start=max(0,(_CloudBase-_WorldSpaceCameraPos.y)/ray.y);
-                float end=min(12000,(_CloudBase+116-_WorldSpaceCameraPos.y)/ray.y);
+                float end=min(14000,(_CloudBase+124-_WorldSpaceCameraPos.y)/ray.y);
                 if(end<=start)return half4(background,1);
                 float3 sunDir=_EnvironmentSunDirection.y>-.025
                     ?_EnvironmentSunDirection.xyz:_EnvironmentMoonDirection.xyz;
                 float mu=clamp(dot(ray,sunDir),-1,1);
-                int maximum=(int)clamp(_LCCloudSteps>0?_LCCloudSteps:_CloudSteps,12,32);
-                int count=max(6,(int)ceil(maximum*lerp(.65,1,saturate(ray.y*3))));
+                int maximum=(int)clamp(_LCCloudSteps>0?_LCCloudSteps:_CloudSteps,12,40);
+                int count=max(8,(int)ceil(maximum*lerp(.65,1,saturate(ray.y*3))));
                 float stepLength=(end-start)/count;
                 float transmittance=1;
                 half3 clouds=0;
@@ -91,15 +97,24 @@ Shader "LestingCraft/AtmosphericSky"
                     float sunlight=exp(-shadowDensity*3.2);
                     float powder=1-exp(-d*stepLength*.13);
                     float alpha=1-exp(-d*stepLength*.065);
-                    float silver=forward*(1-d)*sunlight*powder*.24;
+                    // Свет на краях облаков (silver lining) — объём и мощь на заходе/восходе.
+                    float silver=forward*(1-d)*sunlight*powder*.42*saturate(mu);
                     half3 lighting=ambient+direct*(sunlight*.55+min(forward,8)*.035+silver);
                     lighting=lerp(lighting,background,(1-exp(-along*.00016))*.75);
                     clouds+=lighting*alpha*transmittance;
                     transmittance*=1-alpha;
                 }
-                // Fade the finite marching horizon instead of drawing a hard cloud seam.
+                // Яркий закатный горизонт: полоса света у солнца над линией горизонта.
                 float horizon=smoothstep(.004,.025,ray.y);
-                return half4(lerp(background,clouds+background*transmittance,horizon),1);
+                half3 glow=half3(0,0,0);
+                if(_HorizonGlow>0 && ray.y<.42)
+                {
+                    float band=exp(-pow((ray.y-.09)*7.5,2));
+                    float sunSide=saturate(dot(ray,sunDir));
+                    glow=half3(1.05,.62,.28)*band*pow(sunSide,3)*_EnvironmentDaylight*1.4*_HorizonGlow;
+                }
+                half3 result=lerp(background,clouds+background*transmittance,horizon)+glow;
+                return half4(result,1);
             }
             ENDHLSL
         }

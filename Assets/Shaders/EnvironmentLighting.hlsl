@@ -44,16 +44,16 @@ float3 LC_SkyRadiance(float3 direction)
     sky += scattering * daylight * atmosphere;
 
     float twilight = (1 - smoothstep(.02, .22, abs(sunElevation + .035))) * atmosphere;
-    float band = exp(-pow((ray.y - .09) * 9, 2));
-    sky += float3(.18, .035, .022) * band * twilight * (.35 + .65 * saturate(mu));
-    sky *= 1 - float3(.06, .14, .025) * band * twilight;
+    float band = exp(-pow((ray.y - .09) * 8, 2));
+    sky += float3(1.05, .45, .18) * band * twilight * (.45 + .55 * saturate(mu));
+    sky *= 1 - float3(.05, .10, .020) * band * twilight;
 
     float sun = saturate(mu);
     float solarVisibility = smoothstep(-.025, .025, sunElevation);
     // Approximate the real solar angular diameter (~0.53°), not a wide game-style glow.
-    float disk = smoothstep(.999986, .999996, sun);
-    float aureole = pow(sun, 256) * .08 + pow(sun, 4096) * .45;
-    sky += _EnvironmentSunColor.rgb * (disk * 18 + aureole * atmosphere) * solarVisibility;
+    float disk = smoothstep(.999984, .999994, sun);
+    float aureole = pow(sun, 64) * .12 + pow(sun, 256) * .10 + pow(sun, 4096) * .45;
+    sky += _EnvironmentSunColor.rgb * (disk * 22 + aureole * atmosphere) * solarVisibility;
 
     float moon = saturate(dot(ray, _EnvironmentMoonDirection.xyz));
     float night = 1 - daylight;
