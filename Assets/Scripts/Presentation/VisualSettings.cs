@@ -68,7 +68,7 @@ namespace LestingCraft.Presentation
             Shader.SetGlobalFloat("_LCGrassRange", Preset == 1 ? 64 : 42);
             Shader.SetGlobalFloat("_LCUltra", Preset);
             Shader.SetGlobalFloat("_LCVolumetricSteps", VolumetricQuality == 2 ? 12 : 6);
-            Shader.SetGlobalFloat("_LCCloudSteps", VolumetricQuality == 2 ? 16 : VolumetricQuality == 0 ? 8 : 12);
+            Shader.SetGlobalFloat("_LCCloudSteps", VolumetricQuality == 2 ? 32 : VolumetricQuality == 0 ? 12 : 20);
             if (Camera.main)
             {
                 Camera.main.fieldOfView = FieldOfView;

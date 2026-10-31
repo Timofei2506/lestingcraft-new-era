@@ -35,6 +35,21 @@ namespace LestingCraft.World
   public void Edit(int x,int y,int z){if(!Find(x,y,z,out var f,out int i))return;Column(f,x-f.x*16,z-f.z*16,false);Around(x,y,z);}
   public void CopyVolume(byte[] pixels,int ox,int oy,int oz,int width,int height,int depth)
   {for(int z=0;z<depth;z++)for(int x=0;x<width;x++){int wx=ox+x,wz=oz+z,cx=Chunk(wx),cz=Chunk(wz);fields.TryGetValue(Key(cx,cz),out var f);for(int y=0;y<height;y++){int wy=oy+y;pixels[x+width*(y+height*z)]=(byte)(wy>=256?255:wy<0||f==null?0:f.Sky[ChunkData.IndexOf(wx-cx*16,wy,wz-cz*16)]*17);}}}
+  // Main-thread immutable snapshot copy. Only nine dictionary lookups per chunk,
+  // rather than a lookup for each of the 82,944 padded voxels.
+  public void CopyPaddedChunk(int cx,int cz,byte[] destination)
+  {
+   if(destination==null||destination.Length!=18*256*18)throw new ArgumentException("Invalid padded skylight buffer");
+   Array.Clear(destination,0,destination.Length);
+   for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++)
+   {
+    if(!fields.TryGetValue(Key(cx+dx,cz+dz),out var f))continue;
+    int x0=dx<0?-1:dx>0?16:0,x1=dx==0?15:x0;
+    int z0=dz<0?-1:dz>0?16:0,z1=dz==0?15:z0;
+    for(int y=0;y<256;y++)for(int z=z0;z<=z1;z++)
+     Array.Copy(f.Sky,ChunkData.IndexOf(x0-dx*16,y,z-dz*16),destination,x0+1+18*(z+1+18*y),x1-x0+1);
+   }
+  }
   public int Process(int budget=32768)
   {
    int processed=0;while(queue.Count>0&&processed++<budget)

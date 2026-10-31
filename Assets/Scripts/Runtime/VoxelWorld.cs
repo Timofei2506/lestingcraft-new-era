@@ -571,6 +571,7 @@ namespace LestingCraft.Runtime
             try
             {
             Func<int,int,int,float> fluid = FluidHeight;
+            Skylight.CopyPaddedChunk(key.x,key.y,snapshot.Lights);
             var neighbors = new View[9];
             for(int dz=-1;dz<=1;dz++) for(int dx=-1;dx<=1;dx++)
                 chunks.TryGetValue(key+new Vector2Int(dx,dz),out neighbors[dx+1+3*(dz+1)]);
@@ -586,7 +587,6 @@ namespace LestingCraft.Runtime
                         View source=neighbors[dx+1+3*(dz+1)];
                         ushort id=source==null?(ushort)0:source.Data.GetBlock(x-dx*16,y,z-dz*16);
                         snapshot.Blocks[index] = id;
-                        snapshot.Lights[index] = Skylight.Get(wx, y, wz);
                         snapshot.Heights[index] = fluid != null && (id == 7 || id == 8) ? fluid(wx, y, wz) : 1;
                         if (x >= 0 && x < 16 && z >= 0 && z < 16) snapshot.Chunk.SetBlock(x, y, z, id);
                     }

@@ -12,6 +12,12 @@ public static class CheckSkylightCore
   data.SetBlock(8,16,8,1);sky.Edit(8,16,8);Drain(sky);Check(sky.Get(8,8,8)==0,"closing roof removes stale sky");
   for(int x=11;x<16;x++){data.SetBlock(x,8,8,0);sky.Edit(x,8,8);}Drain(sky);Check(sky.Get(15,8,8)==0,"unknown chunk does not leak sky");var outside=new ChunkData();sky.Register(1,0,outside);Drain(sky);Check(sky.Get(15,8,8)==14,"loaded neighbor joins sky across seam");Check(sky.Get(8,8,8)>0,"opening lights cave locally");sky.Remove(1,0);Drain(sky);Check(sky.Get(8,8,8)==0,"unload removes boundary light");
   var negative=new ChunkData();negative.SetBlock(15,20,15,5);sky.Register(-1,-1,negative);Drain(sky);Check(sky.Get(-1,21,-1)==15&&sky.Get(-1,19,-1)==14,"negative cell mapping / leaf attenuation and side fill");
+  byte[] padded=new byte[18*256*18];sky.CopyPaddedChunk(0,0,padded);
+  for(int y=0;y<256;y++)for(int z=-1;z<=16;z++)for(int x=-1;x<=16;x++)
+   Check(padded[x+1+18*(z+1+18*y)]==sky.Get(x,y,z),"padded snapshot matches Get including diagonal and missing neighbors");
+  sky.CopyPaddedChunk(-1,-1,padded);
+  for(int y=0;y<256;y++)for(int z=-1;z<=16;z++)for(int x=-1;x<=16;x++)
+   Check(padded[x+1+18*(z+1+18*y)]==sky.Get(x-16,y,z-16),"negative padded snapshot / recycled storage");
   byte[] volume=new byte[4*4*4];sky.CopyVolume(volume,-2,18,-2,4,4,4);Check(volume[1+4*(3+4)]==255,"GPU volume order x,y,z");
  }
  public static void Main(){Light();Console.WriteLine("PASS "+checks+" dynamic sky assertions (sealed/open/closed cave, chunk seams, unload, negative coordinates, volume layout).");}
