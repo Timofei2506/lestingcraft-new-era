@@ -84,8 +84,25 @@ namespace LestingCraft.Runtime
         readonly Stack<Snapshot> snapshots = new Stack<Snapshot>();
         int GenerationWorkers { get { return Math.Max(2, Math.Min(8, Environment.ProcessorCount - 1)); } }
 
+        Generation StartGeneration(Vector2Int key)
+        {
+            var entry = new Generation { Key=key, Buffer=new NativeArray<ushort>(ChunkData.BlockCount,Allocator.Persistent) };
+            entry.Job=new GenerateChunkJob { OriginX=key.x*16,OriginZ=key.y*16,Seed=Seed,
+                Dimension=Dimension,ContentVersion=ContentVersion,Blocks=entry.Buffer }.Schedule(256,16);
+            generating.Add(key,entry);
+            return entry;
+        }
         void ScheduleGeneration(Vector2Int center)
         {
+            // A teleport must not leave the queue permanently occupied by distant jobs.
+            remove.Clear();
+            foreach(var pair in generating)
+                if ((Math.Abs(pair.Key.x-center.x)>Radius+1 || Math.Abs(pair.Key.y-center.y)>Radius+1) && pair.Value.Job.IsCompleted)
+                    remove.Add(pair.Key);
+            foreach(var key in remove)
+            {
+                var entry=generating[key];entry.Job.Complete();entry.Buffer.Dispose();generating.Remove(key);
+            }
             for (int ring = 0; ring <= Radius + 1 && generating.Count < GenerationWorkers; ring++)
                 for (int dz = -ring; dz <= ring && generating.Count < GenerationWorkers; dz++)
                     for (int dx = -ring; dx <= ring && generating.Count < GenerationWorkers; dx++)
@@ -93,10 +110,7 @@ namespace LestingCraft.Runtime
                         if (Math.Max(Math.Abs(dx), Math.Abs(dz)) != ring) continue;
                         var key = center + new Vector2Int(dx, dz);
                         if (chunks.ContainsKey(key) || generating.ContainsKey(key) || !Contains(key.x*16,1,key.y*16)) continue;
-                        var entry = new Generation { Key = key, Buffer = new NativeArray<ushort>(ChunkData.BlockCount, Allocator.Persistent) };
-                        entry.Job = new GenerateChunkJob { OriginX=key.x*16, OriginZ=key.y*16, Seed=Seed,
-                            Dimension=Dimension, ContentVersion=ContentVersion, Blocks=entry.Buffer }.Schedule(256,16);
-                        generating.Add(key,entry);
+                        StartGeneration(key);
                     }
             JobHandle.ScheduleBatchedJobs();
         }
@@ -497,7 +511,13 @@ namespace LestingCraft.Runtime
             if (!generating.TryGetValue(key,out entry))
             {
                 ScheduleGeneration(Center());
-                if (!generating.TryGetValue(key,out entry)) yield break;
+                if (!generating.TryGetValue(key,out entry))
+                {
+                    // One foreground request may temporarily exceed the prefetch cap.
+                    // This ensures progress while old in-flight jobs finish after a teleport.
+                    entry=StartGeneration(key);
+                    JobHandle.ScheduleBatchedJobs();
+                }
             }
             while (!entry.Job.IsCompleted) yield return null;
             entry.Job.Complete();
