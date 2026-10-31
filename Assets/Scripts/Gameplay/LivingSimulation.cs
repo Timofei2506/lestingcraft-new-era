@@ -12,9 +12,9 @@ namespace LestingCraft.Gameplay
  {
   public readonly List<LivingActor> Actors=new List<LivingActor>();public readonly List<WorldDrop> Drops=new List<WorldDrop>();
   readonly Dictionary<Vector3Int,LivingCell> cells=new Dictionary<Vector3Int,LivingCell>();readonly HashSet<string> sites=new HashSet<string>();readonly Queue<Vector3Int> queue=new Queue<Vector3Int>();readonly HashSet<Vector3Int> queued=new HashSet<Vector3Int>();
-  readonly Func<int,int,int,ushort> get;readonly Action<int,int,int,ushort> set;readonly int seed;int serial,fluidPass;float fluidClock;
+  readonly Func<int,int,int,ushort> get;readonly Action<int,int,int,ushort> set;readonly int seed,contentVersion;int serial,fluidPass;float fluidClock;
   static readonly Vector3Int[] D={Vector3Int.down,Vector3Int.right,Vector3Int.left,new Vector3Int(0,0,1),new Vector3Int(0,0,-1),Vector3Int.up};
-  public LivingSimulation(int seed,LivingSave save,Func<int,int,int,ushort> get,Action<int,int,int,ushort> set){this.seed=seed;this.get=get;this.set=set;if(save==null)save=new LivingSave();serial=save.serial;if(save.actors!=null)foreach(var a in save.actors)if(a!=null&&Actors.Count<96)Actors.Add(a);if(save.drops!=null)foreach(var d in save.drops)if(d!=null&&Drops.Count<128)Drops.Add(d);if(save.sites!=null)foreach(var s in save.sites)if(s!=null&&sites.Count<256)sites.Add(s);if(save.cells!=null)foreach(var c in save.cells)if(c!=null&&cells.Count<768){var p=new Vector3Int(c.x,c.y,c.z);cells[p]=c;set(c.x,c.y,c.z,(ushort)c.block);Wake(p);}}
+  public LivingSimulation(int seed,LivingSave save,Func<int,int,int,ushort> get,Action<int,int,int,ushort> set,int contentVersion=6){this.seed=seed;this.contentVersion=contentVersion;this.get=get;this.set=set;if(save==null)save=new LivingSave();serial=save.serial;if(save.actors!=null)foreach(var a in save.actors)if(a!=null&&Actors.Count<96)Actors.Add(a);if(save.drops!=null)foreach(var d in save.drops)if(d!=null&&Drops.Count<128)Drops.Add(d);if(save.sites!=null)foreach(var s in save.sites)if(s!=null&&sites.Count<256)sites.Add(s);if(save.cells!=null)foreach(var c in save.cells)if(c!=null&&cells.Count<768){var p=new Vector3Int(c.x,c.y,c.z);cells[p]=c;set(c.x,c.y,c.z,(ushort)c.block);Wake(p);}}
   public LivingSave Save()=>new LivingSave{actors=Actors.ToArray(),drops=Drops.ToArray(),cells=new List<LivingCell>(cells.Values).ToArray(),sites=new List<string>(sites).ToArray(),serial=serial};
   public float Height(int x,int y,int z){return cells.TryGetValue(new Vector3Int(x,y,z),out var c)&&c.level>0?Mathf.Max(.125f,1-c.level/8f):1;}
   public void Wake(Vector3Int p){Enqueue(p);foreach(var d in D)Enqueue(p+d);}
@@ -44,7 +44,7 @@ namespace LestingCraft.Gameplay
    {
     int a=cx+dx,b=cz+dz;uint hash=TerrainGenerator.Hash(a,0,b,seed^71839);int x=a*192+64+(int)(hash%64),z=b*192+64+(int)((hash>>8)%64);string key=a+":"+b;
     if(sites.Contains(key)||sites.Count>=256||Actors.Count>86||Vector2.Distance(new Vector2(px,pz),new Vector2(x,z))>92)continue;
-    var col=ExpeditionGenerator.At(x,z,seed);if(!col.Surface||col.Kind!=0)continue;sites.Add(key);int rot=(int)((hash>>26)%4);
+    var col=ExpeditionGenerator.At(x,z,seed,contentVersion);if(!col.Surface||col.Kind!=0)continue;sites.Add(key);int rot=(int)((hash>>26)%4);
     int[] lxs={-15,14,-15,14,6,-6,0,0};
     int[] lzs={-15,-15,14,14,-5,5,-10,10};
     for(int i=0;i<lxs.Length;i++)

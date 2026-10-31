@@ -70,7 +70,45 @@ namespace LestingCraft.Runtime
         NativeArray<ushort> pendingBuffer;
         JobHandle pendingJob;
         IEnumerator work;
-        Task<ChunkMeshData> meshTask;
+        sealed class MeshBuild { public Vector2Int Key; public IEnumerator Routine; }
+        readonly List<MeshBuild> meshBuilds=new List<MeshBuild>();
+        readonly Dictionary<Vector2Int,Task<ChunkMeshData>> meshTasks=new Dictionary<Vector2Int,Task<ChunkMeshData>>();
+        readonly HashSet<Vector2Int> meshingKeys=new HashSet<Vector2Int>();
+        int MeshWorkers { get { return Math.Max(2,Math.Min(4,Environment.ProcessorCount-1)); } }
+        bool synchronousPump;
+
+        void StartMeshWorkers(Vector2Int center)
+        {
+            Vector2Int key;
+            while(meshBuilds.Count<MeshWorkers && FindDirty(center,out key))
+            {
+                meshingKeys.Add(key);
+                meshBuilds.Add(new MeshBuild { Key=key,Routine=Rebuild(key,chunks[key]) });
+            }
+        }
+        void AdvanceMeshWorkers()
+        {
+            // Completion/upload stays on Unity's main thread. Each worker owns a private snapshot.
+            for(int i=meshBuilds.Count-1;i>=0;i--)
+            {
+                if(BudgetExpired)break;
+                var build=meshBuilds[i];
+                if(synchronousPump && meshTasks.TryGetValue(build.Key,out var task))
+                    try { task.Wait(); } catch { /* Rebuild reports and retries the fault. */ }
+                bool active=false;
+                try { active=build.Routine.MoveNext(); }
+                catch(Exception exception) { UnityEngine.Debug.LogException(exception,this);dirty.Add(build.Key); }
+                if(active)continue;
+                (build.Routine as IDisposable)?.Dispose();
+                meshingKeys.Remove(build.Key);
+                meshBuilds.RemoveAt(i);
+            }
+        }
+        void ClearMeshWorkers()
+        {
+            foreach(var build in meshBuilds)(build.Routine as IDisposable)?.Dispose();
+            meshBuilds.Clear();meshingKeys.Clear();meshTasks.Clear();
+        }
         int detailQuality, editRevision, budgetFrame = -1;
         bool destroying;
         const double BudgetMilliseconds = 4.0;
@@ -209,7 +247,7 @@ namespace LestingCraft.Runtime
         }
         public bool IsIdleForShowcase
         {
-            get { Vector2Int key; return Ready && meshTask == null && !FindDirty(Center(),out key) && !FindMissing(Center(),out key); }
+            get { Vector2Int key; return Ready && meshBuilds.Count == 0 && !FindDirty(Center(),out key) && !FindMissing(Center(),out key); }
         }
         public void ShowcasePumpSync()
         {
@@ -218,6 +256,9 @@ namespace LestingCraft.Runtime
                 detailQuality = LestingCraft.Presentation.VisualSettings.Current.Preset;
                 foreach (var key in chunks.Keys) dirty.Add(key);
             }
+            synchronousPump=true;
+            try
+            {
             var sw = System.Diagnostics.Stopwatch.StartNew();
             Vector2Int center = Center();
             ScheduleGeneration(center);
@@ -243,10 +284,12 @@ namespace LestingCraft.Runtime
                 {
                     ScheduleGeneration(center);
                     Vector2Int key;
-                    if (FindDirty(center, out key)) work = Rebuild(key, chunks[key]);
-                    else if (FindMissing(center, out key)) work = Generate(key);
+                    StartMeshWorkers(center);
+                    AdvanceMeshWorkers();
+                    if (FindMissing(center, out key)) work = Generate(key);
                     else
                     {
+                        if(meshBuilds.Count!=0) { if(synchronousPump)continue; else break; }
                         Ready = true;
                         break;
                     }
@@ -254,7 +297,6 @@ namespace LestingCraft.Runtime
                 if (work != null)
                 {
                     if (pendingBuffer.IsCreated) pendingJob.Complete();
-                    if (meshTask != null) meshTask.Wait();
                     if (!work.MoveNext())
                     {
                         var disposable = work as IDisposable;
@@ -263,6 +305,8 @@ namespace LestingCraft.Runtime
                     }
                 }
             }
+            }
+            finally { synchronousPump=false; }
         }
         public void ShowcaseEditUnbounded(int x, int y, int z, ushort block)
         {
@@ -361,7 +405,7 @@ namespace LestingCraft.Runtime
             return dx * dx + dz * dz <= 32 * 32;
         }
 
-        bool BudgetExpired { get { return frameWatch.Elapsed.TotalMilliseconds >= (Ready ? BudgetMilliseconds : 10.0); } }
+        bool BudgetExpired { get { return !synchronousPump && frameWatch.Elapsed.TotalMilliseconds >= (Ready ? BudgetMilliseconds : 10.0); } }
 
         void LateUpdate()
         {
@@ -418,6 +462,9 @@ namespace LestingCraft.Runtime
             RenderSettings.fogStartDistance = Mathf.Max(18, Radius * 10);
             RenderSettings.fogEndDistance = Radius * 16;
             if (BudgetExpired) return;
+            StartMeshWorkers(center);
+            AdvanceMeshWorkers();
+            if (BudgetExpired) return;
             // Spend the whole per-frame streaming budget: when one chunk step
             // finishes, start the next in the same frame while budget remains.
             // Previously a single MoveNext ran per frame, so streaming throughput
@@ -430,10 +477,12 @@ namespace LestingCraft.Runtime
                 {
                     ScheduleGeneration(center);
                     Vector2Int key;
-                    if (FindDirty(center, out key)) work = Rebuild(key, chunks[key]);
-                    else if (FindMissing(center, out key)) work = Generate(key);
+                    StartMeshWorkers(center);
+                    AdvanceMeshWorkers();
+                    if (FindMissing(center, out key)) work = Generate(key);
                     else
                     {
+                        if(meshBuilds.Count!=0) { if(synchronousPump)continue; else break; }
                         Ready = true;
                         remove.Clear();
                         foreach (var pair in chunks)
@@ -479,7 +528,7 @@ namespace LestingCraft.Runtime
             foreach (var key in dirty)
             {
                 View v;
-                if (!chunks.TryGetValue(key, out v) || v.Baking || !NeighborsReady(key) ||
+                if (!chunks.TryGetValue(key, out v) || v.Baking || meshingKeys.Contains(key) || !NeighborsReady(key) ||
                     Math.Abs(key.x-center.x)>Radius || Math.Abs(key.y-center.y)>Radius) continue;
                 int distance = (key - center).sqrMagnitude;
                 if (distance < best) { best = distance; result = key; }
@@ -566,6 +615,7 @@ namespace LestingCraft.Runtime
         {
             dirty.Remove(key);
             int revision = editRevision, quality = detailQuality;
+            Task<ChunkMeshData> meshTask=null;
             var snapshot = snapshots.Count > 0 ? snapshots.Pop() : new Snapshot();
             snapshot.X=key.x*16; snapshot.Z=key.y*16;
             try
@@ -604,9 +654,11 @@ namespace LestingCraft.Runtime
             meshTask = Task.Run(() => ChunkMesher.Build(snapshot.Chunk, snapshot.X, snapshot.Z,
                 snapshot.Block, seed, decorate, quality, snapshot.Light,
                 fluid == null ? (Func<int,int,int,float>)null : snapshot.Height, true));
+            meshTasks[key]=meshTask;
             while (!meshTask.IsCompleted) yield return null;
             Task<ChunkMeshData> completed = meshTask;
             meshTask = null;
+            meshTasks.Remove(key);
             if (completed.IsFaulted)
             {
                 dirty.Add(key);
@@ -644,7 +696,13 @@ namespace LestingCraft.Runtime
             {
                 // A disposed coroutine may still have a worker reading its snapshot.
                 // Never recycle that storage until its task has finished.
-                if (meshTask == null || meshTask.IsCompleted) snapshots.Push(snapshot);
+                meshTasks.Remove(key);
+                if (meshTask == null || meshTask.IsCompleted)
+                {
+                    if(meshTask!=null && meshTask.IsFaulted){var observed=meshTask.Exception;}
+                    snapshots.Push(snapshot);
+                }
+                else meshTask.ContinueWith(task=>{var observed=task.Exception;},TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
@@ -739,11 +797,7 @@ namespace LestingCraft.Runtime
             ClearGeneration();
             pendingJob.Complete();
             if (pendingBuffer.IsCreated) pendingBuffer.Dispose();
-            if (meshTask != null)
-            {
-                try { meshTask.Wait(250); } catch { }
-                meshTask = null;
-            }
+            ClearMeshWorkers();
             foreach (var pair in chunks)
             {
                 Skylight.Remove(pair.Key.x, pair.Key.y);
@@ -802,10 +856,8 @@ namespace LestingCraft.Runtime
             ClearGeneration();
             pendingJob.Complete();
             if (pendingBuffer.IsCreated) pendingBuffer.Dispose();
-            // A mesh worker owns only its snapshot. Observe faults without blocking teardown.
-            if (meshTask != null)
-                meshTask.ContinueWith(task => { var observed = task.Exception; },
-                    TaskContinuationOptions.OnlyOnFaulted);
+            // Disposed workers keep their private snapshot alive until their task finishes.
+            ClearMeshWorkers();
             Skylight.Changed = null;
             foreach (var v in chunks.Values) DisposeView(v);
             if (material) Destroy(material);

@@ -67,7 +67,7 @@ namespace LestingCraft.Gameplay
     [Serializable] public sealed class SessionSave
     {
         public LivingSave living=new LivingSave();
-        public int schema=3,contentVersion=9,seed,mode;public LestingCraft.Story.StoryState story;public WildlifeSave wildlife=new WildlifeSave();public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
+        public int schema=3,contentVersion=11,seed,mode;public LestingCraft.Story.StoryState story;public WildlifeSave wildlife=new WildlifeSave();public double clock=420;public CampaignProgress campaign=new CampaignProgress();public PlayerSave player=new PlayerSave();
         public bool launchPlaced;public int launchX,launchZ;
         public int activeDimension,defeatedPlanetBossMask;public bool dockedAtStation;
         public int activeGalaxy,activeSystem;
@@ -86,7 +86,7 @@ namespace LestingCraft.Gameplay
                 if(data==null||(data.schema!=2&&data.schema!=3)||!GameRules.IsValid(data.mode))return null;
                 if(data.schema==3&&!raw.Contains("\"contentVersion\""))return null;
                 if(data.schema==2){data.contentVersion=1;data.schema=3;}
-                if(data.contentVersion<1||data.contentVersion>9)return null;
+                if(data.contentVersion<1||data.contentVersion>11)return null;
                 if(data.player==null)return null;
                 if(data.launchPlaced&&(data.launchX < -320||data.launchX > 320||data.launchZ < -260||data.launchZ > 320))return null;
                 data.activeDimension=Mathf.Clamp(data.activeDimension,0,14);

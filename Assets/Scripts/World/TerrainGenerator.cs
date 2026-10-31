@@ -147,7 +147,7 @@ namespace LestingCraft.World
             {
                 var trees = ContentVersion >= 7 ? BiomeGenerator.Trees(wx, wz, Seed, h, ContentVersion) : NatureGenerator.Trees(wx, wz, Seed, h);
                 var biome = ContentVersion >= 7 ? BiomeGenerator.At(wx, wz, Seed, ContentVersion) : BiomeKind.MixedForest;
-                var extra = ContentVersion >= 5 ? ExpeditionGenerator.At(wx, wz, Seed) : default(ExpeditionGenerator.Column);
+                var extra = ContentVersion >= 5 ? ExpeditionGenerator.At(wx, wz, Seed, ContentVersion) : default(ExpeditionGenerator.Column);
                 for (int y = 0; y < ChunkData.SizeY; y++)
                     Blocks[ChunkData.IndexOf(x, y, z)] = ContentVersion >= 4 &&
                         LestingCraft.Story.StoryWorld.TrySample(wx, y, wz, Seed, out ushort placed, ContentVersion)

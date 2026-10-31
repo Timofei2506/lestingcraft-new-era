@@ -101,8 +101,8 @@ namespace LestingCraft.Runtime
             {if(Time.realtimeSinceStartup-lastLog>10f){Debug.Log("[Smoke] Opening warmup: storyLocked="+game.StoryLocked+" failure="+(failure??"null")); lastLog=Time.realtimeSinceStartup;} yield return null;}
             if(game.StoryLocked||failure!=null){Fail("Mandatory opening did not finish its initial cinematic: "+failure+" elapsed="+(Time.realtimeSinceStartup-(deadline-90))+"s");yield break;}
             var livingWorld=game.Session.World;
-            if(livingWorld.ContentVersion!=9||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp==null||game.Session.Vitals.body.hp.Length!=6)
-            {Fail("Current living-world runtime systems missing: content="+livingWorld.ContentVersion+" (expected 9), living="+(game.Session.Living!=null)+", livingEnabled="+(game.Session.Living&&game.Session.Living.Enabled)+", bodyZones="+(game.Session.Vitals.body.hp==null?-1:game.Session.Vitals.body.hp.Length));yield break;}
+            if(livingWorld.ContentVersion!=11||!game.Session.Living||!game.Session.Living.Enabled||game.Session.Vitals.body.hp==null||game.Session.Vitals.body.hp.Length!=6)
+            {Fail("Current living-world runtime systems missing: content="+livingWorld.ContentVersion+" (expected 11), living="+(game.Session.Living!=null)+", livingEnabled="+(game.Session.Living&&game.Session.Living.Enabled)+", bodyZones="+(game.Session.Vitals.body.hp==null?-1:game.Session.Vitals.body.hp.Length));yield break;}
             var modelProbe=new GameObject("Smoke-only native villager and cat mesh checks");
             modelProbe.transform.position=game.Session.Player.transform.position+Vector3.down*20;
             for(int kind=0;kind<2;kind++)

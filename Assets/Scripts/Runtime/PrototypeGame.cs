@@ -1432,7 +1432,7 @@ namespace LestingCraft.Runtime
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
         }
-        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=9,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
+        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=11,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
         {
             if(multiplayer)IsSurfacePreview=false;
             realm=Mathf.Clamp(realm,0,14);

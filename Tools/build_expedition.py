@@ -1,6 +1,6 @@
 """Content 5: reproducible weapons and authored modular settlements. No changes to old generators."""
 from pathlib import Path
-import json,hashlib
+import json,hashlib,subprocess,sys
 R=Path(__file__).resolve().parents[1]
 weapons=[(152,'Стражевой меч','sword',140,17,650,3.5,380),(153,'Алмазный меч «Иней»','sword',149,23,600,3.5,1100),(154,'Кузнечный кинжал','dagger',140,10,320,2.7,260),(155,'Алмазный стилет','dagger',149,14,300,2.7,800),(156,'Крылатое копьё','spear',140,16,850,5.0,340),(157,'Алмазная пика','spear',149,22,800,5.0,1050),(158,'Боевой топор','axe',140,24,1100,3.2,420),(159,'Алмазная секира','axe',149,32,1050,3.2,1200),(160,'Рунный молот','hammer',140,30,1400,3.0,500),(161,'Алмазный молот «Грань»','hammer',149,40,1350,3.0,1400),(162,'Двуручный меч','greatsword',140,26,1150,4.2,450),(163,'Алмазный двуручник','greatsword',149,35,1100,4.2,1300),(164,'Походный лук','bow',120,18,1300,20,400)]
 (R/'Assets/Resources/Models/ExpeditionWeapons.json').write_text(json.dumps([dict(id=i,name=n,kind=k,material=m,damage=d,cooldown=cd,reach=r,durability=dur) for i,n,k,m,d,cd,r,dur in weapons],ensure_ascii=False,separators=(',',':')))
@@ -58,9 +58,9 @@ for x,z in [(-7,-6),(7,6)]:box(b,x-3,x+3,1,3,z-3,z+3,18);box(b,x-2,x+2,1,4,z-2,z
 box(b,-1,-1,1,1,0,0,15);box(b,2,2,1,1,0,0,16)
 blueprints.append(dict(name='Заброшенный лагерь',radius=13,top=5,boxes=b))
 (R/'Assets/Resources/Models/ExpeditionStructures.json').write_text(json.dumps(blueprints,ensure_ascii=False,separators=(',',':')))
-offsets=[0]
-for bp in blueprints:offsets.append(offsets[-1]+len(bp['boxes']))
-cs='namespace LestingCraft.World {public static class StructurePlan {public static readonly int[] Radius={'+','.join(str(b['radius']) for b in blueprints)+'};public static readonly int[] Offsets={'+','.join(map(str,offsets))+'};public static readonly int[] Boxes={'+','.join(str(n) for b in blueprints for n in b['boxes'])+'};}}'
-(R/'Assets/Scripts/World/StructurePlan.cs').write_text(cs)
-(R/'Server/src/structure-plan.js').write_text('export const plans='+json.dumps(blueprints,ensure_ascii=False,separators=(',',':'))+';\n')
-print(len(weapons),'weapons;',len(blueprints),'structure blueprints;',sum(len(b['boxes'])//7 for b in blueprints),'authored volumes')
+# This legacy authoring tool must never delete newer server plans or shrink
+# the C# content-10 catalog back to five entries when regenerating weapons.
+current=json.loads(subprocess.check_output(['node','--input-type=module','-e',"import {plans} from './Server/src/structure-plan.js';console.log(JSON.stringify(plans.slice(0,5)));"],cwd=R,text=True))
+if current!=blueprints:raise RuntimeError('Frozen legacy structure source drift; refusing to rewrite existing worlds')
+subprocess.run([sys.executable,str(R/'Tools/build_architecture.py')],check=True,cwd=R)
+print(len(weapons),'weapons;',len(blueprints),'frozen legacy structure blueprints verified; content-10/11 catalogs retained')

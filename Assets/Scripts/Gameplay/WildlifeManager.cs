@@ -98,7 +98,7 @@ namespace LestingCraft.Gameplay
             if (packet.animals != null)
             {
                 remote.Clear();
-                int limit = session.World.ContentVersion >= 7 ? 12 : 3;
+                int limit = session.World.ContentVersion >= 9 ? 30 : session.World.ContentVersion >= 8 ? 20 : session.World.ContentVersion >= 7 ? 12 : 3;
                 foreach (AnimalState a in packet.animals)
                     if (a != null && a.id != null && !a.dead && a.species >= 0 && a.species < limit &&
                         Finite(a.x) && Finite(a.y) && Finite(a.z) && Finite(a.yaw) && remote.Count < WildlifeSimulation.MaxAnimals)
