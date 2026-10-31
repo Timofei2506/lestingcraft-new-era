@@ -236,6 +236,7 @@ Shader "LestingCraft/VoxelPBR"
         {
             Name "ShadowCaster"
             Tags {"LightMode"="ShadowCaster"}
+            Cull Off
             ZWrite On ZTest LEqual ColorMask 0
             HLSLPROGRAM
             #pragma target 3.5

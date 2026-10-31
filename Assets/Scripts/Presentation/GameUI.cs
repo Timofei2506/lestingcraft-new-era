@@ -465,10 +465,10 @@ namespace LestingCraft.Presentation
             }
             // Item names are hover/focus tooltips, never permanent slot text.
 
-            var healthPanel=Box(content.transform,16,590,244,210,new Color(.025f,.05f,.055f,.91f));
-            healthHUD=Label(healthPanel.transform,"СОСТОЯНИЕ · 100 / 100",12,10,222,30,17,White);
-            var body=Rect("Health silhouette",healthPanel.transform,10,47,91,157);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
-            vitalsHUD=Label(healthPanel.transform,"",112,49,124,151,16,White);
+            var healthPanel=Box(content.transform,24,662,244,130,new Color(.025f,.05f,.055f,.91f));
+            healthHUD=Label(healthPanel.transform,"HP · 100 / 100",12,10,222,30,17,White);
+            var body=Rect("Health bar",healthPanel.transform,12,43,220,8);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
+            vitalsHUD=Label(healthPanel.transform,"",12,59,220,66,13,White);
             miningBar=Box(content.transform,565,484,0,4,Accent,false);miningBar.gameObject.name="Mining progress";
             miningLabel=Label(content.transform,"",540,494,200,29,12,White,false,TextAnchor.MiddleCenter);
             chatRoot=Box(content.transform,26,265,590,260,new Color(.025f,.045f,.04f,.78f)).gameObject;
@@ -514,7 +514,7 @@ namespace LestingCraft.Presentation
                 if(game.Session)
                 {
                     var session=game.Session;var v=session.Vitals;
-                    healthBody.SetBody(v);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"СОСТОЯНИЕ · {v.health:0} / 100";
+                    healthBody.SetBody(v);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"HP · {v.health:0} / 100";
                     string extraTech="";
                     if(game.Tech)
                     {
@@ -524,7 +524,7 @@ namespace LestingCraft.Presentation
                         if(sim.Grid.GenerationKw>0.1f||sim.Grid.DemandKw>0.1f)
                             extraTech+=$"\n⚡ Сеть  {sim.Grid.GenerationKw:0}/{sim.Grid.DemandKw:0} кВт · {sim.Grid.StoredKwh:0} кВт·ч";
                     }
-                    vitalsHUD.text=$"Голод  {v.hunger:0}\n\nТело  {v.temperature:0.0}°C\nПромокание  {v.wetness*100:0}%\n\nСилы  {v.stamina:0}"+(v.air<100?$"\nВоздух  {v.air:0}%":"")+extraTech;
+                    vitalsHUD.text=$"Еда {v.hunger:0}  ·  Силы {v.stamina:0}\n{v.temperature:0.0}°C  ·  Влага {v.wetness*100:0}%"+(v.air<100?$"  ·  O₂ {v.air:0}%":"")+extraTech;
 
                     if(lastNotice!=session.Notice){lastNotice=session.Notice;noticeAt=Time.unscaledTime;}
                     noticeHUD.text=Time.unscaledTime-noticeAt<4?lastNotice:"";

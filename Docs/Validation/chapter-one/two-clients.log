@@ -1,5 +1,0 @@
-PASS: create → two-player waiting lobby → host-only Start; public packets do not reveal player keys
-PASS: both-ready loading barrier and timed chapter opening synchronize, including the tick sender
-PASS: shared poor-loot search, witnesses, host branch, dialogue consensus, village and both mechanisms
-PASS: 270HP co-op guardian, shield reset / second phase, loss cutscene and common chapter completion
-PASS: private inventory / offhand / reward claims commit and reconnect exactly once; restart receipt saved

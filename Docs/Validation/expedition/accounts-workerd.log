@@ -1,2 +1,0 @@
-PASS real local workerd + SQLite Durable Object: registration with Node crypto PBKDF2-SHA256 600000 iterations, login, bearer-authenticated progress, server XP, duplicate batch idempotence. No production deployment or Unity execution. Test receipt excluded from snapshot.
-PASS process restart + upgrade to pinned Wrangler 4.151.0 / workerd 2026 with Node 22: SQLite user/session/statistics/XP restored, PBKDF2 600000 registration still succeeds. No production deployment.

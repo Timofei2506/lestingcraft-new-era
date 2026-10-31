@@ -1,1 +1,0 @@
-PASS: 2750015 assertions; 50000 randomized split/merge/swap/shift operations, recipe atomicity, tool wear and fuel/timing. Pure C# core only, not Unity scene test.

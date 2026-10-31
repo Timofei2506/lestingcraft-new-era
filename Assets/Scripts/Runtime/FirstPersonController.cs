@@ -211,7 +211,7 @@ namespace LestingCraft.Runtime
 
             var keys=new[]{keyboard.digit1Key,keyboard.digit2Key,keyboard.digit3Key,keyboard.digit4Key,keyboard.digit5Key,keyboard.digit6Key,keyboard.digit7Key,keyboard.digit8Key,keyboard.digit9Key};
             for(int i=0;i<keys.Length;i++)if(keys[i].wasPressedThisFrame)Game.Session.Inventory.selected=i;
-            if(keyboard.hKey.wasPressedThisFrame){var inv=Game.Session.Inventory;if(inv.Count(Items.Fiber)>=3&&Game.Session.Vitals.body.Treat()){inv.Remove(Items.Fiber,3);Game.Session.Notice="Повязка: самая повреждённая часть тела обработана";Game.Session.Checkpoint();}else Game.Session.Notice="Для повязки нужны 3 волокна и повреждение";}
+            if(keyboard.hKey.wasPressedThisFrame){var inv=Game.Session.Inventory;if(inv.Count(Items.Fiber)>=3&&Game.Session.Vitals.Treat()){inv.Remove(Items.Fiber,3);Game.Session.Notice="Повязка: восстановлено 22 HP";Game.Session.Checkpoint();}else Game.Session.Notice="Для повязки нужны 3 волокна и повреждение";}
             if(keyboard.gKey.wasPressedThisFrame&&!Game.Session.Inventory.ToggleOffhand())Game.Session.Notice="G · выберите факел на хотбаре; для снятия нужно место в сумке";
             if(keyboard.qKey.wasPressedThisFrame)Game.Session.Living.DropActive();
             if(Game.Session.Living.Pending){Game.Session.ResetMining();return;}

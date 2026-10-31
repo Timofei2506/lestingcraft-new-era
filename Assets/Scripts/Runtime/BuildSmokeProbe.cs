@@ -191,7 +191,7 @@ namespace LestingCraft.Runtime
             var hands=player.GetComponent<FirstPersonHands>();
             if(!hands||!hands.ViewCamera||!hands.ViewCamera.enabled){Fail("First-person hand camera not active.");yield break;}
             var body=ui.GetComponentInChildren<HealthSilhouette>();
-            if(!body||body.Zones.Length!=6){Fail("HUD silhouette missing.");yield break;}
+            if(!body||body.Zones.Length!=1){Fail("Standard HP bar missing.");yield break;}
             game.Session.Inventory.Add(1,8);game.Session.Inventory.selected=Array.FindIndex(game.Session.Inventory.slots,stack=>stack.item==1&&stack.count>0);
             yield return null;yield return new WaitForEndOfFrame();
             Rect heldRect=hands.HeldViewportBounds();

@@ -1,9 +1,0 @@
-PASS: actual two-client WebSocket fauna sync including sender, rules-4 rejection, authoritative single kill, contested hit rejection, pending loot replay before save, private committed loot/inventory reconnect; receipt ready for process-restart check
-
-> lestingcraft-coop-server@0.1.0 test:integration
-> node test/integration.js && node test/survival-integration.js
-
-PASS:health,create,two peers,positions,block broadcast,reconnect snapshot,chat broadcast,invalid edit,leave
-PASS: rules v2, modes, inventory/stats reconnect, private save, shared milestones, team hardcore end and reconnect lock
-PASS: ordinary survival death and persistent personal grave
-PASS: full server process restart restores dead animal, private inventory and committed loot claim without respawn or duplicate reward

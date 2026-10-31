@@ -28,11 +28,12 @@ namespace LestingCraft.Gameplay
             if(immersed)wetness=1;air=Mathf.Clamp(air+seconds*(underwater?-8:25),0,100);
             if(underwater&&air<=0)Damage(seconds*5,mode);
         }
-        public void Damage(float amount,GameMode mode){if(mode==GameMode.Creative||dead)return;body.Systemic(Mathf.Max(0,amount));health=Mathf.Max(0,health-Mathf.Max(0,amount));dead=health<=0||body.VitalFailure;if(dead)health=0;}
-        public void DamagePart(float amount,GameMode mode,BodyPart part){if(mode==GameMode.Creative||dead||amount<=0)return;body.Hit(part,amount);health=Mathf.Max(0,health-amount);dead=health<=0||body.VitalFailure;if(dead)health=0;}
+        public void Damage(float amount,GameMode mode){if(mode==GameMode.Creative||dead)return;body.Systemic(Mathf.Max(0,amount));health=Mathf.Max(0,health-Mathf.Max(0,amount));dead=health<=0;if(dead)health=0;}
+        public void DamagePart(float amount,GameMode mode,BodyPart part){if(mode==GameMode.Creative||dead||amount<=0)return;body.Systemic(amount);health=Mathf.Max(0,health-amount);dead=health<=0;if(dead)health=0;}
+        public bool Treat(){if(dead||health>=98)return false;health=Mathf.Min(100,health+22);body.trauma=Mathf.Min(body.trauma,5);return true;}
         public void Eat(float amount){if(!dead)hunger=Mathf.Min(100,hunger+amount);}
         public void Respawn(){body=new BodyHealth();body.Normalize(100);health=100;hunger=70;temperature=37;wetness=0;stamina=100;air=100;dead=false;}
-        public void Normalize(){if(body==null)body=new BodyHealth();body.Normalize(health);if(body.VitalFailure)health=0;air=Mathf.Clamp(air,0,100);health=Mathf.Clamp(health,0,100);hunger=Mathf.Clamp(hunger,0,100);stamina=Mathf.Clamp(stamina,0,100);temperature=Mathf.Clamp(temperature,25,43);wetness=Mathf.Clamp01(wetness);dead=health<=0;}
+        public void Normalize(){if(body==null)body=new BodyHealth();body.Normalize(health);air=Mathf.Clamp(air,0,100);health=Mathf.Clamp(health,0,100);hunger=Mathf.Clamp(hunger,0,100);stamina=Mathf.Clamp(stamina,0,100);temperature=Mathf.Clamp(temperature,25,43);wetness=Mathf.Clamp01(wetness);dead=health<=0;}
     }
     public readonly struct WeatherSample
     {

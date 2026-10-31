@@ -1,32 +1,28 @@
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace LestingCraft.Presentation
 {
-    /// <summary>Six independent saved body health zones.</summary>
+    // Component name kept for serialized scene compatibility; no body-zone UI remains.
     public sealed class HealthSilhouette : MonoBehaviour
     {
         public Image[] Zones {get;private set;}
         public float Health {get;private set;}=100;
         public void Build()
         {
-            Zones=new Image[6];
-            string[] names={"Head","Torso","Left arm","Right arm","Left leg","Right leg"};
-            Vector4[] rects={new Vector4(29,0,32,32),new Vector4(25,37,40,55),new Vector4(6,37,14,58),new Vector4(70,37,14,58),new Vector4(25,97,17,60),new Vector4(48,97,17,60)};
-            for(int i=0;i<6;i++)
-            {
-                var obj=new GameObject(names[i],typeof(RectTransform),typeof(Image));obj.transform.SetParent(transform,false);
-                var rt=obj.GetComponent<RectTransform>();rt.anchorMin=rt.anchorMax=new Vector2(0,1);rt.pivot=new Vector2(0,1);rt.anchoredPosition=new Vector2(rects[i].x,-rects[i].y);rt.sizeDelta=new Vector2(rects[i].z,rects[i].w);
-                Zones[i]=obj.GetComponent<Image>();Zones[i].sprite=null;Zones[i].type=Image.Type.Simple;Zones[i].raycastTarget=false;
-            }
+            var track=new GameObject("HP track",typeof(RectTransform),typeof(Image));
+            track.transform.SetParent(transform,false);
+            var rt=track.GetComponent<RectTransform>();rt.anchorMin=Vector2.zero;rt.anchorMax=Vector2.one;rt.offsetMin=rt.offsetMax=Vector2.zero;
+            track.GetComponent<Image>().color=new Color(.10f,.14f,.16f,.95f);
+            var fill=new GameObject("HP fill",typeof(RectTransform),typeof(Image));fill.transform.SetParent(track.transform,false);
+            Zones=new[]{fill.GetComponent<Image>()};Zones[0].raycastTarget=false;track.GetComponent<Image>().raycastTarget=false;
             SetHealth(100);
         }
-        public void SetBody(LestingCraft.Gameplay.SurvivalState state){SetHealth(state.health);if(Zones==null)return;for(int i=0;i<6;i++){float h=state.body.hp[i]/100;Zones[i].color=Color.Lerp(new Color(.82f,.12f,.09f),new Color(.52f,.75f,.57f),h);}}
+        public void SetBody(LestingCraft.Gameplay.SurvivalState state){SetHealth(state.health);}
         public void SetHealth(float hp)
         {
-            Health=Mathf.Clamp(hp,0,100);
-            var color=Health>50?Color.Lerp(new Color(.9f,.68f,.25f),new Color(.52f,.75f,.57f),(Health-50)/50):Color.Lerp(new Color(.78f,.20f,.16f),new Color(.9f,.68f,.25f),Health/50);
-            if(Zones!=null)foreach(var zone in Zones)if(zone)zone.color=color;
+            Health=Mathf.Clamp(hp,0,100);if(Zones==null)return;
+            var rt=Zones[0].rectTransform;rt.anchorMin=Vector2.zero;rt.anchorMax=new Vector2(Health/100,1);rt.offsetMin=rt.offsetMax=Vector2.zero;
+            Zones[0].color=Health>30?new Color(.55f,.78f,.65f):new Color(.94f,.31f,.25f);
         }
     }
 }

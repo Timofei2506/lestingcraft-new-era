@@ -1,1 +1,0 @@
-PASS 72887 core checks; 12000 terrain vectors; forest wood=1363 legacy=130 leaves=17469 max trunk height=18; cave air=64581/372449; entrance columns=59. Real managed code only; not Unity GPU or Burst execution.

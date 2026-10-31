@@ -570,3 +570,15 @@ h1{margin:0 0 18px;line-height:.92}
 
 /* ---------- Press quote ---------- */
 .press-quote{margin:0;padding:16px 20px;border-left:3px solid var(--amber,#e8b25c);background:rgba(255,255,255,.04);border-radius:0 12px 12px 0;line-height:1.6;white-space:pre-line}
+
+/* Era visual refresh: neutral slate glass, editorial spacing, accessible controls.
+   Existing gameplay screenshots remain unmodified and are not replaced by key art. */
+:root{--ink:#080e16;--deep:#0c1722;--bg-2:#101f2c;--panel:rgba(18,32,47,.76);--panel-2:rgba(19,36,52,.94);--muted:#adbdcb;--dim:#8a9dad;--amber:#f3bd78;--amber-hi:#ffe0ae;--mint:#8bd4ba;--radius:14px;--radius-sm:9px;--maxw:1280px}
+body{background:radial-gradient(ellipse at 85% 0,rgba(119,159,191,.14),transparent 50%),linear-gradient(180deg,#080e16,#0d1b28 65%,#080f18)}
+h1,h2{letter-spacing:-.035em;text-wrap:balance}
+p{ text-wrap:pretty }
+.btn{min-height:48px;border-radius:9px;letter-spacing:.015em}
+input,textarea,select{min-height:44px}
+.card,.shot{border-color:rgba(174,203,225,.16)}
+.card:hover,.shot:hover{border-color:rgba(243,189,120,.45)}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}

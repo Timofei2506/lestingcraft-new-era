@@ -1,3 +1,0 @@
-PASS: species 0 -> deer-fur (layer 52)
-PASS: species 1 -> hare-fur (layer 53)
-PASS: species 2 -> boar-bristles (layer 54)

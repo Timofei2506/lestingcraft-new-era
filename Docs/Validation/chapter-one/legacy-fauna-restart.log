@@ -1,1 +1,0 @@
-PASS: full server process restart restores dead animal, private inventory and committed loot claim without respawn or duplicate reward

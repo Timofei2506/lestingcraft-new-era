@@ -34,7 +34,10 @@ Shader "LestingCraft/AtmosphericSky"
             }
             float Density(float3 p, bool detail)
             {
-                float profile=saturate((p.y-_CloudBase)/9)*saturate((_CloudBase+48-p.y)/15);
+                // Two distinct layers: low cumulus and a thinner high cloud deck.
+                float low=saturate((p.y-_CloudBase)/9)*saturate((_CloudBase+48-p.y)/15);
+                float high=saturate((p.y-_CloudBase-82)/8)*saturate((_CloudBase+116-p.y)/12)*.36;
+                float profile=max(low,high);
                 if(profile<=0)return 0;
                 float3 shifted=p+_CloudOffset.xyz;
                 float2 rotated=mul(float2x2(.848,-.530,.530,.848),shifted.xz);
@@ -57,14 +60,14 @@ Shader "LestingCraft/AtmosphericSky"
                 half3 background=LC_SkyRadiance(ray);
                 if(ray.y<0)
                     return half4(lerp(_EnvironmentHorizon.rgb,_EnvironmentZenith.rgb*.45,saturate(-ray.y*2)),1);
-                if(ray.y<.035||_CloudCoverage<.015)return half4(background,1);
+                if(ray.y<.004||_CloudCoverage<.015)return half4(background,1);
                 float start=max(0,(_CloudBase-_WorldSpaceCameraPos.y)/ray.y);
-                float end=min(1800,(_CloudBase+48-_WorldSpaceCameraPos.y)/ray.y);
+                float end=min(12000,(_CloudBase+116-_WorldSpaceCameraPos.y)/ray.y);
                 if(end<=start)return half4(background,1);
                 float3 sunDir=_EnvironmentSunDirection.y>-.025
                     ?_EnvironmentSunDirection.xyz:_EnvironmentMoonDirection.xyz;
-                float mu=saturate(dot(ray,sunDir));
-                int maximum=(int)clamp(_LCCloudSteps>0?_LCCloudSteps:_CloudSteps,8,16);
+                float mu=clamp(dot(ray,sunDir),-1,1);
+                int maximum=(int)clamp(_LCCloudSteps>0?_LCCloudSteps:_CloudSteps,12,32);
                 int count=max(6,(int)ceil(maximum*lerp(.65,1,saturate(ray.y*3))));
                 float stepLength=(end-start)/count;
                 float transmittance=1;
@@ -73,8 +76,10 @@ Shader "LestingCraft/AtmosphericSky"
                 half3 direct=lerp(half3(.055,.075,.13),_EnvironmentSunColor.rgb,_EnvironmentDaylight);
                 half3 ambient=lerp(_EnvironmentHorizon.rgb,_EnvironmentZenith.rgb,.25)*
                     lerp(.30,.68,_EnvironmentDaylight);
-                float forward=pow(mu,12);
-                [loop] for(int n=0;n<16;n++)
+                // Dual-lobe Henyey-Greenstein phase, normalized relative to isotropic scattering.
+                float forward=.85*(1-.72*.72)/pow(max(.04,1+.72*.72-2*.72*mu),1.5)
+                    +.15*(1-.25*.25)/pow(max(.04,1+.25*.25+2*.25*mu),1.5);
+                [loop] for(int n=0;n<32;n++)
                 {
                     if(n>=count||transmittance<.025)break;
                     float along=start+(n+jitter)*stepLength;
@@ -82,16 +87,18 @@ Shader "LestingCraft/AtmosphericSky"
                     float d=Density(p,true);
                     if(d<.003)continue;
                     float shadowDensity=Density(p+sunDir*22,false);
+                    shadowDensity+=Density(p+sunDir*58,false)*.6;
                     float sunlight=exp(-shadowDensity*3.2);
+                    float powder=1-exp(-d*stepLength*.13);
                     float alpha=1-exp(-d*stepLength*.065);
-                    float silver=forward*(1-d)*sunlight*.38;
-                    half3 lighting=ambient+direct*(sunlight*.55+forward*.10+silver);
-                    lighting=lerp(lighting,background,saturate(along/1800)*.45);
+                    float silver=forward*(1-d)*sunlight*powder*.24;
+                    half3 lighting=ambient+direct*(sunlight*.55+min(forward,8)*.035+silver);
+                    lighting=lerp(lighting,background,(1-exp(-along*.00016))*.75);
                     clouds+=lighting*alpha*transmittance;
                     transmittance*=1-alpha;
                 }
                 // Fade the finite marching horizon instead of drawing a hard cloud seam.
-                float horizon=smoothstep(.035,.10,ray.y);
+                float horizon=smoothstep(.004,.025,ray.y);
                 return half4(lerp(background,clouds+background*transmittance,horizon),1);
             }
             ENDHLSL

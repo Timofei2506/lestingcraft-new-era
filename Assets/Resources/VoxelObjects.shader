@@ -69,7 +69,7 @@ Shader "LestingCraft/VoxelObjects"
                 float snow=upward*_GlobalSnow*.75*step(i.uv.z,8.5);
                 float macro=.94+.06*sin(i.positionWS.x*.29+sin(i.positionWS.z*.23))*sin(i.positionWS.z*.31+i.positionWS.y*.13);
                 float wet=_GlobalWetness*lerp(.3,1,upward);
-                surface.albedo=albedo.rgb*i.color.rgb;surface.metallic=mask.r;surface.specular=half3(.04,.04,.04);
+                surface.albedo=lerp(albedo.rgb*i.color.rgb*macro,half3(.85,.90,.95),snow);surface.metallic=mask.r;surface.specular=half3(.04,.04,.04);
                 surface.smoothness=saturate(lerp(mask.a+wet*.32,.16,snow));surface.normalTS=normalTS;surface.occlusion=mask.g;
                 surface.alpha=1;
                 surface.emission=surface.albedo*i.color.a*1.5;if(abs(i.uv.z-9)<.25){half heat=saturate((surface.albedo.r-max(surface.albedo.g,surface.albedo.b)*1.1)*3.8);surface.emission=surface.albedo*heat*6*(.9+.1*sin(_EnvironmentTime*.65+i.positionWS.x));surface.smoothness=lerp(surface.smoothness,.87,heat);}
@@ -91,6 +91,7 @@ Shader "LestingCraft/VoxelObjects"
         Pass
         {
             Name "ShadowCaster" Tags {"LightMode"="ShadowCaster"}
+            Cull Off
             ZWrite On ZTest LEqual ColorMask 0
             HLSLPROGRAM
             #pragma target 3.5

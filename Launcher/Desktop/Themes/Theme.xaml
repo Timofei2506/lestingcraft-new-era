@@ -2,25 +2,25 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!-- ===== Palette ===== -->
-  <Color x:Key="ColGoldHi">#F8D591</Color>
-  <Color x:Key="ColGold">#EFBA69</Color>
-  <Color x:Key="ColGoldLo">#C98B3E</Color>
-  <Color x:Key="ColText">#ECEBDD</Color>
-  <Color x:Key="ColMuted">#A3B098</Color>
-  <Color x:Key="ColDim">#6F7E66</Color>
-  <Color x:Key="ColPanel">#131C14</Color>
-  <Color x:Key="ColLine">#2A3826</Color>
+  <Color x:Key="ColGoldHi">#FFE0AE</Color>
+  <Color x:Key="ColGold">#F3BD78</Color>
+  <Color x:Key="ColGoldLo">#C58B4E</Color>
+  <Color x:Key="ColText">#EDF2F4</Color>
+  <Color x:Key="ColMuted">#A6B6C3</Color>
+  <Color x:Key="ColDim">#758797</Color>
+  <Color x:Key="ColPanel">#111A24</Color>
+  <Color x:Key="ColLine">#2B3B4B</Color>
 
   <SolidColorBrush x:Key="Gold" Color="{StaticResource ColGold}"/>
   <SolidColorBrush x:Key="Text" Color="{StaticResource ColText}"/>
   <SolidColorBrush x:Key="Muted" Color="{StaticResource ColMuted}"/>
   <SolidColorBrush x:Key="Dim" Color="{StaticResource ColDim}"/>
   <SolidColorBrush x:Key="Line" Color="{StaticResource ColLine}"/>
-  <SolidColorBrush x:Key="Green" Color="#8CC66A"/>
+  <SolidColorBrush x:Key="Green" Color="#8BD4BA"/>
   <SolidColorBrush x:Key="Red" Color="#D9644A"/>
-  <SolidColorBrush x:Key="Track" Color="#1B2719"/>
-  <SolidColorBrush x:Key="Hover" Color="#243425"/>
-  <SolidColorBrush x:Key="HoverLine" Color="#3E5238"/>
+  <SolidColorBrush x:Key="Track" Color="#192837"/>
+  <SolidColorBrush x:Key="Hover" Color="#23374A"/>
+  <SolidColorBrush x:Key="HoverLine" Color="#435F76"/>
 
   <LinearGradientBrush x:Key="GoldGradient" StartPoint="0,0" EndPoint="1,0">
     <GradientStop Color="{StaticResource ColGoldHi}" Offset="0"/>
@@ -29,14 +29,14 @@
   </LinearGradientBrush>
 
   <LinearGradientBrush x:Key="CardGradient" StartPoint="0,0" EndPoint="1,1">
-    <GradientStop Color="#17221A" Offset="0"/>
-    <GradientStop Color="#0E150F" Offset="1"/>
+    <GradientStop Color="#172735" Offset="0"/>
+    <GradientStop Color="#0D1722" Offset="1"/>
   </LinearGradientBrush>
 
   <LinearGradientBrush x:Key="HeroGradient" StartPoint="0,0" EndPoint="1,1">
-    <GradientStop Color="#22341F" Offset="0"/>
-    <GradientStop Color="#132015" Offset="0.55"/>
-    <GradientStop Color="#0A100B" Offset="1"/>
+    <GradientStop Color="#273D50" Offset="0"/>
+    <GradientStop Color="#142A3D" Offset="0.55"/>
+    <GradientStop Color="#0B1521" Offset="1"/>
   </LinearGradientBrush>
 
   <RadialGradientBrush x:Key="GoldGlow" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
@@ -141,7 +141,7 @@
           <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="12"
                   Padding="{TemplateBinding Padding}">
             <Border.Effect>
-              <DropShadowEffect BlurRadius="22" ShadowDepth="0" Color="#EFBA69" Opacity="0.28"/>
+              <DropShadowEffect BlurRadius="22" ShadowDepth="0" Color="#F3BD78" Opacity="0.28"/>
             </Border.Effect>
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>

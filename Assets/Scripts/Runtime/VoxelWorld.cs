@@ -74,6 +74,46 @@ namespace LestingCraft.Runtime
         int detailQuality, editRevision, budgetFrame = -1;
         bool destroying;
         const double BudgetMilliseconds = 4.0;
+        sealed class Generation
+        {
+            public Vector2Int Key;
+            public NativeArray<ushort> Buffer;
+            public JobHandle Job;
+        }
+        readonly Dictionary<Vector2Int, Generation> generating = new Dictionary<Vector2Int, Generation>();
+        readonly Stack<Snapshot> snapshots = new Stack<Snapshot>();
+        int GenerationWorkers { get { return Math.Max(2, Math.Min(8, Environment.ProcessorCount - 1)); } }
+
+        void ScheduleGeneration(Vector2Int center)
+        {
+            for (int ring = 0; ring <= Radius + 1 && generating.Count < GenerationWorkers; ring++)
+                for (int dz = -ring; dz <= ring && generating.Count < GenerationWorkers; dz++)
+                    for (int dx = -ring; dx <= ring && generating.Count < GenerationWorkers; dx++)
+                    {
+                        if (Math.Max(Math.Abs(dx), Math.Abs(dz)) != ring) continue;
+                        var key = center + new Vector2Int(dx, dz);
+                        if (chunks.ContainsKey(key) || generating.ContainsKey(key) || !Contains(key.x*16,1,key.y*16)) continue;
+                        var entry = new Generation { Key = key, Buffer = new NativeArray<ushort>(ChunkData.BlockCount, Allocator.Persistent) };
+                        entry.Job = new GenerateChunkJob { OriginX=key.x*16, OriginZ=key.y*16, Seed=Seed,
+                            Dimension=Dimension, ContentVersion=ContentVersion, Blocks=entry.Buffer }.Schedule(256,16);
+                        generating.Add(key,entry);
+                    }
+            JobHandle.ScheduleBatchedJobs();
+        }
+        bool NeighborsReady(Vector2Int key)
+        {
+            for(int dz=-1;dz<=1;dz++) for(int dx=-1;dx<=1;dx++)
+            {
+                var n=key+new Vector2Int(dx,dz);
+                if(Contains(n.x*16,1,n.y*16) && !chunks.ContainsKey(n)) return false;
+            }
+            return true;
+        }
+        void ClearGeneration()
+        {
+            foreach(var entry in generating.Values) { entry.Job.Complete(); if(entry.Buffer.IsCreated) entry.Buffer.Dispose(); }
+            generating.Clear();
+        }
 
         public int ContentVersion { get; private set; }
         public int Seed { get; private set; }
@@ -155,7 +195,7 @@ namespace LestingCraft.Runtime
         }
         public bool IsIdleForShowcase
         {
-            get { return Ready && dirty.Count == 0 && meshTask == null; }
+            get { Vector2Int key; return Ready && meshTask == null && !FindDirty(Center(),out key) && !FindMissing(Center(),out key); }
         }
         public void ShowcasePumpSync()
         {
@@ -166,6 +206,7 @@ namespace LestingCraft.Runtime
             }
             var sw = System.Diagnostics.Stopwatch.StartNew();
             Vector2Int center = Center();
+            ScheduleGeneration(center);
             while (sw.ElapsedMilliseconds < 120000)
             {
                 Skylight.Process();
@@ -186,6 +227,7 @@ namespace LestingCraft.Runtime
                 }
                 if (work == null)
                 {
+                    ScheduleGeneration(center);
                     Vector2Int key;
                     if (FindDirty(center, out key)) work = Rebuild(key, chunks[key]);
                     else if (FindMissing(center, out key)) work = Generate(key);
@@ -305,7 +347,7 @@ namespace LestingCraft.Runtime
             return dx * dx + dz * dz <= 32 * 32;
         }
 
-        bool BudgetExpired { get { return frameWatch.Elapsed.TotalMilliseconds >= BudgetMilliseconds; } }
+        bool BudgetExpired { get { return frameWatch.Elapsed.TotalMilliseconds >= (Ready ? BudgetMilliseconds : 10.0); } }
 
         void LateUpdate()
         {
@@ -325,6 +367,7 @@ namespace LestingCraft.Runtime
                 foreach (var key in chunks.Keys) dirty.Add(key);
             }
             Vector2Int center = Center();
+            ScheduleGeneration(center);
             foreach (var pair in chunks)
             {
                 View v = pair.Value;
@@ -371,6 +414,7 @@ namespace LestingCraft.Runtime
             {
                 if (work == null)
                 {
+                    ScheduleGeneration(center);
                     Vector2Int key;
                     if (FindDirty(center, out key)) work = Rebuild(key, chunks[key]);
                     else if (FindMissing(center, out key)) work = Generate(key);
@@ -421,7 +465,8 @@ namespace LestingCraft.Runtime
             foreach (var key in dirty)
             {
                 View v;
-                if (!chunks.TryGetValue(key, out v) || v.Baking) continue;
+                if (!chunks.TryGetValue(key, out v) || v.Baking || !NeighborsReady(key) ||
+                    Math.Abs(key.x-center.x)>Radius || Math.Abs(key.y-center.y)>Radius) continue;
                 int distance = (key - center).sqrMagnitude;
                 if (distance < best) { best = distance; result = key; }
             }
@@ -430,7 +475,7 @@ namespace LestingCraft.Runtime
 
         bool FindMissing(Vector2Int center, out Vector2Int result)
         {
-            for (int ring = 0; ring <= Radius; ring++)
+            for (int ring = 0; ring <= Radius + 1; ring++)
                 for (int dz = -ring; dz <= ring; dz++)
                     for (int dx = -ring; dx <= ring; dx++)
                     {
@@ -448,18 +493,17 @@ namespace LestingCraft.Runtime
 
         IEnumerator Generate(Vector2Int key)
         {
-            pendingBuffer = new NativeArray<ushort>(ChunkData.BlockCount, Allocator.Persistent);
-            var job = new GenerateChunkJob
+            Generation entry;
+            if (!generating.TryGetValue(key,out entry))
             {
-                OriginX = key.x * 16, OriginZ = key.y * 16, Seed = Seed,
-                Dimension = Dimension, ContentVersion = ContentVersion, Blocks = pendingBuffer
-            };
-            pendingJob = job.Schedule(256, 16);
-            while (!pendingJob.IsCompleted) yield return null;
-            pendingJob.Complete();
-            var data = new ChunkData(pendingBuffer.ToArray());
-            pendingBuffer.Dispose();
-            pendingBuffer = default(NativeArray<ushort>);
+                ScheduleGeneration(Center());
+                if (!generating.TryGetValue(key,out entry)) yield break;
+            }
+            while (!entry.Job.IsCompleted) yield return null;
+            entry.Job.Complete();
+            var data = new ChunkData(entry.Buffer.ToArray());
+            entry.Buffer.Dispose();
+            generating.Remove(key);
             var v = new View { Data = data };
             // Record special blocks once, incrementally, rather than scanning during rebuilds.
             for (int y = 0; y < 256; y++)
@@ -502,8 +546,14 @@ namespace LestingCraft.Runtime
         {
             dirty.Remove(key);
             int revision = editRevision, quality = detailQuality;
-            var snapshot = new Snapshot { X = key.x * 16, Z = key.y * 16 };
+            var snapshot = snapshots.Count > 0 ? snapshots.Pop() : new Snapshot();
+            snapshot.X=key.x*16; snapshot.Z=key.y*16;
+            try
+            {
             Func<int,int,int,float> fluid = FluidHeight;
+            var neighbors = new View[9];
+            for(int dz=-1;dz<=1;dz++) for(int dx=-1;dx<=1;dx++)
+                chunks.TryGetValue(key+new Vector2Int(dx,dz),out neighbors[dx+1+3*(dz+1)]);
             for (int y = 0; y < 256; y++)
             {
                 for (int z = -1; z <= 16; z++)
@@ -512,15 +562,17 @@ namespace LestingCraft.Runtime
                     {
                         int wx = snapshot.X + x, wz = snapshot.Z + z;
                         int index = Snapshot.Index(x, y, z);
-                        ushort id = x >= 0 && x < 16 && z >= 0 && z < 16
-                            ? v.Data.GetBlock(x, y, z) : GetBlock(wx, y, wz);
+                        int dx=x<0?-1:x>15?1:0, dz=z<0?-1:z>15?1:0;
+                        View source=neighbors[dx+1+3*(dz+1)];
+                        ushort id=source==null?(ushort)0:source.Data.GetBlock(x-dx*16,y,z-dz*16);
                         snapshot.Blocks[index] = id;
                         snapshot.Lights[index] = Skylight.Get(wx, y, wz);
                         snapshot.Heights[index] = fluid != null && (id == 7 || id == 8) ? fluid(wx, y, wz) : 1;
                         if (x >= 0 && x < 16 && z >= 0 && z < 16) snapshot.Chunk.SetBlock(x, y, z, id);
                     }
-                    if (BudgetExpired) yield return null;
                 }
+                // Check once per layer, not for every border row.
+                if (BudgetExpired) yield return null;
             }
             if (revision != editRevision || dirty.Contains(key))
             {
@@ -566,6 +618,13 @@ namespace LestingCraft.Runtime
             {
                 yield return null;
                 RebuildSpecials(key, v);
+            }
+            }
+            finally
+            {
+                // A disposed coroutine may still have a worker reading its snapshot.
+                // Never recycle that storage until its task has finished.
+                if (meshTask == null || meshTask.IsCompleted) snapshots.Push(snapshot);
             }
         }
 
@@ -657,6 +716,7 @@ namespace LestingCraft.Runtime
             var disposable = work as IDisposable;
             if (disposable != null) disposable.Dispose();
             work = null;
+            ClearGeneration();
             pendingJob.Complete();
             if (pendingBuffer.IsCreated) pendingBuffer.Dispose();
             if (meshTask != null)
@@ -719,6 +779,7 @@ namespace LestingCraft.Runtime
             var disposable = work as IDisposable;
             if (disposable != null) disposable.Dispose();
             work = null;
+            ClearGeneration();
             pendingJob.Complete();
             if (pendingBuffer.IsCreated) pendingBuffer.Dispose();
             // A mesh worker owns only its snapshot. Observe faults without blocking teardown.

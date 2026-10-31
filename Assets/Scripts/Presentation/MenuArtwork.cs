@@ -28,7 +28,8 @@ namespace LestingCraft.Presentation
         {
             get
             {
-                var texture=Resources.Load<Texture2D>("Generated/MenuBackdrop");
+                var texture=Resources.Load<Texture2D>("UI/MenuBackgroundEra");
+                if(!texture)texture=Resources.Load<Texture2D>("Generated/MenuBackdrop");
                 if(!texture)texture=Resources.Load<Texture2D>("UI/MenuBackground");
                 if(!texture){var sprite=Resources.Load<Sprite>("UI/MenuBackground");if(sprite)texture=sprite.texture;}
                 return texture;

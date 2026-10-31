@@ -180,7 +180,7 @@ namespace LestingCraft.Presentation
             light.shadows = LightShadows.Soft;
             light.shadowStrength = 1;
             light.shadowBias = .04f;
-            light.shadowNormalBias = .25f;
+            light.shadowNormalBias = .08f;
             RenderSettings.sun = light;
             RenderSettings.ambientMode = AmbientMode.Trilight;
             var sky = new Material(Resources.Load<Material>("Generated/Sky"));

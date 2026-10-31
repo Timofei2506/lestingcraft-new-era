@@ -1,1 +1,0 @@
-PASS: 10 new EditMode test methods compile against runtime/Unity/NUnit assemblies. NOT executed in Unity.

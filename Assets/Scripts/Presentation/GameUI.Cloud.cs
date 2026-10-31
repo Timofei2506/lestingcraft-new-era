@@ -158,7 +158,7 @@ namespace LestingCraft.Presentation
                     Label(row.transform, CloudFormat.Kind(item.kind), 16, 27, 300, 18, 12, chosen ? Ink : Muted);
                 }
             Input("ЦЕНА В МОНЕТАХ", marketPrice, "Например 250", 1028 + 24, 358, 200, v => marketPrice = v);
-            var listButton = Button("Выставить лот", 1258, 392, 250, 54, () =>
+            var listButton = Button("Выставить лот", 230, 242, 250, 54, () =>
             {
                 long price;
                 if (string.IsNullOrEmpty(marketCode)) { cloudNotice = "Сначала выберите скин слева."; ShowMarket(); return; }
@@ -232,7 +232,7 @@ namespace LestingCraft.Presentation
                 a.CloudFriendRequestByName(nick, AfterCloud);
                 friendKey = "";
             }, true);
-            Label(right.transform, "Ник виден в вашем профиле и в профиле друга — копируется одной кнопкой.", 812, 494, 700, 40, 13, Muted);
+            Label(right.transform, "Ник виден в вашем профиле и в профиле друга — копируется одной кнопкой.", 24, 344, 700, 40, 13, Muted);
 
             Button("← Кошелёк и скины", 64, 806, 420, 56, () => { cloudNotice = ""; ShowStore(); });
             Button("Обновить", 500, 806, 260, 56, () => a.CloudFriends(AfterCloud));

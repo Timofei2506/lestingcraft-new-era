@@ -1,0 +1,46 @@
+[
+  {
+    "name": "build/windows-living-20261016-040547",
+    "sha": "51dc85b775f4916e5c99c6d153d5aa221a442995"
+  },
+  {
+    "name": "feature/space-interior-walkable",
+    "sha": "81b7ba061f262ac030db65ba6ee43b240bee834d"
+  },
+  {
+    "name": "fix/smoke-pump-v0.5.2",
+    "sha": "c8ab008464a9c78eb8937986010538447b0c920a"
+  },
+  {
+    "name": "fix/smoke-v0.5.2-era-v9-20261023",
+    "sha": "9bb130c80d811084c16e0406d8b892cf6ba626dd"
+  },
+  {
+    "name": "build/free-marine-native-20261017",
+    "sha": "f5ce6cfda6d4ed9c76ddf23032735aaa9c3021ea"
+  },
+  {
+    "name": "build/marine-stage1-20261017",
+    "sha": "df949eb98d0d834b2e23d1c02930765655176387"
+  },
+  {
+    "name": "build/usability-biomes-20261016",
+    "sha": "bb2204358f10b8c5f693457b5dd5386384621219"
+  },
+  {
+    "name": "qa/native-39012249753",
+    "sha": "850eac0edfb1ad05f1c08dc72d69939af3cd364f"
+  },
+  {
+    "name": "qa/native-39031354173",
+    "sha": "900f5a487e0315ada717a411a3d88dce11d8fa16"
+  },
+  {
+    "name": "qa/native-39036126544",
+    "sha": "9f61c9ba0337d9fe7a11595f1d89f0c3e3fd7160"
+  },
+  {
+    "name": "qa/native-39037267637",
+    "sha": "8f355ee8db2087cb4bea3aa418046d0db3f68ea6"
+  }
+]

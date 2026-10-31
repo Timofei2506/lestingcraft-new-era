@@ -1,1 +1,0 @@
-PASS render source contracts: four cutout passes, 24.3% leaf holes, spatial sky PBR, additional lights preserved, depth-tested glare, 32/48 shaft samples. NOT shader/GPU validation.

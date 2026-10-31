@@ -5,6 +5,7 @@
 #define LC_VOXEL_LIGHTING_INCLUDED
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 #include "VoxelSky.hlsl"
+#include "EnvironmentLighting.hlsl"
 half4 LC_FragmentPBR(InputData inputData, SurfaceData surfaceData,half sky)
 {
     #if defined(_SPECULARHIGHLIGHTS_OFF)
@@ -45,6 +46,18 @@ half4 LC_FragmentPBR(InputData inputData, SurfaceData surfaceData,half sky)
                                               inputData.bakedGI, aoFactor.indirectAmbientOcclusion, inputData.positionWS,
                                               inputData.normalWS, inputData.viewDirectionWS, inputData.normalizedScreenSpaceUV);
     lightingData.giColor*=LC_SkyEnergy(sky);
+    // Analytic fallback reflection when no authored reflection probe exists.
+    // Rough surfaces receive a broad sky/ground lobe, smooth materials a directional one.
+    half3 reflection = reflect(-inputData.viewDirectionWS, inputData.normalWS);
+    half roughness = 1 - surfaceData.smoothness;
+    half3 ground = _EnvironmentHorizon.rgb * half3(.22,.20,.17);
+    half3 environment = lerp(ground, LC_SkyRadiance(reflection), smoothstep(-.12,.12,reflection.y));
+    half3 broad = lerp(ground, _EnvironmentHorizon.rgb, saturate(inputData.normalWS.y*.5+.5));
+    environment = lerp(environment, broad, roughness*roughness);
+    half nv = saturate(dot(inputData.normalWS,inputData.viewDirectionWS));
+    half3 fresnel = brdfData.specular + (1-brdfData.specular)*pow(1-nv,5);
+    lightingData.giColor += environment*fresnel*surfaceData.occlusion*LC_SkyEnergy(sky)*.45;
+
 #ifdef _LIGHT_LAYERS
     if (IsMatchingLightLayer(mainLight.layerMask, meshRenderingLayers))
 #endif
