@@ -484,7 +484,7 @@ public static class PresentationAssets
             wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear
         };
         output.SetPixels32(dst);
-        output.Apply(false, true);
+        output.Apply(false);
         return output;
     }
 
