@@ -50,10 +50,16 @@ float3 LC_SkyRadiance(float3 direction)
 
     float sun = saturate(mu);
     float solarVisibility = smoothstep(-.025, .025, sunElevation);
-    // Approximate the real solar angular diameter (~0.53°), not a wide game-style glow.
+    // Photosphere + layered aureole: tight core, broad warm glow and a wide soft haze halo,
+    // so a low sun burns through the cloud deck like the reference seascape, not a small dot.
     float disk = smoothstep(.999984, .999994, sun);
     float aureole = pow(sun, 64) * .12 + pow(sun, 256) * .10 + pow(sun, 4096) * .45;
-    sky += _EnvironmentSunColor.rgb * (disk * 22 + aureole * atmosphere) * solarVisibility;
+    float3 warmGlow = lerp(_EnvironmentSunColor.rgb,
+        _EnvironmentSunColor.rgb * float3(1.14, .80, .52), saturate(1 - sunElevation * 2.4));
+    sky += warmGlow * (disk * 22 + aureole * atmosphere) * solarVisibility;
+    // Broad cream-gold horizon wedge around the low sun (aerial glow over the water plane).
+    float horizonGlow = exp(-abs(ray.y - .015) * 5.5) * pow(saturate(mu * .5 + .5), 6);
+    sky += warmGlow * horizonGlow * .30 * saturate(1 - sunElevation * 2.6) * daylight * atmosphere;
 
     float moon = saturate(dot(ray, _EnvironmentMoonDirection.xyz));
     float night = 1 - daylight;

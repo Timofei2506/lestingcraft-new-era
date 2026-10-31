@@ -99,8 +99,12 @@ Shader "LestingCraft/VolumetricAtmosphere"
                     if(opticalDepth<.00001)continue;
                     float extinction=1-exp(-opticalDepth);
                     half shadow=sky>.001?MainLightRealtimeShadow(TransformWorldToShadowCoord(p)):0;
+                    // Low sun warms the veil: forward scattering turns golden toward the sun,
+                    // like the cream haze sitting over the reference sea.
+                    half3 sunVeil=sun.color*lerp(half3(1,1,1),half3(1.18,.86,.58),
+                        saturate(1-_EnvironmentSunDirection.y*2.8)*(1-_Submerged));
                     half3 light=_FogTint.rgb*.22*LC_SkyEnergy(sky)+
-                        sun.color*(min(phase,.6)*1.4+.10)*shadow*(1-_Submerged*.9)*step(.001,sky);
+                        sunVeil*(min(phase,.6)*1.55+.10)*shadow*(1-_Submerged*.9)*step(.001,sky);
                     scattering+=transmittance*extinction*light;
                     transmittance*=1-extinction;
                 }

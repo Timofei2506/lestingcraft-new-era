@@ -54,8 +54,8 @@ namespace LestingCraft.Presentation
             {
                 asset.renderScale = RenderScale;
                 asset.mainLightShadowmapResolution = ShadowResolution;
-                asset.shadowDistance = ViewDistance * (Preset == 1 ? 30 : 22);
-                asset.shadowCascadeCount = Preset == 1 ? 4 : 2;
+                asset.shadowDistance = ViewDistance * (Preset == 1 ? 30 : 26);
+                asset.shadowCascadeCount = Preset == 1 ? 4 : 3;
                 // SMAA is the final edge filter; avoid paying for MSAA and SMAA together.
                 asset.msaaSampleCount = 1;
             }
@@ -116,7 +116,7 @@ namespace LestingCraft.Presentation
             }
 
             if (globalBloom != null)
-                globalBloom.intensity.Override(Mathf.Lerp(inRadiaAbyss ? 0.92f : 0.65f, 3.6f, Mathf.Clamp01(nukeFlash01)));
+                globalBloom.intensity.Override(Mathf.Lerp(inRadiaAbyss ? 1.05f : 0.95f, 3.6f, Mathf.Clamp01(nukeFlash01)));
 
             if (globalColorAdj != null)
             {
@@ -133,9 +133,9 @@ namespace LestingCraft.Presentation
 
             if (globalVignette != null)
             {
-                float vig = inRadiaAbyss ? 0.34f : Mathf.Lerp(0.14f, 0.52f, Mathf.Clamp01(radiationDose01));
+                float vig = inRadiaAbyss ? 0.34f : Mathf.Lerp(0.17f, 0.52f, Mathf.Clamp01(radiationDose01));
                 globalVignette.intensity.Override(vig);
-                globalVignette.smoothness.Override(0.45f);
+                globalVignette.smoothness.Override(0.58f);
                 globalVignette.color.Override(inRadiaAbyss ? new Color(0.02f, 0.03f, 0.05f) : new Color(0.03f, 0.06f, 0.03f));
             }
         }

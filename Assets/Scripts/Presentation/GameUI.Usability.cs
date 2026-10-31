@@ -19,8 +19,10 @@ namespace LestingCraft.Presentation
   void BuildUsabilityHUD()
   {
    interactionHUD=Label(content.transform,"",320,494,640,68,18,White,false,TextAnchor.MiddleCenter);
-   biomeHUD=Label(content.transform,"",26,814,320,36,17,Muted);
-   padHUD=Label(content.transform,"",660,24,598,108,15,Accent,false,TextAnchor.UpperRight);
+   // Live world identity line (dimension / seed), bottom-left above the vitals panel.
+   biomeHUD=Label(content.transform,"",26,806,236,26,12,Muted);
+   // Below the objectives panel (top-right) so launch hints never collide with the checklist.
+   padHUD=Label(content.transform,"",660,214,598,60,15,Accent,false,TextAnchor.UpperRight);
   }
 
   bool creativeBag;string catalogSearch="",traderId="";int catalogCategory,catalogPage;RectTransform catalogGrid;Text catalogSummary,tradeSummary;Button tradeButton;
@@ -152,7 +154,7 @@ namespace LestingCraft.Presentation
     string bossHud=game.BossHudStatus;
     string hint=game.Session.Living?game.Session.Living.Hint:"";
     if(interactionHUD)interactionHUD.text=string.IsNullOrEmpty(bossHud)?hint:(bossHud+(string.IsNullOrEmpty(hint)?"":"\n"+hint));
-    if(biomeHUD)biomeHUD.text="";
+    if(biomeHUD)biomeHUD.text=game.CurrentPlanetTitle;
     if(padHUD)padHUD.text=game.LaunchPlacementArmed?"Чертёж космодрома · ПКМ по ровной земле рядом":"";
     return;
    }

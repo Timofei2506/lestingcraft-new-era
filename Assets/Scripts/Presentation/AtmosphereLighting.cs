@@ -95,15 +95,17 @@ namespace LestingCraft.Presentation
             float golden = (1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(.04f, .48f, elevation))) * Daylight;
             MoonIsPrimary = elevation < -.025f;
 
-            var daySky = new Color(.115f, .29f, .49f);
-            var dayHorizon = new Color(.56f, .66f, .70f);
+            var daySky = new Color(.105f, .285f, .515f);
+            var dayHorizon = new Color(.585f, .675f, .715f);
             var nightSky = new Color(.004f, .009f, .027f);
             var nightHorizon = new Color(.023f, .036f, .064f);
-            var warm = new Color(1f, .42f, .17f);
-            var noon = new Color(1f, .94f, .83f);
+            var warm = new Color(1f, .47f, .19f);
+            var noon = new Color(1f, .95f, .85f);
 
-            ShallowWater = new Color(.18f, .43f, .36f);
-            DeepWater = new Color(.018f, .095f, .12f);
+            // Open-ocean response: deep slate blue-green body with a brighter teal shallows,
+            // so a calm sea reads like the reference seascape instead of tropical lagoon glass.
+            ShallowWater = new Color(.17f, .385f, .375f);
+            DeepWater = new Color(.014f, .078f, .108f);
             WaterReflection = realm == Dimension.Radia ? 0.12f : 1f;
 
             float effClouds = CloudCoverageForRealm(realm, clouds);
@@ -112,9 +114,12 @@ namespace LestingCraft.Presentation
 
             Zenith = Color.Lerp(nightSky, Color.Lerp(daySky, new Color(.24f, .29f, .34f), overcast), Daylight);
             Horizon = Color.Lerp(nightHorizon, Color.Lerp(dayHorizon, new Color(.32f, .37f, .40f), overcast), Daylight);
-            Horizon = Color.Lerp(Horizon, new Color(.65f, .29f, .15f), golden * (1 - overcast) * .25f);
+            // Golden-hour band: cream-to-amber horizon like the reference sunset, strongest
+            // when the sun is low and the sky is not fully overcast.
+            Horizon = Color.Lerp(Horizon, new Color(.98f, .66f, .30f), golden * (1 - overcast) * .52f);
+            Horizon = Color.Lerp(Horizon, new Color(.65f, .29f, .15f), golden * (1 - overcast) * .18f);
             SunColor = MoonIsPrimary ? new Color(.44f, .57f, .85f) : Color.Lerp(noon, warm, golden * .8f);
-            DirectIntensity = (MoonIsPrimary ? .09f : Mathf.Lerp(.08f, 2.05f, daylightBeam)) * (1 - overcast * .70f);
+            DirectIntensity = (MoonIsPrimary ? .09f : Mathf.Lerp(.08f, 2.20f, daylightBeam)) * (1 - overcast * .70f);
             // Day ambient lifted (was *0.82 sky / dark equator-ground): shadow sides of
             // foliage and terrain crushed to near-black in real EXE captures.
             AmbientSky = Color.Lerp(new Color(.025f, .040f, .072f), Color.Lerp(daySky, dayHorizon, .62f) * 1.02f, Daylight);

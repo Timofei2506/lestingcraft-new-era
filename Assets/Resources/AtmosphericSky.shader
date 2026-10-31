@@ -6,7 +6,7 @@ Shader "LestingCraft/AtmosphericSky"
         _CloudOffset("Wind advection",Vector)=(0,0,0,0)
         _CloudCoverage("Coverage",Float)=.4
         _CloudBase("Base",Float)=144
-        _CloudSteps("Cloud steps",Float)=12
+        _CloudSteps("Cloud steps",Float)=22
         _HorizonGlow("Horizon glow",Float)=1.0
     }
     SubShader
@@ -55,7 +55,10 @@ Shader "LestingCraft/AtmosphericSky"
                         uv*2.713+float3(.49,.13,.67),0).r;
                     float micro=SAMPLE_TEXTURE3D_LOD(_CloudNoise,sampler_CloudNoise,
                         uv*5.9+float3(.81,.22,.91),0).r;
+                    // Three noise octaves plus erosion: fine noise carves the silhouette
+                    // instead of only blurring it.
                     shape=base*.68+fine*.22+micro*.10;
+                    shape-=.05*(1-fine)*saturate((shape-threshold)*8);
                 }
                 return saturate((shape-threshold)*5.5)*profile;
             }
@@ -79,7 +82,10 @@ Shader "LestingCraft/AtmosphericSky"
                 float transmittance=1;
                 half3 clouds=0;
                 float jitter=LC_IGN(i.vertex.xy);
-                half3 direct=lerp(half3(.055,.075,.13),_EnvironmentSunColor.rgb,_EnvironmentDaylight);
+                // Warm low sun vs cool night moonlight; keep a touch of sky blue in day shadow.
+                half3 direct=lerp(half3(.055,.075,.13),
+                    lerp(_EnvironmentSunColor.rgb,_EnvironmentSunColor.rgb*half3(1.06,.90,.74),saturate(1-_EnvironmentSunDirection.y*3)),
+                    _EnvironmentDaylight);
                 half3 ambient=lerp(_EnvironmentHorizon.rgb,_EnvironmentZenith.rgb,.25)*
                     lerp(.30,.68,_EnvironmentDaylight);
                 // Dual-lobe Henyey-Greenstein phase, normalized relative to isotropic scattering.
@@ -94,12 +100,16 @@ Shader "LestingCraft/AtmosphericSky"
                     if(d<.003)continue;
                     float shadowDensity=Density(p+sunDir*22,false);
                     shadowDensity+=Density(p+sunDir*58,false)*.6;
-                    float sunlight=exp(-shadowDensity*3.2);
+                    // Two-tap self shadow keeps bases heavy while sun-facing billows stay bright.
+                    float sunlight=exp(-shadowDensity*3.6);
                     float powder=1-exp(-d*stepLength*.13);
-                    float alpha=1-exp(-d*stepLength*.065);
-                    // Свет на краях облаков (silver lining) — объём и мощь на заходе/восходе.
+                    float alpha=1-exp(-d*stepLength*.085);
+                    // Silver lining: bright rims where thin cloud meets strong forward light.
                     float silver=forward*(1-d)*sunlight*powder*.42*saturate(mu);
-                    half3 lighting=ambient+direct*(sunlight*.55+min(forward,8)*.035+silver);
+                    // Height inside the layer: undersides sink toward their own shadow color.
+                    float interior=saturate((p.y-_CloudBase)/38);
+                    half3 ambientLayer=ambient*lerp(.55,1.15,interior);
+                    half3 lighting=ambientLayer+direct*(sunlight*.62+min(forward,8)*.045+silver);
                     lighting=lerp(lighting,background,(1-exp(-along*.00016))*.75);
                     clouds+=lighting*alpha*transmittance;
                     transmittance*=1-alpha;

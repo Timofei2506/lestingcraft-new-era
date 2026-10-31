@@ -57,8 +57,8 @@ Shader "LestingCraft/Water"
                 // per fragment. Only a small, long-wavelength displacement reaches vertices.
                 float3 displacement=0;
                 float2 slope=0;
-                Wave(ws.xz,float2(.72,.41),.12,.018,.42,displacement,slope);
-                Wave(ws.xz,float2(-.39,1.07),.19,.009,-.57,displacement,slope);
+                Wave(ws.xz,float2(.72,.41),.12,.026,.42,displacement,slope);
+                Wave(ws.xz,float2(-.39,1.07),.19,.013,-.57,displacement,slope);
                 // Apply the same displacement to all shared edges, including falling sheets.
                 ws+=displacement;
                 VertexNormalInputs basis=GetVertexNormalInputs(i.n,i.t);
@@ -156,9 +156,9 @@ Shader "LestingCraft/Water"
                         uv*5.37+time*float2(.021,-.017),8).rg*2-1)*nearDetail*.10;
                 float3 displacement=0;
                 float2 slope=0;
-                Wave(i.ws.xz,float2(.72,.41),.83,.028,.72,displacement,slope);
-                Wave(i.ws.xz,float2(-.39,1.07),1.14,.016,-.91,displacement,slope);
-                Wave(i.ws.xz,float2(.91,-.27),2.2,.006*nearDetail,1.31,displacement,slope);
+                Wave(i.ws.xz,float2(.72,.41),.83,.038,.72,displacement,slope);
+                Wave(i.ws.xz,float2(-.39,1.07),1.14,.022,-.91,displacement,slope);
+                Wave(i.ws.xz,float2(.91,-.27),2.2,.008*nearDetail,1.31,displacement,slope);
                 RainRipples(i.ws.xz,time,saturate(_LCWaterRain),slope);
                 half3 n=normalize(i.n),t=normalize(i.t.xyz),b=cross(n,t)*i.t.w;
                 half2 textureSlope=(na.xy+nb.xy)*(.25+_GlobalWindStrength*.30)*
@@ -213,7 +213,13 @@ Shader "LestingCraft/Water"
                 float distribution=a2/(PI*denominator*denominator);
                 float visibility=1/max(.15,4*nv*max(.05,nl));
                 half spec=min(5,distribution*visibility*.020*nl)*sun.shadowAttenuation;
-                half3 color=lerp(refracted,reflected,fresnel)+sun.color*spec;
+                // Sun glitter road: a broad path toward the low sun plus micro-sparkle driven by
+                // the ripple normals — the signature "light carpet" of a real sea at golden hour.
+                half rd=saturate(dot(reflect(-view,n),sun.direction));
+                half path=pow(rd,10)*.22+pow(rd,80)*1.05;
+                half sparkle=saturate(.62+na.x*1.25+nb.y*1.05);
+                half glitter=path*sparkle*sparkle*nl*sun.shadowAttenuation*sky;
+                half3 color=lerp(refracted,reflected,fresnel)+sun.color*(spec+glitter);
                 half foamNoise=saturate(.5+na.x*.34+nb.y*.27+
                     sin(dot(i.ws.xz,float2(3.7,2.3))-time*.9)*.12);
                 half shore=1-smoothstep(.03,.58,waterDepth);
@@ -222,6 +228,11 @@ Shader "LestingCraft/Water"
                 // Rain-driven chop raises the foam line and adds a fine spray sheen.
                 foam=saturate(foam+saturate(_LCWaterRain)*.18*top*crest);
                 color=lerp(color,half3(.78,.83,.79)*lerp(.16,1,_EnvironmentDaylight),foam*.58*sky);
+                // Aerial perspective: the far sea dissolves into the lit horizon haze exactly as
+                // in the reference seascape, without touching near-field readability.
+                half3 horizonHaze=LC_SkyRadiance(normalize(float3(-view.x,.045,-view.z)))*sky;
+                float haze=saturate(1-exp(-cameraDistance*.00115))*.82;
+                color=lerp(color,horizonHaze,haze);
                 // Radia's black flooded basin keeps just a trace of sky glint; otherwise the gray storm ceiling washes out the submerged blue rows.
                 color=lerp(body,color,saturate(_EnvironmentWaterReflection));
                 return half4(MixFog(color,i.fog),1);

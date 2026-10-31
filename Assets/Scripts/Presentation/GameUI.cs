@@ -17,8 +17,9 @@ namespace LestingCraft.Presentation
         static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
-        Page page,settingsBack;Text status,realmHUD,netHUD,perfHUD,loadingHUD;Image[] slots;RectTransform[] slotRects;
+        Page page,settingsBack;Text status,loadingHUD;Image[] slots;RectTransform[] slotRects;
         Text vitalsHUD,objectiveHUD,noticeHUD,healthHUD;HealthSilhouette healthBody;RawImage[] slotIcons;Text[] slotCounts;ItemHover[] slotHovers;RectTransform tooltip;Text tooltipText;int lastInventoryRevision=-1,lastSlot=-1;
+        Image oxygenBar;Image[] slotFrames;Image[] objectiveChecks;Text[] objectiveLabels;
         Image miningBar;Text miningLabel;GameObject chatRoot;Text chatText;InputField chatInput;int chatRevision=-1;string lastNotice="";float noticeAt;
         public string ChatText=>chatInput?chatInput.text:"";
         public void SetChatOpen(bool open)
@@ -111,8 +112,8 @@ namespace LestingCraft.Presentation
         {
             parent=parent?parent:content.transform;var image=Box(parent,x,y,w,h,primary?Accent:Panel);image.raycastTarget=true;
             var button=image.gameObject.AddComponent<Button>();button.targetGraphic=image;
-            var colors=button.colors;colors.normalColor=Color.white;colors.highlightedColor=new Color(1.13f,1.13f,1.13f);colors.pressedColor=new Color(.83f,.87f,.85f);colors.disabledColor=new Color(.5f,.5f,.5f,.6f);colors.fadeDuration=.14f;button.colors=colors;
-            var stroke=Rect("Focus border",image.transform,0,0,0,0);Stretch(stroke);var border=stroke.gameObject.AddComponent<Image>();border.sprite=MenuArtwork.Outline;border.type=Image.Type.Sliced;border.raycastTarget=false;border.color=new Color(Accent.r,Accent.g,Accent.b,.2f);
+            var colors=button.colors;colors.normalColor=Color.white;colors.highlightedColor=new Color(1.16f,1.16f,1.16f);colors.pressedColor=new Color(.86f,.89f,.87f);colors.disabledColor=new Color(.5f,.5f,.5f,.6f);colors.fadeDuration=.14f;button.colors=colors;
+            var stroke=Rect("Focus border",image.transform,0,0,0,0);Stretch(stroke);var border=stroke.gameObject.AddComponent<Image>();border.sprite=MenuArtwork.Outline;border.type=Image.Type.Sliced;border.raycastTarget=false;border.color=new Color(Accent.r,Accent.g,Accent.b,.34f);
             var feedback=image.gameObject.AddComponent<MenuButtonFeedback>();feedback.Border=border;feedback.Tint=Accent;
             button.onClick.AddListener(()=>{if(action!=null)action();});var navigation=button.navigation;navigation.mode=Navigation.Mode.Automatic;button.navigation=navigation;
             Label(image.transform,text,14,0,w-28,h,18,primary?Ink:White,false,TextAnchor.MiddleCenter);
@@ -132,16 +133,18 @@ namespace LestingCraft.Presentation
             {
                 Label(content.transform,"LESTINGCRAFT",32,24,560,34,22,White,true);
                 Label(content.transform,"NEW ERA",34,64,280,25,15,Accent);
-                Label(content.transform,section.ToUpperInvariant(),784,30,464,42,20,Muted,false,TextAnchor.MiddleRight);
+                Label(content.transform,section.ToUpperInvariant(),784,30,464,42,20,Accent,false,TextAnchor.MiddleRight);
                 Box(content.transform,32,108,1216,1,new Color(.8f,.9f,.8f,.16f),false);
+                Box(content.transform,32,108,86,2,Accent,false);
                 return;
             }
             Label(content.transform,"LESTINGCRAFT",64,42,400,32,19,White,true);
             Label(content.transform,"N E W  E R A",66,81,280,24,12,Accent);
-            Label(content.transform,section.ToUpperInvariant(),1060,48,470,40,14,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,section.ToUpperInvariant(),1060,48,470,40,14,Accent,false,TextAnchor.MiddleRight);
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
+            Box(content.transform,64,119,96,2,Accent,false);
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            Label(content.transform,"0.3.2 usability  /  интерфейс 06",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"0.3.3  /  графика 07 · золотой час",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
         }
         public void ShowHome()
         {
@@ -451,9 +454,10 @@ namespace LestingCraft.Presentation
         {
             Clear(Page.HUD);LayoutWidth(1280);
             loadingHUD=Label(content.transform,"",36,31,780,37,14,Accent);
-            // Minimal reticle, not an IMGUI text '+'.
-            foreach(var r in new[]{new Vector4(639,439,2,7),new Vector4(639,454,2,7),new Vector4(629,449,7,2),new Vector4(644,449,7,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.82f),false);
-            slots=new Image[9];slotRects=new RectTransform[9];slotIcons=new RawImage[9];slotCounts=new Text[9];slotHovers=new ItemHover[9];lastInventoryRevision=-1;lastSlot=-1;
+            // Fine reticle: thin cross with a soft center dot, not an IMGUI text '+'.
+            foreach(var r in new[]{new Vector4(639,437,2,6),new Vector4(639,457,2,6),new Vector4(627,449,6,2),new Vector4(647,449,6,2)})Box(content.transform,r.x,r.y,r.z,r.w,new Color(1,1,1,.68f),false);
+            Box(content.transform,639,449,2,2,new Color(1,1,1,.9f),false);
+            slots=new Image[9];slotRects=new RectTransform[9];slotIcons=new RawImage[9];slotCounts=new Text[9];slotHovers=new ItemHover[9];slotFrames=new Image[9];lastInventoryRevision=-1;lastSlot=-1;
             var backdrop=Box(content.transform,271,797,738,92,new Color(.025f,.05f,.055f,.88f));
             for(int i=0;i<9;i++)
             {
@@ -461,14 +465,32 @@ namespace LestingCraft.Presentation
                 image.raycastTarget=true;AttachHover(image.gameObject,0);slotHovers[i]=image.GetComponent<ItemHover>();
                 var raw=Rect("Item icon",image.transform,14,2,48,48).gameObject.AddComponent<RawImage>();raw.raycastTarget=false;slotIcons[i]=raw;
                 slotCounts[i]=Label(image.transform,"",45,50,27,22,15,White,false,TextAnchor.MiddleRight);
-                Label(image.transform,(i+1).ToString(),0,50,76,22,13,Muted,false,TextAnchor.MiddleCenter);
+                Label(image.transform,(i+1).ToString(),6,50,24,22,12,Muted,false,TextAnchor.MiddleLeft);
+                var frame=Rect("Selected frame",image.transform,0,0,0,0);Stretch(frame);
+                var frameImage=frame.gameObject.AddComponent<Image>();frameImage.sprite=MenuArtwork.Outline;frameImage.type=Image.Type.Sliced;frameImage.raycastTarget=false;frameImage.color=new Color(Accent.r,Accent.g,Accent.b,0);slotFrames[i]=frameImage;
             }
             // Item names are hover/focus tooltips, never permanent slot text.
 
-            var healthPanel=Box(content.transform,24,662,244,130,new Color(.025f,.05f,.055f,.91f));
-            healthHUD=Label(healthPanel.transform,"HP · 100 / 100",12,10,222,30,17,White);
-            var body=Rect("Health bar",healthPanel.transform,12,43,220,8);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
-            vitalsHUD=Label(healthPanel.transform,"",12,59,220,66,13,White);
+            var healthPanel=Box(content.transform,24,652,252,142,new Color(.025f,.05f,.055f,.91f));
+            healthHUD=Label(healthPanel.transform,"HP · 100 / 100",14,10,224,28,17,White);
+            var body=Rect("Health bar",healthPanel.transform,14,42,224,9);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
+            Label(healthPanel.transform,"O₂",14,60,30,24,15,White);
+            Box(healthPanel.transform,48,66,190,8,new Color(.10f,.14f,.16f,.95f),false);
+            oxygenBar=Box(healthPanel.transform,48,66,190,8,new Color(.42f,.72f,.88f),false);
+            vitalsHUD=Label(healthPanel.transform,"",14,82,224,52,12,White);
+            // Objectives panel, top-right: living checklist driven by the current expedition
+            // state. Checkbox squares are plain images (font-safe, square-corner HUD language).
+            var objectivePanel=Box(content.transform,982,24,274,178,new Color(.025f,.05f,.055f,.82f));
+            Label(objectivePanel.transform,"ЗАДАЧИ",18,12,238,30,18,Accent,true);
+            Box(objectivePanel.transform,18,42,54,2,Accent,false);
+            objectiveChecks=new Image[3];objectiveLabels=new Text[3];
+            for(int i=0;i<3;i++)
+            {
+                var check=Box(objectivePanel.transform,20,58+i*30,14,14,new Color(.32f,.40f,.42f,.9f),false);
+                check.raycastTarget=false;objectiveChecks[i]=check;
+                objectiveLabels[i]=Label(objectivePanel.transform,"",44,51+i*30,214,28,14,White);
+            }
+            objectiveHUD=Label(objectivePanel.transform,"",18,150,240,24,11,Muted);
             miningBar=Box(content.transform,565,484,0,4,Accent,false);miningBar.gameObject.name="Mining progress";
             miningLabel=Label(content.transform,"",540,494,200,29,12,White,false,TextAnchor.MiddleCenter);
             chatRoot=Box(content.transform,26,265,590,260,new Color(.025f,.045f,.04f,.78f)).gameObject;
@@ -525,6 +547,8 @@ namespace LestingCraft.Presentation
                             extraTech+=$"\n⚡ Сеть  {sim.Grid.GenerationKw:0}/{sim.Grid.DemandKw:0} кВт · {sim.Grid.StoredKwh:0} кВт·ч";
                     }
                     vitalsHUD.text=$"Еда {v.hunger:0}  ·  Силы {v.stamina:0}\n{v.temperature:0.0}°C  ·  Влага {v.wetness*100:0}%"+(v.air<100?$"  ·  O₂ {v.air:0}%":"")+extraTech;
+                    if(oxygenBar)oxygenBar.rectTransform.sizeDelta=new Vector2(Mathf.Max(0,190*Mathf.Clamp01(v.air/100)),8);
+                    RefreshObjectives(session);
 
                     if(lastNotice!=session.Notice){lastNotice=session.Notice;noticeAt=Time.unscaledTime;}
                     noticeHUD.text=Time.unscaledTime-noticeAt<4?lastNotice:"";
@@ -557,12 +581,53 @@ namespace LestingCraft.Presentation
                 var inventory=game.Session.Inventory;lastInventoryRevision=inventory.revision;lastSlot=inventory.selected;
                 for(int i=0;i<9;i++)
                 {
-                    var stack=inventory.slots[i];slots[i].color=i==inventory.selected?new Color(.36f,.49f,.30f,.97f):new Color(.10f,.155f,.165f,.92f);
+                    var stack=inventory.slots[i];
+                    bool chosen=i==inventory.selected;
+                    slots[i].color=chosen?new Color(.20f,.23f,.17f,.97f):new Color(.10f,.155f,.165f,.92f);
+                    if(slotFrames!=null&&i<slotFrames.Length&&slotFrames[i])
+                        slotFrames[i].color=chosen?new Color(Accent.r,Accent.g,Accent.b,.95f):new Color(Accent.r,Accent.g,Accent.b,0f);
                     var texture=ItemArtwork.Get(stack.item);slotIcons[i].texture=texture;slotIcons[i].enabled=texture;
                     slotHovers[i].Item=stack.count>0?stack.item:0;
                     slotCounts[i].text=stack.count>0?(game.Session.Creative?"∞":stack.count.ToString()):"";
                 }
 
+            }
+        }
+        void RefreshObjectives(LestingCraft.Gameplay.SurvivalSession session)
+        {
+            if(objectiveChecks==null||objectiveLabels==null||session==null)return;
+            string[] lines;bool[] done;
+            if(session.Creative)
+            {
+                lines=new[]{"Свободное строительство","Каталог предметов","Экспериментируйте с формами"};
+                done=new[]{true,true,false};
+            }
+            else
+            {
+                var inv=session.Inventory;
+                bool wood=inv.Count(4)>0||inv.Count(Items.Planks)>0;
+                bool bench=inv.Count(Items.Workbench)>0||inv.Count(Items.Planks)>=4;
+                bool tool=inv.Count(Items.WoodPick)>0||inv.Count(Items.StonePick)>0||inv.Count(Items.Axe)>0||
+                          inv.Count(150)>0||inv.Count(151)>0;
+                lines=new[]{"Добыть древесину","Собрать верстак","Создать инструмент"};
+                done=new[]{wood,bench,tool};
+            }
+            for(int i=0;i<3;i++)
+            {
+                if(objectiveLabels[i])objectiveLabels[i].text=lines[i];
+                if(objectiveChecks[i])
+                    objectiveChecks[i].color=done[i]?new Color(Accent.r,Accent.g,Accent.b,.95f):new Color(.32f,.40f,.42f,.9f);
+                if(objectiveLabels[i])objectiveLabels[i].color=done[i]?Muted:White;
+            }
+            if(objectiveHUD)
+            {
+                string summary=game!=null?game.PauseStorySummary:"";
+                if(!string.IsNullOrEmpty(summary))
+                {
+                    int cut=summary.IndexOf('\n');if(cut>0)summary=summary.Substring(0,cut);
+                    objectiveHUD.text=summary.Length>54?summary.Substring(0,52)+"…":summary;
+                }
+                else objectiveHUD.text="";
             }
         }
         void OnDestroy(){if(rounded)Destroy(rounded);}
