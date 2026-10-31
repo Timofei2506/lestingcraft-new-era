@@ -24,7 +24,9 @@ for m in catalog['models']:
  image=Image.open(R/f'Assets/Resources/VoxelIcons/Item{m["id"]}.png').convert('RGBA')
  assert image.size==(384,384) and image.getchannel('A').getextrema()[1]>0
  if m['id'] in [11,44]:assert image.getchannel('A').getextrema()[1]<255
-masters=list((R/'ArtSource/Textures/Iteration11').glob('*.jpg'));assert len(masters)==9
+masters=list((R/'ArtSource/Textures/Iteration11').glob('*.jpg'))
+if not masters: masters=list((R/'ArtSource/_Archive/Iteration11').glob('*.jpg'))
+assert len(masters)==9
 for p in masters:
  image=Image.open(p);assert min(image.size)>=512
 animal_info=json.loads((R/'Assets/Art/PBR/materials.json').read_text())['animalTextures']
