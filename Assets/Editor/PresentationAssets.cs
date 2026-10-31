@@ -443,7 +443,7 @@ public static class PresentationAssets
             // older derived sets stay 512. Rescale on the CPU into the array element.
             if (texture.width != size || texture.height != size)
             {
-                var resized = ResizeBilinear(texture, size);
+                var resized = ResizeBilinear(texture, size, linear);
                 UnityEngine.Object.DestroyImmediate(texture);
                 texture = resized;
             }
@@ -455,7 +455,7 @@ public static class PresentationAssets
         return result;
     }
 
-    static Texture2D ResizeBilinear(Texture2D source, int size)
+    static Texture2D ResizeBilinear(Texture2D source, int size, bool linear)
     {
         int sw = source.width, sh = source.height;
         var src = source.GetPixels32();
@@ -479,7 +479,7 @@ public static class PresentationAssets
                     LerpBilinear(a.a, b.a, c.a, d.a, tx, ty));
             }
         }
-        var output = new Texture2D(size, size, TextureFormat.RGBA32, false, source.linear)
+        var output = new Texture2D(size, size, TextureFormat.RGBA32, false, linear)
         {
             wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear
         };
