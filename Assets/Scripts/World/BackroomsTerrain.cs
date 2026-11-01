@@ -9,13 +9,14 @@ namespace LestingCraft.World
     /// usable from Burst jobs and from gameplay code alike. All blocks reuse the existing
     /// baked palette (no new textures needed): 43 sandstone carpet, 28 limestone wallpaper,
     /// 30 marble ceiling tiles, 56 lantern fluorescents, 62 red terracotta for red rooms.
+    /// Floors step gently between 16x16 regions (rare ledges of the canon) so the level has
+    /// real relief while every room stays walkable.
     /// </summary>
     public static class BackroomsTerrain
     {
-        public const int FloorTop = 64;      // carpet surface
-        public const int WallTop = 68;       // walls run FloorTop+1..WallTop
-        public const int CeilingBottom = 69; // fluorescent panels sit here
-        public const int CeilingTop = 70;
+        public const int CeilingBottom = 72; // fluorescent panels sit here
+        public const int CeilingTop = 73;
+        public const int WallTop = 71;
 
         const ushort Carpet = 43, Wallpaper = 28, CeilingTile = 30, Fluorescent = 56, RedWall = 62;
 
@@ -29,6 +30,23 @@ namespace LestingCraft.World
                 h ^= (uint)c * 0xcb1ab31fu; h *= 0x9e3779b1u;
                 return h ^ (h >> 16);
             }
+        }
+
+        static float Smoother(float t) => t * t * (3 - 2 * t);
+
+        /// <summary>Region floor level: the ledges that make the endless rooms readable.</summary>
+        static float Level(int rx, int rz, int seed) => 64f + (Hash(rx, 11, rz, seed ^ 0xF100) % 11) - 5;
+
+        /// <summary>Walkable carpet height: smooth-step blend between neighbouring region levels.</summary>
+        public static int FloorTop(int x, int z, int seed)
+        {
+            int rx = x >> 4, rz = z >> 4;
+            float fx = (x - rx * 16) / 16f, fz = (z - rz * 16) / 16f;
+            float a = Level(rx, rz, seed), b = Level(rx + 1, rz, seed);
+            float c = Level(rx, rz + 1, seed), d = Level(rx + 1, rz + 1, seed);
+            float sx = Smoother(fx), sz = Smoother(fz);
+            float v = (a * (1 - sx) + b * sx) * (1 - sz) + (c * (1 - sx) + d * sx) * sz;
+            return (int)Math.Round(v);
         }
 
         /// <summary>Room-cell identity used for red rooms and lighting.</summary>
@@ -56,17 +74,25 @@ namespace LestingCraft.World
             return Math.Abs(x - ex) <= 2 && Math.Abs(z - ez) <= 2;
         }
 
-        public static ushort Block(int x, int y, int z, int seed)
+        /// <summary>Carpet block id at the floor of this column (also the exit marker floor).</summary>
+        public static ushort FloorBlock(int x, int z, int seed)
+        {
+            ExitDoor(x, z, seed, out int ex, out int ez);
+            if (Math.Abs(x - ex) <= 1 && Math.Abs(z - ez) <= 1) return 40; // polished threshold
+            if (IsRedRoom(x, z, seed) && !SpawnPlaza(x, z)) return RedWall;
+            return Carpet;
+        }
+
+        public static ushort Block(int x, int y, int z, int seed, int floorTop)
         {
             if (y == 0) return 9;
-            if (y < FloorTop) return 1;
             if (y > CeilingTop) return 0;
+            if (y < floorTop) return 1;
+            if (y == floorTop) return FloorBlock(x, z, seed);
 
             ExitDoor(x, z, seed, out int ex, out int ez);
             bool exitCell = Math.Abs(x - ex) <= 1 && Math.Abs(z - ez) <= 1;
             bool red = !exitCell && !SpawnPlaza(x, z) && IsRedRoom(x, z, seed);
-
-            if (y == FloorTop) return red ? RedWall : exitCell ? (ushort)40 : Carpet;
 
             if (y >= CeilingBottom)
             {

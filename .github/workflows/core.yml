@@ -37,7 +37,7 @@ jobs:
           mono /tmp/interior-check.exe
           mcs -langversion:7.2 -out:/tmp/moon-check.exe Assets/Scripts/World/MoonTerrain.cs Tools/check_moon_core.cs
           mono /tmp/moon-check.exe
-          mcs -langversion:7.2 -out:/tmp/planet-travel-check.exe Assets/Scripts/World/MoonTerrain.cs Assets/Scripts/World/PlanetTerrain.cs Assets/Scripts/Gameplay/SpaceNavigation.cs Tools/check_planet_travel_core.cs
+          mcs -langversion:7.2 -out:/tmp/planet-travel-check.exe Assets/Scripts/World/MoonTerrain.cs Assets/Scripts/World/PlanetTerrain.cs Assets/Scripts/World/BackroomsTerrain.cs Assets/Scripts/Gameplay/SpaceNavigation.cs Tools/check_planet_travel_core.cs
           mono /tmp/planet-travel-check.exe
           python3 Tools/build_approved_space_models.py
           git diff --exit-code -- Assets/Resources/Space/

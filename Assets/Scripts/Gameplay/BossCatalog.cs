@@ -83,7 +83,9 @@ namespace LestingCraft.Gameplay
             new BossProfile(Dimension.Dream, "Фантом Спирали", "Тень за спиной", BossArchetype.Archon,
                 410, .12f, .10f, .18f, .42f, .26f, .72f, .62f, .46f, 1.00f, 1.06f, 7, 12, 8, 3),
             new BossProfile(Dimension.Radia, "Тринититовый Колосс", "Пепел Радиа", BossArchetype.Colossus,
-                440, .30f, .32f, .24f, .78f, .82f, .30f, .62f, 1.00f, .38f, 1.16f, 8, 10, 14, 3)
+                440, .30f, .32f, .24f, .78f, .82f, .30f, .62f, 1.00f, .38f, 1.16f, 8, 10, 14, 3),
+            new BossProfile(Dimension.Backrooms, "Тот, Кто Услышал", "Хозяин Жёлтых Залов", BossArchetype.Archon,
+                420, .62f, .55f, .28f, .84f, .74f, .32f, 1.00f, .94f, .52f, 1.02f, 6, 9, 13, 5)
         };
 
         static readonly Dictionary<Dimension, BossProfile> Lookup = BuildLookup();

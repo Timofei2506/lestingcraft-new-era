@@ -299,8 +299,8 @@ namespace LestingCraft.World
                     surface = pillar || medium > .64f ? PlanetSurface.SomniaObsidianPillar : PlanetSurface.SomniaMarble;
                     break;
                 case PlanetBody.Backrooms:
-                    h = BackroomsTerrain.FloorTop;
-                    surface = PlanetSurface.Regolith; // label only; Block() carves the rooms
+                    h = BackroomsTerrain.FloorTop(x, z, seed);
+                    surface = BackroomsTerrain.IsRedRoom(x, z, seed) ? PlanetSurface.Ejecta : PlanetSurface.Regolith;
                     break;
                 default:
                     h = 45 + (broad - .5f) * 18;
@@ -328,7 +328,7 @@ namespace LestingCraft.World
         {
             if (y < 0 || y >= 256) return 0;
             if (y == 0) return 9;
-            if (body == PlanetBody.Backrooms) return BackroomsTerrain.Block(x, y, z, seed);
+            if (body == PlanetBody.Backrooms) return BackroomsTerrain.Block(x, y, z, seed, column.Height);
 
             if (body == PlanetBody.Radia)
             {
