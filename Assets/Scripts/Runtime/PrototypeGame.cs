@@ -48,7 +48,7 @@ namespace LestingCraft.Runtime
         public IndustrialTechRuntime Tech => techRuntime ? techRuntime : (techRuntime = IndustrialTechRuntime.Ensure(null));
         IndustrialTechRuntime techRuntime;
         public bool CockpitMouseMode { get; private set; }
-        public bool InDreamDimension => Dream.IsActive || (world && world.Dimension == Dimension.Dream);
+        public bool InDreamDimension => Dream.IsActive || (world && world.Dimension == Dimension.Somnia);
         public bool InRadiaDimension => world && world.Dimension == Dimension.Radia;
         int storyCodexIndex;
         int storyProgressionMask;
@@ -756,7 +756,7 @@ namespace LestingCraft.Runtime
             bool defeated=(Session.Data.defeatedPlanetBossMask&(1<<(int)dim))!=0;
             Vector3 anchor=sharedLaunchSite.HasValue?(Vector3)sharedLaunchSite.Value:Vector3.zero;
             activePlanetBoss=PlanetaryBossController.SpawnForPlanet(world.transform,dim,world,world.Seed,defeated,anchor);
-            PlanetaryDroneController.SpawnSwarm(world.transform,dim,world.Seed,anchor,4+(world.Seed&2));
+            PlanetaryDroneController.SpawnSwarm(world.transform,dim,world.Seed,anchor,dim==Dimension.Dream?9:4+(world.Seed&2));
         }
 
         public bool TryAttackPlanetaryBoss(Ray aimRay)
@@ -1165,12 +1165,12 @@ namespace LestingCraft.Runtime
             if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
             if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
 
-            world.SwitchPlanet(Dimension.Dream,Array.Empty<SavedBlock>());
-            dimension=(int)Dimension.Dream;
+            world.SwitchPlanet(Dimension.Somnia,Array.Empty<SavedBlock>());
+            dimension=(int)Dimension.Somnia;
             player.TeleportTo(new Vector3(Dream.SpawnX,Dream.SpawnY,Dream.SpawnZ),false);
             player.transform.rotation=Quaternion.identity;
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
-            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Dream,player,Camera.main);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Somnia,player,Camera.main);
             spaceVisuals.SyncDreamWatcher(Dream,player.transform);
             SetCursor(true);
             Session.Notice="СОННЫЙ ПАРАЛИЧ: грудь сдавило, тело не слушается… кто-то стоит в тумане впереди…";
@@ -1179,7 +1179,7 @@ namespace LestingCraft.Runtime
         void ExitDreamSequence()
         {
             if(!world||!player||!Session)return;
-            Dimension wakeDim=Dream.ReturnDimension==Dimension.Dream?Dimension.Lestingia:Dream.ReturnDimension;
+            Dimension wakeDim=Dream.ReturnDimension==Dimension.Somnia?Dimension.Lestingia:Dream.ReturnDimension;
             Vector3 wakePos=new Vector3(Dream.ReturnX,Dream.ReturnY,Dream.ReturnZ);
             if(online&&client&&client.Connected)
                 client.Send(new NetPacket{type="dream_state",on=false,dream=false});
@@ -1273,7 +1273,7 @@ namespace LestingCraft.Runtime
             Session.ResetMining();
             Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
 
-            Tech.Sim.ReturnDimension=world.Dimension==Dimension.Dream?Dimension.Lestingia:world.Dimension;
+            Tech.Sim.ReturnDimension=world.Dimension==Dimension.Somnia?Dimension.Lestingia:world.Dimension;
             Tech.Sim.ReturnPosition=player.transform.position;
             Tech.Sim.ResetRadiaEncounter();
 

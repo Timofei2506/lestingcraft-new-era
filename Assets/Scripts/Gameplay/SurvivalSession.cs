@@ -58,7 +58,7 @@ namespace LestingCraft.Gameplay
 
         public void Mine(Vector3Int cell,float dt)
         {
-            if(InDream||World.Dimension==Dimension.Dream){ResetMining();Notice="Во сне руки не слушаются — взаимодействие с миром невозможно";return;}
+            if(InDream||World.Dimension==Dimension.Somnia){ResetMining();Notice="Во сне руки не слушаются — взаимодействие с миром невозможно";return;}
             if(pending||Vitals.dead||Data.campaign.runEnded){ResetMining();return;}
             ushort block=World.GetBlock(cell.x,cell.y,cell.z);if(block==0||block==9||block==7||block==8||cell.y==0){ResetMining();return;}
             if(!Creative&&ExpandedContent.NeedsPick(block)&&!Items.IsPick(Inventory.Active.item)){Notice="Для этого материала нужна кирка";ResetMining();return;}
@@ -74,7 +74,7 @@ namespace LestingCraft.Gameplay
         public void ResetMining(){mineTime=0;MiningProgress=0;}
         public void Place(Vector3Int cell)
         {
-            if(InDream||World.Dimension==Dimension.Dream){Notice="Во сне нельзя ставить или использовать предметы";return;}
+            if(InDream||World.Dimension==Dimension.Somnia){Notice="Во сне нельзя ставить или использовать предметы";return;}
             if(pending||Vitals.dead||Data.campaign.runEnded)return;var item=Items.Get(Inventory.Active.item);
             ushort placeBlock=PlaceableBlockForItem(Inventory.Active.item,World.ContentVersion);
             if(World.Online&&World.ContentVersion<9&&placeBlock>=70){Notice="Нужна новая комната версии 9";return;}
@@ -106,7 +106,7 @@ namespace LestingCraft.Gameplay
             pending=false;drop=spend=0;Notice="";
         }
         public void RejectEdit(string message){pending=false;Notice=message;ResetMining();}
-        public bool CanInteract=>!InDream&&World.Dimension!=Dimension.Dream&&!(Living&&Living.Pending)&&!pending&&!Vitals.dead&&!Data.campaign.runEnded;
+        public bool CanInteract=>!InDream&&World.Dimension!=Dimension.Somnia&&!(Living&&Living.Pending)&&!pending&&!Vitals.dead&&!Data.campaign.runEnded;
         public bool StationNearby(int id,Vector3Int cell)=>CanInteract&&Vector3.Distance(Player.Camera.transform.position,(Vector3)cell+Vector3.one*.5f)<=6.5f&&World.GetBlock(cell.x,cell.y,cell.z)==id;
         public bool Craft(int index)
         {
@@ -161,7 +161,7 @@ namespace LestingCraft.Gameplay
             if(Data==null||!World||!Player||(!World.Ready&&!Game.DockedAtOrbitalStation))return;
             if(!Game.Online&&Game.Paused&&!Game.InventoryOpen&&!Game.StationTradeOpen)return;
             Data.clock+=Time.deltaTime;if(Game.StoryLocked)return;
-            if(InDream||World.Dimension==Dimension.Dream)return;
+            if(InDream||World.Dimension==Dimension.Somnia)return;
             tick+=Time.deltaTime;saveTime+=Time.unscaledDeltaTime;
             if(tick>=1)
             {
