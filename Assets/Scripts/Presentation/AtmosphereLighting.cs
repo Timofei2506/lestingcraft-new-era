@@ -21,7 +21,8 @@ namespace LestingCraft.Presentation
                 case Dimension.Europa:
                 case Dimension.Pluto:
                 case Dimension.Dream:
-                    return 0f; // Airless vacuum / frozen exosphere — crystal-clear starry sky, zero water clouds
+                case Dimension.Backrooms:
+                    return 0f; // Airless vacuum / sealed interior / frozen exosphere — crystal-clear starry sky, zero water clouds
                 case Dimension.Mars:
                     return Mathf.Clamp01(baseClouds * 0.22f); // Thin high CO2-ice cirrus wisps
                 case Dimension.Venus:
@@ -78,6 +79,8 @@ namespace LestingCraft.Presentation
                     return 2.85f; // Dense monochrome storm mist silhouetting the twin helix towers
                 case Dimension.Somnia:
                     return 2.60f;
+                case Dimension.Backrooms:
+                    return 3.60f; // Sickly yellow gloom swallows distant rooms
                 default:
                     return 1.0f;
             }
@@ -271,6 +274,20 @@ namespace LestingCraft.Presentation
                 AmbientGround = new Color(.025f, .03f, .04f);
                 ShallowWater = new Color(.022f, .034f, .050f);
                 DeepWater = new Color(.004f, .008f, .014f);
+            }
+            else if (realm == Dimension.Backrooms)
+            {
+                // Level 0 Backrooms: constant fluorescent hum light, mono-yellow ambience,
+                // no sun, no sky - only the damp glow between endless rooms.
+                Zenith = new Color(.34f, .31f, .13f);
+                Horizon = new Color(.52f, .46f, .20f);
+                SunColor = new Color(.92f, .86f, .55f);
+                DirectIntensity = .55f;
+                AmbientSky = new Color(.32f, .29f, .15f);
+                AmbientEquator = new Color(.27f, .24f, .12f);
+                AmbientGround = new Color(.18f, .17f, .09f);
+                ShallowWater = new Color(.30f, .27f, .12f);
+                DeepWater = new Color(.12f, .11f, .05f);
             }
         }
 

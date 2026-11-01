@@ -1124,6 +1124,12 @@ namespace LestingCraft.Runtime
                 EnterDreamSequence();
                 return;
             }
+            if(!online&&world.Dimension==Dimension.Lestingia&&
+               LestingCraft.World.BackroomsTerrain.ShouldNoclip(Session.Data.seed,dayIdx,Session.Vitals.stamina,Session.Vitals.hunger,Session.Vitals.wetness))
+            {
+                EnterBackroomsSequence();
+                return;
+            }
 
             if(!online)
                 Session.Data.clock=(dayIdx+1)*1440.0+360.0; // Sunrise 06:00
@@ -1195,6 +1201,56 @@ namespace LestingCraft.Runtime
             Session.Checkpoint();
             EvaluateStoryRadio();
             Session.Notice="Вы резко очнулись в холодном поту… Сон рассеялся, связь с реальностью восстановлена.";
+        }
+
+        Dimension backroomsReturnDim=Dimension.Lestingia;
+        Vector3 backroomsReturnPos;
+
+        public void EnterBackroomsSequence()
+        {
+            if(!world||!player||!Session||online)return;
+            if(ChatOpen)CloseChat();
+            if(InventoryOpen){paused=false;ui.ShowHUD();}
+            Session.ResetMining();
+            Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
+            backroomsReturnDim=world.Dimension;
+            backroomsReturnPos=player.transform.position;
+            foreach(var kv in avatars)if(kv.Value)kv.Value.SetActive(false);
+            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
+            world.SwitchPlanet(Dimension.Backrooms,Array.Empty<SavedBlock>());
+            dimension=(int)Dimension.Backrooms;
+            Session.Data.activeDimension=(int)Dimension.Backrooms;
+            player.TeleportTo(new Vector3(.5f,LestingCraft.World.BackroomsTerrain.FloorTop+2.2f,.5f),false);
+            player.transform.rotation=Quaternion.identity;
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Backrooms,player,Camera.main);
+            SetCursor(true);
+            Session.Notice="ВАС ПРОВАЛИЛО СКВОЗЬ РЕАЛЬНОСТЬ: жёлтые комнаты, влажный ковёр, гудение ламп… ищите светящийся дверной проём.";
+        }
+
+        void ExitBackroomsSequence()
+        {
+            if(!world||!player||!Session)return;
+            world.SwitchPlanet(backroomsReturnDim,Session.Data.blocks);
+            dimension=(int)backroomsReturnDim;
+            Session.Data.activeDimension=(int)backroomsReturnDim;
+            player.TeleportTo(backroomsReturnPos,true);
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(backroomsReturnDim,player,Camera.main);
+            if(sharedLaunchSite.HasValue&&!launchVisual)
+                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,backroomsReturnDim);
+            Session.Checkpoint();
+            EvaluateStoryRadio();
+            Session.Notice="Вы шагнули в светящийся проём — реальность снова стала плотной и настоящей.";
+        }
+
+        void UpdateBackrooms()
+        {
+            if(!world||!player||paused||world.Dimension!=Dimension.Backrooms)return;
+            Vector3 p=player.transform.position;
+            if(LestingCraft.World.BackroomsTerrain.IsExitThreshold(Mathf.RoundToInt(p.x),Mathf.RoundToInt(p.z),world.Seed))
+                ExitBackroomsSequence();
         }
 
         void UpdateDreamAnomaly(float dt)
@@ -1651,6 +1707,7 @@ namespace LestingCraft.Runtime
 
             if(Dream.IsActive)
                 UpdateDreamAnomaly(Mathf.Min(Time.deltaTime,0.1f));
+                UpdateBackrooms();
 
             if(SpaceHelm.Active)
                 UpdateOpenSpaceFlight(Mathf.Min(Time.deltaTime,0.1f));

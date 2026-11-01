@@ -17,6 +17,7 @@ namespace LestingCraft.World
         AndromedaPrime = 11,
         Somnia = 12,
         Dream = 13,
-        Radia = 14
+        Radia = 14,
+        Backrooms = 15
     }
 }

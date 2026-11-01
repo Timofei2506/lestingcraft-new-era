@@ -155,6 +155,9 @@ namespace LestingCraft.World
                     Blocks[ChunkData.IndexOf(x, y, z)] = ContentVersion >= 4 &&
                         LestingCraft.Story.StoryWorld.TrySample(wx, y, wz, Seed, out ushort placed, ContentVersion)
                         ? placed
+                        : ContentVersion >= 11 &&
+                            LestingCraft.World.KingdomPlan.TrySample(wx, y, wz, Seed, out ushort crowned)
+                            ? crowned
                         : ContentVersion >= 5
                             ? extra.Apply(ContentVersion >= 7 ? BiomeGenerator.Column(wx, y, wz, Seed, h, trees, biome) : NatureGenerator.Column(wx, y, wz, Seed, h, trees), y, Seed, ContentVersion)
                             : NatureGenerator.Column(wx, y, wz, Seed, h, trees);

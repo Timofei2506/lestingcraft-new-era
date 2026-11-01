@@ -17,7 +17,8 @@ namespace LestingCraft.World
         AndromedaPrime = 11,
         Somnia = 12,
         Dream = 13,
-        Radia = 14
+        Radia = 14,
+        Backrooms = 15
     }
 
     public enum PlanetSurface : byte
@@ -297,6 +298,10 @@ namespace LestingCraft.World
                     h = 45 + (broad - .5f) * 20 + (medium - .5f) * 9 + (pillar ? 6 + (mh % 5) : 0);
                     surface = pillar || medium > .64f ? PlanetSurface.SomniaObsidianPillar : PlanetSurface.SomniaMarble;
                     break;
+                case PlanetBody.Backrooms:
+                    h = BackroomsTerrain.FloorTop;
+                    surface = PlanetSurface.Regolith; // label only; Block() carves the rooms
+                    break;
                 default:
                     h = 45 + (broad - .5f) * 18;
                     surface = PlanetSurface.Regolith;
@@ -323,6 +328,7 @@ namespace LestingCraft.World
         {
             if (y < 0 || y >= 256) return 0;
             if (y == 0) return 9;
+            if (body == PlanetBody.Backrooms) return BackroomsTerrain.Block(x, y, z, seed);
 
             if (body == PlanetBody.Radia)
             {

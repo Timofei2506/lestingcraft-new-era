@@ -1399,16 +1399,18 @@ namespace LestingCraft.Runtime
             if (spiralGalaxyObj) spiralGalaxyObj.SetActive(dim == Dimension.AndromedaPrime || dim == Dimension.Somnia);
             if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
 
-            if (dim == Dimension.Dream || dim == Dimension.Radia)
+            if (dim == Dimension.Dream || dim == Dimension.Radia || dim == Dimension.Backrooms)
             {
                 if (spaceDomeRoot) spaceDomeRoot.SetActive(false);
                 Color heavyFog = dim == Dimension.Radia
                     ? new Color(0.55f, 0.58f, 0.60f)   // Exact overcast monochrome storm fog matching image-1.png!
-                    : new Color(0.17f, 0.15f, 0.23f);
+                    : dim == Dimension.Backrooms
+                        ? new Color(0.46f, 0.41f, 0.18f) // mono-yellow damp gloom of Level 0
+                        : new Color(0.17f, 0.15f, 0.23f);
                 RenderSettings.fog = true;
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
                 RenderSettings.fogColor = heavyFog;
-                RenderSettings.fogDensity = dim == Dimension.Radia ? 0.0155f : 0.038f;
+                RenderSettings.fogDensity = dim == Dimension.Radia ? 0.0155f : dim == Dimension.Backrooms ? 0.042f : 0.038f;
                 if (cam) cam.backgroundColor = heavyFog;
                 return;
             }
