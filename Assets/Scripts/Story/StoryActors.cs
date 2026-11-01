@@ -3,7 +3,7 @@ namespace LestingCraft.Story
 {
  public sealed class StoryActors:MonoBehaviour
  {
-  GuardianSculpture sculpture;VoxelWorld world;float floor;readonly List<Material> costumes=new List<Material>();readonly List<GameObject> roots=new List<GameObject>();GameObject mira,oren,marta,guardian,warning,bridgeGate,vera,ilya;GameObject[] fires=new GameObject[3];GameObject introBeam;GameObject eruption;long rememberedImpact,lastBurst;Vector3 impactPoint;float burstTime=-10;Transform[] weights=new Transform[3];Material material,blood;int oldStage=-1;AudioSource sound;
+  GuardianSculpture sculpture;VoxelWorld world;float floor;readonly List<Material> costumes=new List<Material>();readonly List<GameObject> roots=new List<GameObject>();GameObject mira,oren,marta,guardian,warning,bridgeGate,vera,ilya;GameObject[] fires=new GameObject[3];GameObject introBeam;GameObject eruption;long rememberedImpact,lastBurst;Vector3 impactPoint;float burstTime=-10;Transform[] weights=new Transform[3];Material material,blood;int oldStage=-1;AudioSource sound;Vector3 miraVel,veraVel,ilyaVel;
   public void Initialize(VoxelWorld w)
   {
    world=w;floor=StoryWorld.Floor(w.Seed);material=new Material(Resources.Load<Material>("Generated/VoxelObjects"));blood=new Material(Resources.Load<Material>("Generated/StoryBlood"));blood.SetColor("_BaseColor",new Color(.21f,.027f,.024f));
@@ -44,13 +44,22 @@ namespace LestingCraft.Story
    eruption=new GameObject("Root eruption / visual only, damage remains authoritative");eruption.transform.SetParent(transform,false);for(int i=0;i<9;i++){float angle=i*2.4f;var root=StoryMesh.Cube("Splintered attacking root",eruption.transform,new Vector3(Mathf.Sin(angle)*i*.18f,1.25f,Mathf.Cos(angle)*i*.18f),new Vector3(.25f+(i%3)*.12f,2.5f+(i%2),.3f),4,material,true);root.transform.localRotation=Quaternion.Euler(i%2==0?18:-20,angle*57.3f,i%2==0?15:-16);}eruption.SetActive(false);
    warning=StoryMesh.Cube("Root strike telegraph",transform,new Vector3(176,floor+1.04f,-112),new Vector3(5,.03f,5),1,blood);warning.GetComponent<MeshRenderer>().shadowCastingMode=ShadowCastingMode.Off;warning.SetActive(false);
   }
+  static void Glide(Transform t,Vector3 target,ref Vector3 velocity)
+  {
+   if(!t)return;
+   if((t.position-target).sqrMagnitude>30f*30f){t.position=target;velocity=Vector3.zero;}
+   else t.position=Vector3.SmoothDamp(t.position,target,ref velocity,.4f);
+  }
   public void Apply(StoryState state,long now)
   {
    float lift=state.stage<=1?Mathf.SmoothStep(0,1,Mathf.Clamp01((now-state.sceneAt-2000)/9000f)):1;introBeam.SetActive(state.stage<4&&world.Loaded(introBeam.transform.position));introBeam.transform.position=new Vector3(-32+lift*3,floor+1.65f+Mathf.Sin(lift*Mathf.PI)*1.2f-lift*.45f,-31.2f-lift);introBeam.transform.rotation=Quaternion.Euler(lift*12,15+lift*20,-12+lift*9);
    foreach(var root in roots)if(root)root.SetActive(world.Loaded(root.transform.position));bool aliveWitness=state.stage<=3;float breath=aliveWitness?Mathf.Sin(Time.time*2.3f)*.006f:0;
    if(oren)oren.transform.position=WitnessPosition(true,world.Seed)+Vector3.up*breath;if(marta)marta.transform.position=WitnessPosition(false,world.Seed)-Vector3.up*breath;
-   if(mira){Vector3 p=state.stage<6?new Vector3(94,floor+1.03f,52):state.stage<9?new Vector3(48,floor+1.03f,-90):state.stage<10?new Vector3(106,floor+1.03f,59):new Vector3(176,floor+1.18f,-103);mira.transform.position=p;mira.transform.rotation=state.stage>=12?Quaternion.Euler(0,20,90):Quaternion.Euler(0,210,0);mira.GetComponent<PlayerNameplate>().enabled=state.stage<12;}
-   for(int i=0;i<3;i++)fires[i].SetActive(state.stage==11&&(state.pylons&(1<<i))!=0&&world.Loaded(fires[i].transform.position));bool atLoss=state.stage>=12&&state.stage<14;vera.transform.position=atLoss?new Vector3(179,floor+1.03f,-100):state.stage==9?new Vector3(109,floor+1.03f,60):new Vector3(96,floor+1.03f,50);ilya.transform.position=state.stage>=12?new Vector3(174,floor+1.03f,-101):new Vector3(108,floor+1.03f,60);
+   if(mira){Vector3 p=state.stage<6?new Vector3(94,floor+1.03f,52):state.stage<9?new Vector3(48,floor+1.03f,-90):state.stage<10?new Vector3(106,floor+1.03f,59):new Vector3(176,floor+1.18f,-103);Glide(mira.transform,p,ref miraVel);mira.transform.rotation=state.stage>=12?Quaternion.Euler(0,20,90):Quaternion.Euler(0,210,0);mira.GetComponent<PlayerNameplate>().enabled=state.stage<12;}
+   for(int i=0;i<3;i++)fires[i].SetActive(state.stage==11&&(state.pylons&(1<<i))!=0&&world.Loaded(fires[i].transform.position));bool atLoss=state.stage>=12&&state.stage<14;
+   Vector3 veraTarget=atLoss?new Vector3(179,floor+1.03f,-100):state.stage==9?new Vector3(109,floor+1.03f,60):state.stage==15?new Vector3(97,floor+1.03f,51):new Vector3(96,floor+1.03f,50);
+   Vector3 ilyaTarget=state.stage>=12&&state.stage<15?new Vector3(174,floor+1.03f,-101):state.stage==15?new Vector3(95.1f,floor+1.03f,51):new Vector3(108,floor+1.03f,60);
+   Glide(vera.transform,veraTarget,ref veraVel);Glide(ilya.transform,ilyaTarget,ref ilyaVel);
    for(int i=0;i<3;i++)weights[i].localRotation=Quaternion.Euler(0,0,(state.bridgeMask&(1<<i))!=0?42:-35);bridgeGate.transform.position=new Vector3(3,floor+2.3f+(state.bridgeSolved?4:0),9);
    sculpture.SetExposed(state.stage==11&&state.pylons==7);
    bool bossActive=state.stage==10&&state.sceneAt>0||state.stage==11||state.stage==12;guardian.SetActive(bossActive&&world.Loaded(guardian.transform.position));guardian.transform.localScale=state.stage==12?Vector3.one*Mathf.Max(.08f,1-(now-state.sceneAt)/12500f):Vector3.one;

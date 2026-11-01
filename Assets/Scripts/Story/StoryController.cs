@@ -7,7 +7,7 @@ namespace LestingCraft.Story
   public string ActiveObjective=>Enabled&&State!=null?StoryRules.Objective(State):"";
   // Scene-time impacts of the three knocks in the stage 1 witness scene (subtitle: "три удара" from t=9).
   static readonly float[] KnockTimes={9f,9.9f,10.8f};
-  StoryContent content;StoryActors actors;Camera cameraView;Canvas canvas;Text quest,speaker,subtitle,hint,boss;Image panel,topBar,bottomBar;Button next,choiceA,choiceB;bool journalHidden;bool arenaPlaced;bool wasCinematic;bool readySent;int shownRevision=-1,oldStage=-1;long pauseAt;long remoteTime;float received;float attackTime=-10;float readyRetry;Vector3 cameraHome;Quaternion cameraRotation;
+  StoryContent content;StoryActors actors;Camera cameraView;Canvas canvas;Text quest,speaker,subtitle,hint,boss;Image panel,topBar,bottomBar;Button next,choiceA,choiceB;bool journalHidden;bool arenaPlaced;bool wasCinematic;bool readySent;int shownRevision=-1,oldStage=-1;long pauseAt;long remoteTime;float received;float attackTime=-10;float readyRetry;Vector3 cameraVelocity;Vector3 cameraHome;Quaternion cameraRotation;
   long Now=>Game.Online&&remoteTime>0?remoteTime+(long)((Time.unscaledTime-received)*1000):DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
   public void Initialize(PrototypeGame game,StoryState network=null,long serverNow=0)
   {
@@ -15,7 +15,7 @@ namespace LestingCraft.Story
    content=JsonUtility.FromJson<StoryContent>(Resources.Load<TextAsset>("Story/ChapterOne").text);State=network??game.Session.Data.story??new StoryState();game.Session.Data.story=State;cameraView=game.Session.Player.Camera;cameraHome=cameraView.transform.localPosition;cameraRotation=cameraView.transform.localRotation;
    remoteTime=serverNow;received=Time.unscaledTime;actors=gameObject.AddComponent<StoryActors>();actors.Initialize(game.Session.World);BuildUI();TeleportCheckpoint();Apply(State,serverNow);
   }
-  void TeleportCheckpoint(){int s=State.stage;Vector2 p=s<4?new Vector2(-32,-30):s==4&&!State.bridgeSolved?new Vector2(-8,7):s==7||s==8?new Vector2(48,-90):s<10||s==14?new Vector2(96,53):new Vector2(176,-96);Game.Session.Player.TeleportTo(new Vector3(p.x+.5f,StoryWorld.Floor(Game.Session.World.Seed)+1.05f,p.y+.5f),true);}
+  void TeleportCheckpoint(){int s=State.stage;Vector2 p=s<4?new Vector2(-32,-30):s==4&&!State.bridgeSolved?new Vector2(-8,7):s==7||s==8?new Vector2(48,-90):s<10||s==14||s==15?new Vector2(96,53):new Vector2(176,-96);Game.Session.Player.TeleportTo(new Vector3(p.x+.5f,StoryWorld.Floor(Game.Session.World.Seed)+1.05f,p.y+.5f),true);}
   public void Apply(StoryState state,long serverNow)
   {if(!Enabled||state==null||state.revision<State.revision)return;State=state;Game.Session.Data.story=state;if(serverNow>0){remoteTime=serverNow;received=Time.unscaledTime;}if(state.stage==14){Game.Session.Data.campaign.chapter=1;Game.Session.Data.campaign.unlockedMask=3;}}
   public void Action(string action,int arg=0)
@@ -41,7 +41,7 @@ namespace LestingCraft.Story
    // starts (stage advances), so one dropped send cannot softlock the opening for everyone.
    else if(Game.Online&&State.stage==0&&Time.unscaledTime-readyRetry>4f){readyRetry=Time.unscaledTime;Game.SendStory(new NetPacket{type="story_ready"});}
    if(!Game.Online){var copy=State.Copy();if(StoryRules.Tick(copy,Now))Apply(copy,Now);TickOfflineBoss();}
-   if(oldStage!=State.stage){oldStage=State.stage;if(State.stage==4||State.stage==5||State.stage==7||State.stage==10){Vector2 p=State.stage==4?new Vector2(-28,-25):State.stage==7?new Vector2(48,-90):new Vector2(96,53);Game.Session.Player.SetCheckpoint(new Vector3(p.x,StoryWorld.Floor(Game.Session.World.Seed)+1.05f,p.y));}Game.RefreshStoryControl();}
+   if(oldStage!=State.stage){oldStage=State.stage;if(State.stage==4||State.stage==5||State.stage==7||State.stage==10||State.stage==15){Vector2 p=State.stage==4?new Vector2(-28,-25):State.stage==7?new Vector2(48,-90):new Vector2(96,53);Game.Session.Player.SetCheckpoint(new Vector3(p.x,StoryWorld.Floor(Game.Session.World.Seed)+1.05f,p.y));}Game.RefreshStoryControl();}
    // Story objectives live exclusively inside the ESC pause menu & Story Journal — never cluttering the main HUD!
    if(quest)quest.gameObject.SetActive(false);
    actors.Apply(State,Now);if(State.stage==10&&State.sceneAt>0&&!arenaPlaced){arenaPlaced=true;Game.Session.Player.TeleportTo(new Vector3(176,StoryWorld.Floor(Game.Session.World.Seed)+1.05f,-99),true);}GrantRewards();if(Game.Paused){canvas.enabled=false;return;}canvas.enabled=true;RefreshUI();Cinematic();
@@ -99,9 +99,13 @@ namespace LestingCraft.Story
    else if(State.stage==7){at=new Vector3(48,y+2.55f,-90);from=new Vector3(45.7f,y+2.7f,-86.2f);if(who=="Голос из шахты"){from=new Vector3(48,y+2.7f,-88);at=new Vector3(48,y+.5f,-96);}}
    else if(State.stage==9){at=who=="Мира"?new Vector3(106,y+2.55f,59):who=="Вера"?new Vector3(109,y+2.55f,60):new Vector3(108,y+2.55f,60);from=new Vector3(110.7f,y+2.75f,63.1f);}
    else if(State.stage==13){at=who=="Вера"?new Vector3(179,y+2.6f,-100):new Vector3(174,y+2.6f,-101);from=new Vector3(176,y+2.8f,-97);if(who=="Вы"){at=new Vector3(176,y+1.3f,-103);from=new Vector3(172.8f,y+3,-99.2f);}}
+   else if(State.stage==15){at=who=="Эхо Миры"?new Vector3(96,y+.92f,48):who=="Илья"?new Vector3(95.1f,y+2.55f,51):who=="Вы"?new Vector3(96,y+1.35f,53):new Vector3(97,y+2.55f,51);from=who=="Эхо Миры"?new Vector3(94.7f,y+3.3f,50.7f):new Vector3(93.5f,y+2.85f,54.3f);}
    else if(who=="Илья"){at=new Vector3(108,y+2.55f,60);from=new Vector3(110.7f,y+2.75f,63.1f);}
    else{at=who=="Мира"?new Vector3(94,y+2.55f,52):new Vector3(96,y+2.55f,50);from=new Vector3(93,y+2.8f,55);}
-   from+=Vector3.right*Mathf.Sin(Time.unscaledTime*.35f)*.04f;cameraView.transform.position=from;cameraView.transform.LookAt(at);
+   from+=Vector3.right*Mathf.Sin(Time.unscaledTime*.35f)*.04f;
+   cameraView.transform.position=Vector3.SmoothDamp(cameraView.transform.position,from,ref cameraVelocity,.18f);
+   var wanted=Quaternion.LookRotation(at-cameraView.transform.position);
+   cameraView.transform.rotation=Quaternion.Slerp(cameraView.transform.rotation,wanted,Mathf.Clamp01(Time.unscaledDeltaTime*6f));
   }
   void RefreshUI()
   {

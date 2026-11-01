@@ -8,10 +8,10 @@ namespace LestingCraft.Story
  }
  public static class StoryRules
  {
-  public static bool Dialogue(int s)=>s==3||s==5||s==7||s==9||s==13;
+  public static bool Dialogue(int s)=>s==3||s==5||s==7||s==9||s==13||s==15;
   public static bool Locked(StoryState s)=>s.stage==0||s.stage==1||s.stage==12||s.stage==10&&s.sceneAt>0||Dialogue(s.stage)&&s.line>=0;
   public static string Objective(StoryState s)
-  {switch(s.stage){case 0:return "Ожидаем готовности всей команды";case 1:return "Выбраться из-под завалов";case 2:return s.searched==3?"Подойдите к раненым у стены":"Обыщите ящик и дорожную сумку в доме";case 3:return "Последние слова смотрителей";case 4:if(!s.bridgeSolved)return "У тракта: подберите противовесы общим весом 7";return "Дойдите по тракту до Тихого Брода. Найдите Веру у колодца";case 5:return "Узнайте, что случилось с деревней";case 6:return "Встретьтесь с Мирой у старой мельницы";case 7:return "Выслушайте Миру";case 8:return "Откройте печати мельницы в порядке старой песни";case 9:return "Вернитесь к кузнецу Илье за снаряжением";case 10:return "Найдите алтарь корневого святилища";case 11:return s.pylons==7?"Сердце открыто — ударьте Стража!":"Зажгите три жаровни, чтобы открыть сердце Стража";case 12:return "Печать рушится";case 13:return "Цена закрытой двери";default:return "Глава I завершена · Отдохните в Тихом Броде";}}
+  {switch(s.stage){case 0:return "Ожидаем готовности всей команды";case 1:return "Выбраться из-под завалов";case 2:return s.searched==3?"Подойдите к раненым у стены":"Обыщите ящик и дорожную сумку в доме";case 3:return "Последние слова смотрителей";case 4:if(!s.bridgeSolved)return "У тракта: подберите противовесы общим весом 7";return "Дойдите по тракту до Тихого Брода. Найдите Веру у колодца";case 5:return "Узнайте, что случилось с деревней";case 6:return "Встретьтесь с Мирой у старой мельницы";case 7:return "Выслушайте Миру";case 8:return "Откройте печати мельницы в порядке старой песни";case 9:return "Вернитесь к кузнецу Илье за снаряжением";case 10:return "Найдите алтарь корневого святилища";case 11:return s.pylons==7?"Сердце открыто — ударьте Стража!":"Зажгите три жаровни, чтобы открыть сердце Стража";case 12:return "Печать рушится";case 13:return "Цена закрытой двери";case 15:return "Выслушайте эхо Миры у колодца Тихого Брода";default:return "Глава I завершена · Отдохните в Тихом Броде";}}
   public static bool Act(StoryState s,string action,int arg,long now,int lines)
   {
    if(action=="ready"&&s.stage==0){s.stage=1;s.sceneAt=now;}
@@ -26,7 +26,7 @@ namespace LestingCraft.Story
    else if(action=="altar"&&s.stage==10&&s.sceneAt==0)s.sceneAt=now;
    else if(action=="choice"&&s.stage==3&&s.line==10&&s.choice==0&&(arg==1||arg==2)){s.choice=arg;s.line++;}
    else if(action=="ack"&&Dialogue(s.stage)&&s.line>=0&&!(s.stage==3&&s.line==10))
-   {s.line++;if(s.line>=lines){int old=s.stage;s.stage=old==3?4:old==5?6:old==7?8:old==9?10:14;s.line=-1;s.sceneAt=0;if(old==9)s.rewards|=4;}}
+   {s.line++;if(s.line>=lines){int old=s.stage;s.stage=old==3?4:old==5?6:old==7?8:old==9?10:old==13?15:14;s.line=Dialogue(s.stage)?0:-1;s.sceneAt=0;if(old==9)s.rewards|=4;}}
    else if(action=="pylon"&&s.stage==11&&arg>=0&&arg<3){if((s.pylons&(1<<arg))!=0)return false;s.pylons|=1<<arg;if(s.pylons==7)s.vulnerableUntil=now+12000;}
    else if(action=="hit"&&s.stage==11&&s.pylons==7&&now<s.vulnerableUntil)
    {s.bossHealth=Math.Max(0,s.bossHealth-8);if(s.bossHealth==0){s.stage=12;s.sceneAt=now;s.rewards|=8;}else if(s.bossHealth<=s.bossMax/2&&s.bossPhase==0){s.bossPhase=1;s.pylons=0;s.vulnerableUntil=0;}}
