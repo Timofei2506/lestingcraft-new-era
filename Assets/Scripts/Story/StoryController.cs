@@ -7,7 +7,7 @@ namespace LestingCraft.Story
   public string ActiveObjective=>Enabled&&State!=null?StoryRules.Objective(State):"";
   // Scene-time impacts of the three knocks in the stage 1 witness scene (subtitle: "три удара" from t=9).
   static readonly float[] KnockTimes={9f,9.9f,10.8f};
-  StoryContent content;StoryActors actors;Camera cameraView;Canvas canvas;Text quest,speaker,subtitle,hint,boss;Image panel,topBar,bottomBar;Button next,choiceA,choiceB;bool journalHidden;bool arenaPlaced;bool wasCinematic;bool readySent;int shownRevision=-1,oldStage=-1;long pauseAt;long remoteTime;float received;float attackTime=-10;Vector3 cameraHome;Quaternion cameraRotation;
+  StoryContent content;StoryActors actors;Camera cameraView;Canvas canvas;Text quest,speaker,subtitle,hint,boss;Image panel,topBar,bottomBar;Button next,choiceA,choiceB;bool journalHidden;bool arenaPlaced;bool wasCinematic;bool readySent;int shownRevision=-1,oldStage=-1;long pauseAt;long remoteTime;float received;float attackTime=-10;float readyRetry;Vector3 cameraHome;Quaternion cameraRotation;
   long Now=>Game.Online&&remoteTime>0?remoteTime+(long)((Time.unscaledTime-received)*1000):DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
   public void Initialize(PrototypeGame game,StoryState network=null,long serverNow=0)
   {
@@ -36,7 +36,10 @@ namespace LestingCraft.Story
    if(!Enabled||!Game.Session)return;
    if(!Game.Online&&Game.Paused){if(canvas)canvas.enabled=false;if(pauseAt==0)pauseAt=Now;return;}if(pauseAt>0){long dt=Now-pauseAt;pauseAt=0;if(State.sceneAt>0)State.sceneAt+=dt;if(State.impactAt>0)State.impactAt+=dt;if(State.nextAttack>0)State.nextAttack+=dt;if(State.vulnerableUntil>0)State.vulnerableUntil+=dt;}
    if(!Game.WorldReady){if(quest)quest.text="Глава I · Подготовка мира…";return;}
-   if(!readySent){readySent=true;if(Game.Online)Game.SendStory(new NetPacket{type="story_ready"});else Action("ready");}
+   if(!readySent){readySent=true;readyRetry=Time.unscaledTime;if(Game.Online)Game.SendStory(new NetPacket{type="story_ready"});else Action("ready");}
+   // story_ready is idempotent on the server: keep retrying until the room actually
+   // starts (stage advances), so one dropped send cannot softlock the opening for everyone.
+   else if(Game.Online&&State.stage==0&&Time.unscaledTime-readyRetry>4f){readyRetry=Time.unscaledTime;Game.SendStory(new NetPacket{type="story_ready"});}
    if(!Game.Online){var copy=State.Copy();if(StoryRules.Tick(copy,Now))Apply(copy,Now);TickOfflineBoss();}
    if(oldStage!=State.stage){oldStage=State.stage;if(State.stage==4||State.stage==5||State.stage==7||State.stage==10){Vector2 p=State.stage==4?new Vector2(-28,-25):State.stage==7?new Vector2(48,-90):new Vector2(96,53);Game.Session.Player.SetCheckpoint(new Vector3(p.x,StoryWorld.Floor(Game.Session.World.Seed)+1.05f,p.y));}Game.RefreshStoryControl();}
    // Story objectives live exclusively inside the ESC pause menu & Story Journal — never cluttering the main HUD!

@@ -6,21 +6,33 @@ namespace LestingCraft.Gameplay
     [Serializable] public sealed class SurvivalState
     {
         public BodyHealth body=new BodyHealth();
-        public float health=100,hunger=100,stamina=100,temperature=37,wetness,air=100,comfort=80;public bool dead;
+        public float health=100,hunger=100,stamina=100,temperature=37,wetness,air=100,comfort=80,thirst=100;public bool dead;
         public void Step(float seconds,GameMode mode,float air,float precipitation,bool sheltered,bool nearFire,bool sprinting,float insulation)
         {
             if(seconds<=0||dead||mode==GameMode.Creative)return;seconds=Mathf.Min(seconds,2);
             hunger=Mathf.Max(0,hunger-seconds*(sprinting?.07f:.035f));
+            thirst=Mathf.Max(0,thirst-seconds*(sprinting?.055f:.024f));
             stamina=Mathf.Clamp(stamina+seconds*(sprinting?-14:10),0,100);
             wetness=Mathf.Clamp01(wetness+seconds*(sheltered||nearFire?-.035f:precipitation*.02f-.003f));
             float effective=air+insulation+(sheltered?7:0)+(nearFire?24:0)-wetness*14;
             float target=Mathf.Clamp(37+(effective-16)*.10f,30,41);
             temperature=Mathf.MoveTowards(temperature,target,seconds*.025f);
             if(hunger<=0)Damage(seconds*.35f,mode);
+            if(thirst<=0)Damage(seconds*.30f,mode);
             if(temperature<34)Damage(seconds*(34-temperature)*.18f,mode);
             if(temperature>39)Damage(seconds*(temperature-39)*.15f,mode);
-            body.Recover(seconds,hunger>75&&temperature>35&&temperature<38.5f);
-            if(body.trauma<=0&&hunger>75&&temperature>35&&temperature<38.5f)health=Mathf.Min(100,health+seconds*.2f);
+            body.Recover(seconds,hunger>75&&thirst>55&&temperature>35&&temperature<38.5f);
+            if(body.trauma<=0&&hunger>75&&thirst>55&&temperature>35&&temperature<38.5f)health=Mathf.Min(100,health+seconds*.2f);
+        }
+        /// <summary>Suit life-support off-world: sealed suits run on a finite tank,
+        /// pressurized habitats refill it, bare vacuum drains fast and suffocates.</summary>
+        public void StepSuit(float seconds,GameMode mode,bool sealedSuit,bool pressurized)
+        {
+            if(mode==GameMode.Creative){air=100;return;}if(dead||seconds<=0)return;seconds=Mathf.Min(seconds,2);
+            if(pressurized)air=Mathf.Min(100,air+seconds*12f);
+            else if(sealedSuit)air=Mathf.Max(0,air-seconds*.30f);
+            else air=Mathf.Max(0,air-seconds*8f);
+            if(air<=0)Damage(seconds*(sealedSuit?2.5f:5f),mode);
         }
         public void StepWater(float seconds,GameMode mode,bool underwater,bool immersed)
         {
@@ -31,9 +43,10 @@ namespace LestingCraft.Gameplay
         public void Damage(float amount,GameMode mode){if(mode==GameMode.Creative||dead)return;body.Systemic(Mathf.Max(0,amount));health=Mathf.Max(0,health-Mathf.Max(0,amount));dead=health<=0;if(dead)health=0;}
         public void DamagePart(float amount,GameMode mode,BodyPart part){if(mode==GameMode.Creative||dead||amount<=0)return;body.Systemic(amount);health=Mathf.Max(0,health-amount);dead=health<=0;if(dead)health=0;}
         public bool Treat(){if(dead||health>=98)return false;health=Mathf.Min(100,health+22);body.trauma=Mathf.Min(body.trauma,5);return true;}
-        public void Eat(float amount){if(!dead)hunger=Mathf.Min(100,hunger+amount);}
-        public void Respawn(){body=new BodyHealth();body.Normalize(100);health=100;hunger=70;temperature=37;wetness=0;stamina=100;air=100;dead=false;}
-        public void Normalize(){if(body==null)body=new BodyHealth();body.Normalize(health);air=Mathf.Clamp(air,0,100);health=Mathf.Clamp(health,0,100);hunger=Mathf.Clamp(hunger,0,100);stamina=Mathf.Clamp(stamina,0,100);temperature=Mathf.Clamp(temperature,25,43);wetness=Mathf.Clamp01(wetness);dead=health<=0;}
+        public void Eat(float amount){if(!dead){hunger=Mathf.Min(100,hunger+amount);thirst=Mathf.Min(100,thirst+amount*.4f);}}
+        public void Drink(float amount){if(!dead)thirst=Mathf.Min(100,thirst+amount);}
+        public void Respawn(){body=new BodyHealth();body.Normalize(100);health=100;hunger=70;thirst=85;temperature=37;wetness=0;stamina=100;air=100;dead=false;}
+        public void Normalize(){if(body==null)body=new BodyHealth();body.Normalize(health);air=Mathf.Clamp(air,0,100);health=Mathf.Clamp(health,0,100);hunger=Mathf.Clamp(hunger,0,100);thirst=Mathf.Clamp(thirst,0,100);stamina=Mathf.Clamp(stamina,0,100);temperature=Mathf.Clamp(temperature,25,43);wetness=Mathf.Clamp01(wetness);dead=health<=0;}
     }
     public readonly struct WeatherSample
     {

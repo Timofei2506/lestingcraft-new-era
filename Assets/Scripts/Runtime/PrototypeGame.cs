@@ -1523,6 +1523,7 @@ namespace LestingCraft.Runtime
                         revision=packet.rev;
                         if(packet.edits!=null)foreach(var edit in packet.edits)world.Edit(edit.x,edit.y,edit.z,(ushort)edit.block);
                         if(Session){Session.Living.Apply(packet);Session.Animals.Apply(packet);}
+                        if(Story&&packet.story!=null)Story.Apply(packet.story,packet.serverNow);
                         if(packet.players!=null)foreach(var peer in packet.players)SetAvatar(peer);
                         break;
                     }
@@ -1581,7 +1582,7 @@ namespace LestingCraft.Runtime
                 case "leave":if(avatars.TryGetValue(packet.id,out var avatar))Destroy(avatar);avatars.Remove(packet.id);targets.Remove(packet.id);break;
                 case "state_saved":if(packet.id==selfId)saveAcknowledged=true;if(Session&&packet.campaign!=null)Session.Data.campaign=packet.campaign;break;
                 case "run_ended":if(packet.id==selfId)saveAcknowledged=true;if(Session){Session.ServerRunEnded=true;Session.Data.campaign.runEnded=true;Session.Notice="Хардкор завершён: погиб участник команды";OpenDeathScreen();}break;
-                case "error":if(Session)Session.Living.Apply(packet);Fail(packet.message);if(Session){if(string.IsNullOrEmpty(packet.code)||packet.code=="edit")Session.RejectEdit(packet.message);else{Session.Notice=packet.message;if(packet.code=="animal_hit")Session.Animals.Reject(packet.requestId);}}break;
+                case "error":if(Session)Session.Living.Apply(packet);Fail(packet.message);if(Session){if(string.IsNullOrEmpty(packet.code)||packet.code=="edit")Session.RejectEdit(packet.message);else{Session.Notice=packet.message;if(packet.code=="animal_hit")Session.Animals.Reject(packet.requestId);}}if(packet.code=="story_action"||packet.code=="story_ready")SendStory(new NetPacket{type="story_sync"});break;
             }
         }
         void BeginNetworkWorld(NetPacket packet)

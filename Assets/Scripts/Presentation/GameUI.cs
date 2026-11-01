@@ -19,7 +19,7 @@ namespace LestingCraft.Presentation
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
         Page page,settingsBack;Text status,loadingHUD;Image[] slots;RectTransform[] slotRects;
         Text vitalsHUD,objectiveHUD,noticeHUD,healthHUD;HealthSilhouette healthBody;RawImage[] slotIcons;Text[] slotCounts;ItemHover[] slotHovers;RectTransform tooltip;Text tooltipText;int lastInventoryRevision=-1,lastSlot=-1;
-        Image oxygenBar;Image[] slotFrames;Image[] objectiveChecks;Text[] objectiveLabels;
+        Image oxygenBar,staminaBar,thirstBar,temperatureBar;RectTransform oxygenRow,staminaRow,thirstRow,temperatureRow;RectTransform[] vitalsRows;Text foodHUD,tempHUD;Image[] slotFrames;Image[] objectiveChecks;Text[] objectiveLabels;
         Image miningBar;Text miningLabel;GameObject chatRoot;Text chatText;InputField chatInput;int chatRevision=-1;string lastNotice="";float noticeAt;
         public string ChatText=>chatInput?chatInput.text:"";
         public void SetChatOpen(bool open)
@@ -471,13 +471,26 @@ namespace LestingCraft.Presentation
             }
             // Item names are hover/focus tooltips, never permanent slot text.
 
-            var healthPanel=Box(content.transform,24,652,252,142,new Color(.025f,.05f,.055f,.91f));
-            healthHUD=Label(healthPanel.transform,"HP · 100 / 100",14,10,224,28,17,White);
-            var body=Rect("Health bar",healthPanel.transform,14,42,224,9);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
-            Label(healthPanel.transform,"O₂",14,60,30,24,15,White);
-            Box(healthPanel.transform,48,66,190,8,new Color(.10f,.14f,.16f,.95f),false);
-            oxygenBar=Box(healthPanel.transform,48,66,190,8,new Color(.42f,.72f,.88f),false);
-            vitalsHUD=Label(healthPanel.transform,"",14,82,224,52,12,White);
+            // Vitals panel: HP silhouette + vitality bars (O₂ is suit-only, off-world).
+            var healthPanel=Box(content.transform,24,616,252,178,new Color(.025f,.05f,.055f,.91f));
+            healthHUD=Label(healthPanel.transform,"HP · 100 / 100",14,8,150,28,17,White);
+            foodHUD=Label(healthPanel.transform,"",128,10,110,24,12,Muted,false,TextAnchor.MiddleRight);
+            var body=Rect("Health bar",healthPanel.transform,14,40,224,10);healthBody=body.gameObject.AddComponent<HealthSilhouette>();healthBody.Build();
+            RectTransform VitalsRow(string label,Color tint,out Image bar)
+            {
+                var row=Rect(label+" row",healthPanel.transform,0,56,252,23);
+                Label(row,label,14,1,52,20,12,White);
+                Box(row,72,8,166,8,new Color(.10f,.14f,.16f,.95f),false);
+                bar=Box(row,72,8,166,8,tint,false);
+                return row;
+            }
+            oxygenRow=VitalsRow("O₂",new Color(.42f,.72f,.88f),out oxygenBar);
+            staminaRow=VitalsRow("Силы",new Color(.46f,.82f,.52f),out staminaBar);
+            thirstRow=VitalsRow("Жажда",new Color(.40f,.66f,.94f),out thirstBar);
+            temperatureRow=VitalsRow("Темп",new Color(.72f,.60f,.42f),out temperatureBar);
+            tempHUD=Label(temperatureRow,"37.0°C",128,1,110,20,12,Muted,false,TextAnchor.MiddleRight);
+            vitalsRows=new[]{oxygenRow,staminaRow,thirstRow,temperatureRow};
+            vitalsHUD=Label(content.transform,"",24,540,430,68,12,Muted);
             // Objectives panel, top-right: living checklist driven by the current expedition
             // state. Checkbox squares are plain images (font-safe, square-corner HUD language).
             var objectivePanel=Box(content.transform,982,24,274,178,new Color(.025f,.05f,.055f,.82f));
@@ -546,8 +559,25 @@ namespace LestingCraft.Presentation
                         if(sim.Grid.GenerationKw>0.1f||sim.Grid.DemandKw>0.1f)
                             extraTech+=$"\n⚡ Сеть  {sim.Grid.GenerationKw:0}/{sim.Grid.DemandKw:0} кВт · {sim.Grid.StoredKwh:0} кВт·ч";
                     }
-                    vitalsHUD.text=$"Еда {v.hunger:0}  ·  Силы {v.stamina:0}\n{v.temperature:0.0}°C  ·  Влага {v.wetness*100:0}%"+(v.air<100?$"  ·  O₂ {v.air:0}%":"")+extraTech;
-                    if(oxygenBar)oxygenBar.rectTransform.sizeDelta=new Vector2(Mathf.Max(0,190*Mathf.Clamp01(v.air/100)),8);
+                    bool offWorld=session.World&&session.World.Dimension!=Dimension.Lestingia;
+                    float rowY=56;
+                    foreach(var row in vitalsRows)
+                    {
+                        bool show=row!=oxygenRow||offWorld;
+                        row.gameObject.SetActive(show);
+                        if(show){row.anchoredPosition=new Vector2(0,-rowY);rowY+=23;}
+                    }
+                    if(oxygenBar)oxygenBar.rectTransform.sizeDelta=new Vector2(166*Mathf.Clamp01(v.air/100),8);
+                    if(staminaBar)staminaBar.rectTransform.sizeDelta=new Vector2(166*Mathf.Clamp01(v.stamina/100),8);
+                    if(thirstBar)thirstBar.rectTransform.sizeDelta=new Vector2(166*Mathf.Clamp01(v.thirst/100),8);
+                    if(temperatureBar)
+                    {
+                        temperatureBar.rectTransform.sizeDelta=new Vector2(166*Mathf.Clamp01((v.temperature-30)/13f),8);
+                        temperatureBar.color=Color.Lerp(new Color(.40f,.62f,.95f),new Color(.95f,.50f,.30f),Mathf.Clamp01((v.temperature-33)/7f));
+                    }
+                    if(foodHUD)foodHUD.text=$"Еда {v.hunger:0}%";
+                    if(tempHUD)tempHUD.text=$"{v.temperature:0.0}°C";
+                    vitalsHUD.text=extraTech.Length>0?extraTech.Substring(1):"";
                     RefreshObjectives(session);
 
                     if(lastNotice!=session.Notice){lastNotice=session.Notice;noticeAt=Time.unscaledTime;}

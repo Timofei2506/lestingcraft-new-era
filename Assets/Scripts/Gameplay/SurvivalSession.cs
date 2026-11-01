@@ -173,16 +173,19 @@ namespace LestingCraft.Gameplay
                 bool pressurized=Game.ShuttleSeated||Game.InMoonFlight||Game.DockedAtOrbitalStation||
                     (Game.LaunchSite&&Vector3.Distance(Player.transform.position,Game.LaunchSite.transform.position)<46f);
 
-                if(World.Dimension!=Dimension.Lestingia&&!pressurized&&!HasFullSpaceSuit())
+                if(World.Dimension!=Dimension.Lestingia)
                 {
-                    Vitals.StepWater(elapsed,Mode,true,false);
-                    if(!Creative&&string.IsNullOrEmpty(Notice))
+                    bool suit=HasFullSpaceSuit();
+                    Vitals.StepSuit(elapsed,Mode,suit,pressurized);
+                    if(!pressurized&&!suit&&string.IsNullOrEmpty(Notice))
                         Notice="Внимание: вакуум / экстремальная среда! Наденьте скафандр или вернитесь к шлюзу шаттла";
+                    else if(!pressurized&&suit&&Vitals.air<22&&string.IsNullOrEmpty(Notice))
+                        Notice="Запас кислорода скафандра ниже 22%";
                 }
                 else
                 {
                     bool underwater=!Game.DockedAtOrbitalStation&&World.InFluid(Player.Camera.transform.position,7);
-                    bool immersed=!Game.DockedAtOrbitalStation&&World.InFluid(Player.transform.position+Vector3.up*.8f,7);
+                    bool immersed=!Game.DockedAtOrbitalStation&&World.InFluid(Player.Camera.transform.position+Vector3.up*.8f,7);
                     Vitals.StepWater(elapsed,Mode,underwater,immersed);
                 }
 

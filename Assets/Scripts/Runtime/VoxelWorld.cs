@@ -286,6 +286,7 @@ namespace LestingCraft.Runtime
                     Vector2Int key;
                     StartMeshWorkers(center);
                     AdvanceMeshWorkers();
+                    if (!Ready && CoreComplete(center)) Ready = true;
                     if (FindMissing(center, out key)) work = Generate(key);
                     else
                     {
@@ -405,7 +406,7 @@ namespace LestingCraft.Runtime
             return dx * dx + dz * dz <= 32 * 32;
         }
 
-        bool BudgetExpired { get { return !synchronousPump && frameWatch.Elapsed.TotalMilliseconds >= (Ready ? BudgetMilliseconds : 10.0); } }
+        bool BudgetExpired { get { return !synchronousPump && frameWatch.Elapsed.TotalMilliseconds >= (Ready ? BudgetMilliseconds : 22.0); } }
 
         void LateUpdate()
         {
@@ -479,6 +480,7 @@ namespace LestingCraft.Runtime
                     Vector2Int key;
                     StartMeshWorkers(center);
                     AdvanceMeshWorkers();
+                    if (!Ready && CoreComplete(center)) Ready = true;
                     if (FindMissing(center, out key)) work = Generate(key);
                     else
                     {
@@ -536,6 +538,19 @@ namespace LestingCraft.Runtime
             return best != int.MaxValue;
         }
 
+        /// <summary>The 5x5 chunks around the player are enough to stand and play;
+        /// the rest of the view radius streams in behind the player without gating entry.</summary>
+        bool CoreComplete(Vector2Int center)
+        {
+            for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++)
+            {
+                var key = center + new Vector2Int(dx, dz);
+                if (!Contains(key.x * 16, 1, key.y * 16)) continue;
+                View v;
+                if (!chunks.TryGetValue(key, out v) || v.Baking || meshingKeys.Contains(key)) return false;
+            }
+            return true;
+        }
         bool FindMissing(Vector2Int center, out Vector2Int result)
         {
             for (int ring = 0; ring <= Radius + 1; ring++)

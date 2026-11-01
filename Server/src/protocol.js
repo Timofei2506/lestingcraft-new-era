@@ -351,6 +351,12 @@ export class RoomState {
         this.config.spaceMission&&!this.config.spaceMission.landed&&this.config.spaceMission.crew?.includes(peer.playerKey))&&
        ['position','edit','living_action','animal_hit','arrow_shot','state'].includes(p.type))
       throw Error('In-flight crew must use the shared ship or station, not the terrestrial world');
+    if(p.type==='story_sync'){
+      // Read-only resync for clients that missed a story broadcast (dream isolation,
+      // reconnect). Never mutates state; safe to request at any moment.
+      if(!this.config.story)throw Error('Story unavailable');
+      return {clock:this.clock(now),type:'story',story:this.config.story,damageEvents:[],serverNow:now,campaign:this.config.campaign};
+    }
     if(p.type==='story_ready'||p.type==='story_action'){
       if(!this.config.story||this.config.runEnded)throw Error('Story unavailable');
       if(p.action==='hit'&&((p.weapon!==103&&!(this.config.contentVersion>=5&&weapons[p.weapon]))||!(this.config.story.rewards&4)))throw Error('A sword is required');
