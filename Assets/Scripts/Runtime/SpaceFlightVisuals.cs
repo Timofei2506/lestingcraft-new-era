@@ -1799,6 +1799,137 @@ namespace LestingCraft.Runtime
             return drone;
         }
 
+        // ---- drone battle loop (player <-> drones, no protocol changes) ----
+        public static readonly List<PlanetaryDroneController> ActiveDrones = new List<PlanetaryDroneController>();
+        public int Health;
+        public bool Dead;
+        float attackCooldown;
+
+        void OnEnable() { if (!ActiveDrones.Contains(this)) ActiveDrones.Add(this); }
+        void OnDisable() { ActiveDrones.Remove(this); }
+
+        public bool TryHitDrone(Ray aimRay, float maxReach, int dmg, out bool killed)
+        {
+            killed = false;
+            if (Dead) return false;
+            Vector3 to = transform.position - aimRay.origin;
+            float along = Vector3.Dot(to, aimRay.direction);
+            if (along < 0.5f || along > maxReach) return false;
+            Vector3 closest = aimRay.origin + aimRay.direction * along;
+            float rad = 1.7f * Mathf.Max(0.7f, Profile.Size);
+            if ((closest - transform.position).sqrMagnitude > rad * rad) return false;
+            Health -= Mathf.Max(4, dmg);
+            transform.localScale = Vector3.one * Profile.Size * 0.92f;
+            if (Health <= 0)
+            {
+                Dead = true; killed = true;
+                foreach (var m in mats) if (m) m.color = m.color * 0.25f;
+                Destroy(gameObject, 0.35f);
+            }
+            return true;
+        }
+
+        public static bool TryHitAny(Ray aimRay, float maxReach, int dmg, out bool killed, out string msg)
+        {
+            killed = false; msg = "";
+            for (int i = ActiveDrones.Count - 1; i >= 0; i--)
+            {
+                var d = ActiveDrones[i];
+                if (!d) { ActiveDrones.RemoveAt(i); continue; }
+                if (d.TryHitDrone(aimRay, maxReach, dmg, out bool k))
+                {
+                    killed = k;
+                    msg = k ? "Дрон «" + d.Profile.Codename + "» сбит! Осколки падают на землю."
+                           : "Удар по дрону «" + d.Profile.Codename + "»! HP: " + d.Health + "/" + d.Profile.MaxHealth;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void TickDrone(float dt, Vector3 playerPos, Action<float, Vector3, string> onHitPlayer)
+        {
+            if (Dead) return;
+            hoverPhase += dt * (Profile.Fly ? 2.2f : 1.1f);
+            var pos = transform.position;
+            pos.y += Mathf.Sin(hoverPhase) * (Profile.Fly ? 0.013f : 0.0022f);
+            transform.position = pos;
+            if (scanner) scanner.localRotation = Quaternion.Euler(0f, Mathf.Sin(hoverPhase * 0.7f) * 32f, 0f);
+            Vector3 to = playerPos - transform.position;
+            float dist = to.magnitude;
+            attackCooldown -= dt;
+            if (dist < 13f && attackCooldown <= 0f && onHitPlayer != null)
+            {
+                attackCooldown = 2.4f + Profile.Size * 1.1f;
+                var dir = new Vector3(to.x, 0f, to.z).normalized;
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 0.65f);
+                onHitPlayer(2.5f + Profile.MaxHealth * 0.035f, dir,
+                    "Дрон «" + Profile.Codename + "» открывает огонь! Уклоняйтесь или сбейте его!");
+            }
+        }
+
+        // Canon AI city (Dream): a deterministic plaza of future-machine towers around the First Node arena.
+        public static void BuildMachineCity(Transform parent, int seed, Vector3 anchor)
+        {
+            var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            var metal = new Material(sh) { name = "CityMetal", color = new Color(0.16f, 0.18f, 0.22f) };
+            if (metal.HasProperty("_BaseColor")) metal.SetColor("_BaseColor", metal.color);
+            if (metal.HasProperty("_Metallic")) metal.SetFloat("_Metallic", 0.82f);
+            if (metal.HasProperty("_Smoothness")) metal.SetFloat("_Smoothness", 0.55f);
+            var panel = new Material(sh) { name = "CityPanel", color = new Color(0.45f, 0.48f, 0.55f) };
+            if (panel.HasProperty("_BaseColor")) panel.SetColor("_BaseColor", panel.color);
+            if (panel.HasProperty("_Metallic")) panel.SetFloat("_Metallic", 0.65f);
+            if (panel.HasProperty("_Smoothness")) panel.SetFloat("_Smoothness", 0.40f);
+            var glow = new Material(sh) { name = "CityGlow", color = new Color(0.55f, 0.90f, 1.00f) };
+            if (glow.HasProperty("_BaseColor")) glow.SetColor("_BaseColor", glow.color);
+            glow.EnableKeyword("_EMISSION");
+            if (glow.HasProperty("_EmissionColor")) glow.SetColor("_EmissionColor", new Color(0.55f, 0.90f, 1.00f) * 2.2f);
+
+            var root = new GameObject("MachineCity").transform;
+            if (parent) root.SetParent(parent, false);
+            var rng = new System.Random(seed ^ 0x5EED);
+            float groundY = anchor.y;
+            for (int i = 0; i < 18; i++)
+            {
+                double ang = (i / 18.0) * System.Math.PI * 2.0 + rng.NextDouble() * 0.5;
+                float dist = 26f + (float)rng.NextDouble() * 54f;
+                float cx = anchor.x + Mathf.Cos((float)ang) * dist;
+                float cz = anchor.z + Mathf.Sin((float)ang) * dist;
+                float w = 3.2f + (float)rng.NextDouble() * 4.2f;
+                float h = 9f + (float)rng.NextDouble() * 22f;
+                float d = w * (0.75f + (float)rng.NextDouble() * 0.5f);
+                var tower = new GameObject("CityTower_" + i).transform;
+                tower.SetParent(root, false);
+                tower.position = new Vector3(cx, groundY + h * 0.5f, cz);
+                var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                body.name = "TowerBody";
+                body.transform.SetParent(tower, false);
+                body.transform.localScale = new Vector3(w, h, d);
+                body.GetComponent<Renderer>().sharedMaterial = metal;
+                for (int f = 0; f < 3; f++)
+                {
+                    var win = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    win.name = "GlowStrip_" + f;
+                    win.transform.SetParent(tower, false);
+                    win.transform.localPosition = new Vector3(0f, (f - 1) * h * 0.28f, d * 0.51f);
+                    win.transform.localScale = new Vector3(w * 0.72f, h * 0.14f, 0.18f);
+                    win.GetComponent<Renderer>().sharedMaterial = glow;
+                }
+                var cap = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                cap.name = "TowerCap";
+                cap.transform.SetParent(tower, false);
+                cap.transform.localPosition = new Vector3(0f, h * 0.52f, 0f);
+                cap.transform.localScale = new Vector3(w * 1.18f, h * 0.09f, d * 1.18f);
+                cap.GetComponent<Renderer>().sharedMaterial = panel;
+                var beacon = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                beacon.name = "Beacon";
+                beacon.transform.SetParent(tower, false);
+                beacon.transform.localPosition = new Vector3(0f, h * 0.62f, 0f);
+                beacon.transform.localScale = new Vector3(0.7f, h * 0.16f, 0.7f);
+                beacon.GetComponent<Renderer>().sharedMaterial = glow;
+            }
+        }
+
         public static void SpawnSwarm(Transform parent, Dimension dim, int seed, Vector3 anchor, int count)
         {
             if (dim == Dimension.Backrooms) { BacteriaMobController.SpawnSwarm(parent, seed, anchor, count); return; }
@@ -1953,6 +2084,69 @@ namespace LestingCraft.Runtime
         }
 
         /// <summary>Backrooms swarm: bacteria replace the mechanical drones in the liminal halls.</summary>
+        // ---- bacteria battle loop (voice-lure attackers per canon) ----
+        public static readonly List<BacteriaMobController> ActiveMobs = new List<BacteriaMobController>();
+        public int Health = 72;
+        public const int MaxHealth = 72;
+        public bool Dead;
+        float attackCooldown = 1.2f;
+
+        void OnEnable() { if (!ActiveMobs.Contains(this)) ActiveMobs.Add(this); }
+        void OnDisable() { ActiveMobs.Remove(this); }
+
+        public bool TryHitMob(Ray aimRay, float maxReach, int dmg, out bool killed)
+        {
+            killed = false;
+            if (Dead) return false;
+            Vector3 to = transform.position + Vector3.up * 0.9f - aimRay.origin;
+            float along = Vector3.Dot(to, aimRay.direction);
+            if (along < 0.5f || along > maxReach) return false;
+            Vector3 closest = aimRay.origin + aimRay.direction * along;
+            if ((closest - (transform.position + Vector3.up * 0.9f)).sqrMagnitude > 3.24f) return false;
+            Health -= Mathf.Max(4, dmg);
+            if (Health <= 0)
+            {
+                Dead = true; killed = true;
+                foreach (var m in mats) if (m) m.color = m.color * 0.22f;
+                Destroy(gameObject, 0.35f);
+            }
+            return true;
+        }
+
+        public static bool TryHitAny(Ray aimRay, float maxReach, int dmg, out bool killed, out string msg)
+        {
+            killed = false; msg = "";
+            for (int i = ActiveMobs.Count - 1; i >= 0; i--)
+            {
+                var mob = ActiveMobs[i];
+                if (!mob) { ActiveMobs.RemoveAt(i); continue; }
+                if (mob.TryHitMob(aimRay, maxReach, dmg, out bool k))
+                {
+                    killed = k;
+                    msg = k ? "Сущность 23 разрушается и растекается чёрной волокнистой массой…"
+                           : "Удар по Сущности 23! HP: " + mob.Health + "/" + MaxHealth;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void TickMob(float dt, Vector3 playerPos, Action<float, Vector3, string> onHitPlayer)
+        {
+            if (Dead) return;
+            Vector3 to = playerPos - transform.position;
+            float dist = to.magnitude;
+            attackCooldown -= dt;
+            if (dist < 11f && attackCooldown <= 0f && onHitPlayer != null)
+            {
+                attackCooldown = 1.9f;
+                var dir = new Vector3(to.x, 0f, to.z).normalized;
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 0.8f);
+                onHitPlayer(6.5f, dir,
+                    "Сущность 23 кричит человеческим голосом-приманкой и бросается на вас!");
+            }
+        }
+
         public static void SpawnSwarm(Transform parent, int seed, Vector3 anchor, int count)
         {
             for (int i = 0; i < count; i++)

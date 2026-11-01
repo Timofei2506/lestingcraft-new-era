@@ -757,6 +757,7 @@ namespace LestingCraft.Runtime
             Vector3 anchor=sharedLaunchSite.HasValue?(Vector3)sharedLaunchSite.Value:Vector3.zero;
             activePlanetBoss=PlanetaryBossController.SpawnForPlanet(world.transform,dim,world,world.Seed,defeated,anchor);
             PlanetaryDroneController.SpawnSwarm(world.transform,dim,world.Seed,anchor,dim==Dimension.Dream?9:4+(world.Seed&2));
+            if(dim==Dimension.Dream)PlanetaryDroneController.BuildMachineCity(world.transform,world.Seed,anchor);
         }
 
         public bool TryAttackPlanetaryBoss(Ray aimRay)
@@ -770,6 +771,15 @@ namespace LestingCraft.Runtime
                     Session.Notice=bossMsg;
                     return true;
                 }
+            }
+            if(Session)
+            {
+                int heldMob=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
+                int mobDmg=Weapons.Has(heldMob)?Weapons.Get(heldMob).Damage:(Items.IsPick(heldMob)?9:12);
+                if(PlanetaryDroneController.TryHitAny(aimRay,7.5f,mobDmg,out _,out string droneMsg))
+                {Session.Notice=droneMsg;return true;}
+                if(BacteriaMobController.TryHitAny(aimRay,7.5f,mobDmg,out _,out string mobMsg))
+                {Session.Notice=mobMsg;return true;}
             }
             if(!activePlanetBoss||activePlanetBoss.Defeated||!Session)return false;
             int activeItem=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
@@ -1722,6 +1732,25 @@ namespace LestingCraft.Runtime
                     Session.Impact(dmg,BodyPart.Torso,dir);
                     Session.Notice=msg;
                 });
+            }
+
+            if(player&&Session&&(!paused||online))
+            {
+                float dtMob=Mathf.Min(Time.deltaTime,0.1f);
+                var drones=PlanetaryDroneController.ActiveDrones;
+                for(int di=drones.Count-1;di>=0;di--)
+                {
+                    var d=drones[di];
+                    if(!d){drones.RemoveAt(di);continue;}
+                    d.TickDrone(dtMob,player.transform.position,(dmg,dir,msg)=>{Session.Impact(dmg,BodyPart.Torso,dir);Session.Notice=msg;});
+                }
+                var mobs=BacteriaMobController.ActiveMobs;
+                for(int mi=mobs.Count-1;mi>=0;mi--)
+                {
+                    var mob=mobs[mi];
+                    if(!mob){mobs.RemoveAt(mi);continue;}
+                    mob.TickMob(dtMob,player.transform.position,(dmg,dir,msg)=>{Session.Impact(dmg,BodyPart.Torso,dir);Session.Notice=msg;});
+                }
             }
 
             foreach(var pair in avatars)if(pair.Value&&targets.TryGetValue(pair.Key,out var target))
