@@ -756,6 +756,7 @@ namespace LestingCraft.Runtime
             bool defeated=(Session.Data.defeatedPlanetBossMask&(1<<(int)dim))!=0;
             Vector3 anchor=sharedLaunchSite.HasValue?(Vector3)sharedLaunchSite.Value:Vector3.zero;
             activePlanetBoss=PlanetaryBossController.SpawnForPlanet(world.transform,dim,world,world.Seed,defeated,anchor);
+            PlanetaryDroneController.SpawnSwarm(world.transform,dim,world.Seed,anchor,4+(world.Seed&2));
         }
 
         public bool TryAttackPlanetaryBoss(Ray aimRay)

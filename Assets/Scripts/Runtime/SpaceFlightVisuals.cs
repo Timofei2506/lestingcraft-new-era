@@ -1778,6 +1778,160 @@ namespace LestingCraft.Runtime
     /// Articulated 3D Planetary Guardian Bosses on Mars, Venus, and Mercury with
     /// glowing weak-point cores, telegraphed shockwaves, hit flashes, and rare rewards.
     /// </summary>
+    /// <summary>Rank-and-file mechanical mobs from the concept art: drones and robots in squads.</summary>
+    public sealed class PlanetaryDroneController : MonoBehaviour
+    {
+        readonly List<Material> mats = new List<Material>();
+        Transform scanner;
+        float hoverBase, hoverPhase;
+        public LestingCraft.Gameplay.DroneProfile Profile { get; private set; }
+
+        public static PlanetaryDroneController Spawn(Transform parent, LestingCraft.Gameplay.DroneProfile profile, Vector3 pos, float yaw)
+        {
+            var go = new GameObject("DroneMob_" + profile.Codename);
+            if (parent) go.transform.SetParent(parent, false);
+            go.transform.position = pos;
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            go.transform.localScale = Vector3.one * profile.Size;
+            var drone = go.AddComponent<PlanetaryDroneController>();
+            drone.Profile = profile;
+            drone.BuildBody();
+            return drone;
+        }
+
+        public static void SpawnSwarm(Transform parent, Dimension dim, int seed, Vector3 anchor, int count)
+        {
+            var kinds = LestingCraft.Gameplay.DroneRoster.SwarmFor(dim);
+            if (kinds == null || kinds.Length == 0) return;
+            for (int i = 0; i < count; i++)
+            {
+                var profile = kinds[i % kinds.Length];
+                float angle = i * 2.399f + (seed % 97) * 0.06f;
+                float radius = 8f + (i % 4) * 3.5f;
+                int bx = Mathf.RoundToInt(anchor.x + Mathf.Cos(angle) * radius);
+                int bz = Mathf.RoundToInt(anchor.z + Mathf.Sin(angle) * radius);
+                int groundY = TerrainGenerator.Height(bx, bz, seed, dim);
+                var pos = new Vector3(bx + 0.5f, groundY + (profile.Fly ? 1.9f : 1.2f), bz + 0.5f);
+                Spawn(parent, profile, pos, angle * Mathf.Rad2Deg + 180f);
+            }
+        }
+
+        Material Mat(Color color, Color emission, float smooth)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            var m = new Material(shader) { color = color };
+            if (m.HasProperty("_EmissionColor")) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", emission); }
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smooth);
+            mats.Add(m);
+            return m;
+        }
+
+        Transform Part(PrimitiveType type, string name, Transform parent, Vector3 pos, Vector3 size, Material m)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = pos;
+            go.transform.localScale = size;
+            go.GetComponent<Renderer>().sharedMaterial = m;
+            var own = go.GetComponent<Collider>();
+            if (own) Destroy(own);
+            return go.transform;
+        }
+
+        void BuildBody()
+        {
+            var profile = Profile;
+            var armor = Mat(new Color(profile.ArmorR, profile.ArmorG, profile.ArmorB), Color.black, 0.5f);
+            var dark = Mat(new Color(0.10f, 0.11f, 0.13f), Color.black, 0.35f);
+            var glowCol = new Color(profile.GlowR, profile.GlowG, profile.GlowB);
+            var glow = Mat(glowCol, glowCol * 2.2f, 0.2f);
+            switch (profile.Kind)
+            {
+                case LestingCraft.Gameplay.DroneKind.Scout:
+                    Part(PrimitiveType.Cube, "ScoutCore", transform, Vector3.zero, new Vector3(.55f, .45f, .7f), armor);
+                    Part(PrimitiveType.Cube, "ScoutEye", transform, new Vector3(0f, .02f, .42f), new Vector3(.22f, .16f, .12f), glow);
+                    for (int i = 0; i < 4; i++)
+                        Part(PrimitiveType.Cube, "ScoutVane" + i, transform, new Vector3(i % 2 == 0 ? -.5f : .5f, 0f, i < 2 ? -.35f : .35f), new Vector3(.45f, .06f, .22f), dark);
+                    Part(PrimitiveType.Cube, "ScoutAntenna", transform, new Vector3(0f, .38f, -.1f), new Vector3(.05f, .35f, .05f), dark);
+                    break;
+                case LestingCraft.Gameplay.DroneKind.Combat:
+                    Part(PrimitiveType.Cube, "CombatBody", transform, Vector3.zero, new Vector3(.9f, .55f, 1.05f), armor);
+                    Part(PrimitiveType.Cube, "CombatVisor", transform, new Vector3(0f, .12f, .56f), new Vector3(.55f, .14f, .1f), glow);
+                    Part(PrimitiveType.Cube, "CombatGunL", transform, new Vector3(-.55f, -.05f, .35f), new Vector3(.16f, .16f, .9f), dark);
+                    Part(PrimitiveType.Cube, "CombatGunR", transform, new Vector3(.55f, -.05f, .35f), new Vector3(.16f, .16f, .9f), dark);
+                    Part(PrimitiveType.Cube, "CombatSkirt", transform, new Vector3(0f, -.32f, -.1f), new Vector3(.7f, .18f, .8f), dark);
+                    break;
+                case LestingCraft.Gameplay.DroneKind.Repair:
+                    Part(PrimitiveType.Cube, "RepairBody", transform, Vector3.zero, new Vector3(.7f, .6f, .7f), armor);
+                    Part(PrimitiveType.Cube, "RepairDome", transform, new Vector3(0f, .38f, 0f), new Vector3(.42f, .2f, .42f), glow);
+                    Part(PrimitiveType.Cube, "RepairArmL", transform, new Vector3(-.48f, -.15f, .25f), new Vector3(.12f, .5f, .12f), dark);
+                    Part(PrimitiveType.Cube, "RepairArmR", transform, new Vector3(.48f, -.15f, .25f), new Vector3(.12f, .5f, .12f), dark);
+                    Part(PrimitiveType.Cube, "RepairToolL", transform, new Vector3(-.48f, -.42f, .32f), new Vector3(.18f, .12f, .22f), glow);
+                    break;
+                case LestingCraft.Gameplay.DroneKind.Ground:
+                    Part(PrimitiveType.Cube, "SentryTrackL", transform, new Vector3(-.5f, -.35f, 0f), new Vector3(.32f, .42f, 1.1f), dark);
+                    Part(PrimitiveType.Cube, "SentryTrackR", transform, new Vector3(.5f, -.35f, 0f), new Vector3(.32f, .42f, 1.1f), dark);
+                    Part(PrimitiveType.Cube, "SentryHull", transform, new Vector3(0f, .05f, 0f), new Vector3(.95f, .48f, .95f), armor);
+                    scanner = Part(PrimitiveType.Cube, "SentryTurret", transform, new Vector3(0f, .48f, 0f), new Vector3(.5f, .3f, .55f), armor);
+                    Part(PrimitiveType.Cube, "SentryEye", scanner, new Vector3(0f, .02f, .32f), new Vector3(.26f, .12f, .12f), glow);
+                    Part(PrimitiveType.Cube, "SentryBarrel", scanner, new Vector3(0f, -.02f, .5f), new Vector3(.12f, .12f, .55f), dark);
+                    break;
+                case LestingCraft.Gameplay.DroneKind.Heavy:
+                    Part(PrimitiveType.Cube, "HeavyLegL", transform, new Vector3(-.55f, -.55f, 0f), new Vector3(.42f, .8f, .55f), dark);
+                    Part(PrimitiveType.Cube, "HeavyLegR", transform, new Vector3(.55f, -.55f, 0f), new Vector3(.42f, .8f, .55f), dark);
+                    Part(PrimitiveType.Cube, "HeavyTorso", transform, new Vector3(0f, .25f, 0f), new Vector3(1.5f, 1.0f, 1.1f), armor);
+                    Part(PrimitiveType.Cube, "HeavyPodL", transform, new Vector3(-1.0f, .55f, 0f), new Vector3(.55f, .5f, .8f), dark);
+                    Part(PrimitiveType.Cube, "HeavyPodR", transform, new Vector3(1.0f, .55f, 0f), new Vector3(.55f, .5f, .8f), dark);
+                    Part(PrimitiveType.Cube, "HeavyCore", transform, new Vector3(0f, .28f, .62f), new Vector3(.5f, .5f, .12f), glow);
+                    Part(PrimitiveType.Cube, "HeavyHead", transform, new Vector3(0f, .95f, .15f), new Vector3(.5f, .32f, .5f), armor);
+                    break;
+                case LestingCraft.Gameplay.DroneKind.Guard:
+                    Part(PrimitiveType.Cube, "GuardLegL", transform, new Vector3(-.28f, -.5f, 0f), new Vector3(.24f, .8f, .3f), dark);
+                    Part(PrimitiveType.Cube, "GuardLegR", transform, new Vector3(.28f, -.5f, 0f), new Vector3(.24f, .8f, .3f), dark);
+                    Part(PrimitiveType.Cube, "GuardTorso", transform, new Vector3(0f, .3f, 0f), new Vector3(.8f, .9f, .6f), armor);
+                    Part(PrimitiveType.Cube, "GuardVisor", transform, new Vector3(0f, .55f, .34f), new Vector3(.4f, .12f, .1f), glow);
+                    Part(PrimitiveType.Cube, "GuardShield", transform, new Vector3(-.62f, .25f, .1f), new Vector3(.12f, .95f, .7f), armor);
+                    Part(PrimitiveType.Cube, "GuardCrest", transform, new Vector3(0f, .82f, 0f), new Vector3(.5f, .12f, .5f), dark);
+                    break;
+                default:
+                    Part(PrimitiveType.Cube, "BuilderBody", transform, Vector3.zero, new Vector3(.85f, .6f, .75f), armor);
+                    Part(PrimitiveType.Cube, "BuilderLamp", transform, new Vector3(0f, .42f, .18f), new Vector3(.3f, .14f, .3f), glow);
+                    Part(PrimitiveType.Cube, "BuilderCrane", transform, new Vector3(.55f, .35f, -.1f), new Vector3(.12f, .9f, .12f), dark);
+                    Part(PrimitiveType.Cube, "BuilderHook", transform, new Vector3(.55f, -.12f, -.1f), new Vector3(.2f, .14f, .2f), glow);
+                    Part(PrimitiveType.Cube, "BuilderTread", transform, new Vector3(0f, -.38f, 0f), new Vector3(.9f, .18f, .85f), dark);
+                    break;
+            }
+            var lgo = new GameObject("DroneGlowLight");
+            lgo.transform.SetParent(transform, false);
+            lgo.transform.localPosition = new Vector3(0f, .3f, .6f);
+            var light = lgo.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = glowCol;
+            light.range = 4.5f;
+            light.intensity = 1.6f;
+            hoverBase = transform.position.y;
+            hoverPhase = (GetInstanceID() & 255) * 0.02f;
+            var col = gameObject.AddComponent<CapsuleCollider>();
+            col.center = Vector3.zero;
+            col.radius = .6f;
+            col.height = 1.5f;
+        }
+
+        void Update()
+        {
+            if (Profile.Fly)
+            {
+                var p = transform.position;
+                p.y = hoverBase + Mathf.Sin(Time.time * 1.3f + hoverPhase) * 0.22f;
+                transform.position = p;
+            }
+            if (scanner) scanner.Rotate(0f, 42f * Time.deltaTime, 0f);
+        }
+
+        void OnDestroy() { foreach (var m in mats) if (m) Destroy(m); }
+    }
+
     public sealed class PlanetaryBossController : MonoBehaviour
     {
         readonly List<Material> bossMaterials = new List<Material>();

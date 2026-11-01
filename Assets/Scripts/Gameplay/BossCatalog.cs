@@ -50,6 +50,73 @@ namespace LestingCraft.Gameplay
     /// One named guardian per dimension, including the ordinary world, so bosses are no longer
     /// limited to Mars/Venus/Mercury. Pure data: no Unity types, safe for headless checks.
     /// </summary>
+    /// <summary>Rank-and-file mechanical mobs from the concept art: drones and robots.</summary>
+    public enum DroneKind { Scout, Combat, Repair, Ground, Heavy, Guard, Builder }
+
+    public readonly struct DroneProfile
+    {
+        public readonly DroneKind Kind;
+        public readonly string Name;
+        public readonly string Codename;
+        public readonly int MaxHealth, Damage;
+        public readonly float Speed, Size;
+        public readonly float ArmorR, ArmorG, ArmorB;
+        public readonly float GlowR, GlowG, GlowB;
+        public readonly bool Fly;
+        public DroneProfile(DroneKind kind, string name, string codename, int maxHealth, int damage,
+            float speed, float size, float ar, float ag, float ab, float gr, float gg, float gb, bool fly)
+        {
+            Kind = kind; Name = name; Codename = codename; MaxHealth = maxHealth; Damage = damage;
+            Speed = speed; Size = size; ArmorR = ar; ArmorG = ag; ArmorB = ab; GlowR = gr; GlowG = gg; GlowB = gb; Fly = fly;
+        }
+    }
+
+    /// <summary>One drone/robot roster shared by worlds: pure data, safe for headless checks.</summary>
+    public static class DroneRoster
+    {
+        static readonly DroneProfile[] Profiles =
+        {
+            new DroneProfile(DroneKind.Scout, "\u0420\u0430\u0437\u0432\u0435\u0434\u044b\u0432\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0439 \u0434\u0440\u043e\u043d", "Scout Drone", 30, 4, 4.5f, .70f, .35f, .38f, .42f, .35f, .85f, 1.00f, true),
+            new DroneProfile(DroneKind.Combat, "\u0411\u043e\u0435\u0432\u043e\u0439 \u0434\u0440\u043e\u043d", "Combat Drone", 55, 10, 3.2f, .90f, .28f, .30f, .34f, 1.00f, .35f, .15f, true),
+            new DroneProfile(DroneKind.Repair, "\u0420\u0435\u043c\u043e\u043d\u0442\u043d\u044b\u0439 \u0434\u0440\u043e\u043d", "Repair Drone", 40, 3, 2.6f, .80f, .55f, .55f, .48f, .40f, 1.00f, .50f, true),
+            new DroneProfile(DroneKind.Ground, "\u041d\u0430\u0437\u0435\u043c\u043d\u044b\u0439 \u0440\u043e\u0431\u043e\u0442", "Ground Sentry", 60, 8, 2.2f, 1.00f, .42f, .40f, .36f, .95f, .75f, .25f, false),
+            new DroneProfile(DroneKind.Heavy, "\u0422\u044f\u0436\u0451\u043b\u044b\u0439 \u0448\u0442\u0443\u0440\u043c\u043e\u0432\u043e\u0439", "Heavy Walker", 95, 14, 1.6f, 1.35f, .30f, .26f, .24f, 1.00f, .18f, .10f, false),
+            new DroneProfile(DroneKind.Guard, "\u041e\u0445\u0440\u0430\u043d\u043d\u044b\u0439 \u0434\u0440\u043e\u043d", "Guard Drone", 70, 9, 2.8f, 1.00f, .38f, .36f, .42f, .60f, .40f, 1.00f, true),
+            new DroneProfile(DroneKind.Builder, "\u0421\u0442\u0440\u043e\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0439 \u0434\u0440\u043e\u043d", "Builder Drone", 45, 5, 2.0f, .90f, .52f, .46f, .34f, 1.00f, .62f, .18f, true)
+        };
+
+        public static DroneProfile[] All() { return (DroneProfile[])Profiles.Clone(); }
+
+        public static DroneProfile For(DroneKind kind)
+        {
+            for (int i = 0; i < Profiles.Length; i++) if (Profiles[i].Kind == kind) return Profiles[i];
+            return Profiles[0];
+        }
+
+        public static DroneProfile[] SwarmFor(Dimension dimension)
+        {
+            switch (dimension)
+            {
+                case Dimension.Lestingia: return new[] { For(DroneKind.Scout), For(DroneKind.Builder) };
+                case Dimension.Mercury: return new[] { For(DroneKind.Combat), For(DroneKind.Scout) };
+                case Dimension.Mars: return new[] { For(DroneKind.Ground), For(DroneKind.Heavy) };
+                case Dimension.Venus: return new[] { For(DroneKind.Combat), For(DroneKind.Ground) };
+                case Dimension.Moon: return new[] { For(DroneKind.Scout), For(DroneKind.Repair) };
+                case Dimension.Europa: return new[] { For(DroneKind.Repair), For(DroneKind.Ground) };
+                case Dimension.Titan: return new[] { For(DroneKind.Scout), For(DroneKind.Combat) };
+                case Dimension.Pluto: return new[] { For(DroneKind.Ground), For(DroneKind.Repair) };
+                case Dimension.ProximaB: return new[] { For(DroneKind.Heavy), For(DroneKind.Combat) };
+                case Dimension.Trappist1e: return new[] { For(DroneKind.Scout), For(DroneKind.Guard) };
+                case Dimension.Kepler452b: return new[] { For(DroneKind.Builder), For(DroneKind.Scout) };
+                case Dimension.AndromedaPrime: return new[] { For(DroneKind.Guard), For(DroneKind.Combat) };
+                case Dimension.Somnia: return new[] { For(DroneKind.Scout), For(DroneKind.Guard) };
+                case Dimension.Dream: return new[] { For(DroneKind.Combat), For(DroneKind.Guard) };
+                case Dimension.Radia: return new[] { For(DroneKind.Heavy), For(DroneKind.Ground) };
+                default: return new[] { For(DroneKind.Guard), For(DroneKind.Scout) };
+            }
+        }
+    }
+
     public static class BossCatalog
     {
         static readonly BossProfile[] Profiles =

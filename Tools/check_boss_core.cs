@@ -73,6 +73,31 @@ class BossCheck
         foreach (var profile in all) archetypes.Add(profile.Archetype);
         Ok(archetypes.Count >= 5, "all boss archetypes are used: " + archetypes.Count);
 
+        // Drone/robot roster: the concept-art rank-and-file mobs.
+        var drones = DroneRoster.All();
+        Ok(drones.Length == 7, "seven drone/robot types: " + drones.Length);
+        var droneNames = new HashSet<string>();
+        var droneCodes = new HashSet<string>();
+        var usedKinds = new HashSet<DroneKind>();
+        foreach (var d in drones)
+        {
+            Ok(d.Name.Length >= 4 && droneNames.Add(d.Name), "drone name unique: " + d.Name);
+            Ok(d.Codename.Length >= 4 && droneCodes.Add(d.Codename), "drone codename unique: " + d.Codename);
+            Ok(d.MaxHealth >= 25 && d.MaxHealth <= 120, "drone health band: " + d.Kind);
+            Ok(d.Damage >= 2 && d.Damage <= 20, "drone damage band: " + d.Kind);
+            Ok(d.Speed >= 1f && d.Speed <= 6f, "drone speed band: " + d.Kind);
+            Ok(d.Size >= .5f && d.Size <= 1.6f, "drone size band: " + d.Kind);
+            float glow = d.GlowR + d.GlowG + d.GlowB;
+            Ok(glow > .6f, "drone glow visible: " + d.Kind);
+        }
+        foreach (Dimension dimension in Enum.GetValues(typeof(Dimension)))
+        {
+            var swarm = DroneRoster.SwarmFor(dimension);
+            Ok(swarm != null && swarm.Length >= 2, "dimension fields a drone pair: " + dimension);
+            foreach (var d in swarm) usedKinds.Add(d.Kind);
+        }
+        Ok(usedKinds.Count == 7, "every drone type is fielded somewhere: " + usedKinds.Count);
+
         Console.WriteLine("PASS: " + checks + " boss assertions; " + all.Length + " guardians across " +
             Enum.GetValues(typeof(Dimension)).Length + " dimensions, " + archetypes.Count +
             " archetypes, deterministic loot and enrage. Pure C# core, not a Unity scene run.");
