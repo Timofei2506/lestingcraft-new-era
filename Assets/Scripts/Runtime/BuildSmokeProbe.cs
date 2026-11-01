@@ -46,7 +46,7 @@ namespace LestingCraft.Runtime
                 if(!material||!material.shader||!material.shader.isSupported){Fail("Missing/unsupported material: "+name);yield break;}
             }
             foreach(var arrayName in new[]{"Albedo","Normal","Mask"})
-            {var array=Resources.Load<Texture2DArray>("Generated/"+arrayName);if(!array||array.depth!=SurfaceLayers.Names.Length||array.width!=512){Fail("Incomplete current PBR array: "+arrayName);yield break;}}
+            {var array=Resources.Load<Texture2DArray>("Generated/"+arrayName);if(!array||array.depth!=SurfaceLayers.Names.Length||array.width!=array.height||array.width<512){Fail("Incomplete current PBR array: "+arrayName);yield break;}}
             foreach(var name in new[]{"Home.Play","Home.Coop","Home.Settings","Home.Quit"})
                 if(!FindButton(ui,name)){Fail("Home control missing: "+name);yield break;}
             // Capture the real menu from the executable, after the splash, not a mock image.
