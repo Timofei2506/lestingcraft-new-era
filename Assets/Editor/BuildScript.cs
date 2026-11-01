@@ -54,7 +54,7 @@ public static class BuildScript
         foreach(var layer in new[]{"Albedo","Normal","Mask"})
         {
             var array=Resources.Load<Texture2DArray>("Generated/"+layer);
-            if(!array||array.depth!=LestingCraft.Presentation.SurfaceLayers.Names.Length||array.width!=512||array.height!=512)
+            if(!array||array.depth!=LestingCraft.Presentation.SurfaceLayers.Names.Length||array.width!=array.height||array.width<512)
                 throw new InvalidOperationException("Incomplete current PBR array: "+layer);
         }
         if(LestingCraft.Gameplay.GameRules.Version!=14)throw new InvalidOperationException("Expected rules14 era-v9 build");
