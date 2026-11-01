@@ -1221,7 +1221,7 @@ namespace LestingCraft.Runtime
             world.SwitchPlanet(Dimension.Backrooms,Array.Empty<SavedBlock>());
             dimension=(int)Dimension.Backrooms;
             Session.Data.activeDimension=(int)Dimension.Backrooms;
-            player.TeleportTo(new Vector3(.5f,LestingCraft.World.BackroomsTerrain.FloorTop+2.2f,.5f),false);
+            player.TeleportTo(new Vector3(.5f,LestingCraft.World.BackroomsTerrain.FloorTop(0,0,world.Seed)+2.2f,.5f),false);
             player.transform.rotation=Quaternion.identity;
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
             spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Backrooms,player,Camera.main);
