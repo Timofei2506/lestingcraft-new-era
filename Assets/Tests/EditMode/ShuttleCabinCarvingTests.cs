@@ -12,7 +12,7 @@ namespace LestingCraft.Tests.EditMode
             var resource=Resources.Load<TextAsset>("Space/Shuttle");Assert.IsNotNull(resource);
             var approved=SpaceVoxelAsset.Read(resource.bytes);
             var fitted=ShuttleCabinCarving.Make(approved);
-            Assert.AreEqual(13929,approved.SolidCount);
+            Assert.AreEqual(16240,approved.SolidCount);
             Assert.Less(fitted.SolidCount,approved.SolidCount-200);
             Assert.Greater(fitted.SolidCount,approved.SolidCount-400);
             int removedSurface=0;

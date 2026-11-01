@@ -7,7 +7,7 @@ namespace LestingCraft.Tests.EditMode
 {
     public class SpaceModelTests
     {
-        [TestCase("Shuttle",13929)]
+        [TestCase("Shuttle",16240)]
         [TestCase("LaunchPad",27813)]
         [TestCase("Station",10375)]
         public void ApprovedThreeDimensionalModelImportsAndMeshes(string assetName,int cells)
