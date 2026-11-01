@@ -127,8 +127,8 @@ namespace LestingCraft.Gameplay
                 300, .44f, .44f, .50f, .70f, .72f, .78f, .62f, .82f, 1.00f, 1.08f, 5, 6, 10, 4),
             new BossProfile(Dimension.Mars, "Red Colossus", "Алый Колосс", BossArchetype.Colossus,
                 260, .55f, .10f, .08f, .25f, .06f, .05f, 1.00f, .35f, .10f, 1.00f, 4, 6, 8, 5),
-            new BossProfile(Dimension.Venus, "Серный Левиафан Венеры", "Дыхание кислоты", BossArchetype.Colossus,
-                320, .32f, .26f, .11f, .85f, .68f, .18f, .95f, .85f, .22f, 1.06f, 4, 8, 9, 4),
+            new BossProfile(Dimension.Venus, "The Storm Herald", "\u0413\u043b\u0430\u0437 \u0411\u0443\u0440\u0438", BossArchetype.Colossus,
+                360, .28f, .30f, .38f, .55f, .60f, .72f, 1.00f, .85f, .35f, 1.06f, 4, 8, 9, 4),
             new BossProfile(Dimension.Mercury, "Solar Core Guardian", "Страж Солнечного Ядра", BossArchetype.Ember,
                 380, .18f, .12f, .10f, .98f, .55f, .15f, 1.00f, .42f, .08f, 1.02f, 5, 9, 8, 4),
             new BossProfile(Dimension.Europa, "Ледяной Панцирь Европы", "Треснувший щит", BossArchetype.Titan,
@@ -145,15 +145,34 @@ namespace LestingCraft.Gameplay
                 355, .22f, .38f, .22f, .38f, .82f, .46f, .52f, 1.00f, .62f, 1.08f, 6, 10, 10, 4),
             new BossProfile(Dimension.AndromedaPrime, "Элизиумский Владыка", "Корона Андромеды", BossArchetype.Archon,
                 420, .30f, .22f, .46f, .76f, .52f, 1.00f, .82f, .52f, 1.00f, 1.14f, 8, 12, 10, 3),
-            new BossProfile(Dimension.Somnia, "The Void Horror", "Кошмар Пустоты", BossArchetype.Archon,
-                400, .14f, .11f, .17f, .65f, .60f, .55f, 1.00f, .15f, .10f, 1.10f, 7, 11, 9, 3),
-            new BossProfile(Dimension.Dream, "The Corrupted AI", "Искажённый ИИ", BossArchetype.Archon,
-                410, .16f, .10f, .28f, .75f, .25f, .95f, .85f, .45f, 1.00f, 1.06f, 7, 12, 8, 3),
+            new BossProfile(Dimension.Somnia, "He Who Heard", "\u0425\u043e\u0437\u044f\u0438\u043d \u0421\u043d\u0430", BossArchetype.Archon,
+                420, .18f, .18f, .30f, .52f, .34f, .84f, .72f, .62f, 1.00f, 1.10f, 7, 11, 9, 3),
+            new BossProfile(Dimension.Dream, "The First Node", "\u0421\u0435\u0440\u0434\u0446\u0435 \u041c\u0430\u0448\u0438\u043d", BossArchetype.Archon,
+                410, .22f, .24f, .30f, .45f, .75f, .95f, .85f, .92f, 1.00f, 1.06f, 7, 12, 8, 3),
             new BossProfile(Dimension.Radia, "Тринититовый Колосс", "Пепел Радиа", BossArchetype.Colossus,
                 440, .30f, .32f, .24f, .78f, .82f, .30f, .62f, 1.00f, .38f, 1.16f, 8, 10, 14, 3),
-            new BossProfile(Dimension.Backrooms, "Тот, Кто Услышал", "Хозяин Жёлтых Залов", BossArchetype.Archon,
-                420, .62f, .55f, .28f, .84f, .74f, .32f, 1.00f, .94f, .52f, 1.02f, 6, 9, 13, 5)
+            new BossProfile(Dimension.Backrooms, "The Black Bacteria", "\u0421\u0443\u0449\u043d\u043e\u0441\u0442\u044c 23", BossArchetype.Warden,
+                420, .12f, .12f, .14f, .50f, .50f, .55f, .75f, .80f, .95f, 1.02f, 6, 9, 13, 5)
         };
+
+        /// <summary>Earth carries three canon bosses (bible): extras spawn alongside the guardian.</summary>
+        public static readonly BossProfile[] ExtraProfiles =
+        {
+            new BossProfile(Dimension.Lestingia, "The Corrupted AI", "\u0418\u0441\u043a\u0430\u0436\u0451\u043d\u043d\u044b\u0439 \u0418\u0418", BossArchetype.Archon,
+                410, .16f, .10f, .28f, .75f, .25f, .95f, .85f, .45f, 1.00f, 1.06f, 7, 12, 8, 3),
+            new BossProfile(Dimension.Lestingia, "The Void Horror", "\u041a\u043e\u0448\u043c\u0430\u0440 \u041f\u0443\u0441\u0442\u043e\u0442\u044b", BossArchetype.Archon,
+                400, .14f, .11f, .17f, .65f, .60f, .55f, 1.00f, .15f, .10f, 1.10f, 7, 11, 9, 3)
+        };
+
+        public static BossProfile[] ExtrasFor(Dimension dimension)
+        {
+            int n = 0;
+            for (int i = 0; i < ExtraProfiles.Length; i++) if (ExtraProfiles[i].Dimension == dimension) n++;
+            var list = new BossProfile[n];
+            int k = 0;
+            for (int i = 0; i < ExtraProfiles.Length; i++) if (ExtraProfiles[i].Dimension == dimension) list[k++] = ExtraProfiles[i];
+            return list;
+        }
 
         static readonly Dictionary<Dimension, BossProfile> Lookup = BuildLookup();
 

@@ -98,6 +98,33 @@ class BossCheck
         }
         Ok(usedKinds.Count == 7, "every drone type is fielded somewhere: " + usedKinds.Count);
 
+        // Canon roster of ten bosses (author poll 2026-11-01) plus Earth's extra pair.
+        var canon = new[] { "Solar Core Guardian", "Red Colossus", "Ringed Leviathan", "Ancient Guardian",
+            "The Corrupted AI", "The Void Horror", "The Black Bacteria", "He Who Heard", "The First Node", "The Storm Herald" };
+        var every = new List<BossProfile>();
+        foreach (var p in all) every.Add(p);
+        foreach (var p in BossCatalog.ExtraProfiles) every.Add(p);
+        foreach (var name in canon)
+        {
+            bool found = false;
+            foreach (var p in every) if (p.Name == name) found = true;
+            Ok(found, "canon boss in catalogue: " + name);
+        }
+        foreach (var p in BossCatalog.ExtraProfiles)
+        {
+            Ok(p.Dimension == Dimension.Lestingia, "extras are Earth bosses: " + p.Name);
+            Ok(p.MaxHealth >= 250 && p.MaxHealth <= 600, "extra health band: " + p.Name);
+            float glow = p.CoreR + p.CoreG + p.CoreB, armorL = p.ArmorR + p.ArmorG + p.ArmorB;
+            Ok(glow > armorL, "extra core brighter than armour: " + p.Name);
+            Ok(names.Add(p.Name), "extra name unique: " + p.Name);
+            Ok(titles.Add(p.Title), "extra title unique: " + p.Title);
+        }
+        Ok(BossCatalog.ExtrasFor(Dimension.Lestingia).Length == 2, "Earth fields three bosses in total");
+        Ok(BossCatalog.For(Dimension.Backrooms).Name == "The Black Bacteria", "Backrooms boss is the black bacteria");
+        Ok(BossCatalog.For(Dimension.Somnia).Name == "He Who Heard", "sleep paralysis boss is He Who Heard");
+        Ok(BossCatalog.For(Dimension.Dream).Name == "The First Node", "AI world boss is the First Node");
+        Ok(BossCatalog.For(Dimension.Venus).Name == "The Storm Herald", "storm world boss is the Storm Herald");
+
         Console.WriteLine("PASS: " + checks + " boss assertions; " + all.Length + " guardians across " +
             Enum.GetValues(typeof(Dimension)).Length + " dimensions, " + archetypes.Count +
             " archetypes, deterministic loot and enrage. Pure C# core, not a Unity scene run.");
