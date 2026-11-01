@@ -20,6 +20,19 @@ namespace LestingCraft.World
 
         const ushort Carpet = 43, Wallpaper = 28, CeilingTile = 30, Fluorescent = 56, RedWall = 62;
 
+        /// <summary>Backrooms is multi-level per community canon: white labyrinths (Level 484
+        /// "The Whiteout"), classic yellow Level 0, and dark service halls (Level 6 "Lights Out").
+        /// Level identity follows the 256x256 region, so a traveller crossing regions walks
+        /// from one level into another.</summary>
+        public static int LevelKind(int x, int z, int seed)
+        {
+            int rx = x >> 8, rz = z >> 8;
+            return (int)(Hash(rx, 57, rz, seed ^ 0x77A1) % 4); // 0,1 white · 2 yellow · 3 dark
+        }
+        static ushort WallFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return k < 2 ? (ushort)42 : k == 2 ? Wallpaper : (ushort)29; }
+        static ushort FloorFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return k < 2 ? (ushort)40 : k == 2 ? Carpet : (ushort)29; }
+        static ushort CeilingFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return k == 3 ? (ushort)29 : CeilingTile; }
+
         static uint Hash(int a, int b, int c, int seed)
         {
             unchecked
@@ -80,7 +93,7 @@ namespace LestingCraft.World
             ExitDoor(x, z, seed, out int ex, out int ez);
             if (Math.Abs(x - ex) <= 1 && Math.Abs(z - ez) <= 1) return 40; // polished threshold
             if (IsRedRoom(x, z, seed) && !SpawnPlaza(x, z)) return RedWall;
-            return Carpet;
+            return FloorFor(x, z, seed);
         }
 
         public static ushort Block(int x, int y, int z, int seed, int floorTop)
@@ -97,11 +110,11 @@ namespace LestingCraft.World
             if (y >= CeilingBottom)
             {
                 // Fluorescent panels above room centres (never in red rooms), exit always glows.
-                bool roomLight = Room(x, z, seed) % 4 == 0;
+                bool roomLight = Room(x, z, seed) % (LevelKind(x, z, seed) == 3 ? 7 : 4) == 0;
                 int mx = ((x % 8) + 8) % 8, mz = ((z % 8) + 8) % 8;
                 bool inPanel = mx >= 2 && mx <= 5 && mz >= 2 && mz <= 5;
                 if (y == CeilingBottom && (exitCell || (roomLight && inPanel && !red))) return Fluorescent;
-                return red ? RedWall : CeilingTile;
+                return red ? RedWall : CeilingFor(x, z, seed);
             }
 
             // Walls on the 8-grid borders: most segments solid, some open into doorways.
@@ -112,11 +125,11 @@ namespace LestingCraft.World
             bool wall = (borderX && segX) || (borderZ && segZ);
             if (SpawnPlaza(x, z)) wall = false;
             if (exitCell) wall = false;
-            if (wall) return red ? RedWall : Wallpaper;
+            if (wall) return red ? RedWall : WallFor(x, z, seed);
 
             // Interior pillars give the endless rooms some depth cues.
             if (!borderX && !borderZ && !SpawnPlaza(x, z) && Hash(x, 79, z, seed ^ 0x3301) % 31 == 0)
-                return red ? RedWall : Wallpaper;
+                return red ? RedWall : WallFor(x, z, seed);
             return 0;
         }
 

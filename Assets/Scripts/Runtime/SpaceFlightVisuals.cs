@@ -1801,6 +1801,7 @@ namespace LestingCraft.Runtime
 
         public static void SpawnSwarm(Transform parent, Dimension dim, int seed, Vector3 anchor, int count)
         {
+            if (dim == Dimension.Backrooms) { BacteriaMobController.SpawnSwarm(parent, seed, anchor, count); return; }
             var kinds = LestingCraft.Gameplay.DroneRoster.SwarmFor(dim);
             if (kinds == null || kinds.Length == 0) return;
             for (int i = 0; i < count; i++)
@@ -1927,6 +1928,115 @@ namespace LestingCraft.Runtime
                 transform.position = p;
             }
             if (scanner) scanner.Rotate(0f, 42f * Time.deltaTime, 0f);
+        }
+
+        void OnDestroy() { foreach (var m in mats) if (m) Destroy(m); }
+    }
+
+    /// <summary>The black bacteria of the Backrooms (Kane Pixels entity): a tall, wiry
+    /// black figure with a heavy head and floor-length arms, luring prey with imitated voices.</summary>
+    public sealed class BacteriaMobController : MonoBehaviour
+    {
+        readonly List<Material> mats = new List<Material>();
+        Transform head;
+        float swayPhase;
+
+        public static BacteriaMobController Spawn(Transform parent, Vector3 pos, float yaw)
+        {
+            var go = new GameObject("BlackBacteria");
+            if (parent) go.transform.SetParent(parent, false);
+            go.transform.position = pos;
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            var mob = go.AddComponent<BacteriaMobController>();
+            mob.BuildBody();
+            return mob;
+        }
+
+        /// <summary>Backrooms swarm: bacteria replace the mechanical drones in the liminal halls.</summary>
+        public static void SpawnSwarm(Transform parent, int seed, Vector3 anchor, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float angle = i * 2.399f + (seed % 89) * 0.07f;
+                float radius = 10f + (i % 4) * 6f;
+                int bx = Mathf.RoundToInt(anchor.x + Mathf.Cos(angle) * radius);
+                int bz = Mathf.RoundToInt(anchor.z + Mathf.Sin(angle) * radius);
+                int groundY = LestingCraft.World.BackroomsTerrain.FloorTop(bx, bz, seed);
+                Spawn(parent, new Vector3(bx + 0.5f, groundY + 1.05f, bz + 0.5f), angle * Mathf.Rad2Deg);
+            }
+        }
+
+        Material Mat(Color color, Color emission, float smooth)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            var m = new Material(shader) { color = color };
+            if (m.HasProperty("_EmissionColor")) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", emission); }
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smooth);
+            mats.Add(m);
+            return m;
+        }
+
+        Transform Part(PrimitiveType type, string name, Transform parent, Vector3 pos, Vector3 size, Material m)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = pos;
+            go.transform.localScale = size;
+            go.GetComponent<Renderer>().sharedMaterial = m;
+            var own = go.GetComponent<Collider>();
+            if (own) Destroy(own);
+            return go.transform;
+        }
+
+        void BuildBody()
+        {
+            var black = Mat(new Color(0.045f, 0.045f, 0.06f), Color.black, 0.28f);
+            var wire = Mat(new Color(0.16f, 0.16f, 0.20f), Color.black, 0.55f);
+            var face = Mat(new Color(0.72f, 0.78f, 0.90f), new Color(0.55f, 0.62f, 0.80f) * 1.4f, 0.15f);
+            // long wiry legs
+            Part(PrimitiveType.Cube, "LegL", transform, new Vector3(-0.16f, -0.55f, 0f), new Vector3(0.13f, 1.15f, 0.16f), black);
+            Part(PrimitiveType.Cube, "LegR", transform, new Vector3(0.16f, -0.55f, 0f), new Vector3(0.13f, 1.15f, 0.16f), black);
+            Part(PrimitiveType.Cube, "FootL", transform, new Vector3(-0.16f, -1.06f, 0.10f), new Vector3(0.16f, 0.10f, 0.34f), wire);
+            Part(PrimitiveType.Cube, "FootR", transform, new Vector3(0.16f, -1.06f, 0.10f), new Vector3(0.16f, 0.10f, 0.34f), wire);
+            // thin torso of tangled wires
+            Part(PrimitiveType.Cube, "Torso", transform, new Vector3(0f, 0.28f, 0f), new Vector3(0.38f, 0.85f, 0.26f), black);
+            Part(PrimitiveType.Cube, "RibWire1", transform, new Vector3(0f, 0.12f, 0f), new Vector3(0.46f, 0.07f, 0.32f), wire);
+            Part(PrimitiveType.Cube, "RibWire2", transform, new Vector3(0f, 0.42f, 0f), new Vector3(0.46f, 0.07f, 0.32f), wire);
+            // floor-length arms
+            Part(PrimitiveType.Cube, "ArmL", transform, new Vector3(-0.34f, -0.18f, 0.05f), new Vector3(0.11f, 1.55f, 0.13f), black);
+            Part(PrimitiveType.Cube, "ArmR", transform, new Vector3(0.34f, -0.18f, 0.05f), new Vector3(0.11f, 1.55f, 0.13f), black);
+            Part(PrimitiveType.Cube, "HandL", transform, new Vector3(-0.34f, -0.92f, 0.12f), new Vector3(0.15f, 0.20f, 0.22f), wire);
+            Part(PrimitiveType.Cube, "HandR", transform, new Vector3(0.34f, -0.92f, 0.12f), new Vector3(0.15f, 0.20f, 0.22f), wire);
+            // heavy head with pale face plate
+            head = new GameObject("HeadPivot").transform;
+            head.SetParent(transform, false);
+            head.localPosition = new Vector3(0f, 0.92f, 0.02f);
+            Part(PrimitiveType.Cube, "Skull", head, Vector3.zero, new Vector3(0.52f, 0.58f, 0.50f), black);
+            Part(PrimitiveType.Cube, "FacePlate", head, new Vector3(0f, -0.02f, 0.28f), new Vector3(0.30f, 0.34f, 0.06f), face);
+            var lgo = new GameObject("BacteriaGlow");
+            lgo.transform.SetParent(transform, false);
+            lgo.transform.localPosition = new Vector3(0f, 0.9f, 0.5f);
+            var light = lgo.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.62f, 0.70f, 0.88f);
+            light.range = 5f;
+            light.intensity = 1.1f;
+            swayPhase = (GetInstanceID() & 255) * 0.031f;
+            var col = gameObject.AddComponent<CapsuleCollider>();
+            col.center = new Vector3(0f, 0.1f, 0f);
+            col.radius = 0.42f;
+            col.height = 2.3f;
+        }
+
+        void Update()
+        {
+            float t = Time.time * 0.9f + swayPhase;
+            transform.rotation *= Quaternion.Euler(0f, Mathf.Sin(t * 0.7f) * 14f * Time.deltaTime, 0f);
+            if (head) head.localRotation = Quaternion.Euler(Mathf.Sin(t * 1.3f) * 7f, Mathf.Sin(t * 0.53f) * 26f, 0f);
+            var p = transform.position;
+            p.y += Mathf.Sin(t * 2.1f) * 0.0016f;
+            transform.position = p;
         }
 
         void OnDestroy() { foreach (var m in mats) if (m) Destroy(m); }
