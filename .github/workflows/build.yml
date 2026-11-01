@@ -80,6 +80,7 @@ jobs:
             Library-build-${{ matrix.targetPlatform }}-v5-
 
       - name: Drop stale Bee build graph
+        shell: bash
         run: rm -rf Library/Bee
 
       - name: Set up Unity Hub for licensing only
@@ -224,6 +225,7 @@ jobs:
             Library-build-Android-v5-
 
       - name: Drop stale Bee build graph
+        shell: bash
         run: rm -rf Library/Bee
 
       - name: Install Unity Editor + Android modules
