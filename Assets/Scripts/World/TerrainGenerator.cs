@@ -98,6 +98,9 @@ namespace LestingCraft.World
             if (contentVersion >= 4 && d == Dimension.Lestingia &&
                 LestingCraft.Story.StoryWorld.TrySample(x, y, z, seed, out ushort placed, contentVersion))
                 return placed;
+            if (contentVersion >= 11 && d == Dimension.Lestingia &&
+                LestingCraft.World.KingdomPlan.TrySample(x, y, z, seed, out ushort crowned))
+                return crowned;
             if (contentVersion >= 3 && d == Dimension.Lestingia)
             {
                 ushort raw = contentVersion >= 7 ? BiomeGenerator.Sample(x, y, z, seed, contentVersion) : NatureGenerator.Sample(x, y, z, seed);

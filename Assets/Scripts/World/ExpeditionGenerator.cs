@@ -90,13 +90,46 @@ namespace LestingCraft.World
             int ax = a * 192 + 64 + (int)(h % 64), az = b * 192 + 64 + (int)((h >> 8) % 64), kind = (int)((h >> 18) % (contentVersion >= 10 ? 10u : 5u));
             int rx = x - ax, rz = z - az, rot = (int)((h >> 26) % 4);
             int top = TerrainGenerator.Height(ax, az, seed, Dimension.Lestingia);
-            if (!Reserved(ax, az) && top >= 44 && top <= 62 && math.abs(rx) <= StructurePlan.Radius[kind] && math.abs(rz) <= StructurePlan.Radius[kind])
+            if (!Reserved(ax, az) && (contentVersion < 11 || !KingdomPlan.Inside(ax, az)) && top >= 44 && top <= 62 && math.abs(rx) <= StructurePlan.Radius[kind] && math.abs(rz) <= StructurePlan.Radius[kind])
             {
                 result.Surface = true;
                 result.Base = top;
                 result.Kind = kind;
                 result.X = rot == 0 ? rx : rot == 1 ? rz : rot == 2 ? -rx : -rz;
                 result.Z = rot == 0 ? rz : rot == 1 ? -rx : rot == 2 ? -rz : rx;
+            }
+            if (contentVersion >= 11 && !result.Surface)
+            {
+                // Bonus lattice: a second, sparser ring of outposts between the legacy
+                // 192-cell sites so the world reads as settled everywhere.
+                int A = (int)math.floor(x / 112f), B = (int)math.floor(z / 112f);
+                uint h2 = TerrainGenerator.Hash(A, 77, B, seed ^ 91771);
+                if (h2 % 10 < 8)
+                {
+                    int bx = A * 112 + 24 + (int)((h2 >> 8) % 56), bz = B * 112 + 24 + (int)((h2 >> 16) % 56);
+                    int bkind = (int)((h2 >> 24) % 10u), brot = (int)((h2 >> 28) % 4);
+                    int topB = TerrainGenerator.Height(bx, bz, seed, Dimension.Lestingia);
+                    bool nearPrimary = false;
+                    int a0 = (int)math.floor(bx / 192f), b0 = (int)math.floor(bz / 192f);
+                    for (int ba = a0 - 1; ba <= a0 + 1 && !nearPrimary; ba++)
+                        for (int bb = b0 - 1; bb <= b0 + 1 && !nearPrimary; bb++)
+                        {
+                            uint hp = TerrainGenerator.Hash(ba, 0, bb, seed ^ 71839);
+                            int px = ba * 192 + 64 + (int)(hp % 64), pz = bb * 192 + 64 + (int)((hp >> 8) % 64);
+                            if ((px - bx) * (px - bx) + (pz - bz) * (pz - bz) < 85 * 85) nearPrimary = true;
+                        }
+                    if (topB >= 44 && topB <= 62 && !Reserved(bx, bz) && !KingdomPlan.Inside(bx, bz) && !nearPrimary)
+                    {
+                        int rx2 = x - bx, rz2 = z - bz;
+                        int X2 = brot == 0 ? rx2 : brot == 1 ? rz2 : brot == 2 ? -rx2 : -rz2;
+                        int Z2 = brot == 0 ? rz2 : brot == 1 ? -rx2 : brot == 2 ? -rz2 : rx2;
+                        if (math.abs(X2) <= StructurePlan.Radius[bkind] && math.abs(Z2) <= StructurePlan.Radius[bkind])
+                        {
+                            result.Surface = true; result.Base = topB; result.Kind = bkind;
+                            result.X = X2; result.Z = Z2;
+                        }
+                    }
+                }
             }
             a = (int)math.floor(x / 64f); b = (int)math.floor(z / 64f);
             for (int dz = -1; dz <= 1; dz++)

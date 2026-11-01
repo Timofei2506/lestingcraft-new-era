@@ -39,6 +39,19 @@ namespace LestingCraft.Gameplay
       Actors.Add(new LivingActor{id="v:story:"+i,kind=isCat?1:0,job=job,x=x,y=y,z=z,hx=x,hy=y,hz=z});
     }
    }
+   if(contentVersion>=11&&Vector2.Distance(new Vector2(px,pz),new Vector2(KingdomPlan.CenterX,KingdomPlan.CenterZ))<170)
+   {
+    int ky=LestingCraft.World.KingdomPlan.BaseY(seed)+1;
+    int[] kx={0,79,-70,0,-24,22,52,-52,74,-74,96,-96,16,-16};
+    int[] kz={38,-2,54,-74,-18,-18,0,0,-40,-40,-20,-20,72,72};
+    for(int i=0;i<kx.Length;i++)
+    {
+     bool isCat=i>=12;
+     float x=KingdomPlan.CenterX+kx[i]+.5f,z=KingdomPlan.CenterZ+kz[i]+.5f;
+     if(Actors.Count<96&&Clear(x,ky,z,isCat?.19f:.29f,isCat?.5f:1.8f))
+      Actors.Add(new LivingActor{id="v:kingdom:"+i,kind=isCat?1:0,job=i%TradeOffer.ProfessionCount,x=x,y=ky,z=z,hx=x,hy=ky,hz=z});
+    }
+   }
    int cx=Mathf.FloorToInt(px/192),cz=Mathf.FloorToInt(pz/192);
    for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++)
    {
