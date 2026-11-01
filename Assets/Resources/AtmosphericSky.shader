@@ -91,7 +91,7 @@ Shader "LestingCraft/AtmosphericSky"
                 // Dual-lobe Henyey-Greenstein phase, normalized relative to isotropic scattering.
                 float forward=.85*(1-.72*.72)/pow(max(.04,1+.72*.72-2*.72*mu),1.5)
                     +.15*(1-.25*.25)/pow(max(.04,1+.25*.25+2*.25*mu),1.5);
-                [loop] for(int n=0;n<32;n++)
+                [loop] for(int n=0;n<48;n++)
                 {
                     if(n>=count||transmittance<.025)break;
                     float along=start+(n+jitter)*stepLength;
@@ -100,6 +100,7 @@ Shader "LestingCraft/AtmosphericSky"
                     if(d<.003)continue;
                     float shadowDensity=Density(p+sunDir*22,false);
                     shadowDensity+=Density(p+sunDir*58,false)*.6;
+                    shadowDensity+=Density(p+sunDir*126,false)*.32;
                     // Two-tap self shadow keeps bases heavy while sun-facing billows stay bright.
                     float sunlight=exp(-shadowDensity*3.6);
                     float powder=1-exp(-d*stepLength*.13);
