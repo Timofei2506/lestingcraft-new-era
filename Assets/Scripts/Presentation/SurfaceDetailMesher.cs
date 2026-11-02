@@ -20,9 +20,9 @@ namespace LestingCraft.Presentation
         public static void AddGrass(ChunkMeshData mesh, int x, int y, int z, int ox, int oz, int seed, int quality = 0)
         {
             uint hash = TerrainGenerator.Hash(ox + x, y, oz + z, seed ^ 9371);
+            int q = Mathf.Clamp(quality, 0, 4);
             // Sparse gaps read as soil and prevent a uniform carpet.
             if (hash % (q >= 2 ? 11 : 7) == 0) return;
-            int q = Mathf.Clamp(quality, 0, 4);
             int count = BladesFor(q, hash);
             int segments = q >= 3 ? 4 : q >= 1 ? 3 : 2;
             float heightScale = q >= 3 ? 1.30f : q >= 1 ? 1.15f : 1f;
