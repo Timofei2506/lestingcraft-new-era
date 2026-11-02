@@ -160,6 +160,7 @@ namespace LestingCraft.Runtime
             yield return Capture(Path.Combine(outDir, "02-forest-reference.png"), hands);
             if (contentRoot) contentRoot.gameObject.SetActive(true);
             yield return Capture(Path.Combine(outDir, "03-forest-hud.png"), hands);
+            if (hands) { if (hands.ViewCamera) hands.ViewCamera.enabled = false; hands.enabled = false; }
 
             // Model review: one articulated animal group and one planetary boss ring.
             var modelRoot = new GameObject("VisualReviewModels");
@@ -227,6 +228,7 @@ namespace LestingCraft.Runtime
         {
             if (finishing) yield break;
             if (hands && hands.ViewCamera) hands.ViewCamera.enabled = true;
+            else { var anyHands = FindFirstObjectByType<FirstPersonHands>(); if (anyHands && anyHands.ViewCamera) anyHands.ViewCamera.enabled = false; }
             yield return new WaitForEndOfFrame();
             var snap = ScreenCapture.CaptureScreenshotAsTexture();
             if (!snap) { Fail("CaptureScreenshotAsTexture returned null: " + path); yield break; }
