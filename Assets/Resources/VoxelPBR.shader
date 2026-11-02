@@ -196,10 +196,11 @@ Shader "LestingCraft/VoxelPBR"
                 if(foliage)
                 {
                     half transmission=pow(saturate(dot(-sun.direction,view)),3);
-                    half canopySky=max(sky,i.color.g*.75);
+                    half canopySky=max(sky,i.color.g*.85);
+                    half canopyEnergy=pow(saturate(canopySky),1.5);
                     half3 bounce=albedo.rgb*(_EnvironmentHorizon.rgb*.62+_EnvironmentZenith.rgb*.38)*
-                        canopySky*canopySky*saturate(_EnvironmentDaylight)*.42;
-                    surface.emission=bounce+albedo.rgb*sun.color*transmission*.24*
+                        canopyEnergy*saturate(_EnvironmentDaylight)*.55;
+                    surface.emission=bounce+albedo.rgb*sun.color*transmission*.30*
                         sun.shadowAttenuation*LC_SkyEnergy(sky);
                     surface.smoothness=min(surface.smoothness,.24);
                 }

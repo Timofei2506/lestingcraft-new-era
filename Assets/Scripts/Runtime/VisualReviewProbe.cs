@@ -161,10 +161,12 @@ namespace LestingCraft.Runtime
             if (contentRoot) contentRoot.gameObject.SetActive(true);
             yield return Capture(Path.Combine(outDir, "03-forest-hud.png"), hands);
             if (hands) { if (hands.ViewCamera) hands.ViewCamera.enabled = false; hands.enabled = false; }
+            if (contentRoot) contentRoot.gameObject.SetActive(false);
 
             // Model review: one articulated animal group and one planetary boss ring.
             var modelRoot = new GameObject("VisualReviewModels");
-            Vector3 stage = eye + new Vector3(bestDir.x, 0, bestDir.z).normalized * 7f;
+            Vector3 forward = new Vector3(bestDir.x, 0, bestDir.z).normalized;
+            Vector3 stage = eye + forward * 7f;
             stage.y = TerrainGenerator.Height(Mathf.RoundToInt(stage.x), Mathf.RoundToInt(stage.z), seed, Dimension.Lestingia) + 1;
             modelRoot.transform.position = stage;
             int[] kinds = { 0, 3, 5 };
@@ -176,18 +178,19 @@ namespace LestingCraft.Runtime
                 animal.Build(kinds[i]);
                 animal.Animate(.016f, 0);
             }
-            cam.transform.position = stage + new Vector3(0, 2.2f, -7);
+            cam.transform.position = stage - forward * 7f + Vector3.up * 2.2f;
             cam.transform.LookAt(stage + Vector3.up * .9f);
             yield return Capture(Path.Combine(outDir, "04-wildlife-models.png"), null);
             Destroy(modelRoot);
 
-            var boss = PlanetaryBossController.SpawnForPlanet(game.Session.World.transform, Dimension.Lestingia, game.Session.World, seed, false,
-                stage - new Vector3(34, 0, 22));
+            Vector3 bossPos = stage + forward * 12f;
+            bossPos.y = TerrainGenerator.Height(Mathf.RoundToInt(bossPos.x), Mathf.RoundToInt(bossPos.z), seed, Dimension.Lestingia) + 1;
+            var boss = PlanetaryBossController.SpawnForPlanet(game.Session.World.transform, Dimension.Lestingia, game.Session.World, seed, false, bossPos);
             if (boss)
             {
-                Vector3 bossPos = boss.transform.position;
-                cam.transform.position = bossPos + new Vector3(0, 4.5f, -13);
-                cam.transform.LookAt(bossPos + Vector3.up * 3.6f);
+                boss.transform.position = bossPos;
+                cam.transform.position = bossPos - forward * 16f + Vector3.up * 5f;
+                cam.transform.LookAt(bossPos + Vector3.up * 4f);
                 yield return WaitWorld(game.Session.World, 45);
                 yield return Capture(Path.Combine(outDir, "05-boss-ring.png"), null);
             }
@@ -195,8 +198,13 @@ namespace LestingCraft.Runtime
             game.Session.Inventory.slots[4] = new ItemStack { item = 55, count = 2 };
             game.Session.Inventory.slots[5] = new ItemStack { item = 56, count = 4 };
             game.Session.Inventory.revision++;
-            ui.ShowInventory();
+            if (contentRoot) contentRoot.gameObject.SetActive(true);
+            game.ToggleInventory();
+            yield return null;
+            yield return null;
+            if (ui.ScreenName != "Inventory") { Fail("Inventory page did not open: " + ui.ScreenName); yield break; }
             ui.ShowItemTooltip(100, new Vector2(620, 480), Items.Get(100).Durability / 2);
+            yield return null;
             yield return Capture(Path.Combine(outDir, "06-inventory-tooltip.png"), null);
 
             game.ReturnToMenu();

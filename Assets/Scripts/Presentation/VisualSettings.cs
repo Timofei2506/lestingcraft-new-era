@@ -238,7 +238,7 @@ namespace LestingCraft.Presentation
             var light = sunlight.AddComponent<Light>();
             light.type = LightType.Directional;
             light.shadows = LightShadows.Soft;
-            light.shadowStrength = 1;
+            light.shadowStrength = .88f;
             light.shadowBias = .04f;
             light.shadowNormalBias = .08f;
             RenderSettings.sun = light;

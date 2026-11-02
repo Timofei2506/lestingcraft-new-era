@@ -11,5 +11,5 @@ half LC_SkyAt(float3 p,half fallback)
  return SAMPLE_TEXTURE3D_LOD(_LCVoxelSky,sampler_LCVoxelSky,uv,0).r;
 }
 half LC_SurfaceSky(float3 p,half3 normal,half fallback){return LC_SkyAt(p+normal*.58,fallback);}
-half LC_SkyEnergy(half sky){return sky*sky;}
+half LC_SkyEnergy(half sky){return sky*sqrt(saturate(sky));}
 #endif
