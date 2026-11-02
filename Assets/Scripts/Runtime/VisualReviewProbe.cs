@@ -169,8 +169,10 @@ namespace LestingCraft.Runtime
             var modelRoot = new GameObject("VisualReviewModels");
             Vector3 forward = viewDir;
             Vector3 stage, modelCam;
+            Debug.Log("[VisualReview] Searching wildlife stage...");
             if (!FindReviewStage(eye, seed, content, forward, out stage, out modelCam, 8f, 3.2f, 1.0f, 2, 4, 5f, 14f))
             { Fail("Could not find an unobstructed wildlife review stage."); yield break; }
+            Debug.Log("[VisualReview] Wildlife stage: " + stage);
             modelRoot.transform.position = stage;
             Vector3 animalRight = Vector3.Cross(Vector3.up, (stage - modelCam).normalized).normalized;
             int[] kinds = { 0, 3, 5 };
@@ -189,10 +191,12 @@ namespace LestingCraft.Runtime
             Destroy(modelRoot);
 
             Vector3 bossPos, bossCam;
+            Debug.Log("[VisualReview] Searching boss arena...");
             if (!FindReviewStage(eye, seed, content, forward, out bossPos, out bossCam, 18f, 6f, 4f, 3, 8, 10f, 30f))
             { Fail("Could not find an unobstructed boss review arena."); yield break; }
             var boss = PlanetaryBossController.SpawnForPlanet(game.Session.World.transform, Dimension.Lestingia, game.Session.World, seed, false, bossPos);
             if (!boss) { Fail("Lestingia boss did not spawn for visual review."); yield break; }
+            Debug.Log("[VisualReview] Boss arena: " + bossPos);
             boss.PlaceArena(bossPos);
             cam.transform.position = bossCam;
             cam.fieldOfView = 65;
@@ -292,33 +296,22 @@ namespace LestingCraft.Runtime
         {
             stage = camera = Vector3.zero;
             float best = float.NegativeInfinity;
-            for (float r = minRadius; r <= maxRadius; r += 1f)
-                for (int a = 0; a < 24; a++)
+            for (float r = minRadius; r <= maxRadius; r += 2f)
+                for (int a = 0; a < 12; a++)
                 {
-                    Vector3 dir = Quaternion.Euler(0, a * 15f, 0) * preferred;
+                    Vector3 dir = Quaternion.Euler(0, a * 30f, 0) * preferred;
                     Vector3 candidate = eye + dir * r;
                     int gx = Mathf.RoundToInt(candidate.x), gz = Mathf.RoundToInt(candidate.z);
                     int gy = TerrainGenerator.Height(gx, gz, seed, Dimension.Lestingia);
                     Vector3 ground = new Vector3(gx + .5f, gy + 1, gz + .5f);
                     if (!OpenColumn(ground, radius, clearance, seed, content)) continue;
-                    for (int c = 0; c < 16; c++)
+                    for (int c = 0; c < 8; c++)
                     {
-                        Vector3 camDir = Quaternion.Euler(0, c * 22.5f, 0) * preferred;
+                        Vector3 camDir = Quaternion.Euler(0, c * 45f, 0) * preferred;
                         Vector3 cam = ground - camDir * distance + Vector3.up * height;
                         if (Occludes(cam, seed, content)) continue;
                         if (!ClearLine(cam, ground + Vector3.up * lookHeight, seed, content)) continue;
-                        if (lookHeight > 2f)
-                        {
-                            Vector3 camRight = Vector3.Cross(Vector3.up, camDir).normalized;
-                            bool wideClear = ClearLine(cam, ground + Vector3.up * (lookHeight + 3f), seed, content);
-                            for (int side = -1; side <= 1 && wideClear; side += 2)
-                            {
-                                Vector3 edge = ground + camRight * (side * 2.6f);
-                                wideClear = ClearLine(cam, edge + Vector3.up * lookHeight, seed, content) &&
-                                            ClearLine(cam, edge + Vector3.up * (lookHeight + 2.5f), seed, content);
-                            }
-                            if (!wideClear) continue;
-                        }
+                        if (lookHeight > 2f && !ClearLine(cam, ground + Vector3.up * (lookHeight + 3f), seed, content)) continue;
                         float score = 20 - Mathf.Abs(r - (minRadius + maxRadius) * .5f) - Vector3.Angle(camDir, preferred) * .05f;
                         if (score > best) { best = score; stage = ground; camera = cam; }
                     }
