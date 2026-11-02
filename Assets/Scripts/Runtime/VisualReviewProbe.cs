@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 using LestingCraft.Gameplay;
 using LestingCraft.Presentation;
@@ -56,7 +57,7 @@ namespace LestingCraft.Runtime
             Screen.SetResolution(1600, 900, false);
             yield return null;
             yield return null;
-            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
             {
                 Fail("A graphics device is required for visual review.");
                 yield break;
