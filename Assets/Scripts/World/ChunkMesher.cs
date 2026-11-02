@@ -236,10 +236,14 @@ namespace LestingCraft.World
                                         ? Mathf.Lerp(adjacentHeight, ownHeight, position.y) : position.y * ownHeight;
                                 if (id == 15) position.y *= .34f;
                                 else if (id == BlockRegistry.BedBlockId) position.y *= .58f;
-                                data.Vertices.Add(new Vector3(x, y, z) + position);
+                                Vector3 vertex = new Vector3(x, y, z) + position;
+                                data.Vertices.Add(vertex);
                                 data.Normals.Add(dir);
                                 data.Colors.Add(new Color32(shade, (byte)((skylight != null ? skylight(ox + nx, ny, oz + nz) : 15) * 17), shade, 255));
-                                data.UVs.Add(new Vector3(ux, vy, layer));
+                                Vector2 uv = id == BlockRegistry.WoodId && face != 2 && face != 3
+                                    ? SurfaceLayers.BarkUV(ox + x, oz + z, new Vector3(ox, 0, oz) + vertex, u, seed)
+                                    : new Vector2(ux, vy);
+                                data.UVs.Add(new Vector3(uv.x, uv.y, layer));
                                 data.Tangents.Add(new Vector4(u.x, u.y, u.z, -1));
                             }
                             AddIndices(data, id, solid, start);
@@ -284,11 +288,14 @@ namespace LestingCraft.World
                             Face tile = mask[a + b * 16];
                             if (tile.Id == 0) continue;
                             int width = 1, height = 1;
-                            if (tile.AlongU)
+                            // Keep bark faces per-block so the continuous per-column UV path stays
+                            // identical between the compatibility and greedy meshing routes.
+                            bool barkSide = tile.Id == BlockRegistry.WoodId && face != 2 && face != 3;
+                            if (tile.AlongU && !barkSide)
                                 while (a + width < 16 && tile.Same(mask[a + width + b * 16])) width++;
                             // Vertical stacking of shortened fluid faces would erase gaps/steps.
                             bool stack = horizontal || (tile.Bottom == 0 && tile.Top == 1);
-                            if (tile.AlongV && stack)
+                            if (tile.AlongV && stack && !barkSide)
                             {
                                 bool grow = true;
                                 while (b + height < rows && grow)
@@ -306,11 +313,15 @@ namespace LestingCraft.World
                                 Vector3 p = Corners[face][c];
                                 p.y = Mathf.Lerp(tile.Bottom, tile.Top, p.y);
                                 p += u * ((width - 1) * ux) + v * ((height - 1) * vy);
-                                data.Vertices.Add((Vector3)cell + p);
+                                Vector3 vertex = (Vector3)cell + p;
+                                data.Vertices.Add(vertex);
                                 data.Normals.Add(Directions[face]);
                                 byte shade = Byte(tile.AO, c);
                                 data.Colors.Add(new Color32(shade, Byte(tile.Sky, c), shade, 255));
-                                data.UVs.Add(new Vector3(ux * width, vy * height, tile.Layer));
+                                Vector2 uv = tile.Id == BlockRegistry.WoodId && face != 2 && face != 3
+                                    ? SurfaceLayers.BarkUV(ox + cell.x, oz + cell.z, new Vector3(ox, 0, oz) + vertex, u, seed)
+                                    : new Vector2(ux * width, vy * height);
+                                data.UVs.Add(new Vector3(uv.x, uv.y, tile.Layer));
                                 data.Tangents.Add(new Vector4(u.x, u.y, u.z, -1));
                             }
                             AddIndices(data, tile.Id, tile.Solid, start);

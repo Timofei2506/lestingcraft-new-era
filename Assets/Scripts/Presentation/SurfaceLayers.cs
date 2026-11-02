@@ -1,3 +1,4 @@
+using UnityEngine;
 namespace LestingCraft.Presentation
 {
     public static class SurfaceLayers
@@ -31,6 +32,16 @@ namespace LestingCraft.Presentation
                     return LestingCraft.Gameplay.ExpandedContent.Has(block)
                         ? LestingCraft.Gameplay.ExpandedContent.Blocks[block - 19].Layer : 0;
             }
+        }
+
+        // Continuous trunk appearance without a shader-side world-UV path: stacked wood
+        // blocks share vertical grain, while each column gets a stable offset.
+        public static Vector2 BarkUV(int blockX, int blockZ, Vector3 worldPos, Vector3 u, int seed)
+        {
+            uint h = CellHash(blockX, 0, blockZ, seed ^ 1094861643);
+            float uu = Vector3.Dot(worldPos, u) * .5f + (h % 1024u) / 128f;
+            float vv = worldPos.y * .5f + ((h >> 10) % 1024u) / 128f;
+            return new Vector2(uu, vv);
         }
 
         static int FloorDiv4(int v) { return v >= 0 ? v >> 2 : -(((-v) + 3) >> 2); }
