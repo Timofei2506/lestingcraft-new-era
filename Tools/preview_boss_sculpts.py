@@ -178,6 +178,37 @@ def render(sculpt, path, width=1100, height=1100, yaw=-24.0, pitch=-9.0):
     print('%-9s %5d voxels, %6d faces -> %s' % (sculpt['key'], len(cells), faces, path))
 
 
+def animate(sculpt):
+    """Bake the same articulation Unity applies, so the preview shows the pose the rig makes."""
+    import math as _m
+    keys = {'head': (-4.0, 0.0), 'jaw': (5.0, 0.0), 'arm_l': (-16.0, 4.0),
+            'arm_r': (-13.0, -4.0), 'halo': (0.0, 22.0)}
+    out = dict(sculpt)
+    flat = list(sculpt['cells'])
+    for part in sculpt['parts']:
+        rot = keys.get(part['name'])
+        if rot is None:
+            flat += part['cells']
+            continue
+        px, py, pz = (float(v) for v in part['pivot'])
+        ax = _m.radians(rot[0])
+        cab = _m.cos(ax)
+        sab = _m.sin(ax)
+        # crowns also spin about the vertical axis
+        cy = _m.radians(rot[1])
+        ccc, sss = _m.cos(cy), _m.sin(cy)
+        for i in range(0, len(part['cells']), 4):
+            x = part['cells'][i] + .5 - px
+            y = part['cells'][i + 1] + .5 - py
+            z = part['cells'][i + 2] + .5 - pz
+            y, z = y * cab - z * sab, y * sab + z * cab
+            x, z = x * ccc - z * sss, x * sss + z * ccc
+            flat += [int(_m.floor(px + x)), int(_m.floor(py + y)), int(_m.floor(pz + z)), part['cells'][i + 3]]
+    out['cells'] = flat
+    out['parts'] = []
+    return out
+
+
 def main():
     target = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'Builds' / 'BossPreview'
     if target.suffix.lower() in ('.jpg', '.jpeg', '.png'):
@@ -185,7 +216,7 @@ def main():
         tiles = []
         for sc in DATA['sculpts']:
             tmp = target.with_name(target.stem + '-' + sc['key'] + target.suffix)
-            render(sc, tmp)
+            render(animate(sc), tmp)
             tiles.append(Image.open(tmp).convert('RGB'))
         sheet = Image.new('RGB', (760 * 5, 760), (8, 9, 10))
         for i, tile in enumerate(tiles):
@@ -194,7 +225,7 @@ def main():
         print('contact sheet ->', target)
     else:
         for sc in DATA['sculpts']:
-            render(sc, target / (sc['key'] + '.jpg'))
+            render(animate(sc), target / (sc['key'] + '.jpg'))
 
 
 if __name__ == '__main__':

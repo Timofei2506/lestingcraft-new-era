@@ -11,6 +11,7 @@ on:
         options:
           - era-v9
           - forest-review
+          - space-review
 
 concurrency:
   group: unity-license
@@ -60,8 +61,8 @@ jobs:
           username: ${{ secrets.UNITY_USERNAME }}
           password: ${{ secrets.UNITY_PASSWORD }}
 
-      - name: Run EditMode tests (forest review)
-        if: inputs.mode == 'forest-review'
+      - name: Run EditMode tests (review)
+        if: inputs.mode == 'forest-review' || inputs.mode == 'space-review'
         uses: buildalon/unity-action@v3
         with:
           log-name: forest-review-editmode
@@ -87,7 +88,16 @@ jobs:
           chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
           ls -lh Builds/StandaloneLinux64/
           mkdir -p Builds/StandaloneLinux64/ShowcaseResults Builds/StandaloneLinux64/VisualReview Builds/Logs
-          if [ "${{ inputs.mode }}" = "forest-review" ]; then
+          if [ "${{ inputs.mode }}" = "space-review" ]; then
+            timeout -k 10 900 xvfb-run -a -s "-screen 0 1600x900x24" \
+              env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
+              ./Builds/StandaloneLinux64/LestingCraft.x86_64 \
+              -force-glcore -screen-fullscreen 0 -screen-width 1600 -screen-height 900 \
+              -lc-space-review -logFile Builds/Logs/space-review.log
+            echo "=== Space review log tail ==="; tail -n 160 Builds/Logs/space-review.log || true
+            grep -q "\[VisualReview\] PASS" Builds/Logs/space-review.log
+            test "$(find Builds/StandaloneLinux64/VisualReview -maxdepth 1 -name '*.png' | wc -l)" -eq 5
+          elif [ "${{ inputs.mode }}" = "forest-review" ]; then
             timeout -k 10 900 xvfb-run -a -s "-screen 0 1600x900x24" \
               env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
               ./Builds/StandaloneLinux64/LestingCraft.x86_64 \
@@ -95,7 +105,7 @@ jobs:
               -lc-visual-review -logFile Builds/Logs/visual-review.log
             echo "=== Visual review log tail ==="; tail -n 160 Builds/Logs/visual-review.log || true
             grep -q "\[VisualReview\] PASS" Builds/Logs/visual-review.log
-            test "$(find Builds/StandaloneLinux64/VisualReview -maxdepth 1 -name '*.png' | wc -l)" -eq 7
+            test "$(find Builds/StandaloneLinux64/VisualReview -maxdepth 1 -name '*.png' | wc -l)" -eq 8
           else
             timeout -k 10 1100 xvfb-run -a -s "-screen 0 1920x1080x24" \
               env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \

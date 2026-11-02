@@ -564,7 +564,11 @@ namespace LestingCraft.Runtime
             return tex;
         }
 
-        Texture2D BuildSquarePlanetaryRingTexture(Color cA, Color cB)
+        /// <summary>
+        /// Polar ring bake: the texture is sampled by radius, so gaps and bands are true circles
+        /// and the ring silhouette is round instead of a cut-out square.
+        /// </summary>
+        Texture2D BuildPolarPlanetaryRingTexture(Color cA, Color cB)
         {
             const int size = 256;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, true)
@@ -574,20 +578,19 @@ namespace LestingCraft.Runtime
             var pixels = new Color32[size * size];
             for (int y = 0; y < size; y++)
             {
-                float nz = ((y + 0.5f) / size) * 2f - 1f;
-                for (int x = 0; x < size; x++)
-                {
-                    float nx = ((x + 0.5f) / size) * 2f - 1f;
-                    float sqDist = Mathf.Max(Mathf.Abs(nx), Mathf.Abs(nz));
-                    bool insideHole = sqDist < 0.515f || sqDist > 0.992f;
-                    bool cassiniGap = sqDist > 0.752f && sqDist < 0.808f;
-                    bool enckeGap = sqDist > 0.916f && sqDist < 0.936f;
-                    float fineRing = 0.5f + 0.5f * Mathf.Sin(sqDist * 210f) * Mathf.Cos(sqDist * 73f);
-                    float density = (insideHole || cassiniGap || enckeGap) ? 0f : (0.55f + 0.45f * fineRing);
-                    Color c = Color.Lerp(cB * 0.82f, Color.Lerp(cA, Color.white, 0.55f), fineRing);
-                    c.a = density > 0.34f ? 1f : 0f;
-                    pixels[y * size + x] = c;
-                }
+                float r = (y + 0.5f) / size; // v = radius
+                float band = 0.5f + 0.5f * Mathf.Sin(r * 173f) * Mathf.Cos(r * 61f + 1.7f);
+                bool innerHole = r < 0.50f;
+                bool cassini = r > 0.735f && r < 0.792f;
+                bool encke = r > 0.905f && r < 0.922f;
+                bool outerFade = r > 0.975f;
+                float density = (innerHole || cassini || encke || outerFade) ? 0f : Mathf.Lerp(.38f, 1f, band);
+                // Ring particles are brighter where the bake is dense, and go warm near the gap edges.
+                float warm = Mathf.Clamp01((band - .55f) * 2.2f) * (r > .70f && r < .82f ? 1f : .35f);
+                Color c = Color.Lerp(cB * .80f, cA, band);
+                c = Color.Lerp(c, Color.white, .22f * warm);
+                c.a = density;
+                for (int x = 0; x < size; x++) pixels[y * size + x] = c;
             }
             tex.SetPixels32(pixels);
             tex.Apply(true, false);
@@ -639,44 +642,65 @@ namespace LestingCraft.Runtime
             return mesh;
         }
 
-        Mesh BuildSquareRingPlateMesh(float outerHalf, float thickness)
+        /// <summary>
+        /// Real annulus: inner and outer circle, two-sided, with a thin rim so the ring keeps
+        /// volume when seen edge-on. Radius runs along V so the polar bake wraps correctly.
+        /// </summary>
+        Mesh BuildPolarRingMesh(float outerRadius, float innerRadius, float thickness, int segments)
         {
-            var verts = new List<Vector3>(24);
-            var norms = new List<Vector3>(24);
-            var uvs = new List<Vector2>(24);
-            var tris = new List<int>(36);
-            float h = thickness * 0.5f;
-
-            int bt = verts.Count;
-            verts.Add(new Vector3(-outerHalf, h, -outerHalf)); verts.Add(new Vector3(outerHalf, h, -outerHalf));
-            verts.Add(new Vector3(outerHalf, h, outerHalf));   verts.Add(new Vector3(-outerHalf, h, outerHalf));
-            for (int k = 0; k < 4; k++) norms.Add(Vector3.up);
-            uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(1f, 0f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(0f, 1f));
-            tris.Add(bt); tris.Add(bt + 2); tris.Add(bt + 1); tris.Add(bt); tris.Add(bt + 3); tris.Add(bt + 2);
-
-            int bb = verts.Count;
-            verts.Add(new Vector3(-outerHalf, -h, -outerHalf)); verts.Add(new Vector3(-outerHalf, -h, outerHalf));
-            verts.Add(new Vector3(outerHalf, -h, outerHalf));   verts.Add(new Vector3(outerHalf, -h, -outerHalf));
-            for (int k = 0; k < 4; k++) norms.Add(Vector3.down);
-            uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(0f, 1f)); uvs.Add(new Vector2(1f, 1f)); uvs.Add(new Vector2(1f, 0f));
-            tris.Add(bb); tris.Add(bb + 2); tris.Add(bb + 1); tris.Add(bb); tris.Add(bb + 3); tris.Add(bb + 2);
-
-            Vector3[] rimN = { Vector3.forward, Vector3.back, Vector3.right, Vector3.left };
-            Vector3[] rimR = { Vector3.right, Vector3.left, Vector3.back, Vector3.forward };
-            for (int s = 0; s < 4; s++)
+            segments = Mathf.Clamp(segments, 24, 128);
+            var verts = new List<Vector3>((segments + 1) * 4);
+            var norms = new List<Vector3>((segments + 1) * 4);
+            var uvs = new List<Vector2>((segments + 1) * 4);
+            var tris = new List<int>(segments * 18);
+            float h = thickness * .5f;
+            for (int i = 0; i <= segments; i++)
             {
-                int br = verts.Count;
-                Vector3 c = rimN[s] * outerHalf;
-                Vector3 r = rimR[s] * outerHalf;
-                verts.Add(c - r - Vector3.up * h); verts.Add(c + r - Vector3.up * h);
-                verts.Add(c + r + Vector3.up * h); verts.Add(c - r + Vector3.up * h);
-                for (int k = 0; k < 4; k++) norms.Add(rimN[s]);
-                uvs.Add(new Vector2(0.95f, 0.5f)); uvs.Add(new Vector2(0.95f, 0.5f));
-                uvs.Add(new Vector2(0.95f, 0.5f)); uvs.Add(new Vector2(0.95f, 0.5f));
-                tris.Add(br); tris.Add(br + 2); tris.Add(br + 1); tris.Add(br); tris.Add(br + 3); tris.Add(br + 2);
+                float a = i / (float)segments * Mathf.PI * 2f;
+                float cos = Mathf.Cos(a), sin = Mathf.Sin(a);
+                float u = i / (float)segments;
+                // Outer surface (up), then the rim skirt, then the underside.
+                verts.Add(new Vector3(cos * innerRadius, h, sin * innerRadius)); uvs.Add(new Vector2(u, 0.50f)); norms.Add(Vector3.up);
+                verts.Add(new Vector3(cos * outerRadius, h, sin * outerRadius)); uvs.Add(new Vector2(u, 1.00f)); norms.Add(Vector3.up);
             }
-
-            var mesh = new Mesh { name = "SquareVoxelPlanetaryRing" };
+            for (int i = 0; i < segments; i++)
+            {
+                int a = i * 2;
+                tris.Add(a); tris.Add(a + 2); tris.Add(a + 1);
+                tris.Add(a + 1); tris.Add(a + 2); tris.Add(a + 3);
+            }
+            int topCount = verts.Count;
+            for (int i = 0; i <= segments; i++)
+            {
+                float a = i / (float)segments * Mathf.PI * 2f;
+                float cos = Mathf.Cos(a), sin = Mathf.Sin(a);
+                float u = i / (float)segments;
+                verts.Add(new Vector3(cos * innerRadius, -h, sin * innerRadius)); uvs.Add(new Vector2(u, 0.50f)); norms.Add(Vector3.down);
+                verts.Add(new Vector3(cos * outerRadius, -h, sin * outerRadius)); uvs.Add(new Vector2(u, 1.00f)); norms.Add(Vector3.down);
+            }
+            for (int i = 0; i < segments; i++)
+            {
+                int a = topCount + i * 2;
+                tris.Add(a); tris.Add(a + 1); tris.Add(a + 2);
+                tris.Add(a + 1); tris.Add(a + 3); tris.Add(a + 2);
+            }
+            // Outer rim: a thin band that keeps the disc readable edge-on.
+            int rimCount = verts.Count;
+            for (int i = 0; i <= segments; i++)
+            {
+                float a = i / (float)segments * Mathf.PI * 2f;
+                Vector3 n = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                Vector3 p = n * outerRadius;
+                verts.Add(p + Vector3.down * h); uvs.Add(new Vector2(i / (float)segments, 0.97f)); norms.Add(n);
+                verts.Add(p + Vector3.up * h); uvs.Add(new Vector2(i / (float)segments, 0.99f)); norms.Add(n);
+            }
+            for (int i = 0; i < segments; i++)
+            {
+                int a = rimCount + i * 2;
+                tris.Add(a); tris.Add(a + 2); tris.Add(a + 1);
+                tris.Add(a + 1); tris.Add(a + 2); tris.Add(a + 3);
+            }
+            var mesh = new Mesh { name = "PolarPlanetaryRing", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
             mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(0, uvs); mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             ownedObjects.Add(mesh);
@@ -753,12 +777,13 @@ namespace LestingCraft.Runtime
                 var ring = new GameObject("Rings_" + body.WireKey);
                 ring.transform.SetParent(go.transform, false);
                 ring.transform.localRotation = Quaternion.Euler(body.Id == CelestialBodyId.Uranus ? 97.8f : 24f, 16f, -10f);
-                var ringTex = BuildSquarePlanetaryRingTexture(cA, cB);
+                var ringTex = BuildPolarPlanetaryRingTexture(cA, cB);
                 var rmf = ring.AddComponent<MeshFilter>();
-                float outerHalf = halfExtent * (float)body.RingOuterScale;
-                rmf.sharedMesh = BuildSquareRingPlateMesh(outerHalf, halfExtent * 0.065f);
+                float outerRadius = halfExtent * (float)body.RingOuterScale;
+                float innerRadius = outerRadius * Mathf.Clamp((float)body.RingInnerScale / Mathf.Max(.01f, (float)body.RingOuterScale), .28f, .86f);
+                rmf.sharedMesh = BuildPolarRingMesh(outerRadius, innerRadius, halfExtent * 0.055f, 96);
                 var rmr = ring.AddComponent<MeshRenderer>();
-                rmr.sharedMaterial = MakePlanetVoxelMaterial("SquareRingsCutout_" + body.WireKey, ringTex, Color.white, 0.30f, 0.35f);
+                rmr.sharedMaterial = MakePlanetVoxelMaterial("PolarRingBands_" + body.WireKey, ringTex, Color.white, 0.30f, 0.35f);
                 rmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 rmr.receiveShadows = false;
             }
@@ -2284,6 +2309,7 @@ namespace LestingCraft.Runtime
             boss.ArenaPosition = arena;
             boss.lootSeed = seed;
             boss.BuildSculpt(dim);
+            boss.CarveArena(world, seed);
             return boss;
         }
 
@@ -2292,6 +2318,40 @@ namespace LestingCraft.Runtime
         {
             ArenaPosition = arena;
             transform.position = arena;
+        }
+
+        /// <summary>
+        /// A guardian needs ground to fight on. The arena is levelled and rimmed in world blocks the
+        /// player can mine again, so the boss ranks above the tree line instead of standing on a slope.
+        /// </summary>
+        public void CarveArena(VoxelWorld world, int seed)
+        {
+            if (!world) return;
+            int cx = Mathf.RoundToInt(ArenaPosition.x), cz = Mathf.RoundToInt(ArenaPosition.z);
+            int cy = Mathf.RoundToInt(ArenaPosition.y) - 2;
+            const int radius = 11;
+            const int inner = 9;
+            for (int dx = -radius; dx <= radius; dx++)
+                for (int dz = -radius; dz <= radius; dz++)
+                {
+                    int distanceSq = dx * dx + dz * dz;
+                    if (distanceSq > radius * radius) continue;
+                    int x = cx + dx, z = cz + dz;
+                    bool rim = distanceSq > inner * inner;
+                    int floor = cy + (rim ? 1 : 0);
+                    for (int lift = 1; lift <= 9; lift++)
+                        world.Edit(x, floor + lift, z, 0, lift == 1);
+                    world.Edit(x, floor, z, rim ? BlockRegistry.StoneId : (ushort)40, distanceSq <= 1);
+                }
+            // Four standing stones with lantern caps mark the ring without walling the player in.
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = Mathf.PI * .25f + i * Mathf.PI * .5f;
+                int x = cx + Mathf.RoundToInt(Mathf.Cos(angle) * (radius + 2));
+                int z = cz + Mathf.RoundToInt(Mathf.Sin(angle) * (radius + 2));
+                for (int h = 1; h <= 4; h++) world.Edit(x, cy + 1 + h, z, (ushort)37, h == 1);
+                world.Edit(x, cy + 6, z, BlockRegistry.LanternId);
+            }
         }
 
         void BuildSculpt(Dimension dim)
@@ -2309,8 +2369,13 @@ namespace LestingCraft.Runtime
             var sculptMaterial = Resources.Load<Material>("Generated/VoxelObjects");
             if (!sculptMaterial) sculptMaterial = MakeMat("BossArmor", new Color(profile.ArmorR, profile.ArmorG, profile.ArmorB), Color.black, .7f, .45f);
             sculpt = BossSculpture.Build(transform, SculptKey(profile.Archetype), sculptMaterial);
-            bodyPivot = sculpt != null ? sculpt.Root.transform : new GameObject("BossArticulatedRoot").transform;
-            if (bodyPivot.parent != transform) bodyPivot.SetParent(transform, false);
+
+            // A hittable root under the visual so the body can be offset for the idle stomp without
+            // dragging the hitbox, the telegraph ring or the arena along with it.
+            var rig = new GameObject("BossRig (animated)");
+            rig.transform.SetParent(transform, false);
+            bodyPivot = rig.transform;
+            if (sculpt != null) sculpt.Root.transform.SetParent(rig.transform, false);
             headPivot = sculpt?.Find("head");
             jawPivot = sculpt?.Find("jaw");
             leftArm = sculpt?.Find("arm_l");
@@ -2323,7 +2388,6 @@ namespace LestingCraft.Runtime
                 if (sculpt.Anchors.TryGetValue("core", out var core)) coreAnchor = core;
                 bodyHeight = BossSculpture.Height(sculpt);
             }
-            coreAnchorWorld = coreAnchor;
 
             shockwaveRing = BuildVoxelRing("TelegraphShockwave", transform, new Vector3(0f, 0.08f, 0f), 1f, 24, .10f, .06f, .28f, MakeMat("BossShockwave", coreCol, coreCol * 2.2f, .1f, .8f));
             shockwaveRing.gameObject.SetActive(false);
@@ -2335,7 +2399,7 @@ namespace LestingCraft.Runtime
             hitBox.height = Mathf.Max(4f, bodyHeight * .95f);
 
             var lgo = new GameObject("BossCoreLight");
-            lgo.transform.SetParent(bodyPivot, false);
+            lgo.transform.SetParent(rig.transform, false);
             lgo.transform.localPosition = coreAnchor + Vector3.forward * .35f;
             coreLight = lgo.AddComponent<Light>();
             coreLight.type = LightType.Point;

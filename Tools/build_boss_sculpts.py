@@ -60,8 +60,8 @@ def plate(s, cx, cy, cz, w, h, d, m, notch=0):
 # ---------------------------------------------------------------- warden
 def build_warden():
     s = Sculpt('warden', 'Древний Страж', U, [])
-    bark = s.mat(L('bark'), (.58, .46, .32), 0, 'old bark plates')
-    heart = s.mat(L('wood-end'), (.82, .66, .44), 0, 'exposed heartwood')
+    bark = s.mat(L('bark'), (.80, .64, .44), 0, 'old bark plates')
+    heart = s.mat(L('wood-end'), (.96, .82, .58), 0, 'exposed heartwood')
     moss = s.mat(L('mossy-stone'), (.56, .78, .38), 0, 'moss on upward faces')
     brass = s.mat(L('metal-ingot'), (.70, .56, .22), 0, 'aged brass bindings')
     amber = s.mat(L('crystal'), (.95, .40, .06), 1.1, 'amber ember heart')
@@ -103,15 +103,17 @@ def build_warden():
     for i in range(4):
         y = 3.72 + i * .40
         for side in (-1, 1):
-            s.path([(side * .10, y, -.36), (side * .72, y + .10, -.02),
-                    (side * .82, y + .04, .34), (side * .52, y - .16, .60)],
-                   [.15, .18, .16, .10], bark, step=.36)
+            s.path([(side * .12, y, -.40), (side * .86, y + .12, -.04),
+                    (side * .94, y + .04, .30), (side * .60, y - .18, .56)],
+                   [.16, .19, .17, .10], bark, step=.34)
             s.brush((side * .84, y + .12, .10), .16, moss, square=2.4)
-    s.path([(0, 3.66, .56), (0, 4.30, .62), (0, 4.88, .50)], [.16, .14, .12], heart, step=.4)
+    s.path([(0, 3.58, .44), (0, 3.70, .60)], [.14, .12], heart, step=.4)
+    # carve a real window through the front ribs: the heart must be the focal point
+    s.carve((-.46, 3.78, .10), (.46, 4.74, 1.00))
     # heart: faceted ember core inside the cage
-    s.brush((0, 4.24, .06), .40, amber, flatten=(.80, 1.0, .72), square=2.2)
-    s.brush((0, 4.28, .16), .22, amber, flatten=(.7, 1.0, .7), square=2.0)
-    s.brush((0, 4.32, .24), .10, amber, square=2.6)
+    s.brush((0, 4.24, .10), .46, amber, flatten=(.78, 1.05, .70), square=2.2)
+    s.brush((0, 4.28, .22), .26, amber, flatten=(.70, 1.0, .70), square=2.0)
+    s.brush((0, 4.34, .30), .12, amber, square=2.6)
 
     # --- back: layered bark shield plates
     for i in range(3):
@@ -146,10 +148,10 @@ def build_warden():
         s.anchor('head', (0, 6.30, .30))
 
     def jaw():
-        s.box((-.30, 5.96, .18), (.30, 6.10, .56), heart)
+        s.box((-.30, 5.88, .30), (.30, 6.02, .68), heart)
         for side in (-1, 1):
-            s.box((side * .20 - .07, 5.90, .40), (side * .20 + .07, 6.02, .60), brass)
-        s.brush((0, 5.96, .30), .18, bark, flatten=(1.5, .5, .9))
+            s.box((side * .20 - .07, 5.82, .52), (side * .20 + .07, 5.94, .72), brass)
+        s.brush((0, 5.88, .44), .18, bark, flatten=(1.5, .5, .9))
 
     def arm(side):
         shoulder = (side * 1.34, 5.18, -.02)
@@ -169,16 +171,21 @@ def build_warden():
         s.anchor('hand_' + ('l' if side < 0 else 'r'), (side * 1.56, 2.42, .38))
 
     def halo():
-        # branched antler crown, wider on the left, snapped short on the right
-        for side, reach in ((-1, 1.75), (1, 1.20)):
-            s.path([(side * .30, 6.72, -.06), (side * .70, 7.05, -.18), (side * reach * .62, 7.35, -.26),
-                    (side * reach, 7.52, -.30)], [.20, .15, .10, .04], bark, step=.30)
-            for k in range(2):
-                base = (side * (.62 + k * .28), 7.06 + k * .18, -.22)
-                s.path([base, (side * (.90 + k * .34), 7.34 + k * .20, -.34),
-                        (side * (1.06 + k * .36), 7.56 + k * .22, -.42)], [.10, .07, .025], bark, step=.30)
+        # stag antlers: the widest part of the silhouette, snapped short on the right
+        for side, reach, top in ((-1, 2.30, 8.35), (1, 1.45, 7.70)):
+            s.path([(side * .30, 6.70, -.06), (side * .78, 7.05, -.20), (side * 1.42, 7.55, -.30),
+                    (side * reach, top - .35, -.36), (side * (reach + .10), top, -.34)],
+                   [.24, .19, .14, .09, .035], bark, step=.28)
+            for k in range(3):
+                base = (side * (.66 + k * .34), 7.02 + k * .22, -.24)
+                tine_top = top - .15 - k * .18
+                s.path([base, (side * (.98 + k * .40), 7.34 + k * .24, -.38),
+                        (side * (1.16 + k * .44), tine_top, -.46)],
+                       [.12, .085, .03], bark, step=.28)
+            s.path([(side * .52, 6.86, .02), (side * .84, 7.20, -.10), (side * .98, 7.46, -.16)],
+                   [.10, .07, .03], bark, step=.32)
         for side in (-1, 1):
-            s.brush((side * .34, 6.86, -.16), .16, moss, square=2.2)
+            s.brush((side * .34, 6.84, -.16), .17, moss, square=2.2)
 
     s.part('head', (0, 5.92, .04), head)
     s.part('jaw', (0, 5.98, .16), jaw)
@@ -193,7 +200,7 @@ def build_warden():
 # ---------------------------------------------------------------- colossus
 def build_colossus():
     s = Sculpt('colossus', 'Алый Колосс', U, [])
-    rock = s.mat(L('basalt'), (.90, .60, .48), 0, 'sun-baked basalt plates')
+    rock = s.mat(L('basalt'), (1.0, .72, .58), 0, 'sun-baked basalt plates')
     dark = s.mat(L('obsidian'), (.46, .34, .33), 0, 'obsidian underlayer')
     iron = s.mat(L('granite'), (.86, .74, .64), 0, 'iron-grey granite')
     lava = s.mat(L('magma-basalt'), (1.0, .38, .06), 1.9, 'lava cracks')
@@ -229,8 +236,8 @@ def build_colossus():
     s.box((-.78, 4.96, -.60), (.78, 5.34, -.30), dark)
     # broken horn arc across the back of the shoulders
     for side in (-1, 1):
-        s.path([(side * .30, 5.58, -.34), (side * .72, 5.94, -.52), (side * 1.06, 6.10, -.60),
-                (side * 1.30, 6.04, -.52)], [.26, .20, .14, .05], dark, step=.30)
+        s.path([(side * .30, 5.56, -.34), (side * .86, 6.02, -.54), (side * 1.34, 6.34, -.64),
+                (side * 1.66, 6.44, -.58)], [.30, .24, .17, .05], iron, step=.28)
     s.box((-.44, 5.62, -.48), (.44, 5.92, -.24), iron)
 
     # --- neck and small sunken head
@@ -285,8 +292,8 @@ def build_colossus():
 # ---------------------------------------------------------------- archon
 def build_archon():
     s = Sculpt('archon', 'Корона Андромеды', U, [])
-    cloth = s.mat(L('stone'), (.78, .74, .92), 0, 'star-woven mantle')
-    stone = s.mat(L('obsidian'), (.58, .52, .70), 0, 'obsidian regalia')
+    cloth = s.mat(L('marble'), (.68, .64, .90), 0, 'star-woven mantle')
+    stone = s.mat(L('obsidian'), (.74, .68, .88), 0, 'obsidian regalia')
     plate_mat = s.mat(L('marble'), (.92, .90, 1.0), 0, 'pale armour plates')
     gold = s.mat(L('metal-ingot'), (1.0, .80, .36), 0, 'gold trim')
     crystal = s.mat(L('andromeda-crystal'), (.72, .52, 1.0), 2.2, 'andromeda crystal')
@@ -339,14 +346,15 @@ def build_archon():
         s.anchor('head', (0, 5.34, .20))
 
     def arm(side):
-        shoulder = (side * .90, 4.70, .02)
-        s.brush(shoulder, .40, stone, flatten=(1.1, .9, 1.0), square=2.4)
-        s.path([shoulder, (side * 1.20, 4.20, .10), (side * 1.30, 3.58, .18),
-                (side * 1.24, 3.02, .24)], [.30, .25, .20, .17], cloth, step=.30)
+        shoulder = (side * 1.02, 4.72, .02)
+        s.brush(shoulder, .42, stone, flatten=(1.1, .9, 1.0), square=2.4)
+        s.path([shoulder, (side * 1.34, 4.18, .12), (side * 1.44, 3.54, .20),
+                (side * 1.38, 2.98, .26)], [.30, .25, .20, .17], cloth, step=.30)
+        s.ring((side * 1.42, 3.44, .20), .22, .06, gold, axis='y')
         s.brush((side * 1.24, 2.86, .26), .22, stone, flatten=(1.1, .9, 1.0), square=2.6)
         for j, off in enumerate((-.18, 0.0, .18)):
-            s.path([(side * (1.24 + off), 2.80, .28), (side * (1.28 + off * 1.2), 2.50, .34),
-                    (side * (1.28 + off * 1.3), 2.28, .36)], [.075, .05, .02], stone, step=.34)
+            s.path([(side * (1.38 + off), 2.76, .30), (side * (1.42 + off * 1.2), 2.44, .36),
+                    (side * (1.42 + off * 1.3), 2.22, .38)], [.075, .05, .02], stone, step=.34)
 
     def halo():
         # tilted crown ring with six floating shards above the head
@@ -364,8 +372,8 @@ def build_archon():
                    [.09, .06, .02], aether, step=.4)
 
     s.part('head', (0, 5.06, .02), head)
-    s.part('arm_l', (-.90, 4.70, .02), lambda: arm(-1))
-    s.part('arm_r', (.90, 4.70, .02), lambda: arm(1))
+    s.part('arm_l', (-1.02, 4.72, .02), lambda: arm(-1))
+    s.part('arm_r', (1.02, 4.72, .02), lambda: arm(1))
     s.part('halo', (0, 5.70, -.06), halo)
     s.anchor('core', (0, 4.22, .30))
     s.anchor('feet', (0, .4, 0))
@@ -481,16 +489,16 @@ def build_ember():
 
     # hovering thruster pods instead of legs
     for side in (-1, 1):
-        s.path([(side * .58, 2.46, -.06), (side * .66, 2.06, -.02)], [.36, .30], steel, step=.3)
-        s.brush((side * .68, 1.90, -.02), .30, hull, flatten=(1, .7, 1), square=2.8)
-        s.brush((side * .68, 1.74, -.02), .20, magma, square=2.2)
-        s.path([(side * .68, 2.60, -.40), (side * .74, 3.10, -.52)], [.10, .05], steel, step=.4)
+        s.path([(side * .60, 1.96, -.06), (side * .68, 1.44, -.02)], [.42, .34], steel, step=.3)
+        s.brush((side * .70, 1.22, -.02), .34, hull, flatten=(1, .7, 1), square=2.8)
+        s.brush((side * .70, 1.02, -.02), .22, magma, square=2.2)
+        s.path([(side * .70, 3.10, -.40), (side * .76, 3.60, -.52)], [.10, .05], steel, step=.4)
 
     # compact chassis, wider at the shoulders
-    s.brush((0, 3.02, -.06), .86, hull, flatten=(1.15, .62, .92), square=2.6)
-    s.brush((0, 3.92, -.02), 1.02, steel, flatten=(1.22, .86, .98), square=2.5)
+    s.brush((0, 2.88, -.06), .90, hull, flatten=(1.15, .62, .92), square=2.6)
+    s.brush((0, 3.86, -.02), 1.04, steel, flatten=(1.22, .86, .98), square=2.5)
     for i in range(3):
-        plate(s, 0, 3.54 + i * .34, -.52 - i * .03, .46 - i * .05, .15, .12, hull, notch=2)
+        plate(s, 0, 3.48 + i * .34, -.52 - i * .03, .46 - i * .05, .15, .12, hull, notch=2)
     # heat vents on the back
     for i in range(3):
         s.box((-.34, 3.60 + i * .30, -.74), (.34, 3.68 + i * .30, -.64), magma)
@@ -510,16 +518,16 @@ def build_ember():
             s.path([(side * .66, y0, .12), (side * 1.10, (y0 + y1) / 2, .54),
                     (side * 1.04, y1, .98), (side * .58, y1 + (.14 if high else -.14), 1.10)],
                    [.26, .21, .16, .06], brass, step=.30)
-    s.path([(0, 4.52, -.10), (0, 4.72, .18), (0, 4.60, .52)], [.22, .16, .10], steel, step=.34)
+    s.path([(0, 5.28, -.10), (0, 5.50, .18), (0, 5.38, .52)], [.22, .16, .10], steel, step=.34)
 
     def head():
-        s.brush((0, 4.86, .06), .38, hull, flatten=(1.08, .90, .96), square=2.6)
-        brow(s, .32, 4.98, .38, steel, .10)
-        eyes(s, .15, 4.86, .38, .06, eye)
+        s.brush((0, 5.52, .06), .40, hull, flatten=(1.08, .90, .96), square=2.6)
+        brow(s, .32, 5.64, .38, steel, .10)
+        eyes(s, .15, 5.52, .38, .06, eye)
         # furnace grille on the lower face
         for i in range(3):
-            s.box((-.20, 4.62 + i * .08, .34), (.20, 4.66 + i * .08, .42), magma)
-        s.anchor('head', (0, 4.86, .22))
+            s.box((-.20, 5.28 + i * .08, .34), (.20, 5.32 + i * .08, .42), magma)
+        s.anchor('head', (0, 5.52, .22))
 
     def arm(side):
         shoulder = (side * .78, 4.16, -.02)
@@ -548,7 +556,7 @@ def build_ember():
                     (math.cos(a) * 1.34, 3.16, .30 + math.sin(a) * 1.34)],
                    [.07, .03], ember, step=.4)
 
-    s.part('head', (0, 4.56, .06), head)
+    s.part('head', (0, 5.22, .06), head)
     s.part('arm_l', (-.78, 4.16, -.02), lambda: arm(-1))
     s.part('arm_r', (.78, 4.16, -.02), lambda: arm(1))
     s.part('halo', (0, 3.62, .30), halo)

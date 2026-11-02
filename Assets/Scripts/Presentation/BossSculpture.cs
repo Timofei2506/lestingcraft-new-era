@@ -135,7 +135,13 @@ namespace LestingCraft.Presentation
 
         public static Built Build(Transform parent, string key, Material shared)
         {
-            var definition = Definition(key);
+            return Build(parent, Definition(key), shared);
+        }
+
+        /// <summary>Same build path, but from a definition the caller already parsed (tests, tools).</summary>
+        public static Built Build(Transform parent, BossSculptDefinition definition, Material shared)
+        {
+            if (definition == null) throw new ArgumentNullException(nameof(definition));
             var go = new GameObject(definition.name + " · voxel sculpt", typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(parent, false);
             var built = new Built { Root = go, Definition = definition };
@@ -148,7 +154,7 @@ namespace LestingCraft.Presentation
                 {
                     var part = definition.parts[i];
                     if (part == null || part.cells == null || part.cells.Length == 0) continue;
-                    var pivot = new GameObject("Boss part " + part.name);
+                    var pivot = new GameObject(part.name);
                     pivot.transform.SetParent(go.transform, false);
                     pivot.transform.localPosition = Cell(part.pivot, definition.unit);
                     var meshGo = new GameObject("Mesh", typeof(MeshFilter), typeof(MeshRenderer));

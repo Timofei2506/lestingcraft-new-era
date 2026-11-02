@@ -88,6 +88,38 @@ namespace LestingCraft.Tests
         }
 
         [Test]
+        public void BuiltArticulationStaysAlignedWithTheBody()
+        {
+            var definition = BossSculpture.Definition("warden");
+            var material = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            var root = new GameObject("BossSculptureTestRoot");
+            try
+            {
+                var built = BossSculpture.Build(root.transform, definition, material);
+                Assert.IsNotNull(built);
+                Assert.Greater(built.BoundsMax.y - built.BoundsMin.y, 4.5f);
+                Assert.IsTrue(built.Anchors.ContainsKey("core"), "core anchor must survive the build");
+                foreach (string part in new[] { "head", "arm_l", "arm_r", "halo" })
+                {
+                    var transform = built.Find(part);
+                    Assert.IsNotNull(transform, "missing built part: " + part);
+                    // A pivot offset that was not cancelled would tear the part away from the body.
+                    var offset = transform.TransformPoint(Vector3.zero) - root.transform.position;
+                    Assert.Less(offset.magnitude, built.BoundsMax.y * 1.6f, part + " pivot is outside the sculpture");
+                }
+                var head = built.Find("head");
+                var before = head.position;
+                head.localRotation = Quaternion.Euler(25f, 0f, 0f);
+                Assert.Greater((head.position - before).magnitude, 0.001f, "head must actually articulate");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(material);
+            }
+        }
+
+        [Test]
         public void SculpturesStandOnTheGroundAndExposeTheirCore()
         {
             foreach (string key in RequiredKeys)

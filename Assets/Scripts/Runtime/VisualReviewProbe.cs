@@ -20,14 +20,17 @@ namespace LestingCraft.Runtime
         bool finishing;
         float hardDeadline;
         string outDir;
+        bool spaceGallery;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Install()
         {
-            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-lc-visual-review") < 0) return;
+            var args = Environment.GetCommandLineArgs();
+            if (Array.IndexOf(args, "-lc-visual-review") < 0 && Array.IndexOf(args, "-lc-space-review") < 0) return;
             var obj = new GameObject("Forest visual review probe");
             DontDestroyOnLoad(obj);
-            obj.AddComponent<VisualReviewProbe>();
+            var probe = obj.AddComponent<VisualReviewProbe>();
+            probe.spaceGallery = Array.IndexOf(args, "-lc-space-review") >= 0;
         }
 
         void Awake()
@@ -57,6 +60,7 @@ namespace LestingCraft.Runtime
             Screen.SetResolution(1600, 900, false);
             yield return null;
             yield return null;
+            if (spaceGallery) { yield return SpaceGallery(); yield break; }
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
             {
                 Fail("A graphics device is required for visual review.");
@@ -192,7 +196,7 @@ namespace LestingCraft.Runtime
 
             Vector3 bossPos, bossCam;
             Debug.Log("[VisualReview] Searching boss arena...");
-            if (!FindReviewStage(eye, seed, content, forward, out bossPos, out bossCam, 18f, 6f, 4f, 3, 8, 10f, 30f))
+            if (!FindReviewStage(eye, seed, content, forward, out bossPos, out bossCam, 13f, 4.5f, 3f, 3, 8, 9f, 20f))
             { Fail("Could not find an unobstructed boss review arena."); yield break; }
             var boss = PlanetaryBossController.SpawnForPlanet(game.Session.World.transform, Dimension.Lestingia, game.Session.World, seed, false, bossPos);
             if (!boss) { Fail("Lestingia boss did not spawn for visual review."); yield break; }
@@ -253,6 +257,80 @@ namespace LestingCraft.Runtime
             else Debug.Log("[VisualReview] Boss lineup stage skipped.");
 
             Debug.Log("[VisualReview] PASS: 8 real-player review frames saved to " + outDir);
+            finishing = true;
+            Application.Quit(0);
+        }
+
+        /// <summary>Space review: the real cockpit rig with the real celestial dome, five compositions.</summary>
+        IEnumerator SpaceGallery()
+        {
+            outDir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "VisualReview"));
+            Directory.CreateDirectory(outDir);
+            var game = FindFirstObjectByType<PrototypeGame>();
+            var ui = FindFirstObjectByType<GameUI>();
+            if (!game || !ui) { Fail("PrototypeGame or GameUI missing."); yield break; }
+            float deadline = Time.realtimeSinceStartup + 30f;
+            while ((!ui.IsReady || !SplashScreen.isFinished) && Time.realtimeSinceStartup < deadline) yield return null;
+            var contentRoot = ui.transform.Find("1600x900 Interface/Content");
+            if (contentRoot) contentRoot.gameObject.SetActive(false);
+            var cam = Camera.main;
+            if (!cam) { Fail("No main camera in space review."); yield break; }
+
+            VisualSettings.Current.HighDefault();
+            VisualSettings.Current.VolumetricQuality = 1;
+            VisualSettings.Current.Save();
+
+            var helm = game.SpaceHelm;
+            helm.Active = true;
+            helm.CurrentSystem = StarSystemId.SolarSystem;
+            helm.Rotation = Quaternion.Euler(-6f, 34f, 0f);
+            helm.PositionKm = new SpaceVector(CelestialAtlas.AstronomicalUnitKm + 8200.0, 900.0, 0.0);
+            helm.VelocityKmPerSec = new SpaceVector(0.0, 0.0, 7.66);
+            var visuals = SpaceFlightVisuals.Ensure(null);
+            visuals.SetOpenSpaceFlightActive(helm, null, cam.transform);
+            yield return null;
+            yield return null;
+            yield return Capture(Path.Combine(outDir, "09-space-orbit.png"), null);
+
+            // Outer-system composition: ringed giant and its moons.
+            helm.CurrentSystem = StarSystemId.SolarSystem;
+            helm.PositionKm = CelestialAtlas.WorldPositionKm(CelestialBodyId.Saturn, 12.0) + new SpaceVector(900000.0, 220000.0, 900000.0);
+            helm.Rotation = Quaternion.Euler(-12f, 128f, 0f);
+            visuals.SetOpenSpaceFlightActive(helm, null, cam.transform);
+            yield return null;
+            yield return null;
+            yield return Capture(Path.Combine(outDir, "10-space-saturn.png"), null);
+
+            // Deep space: Andromeda rim with the procedural dome skyline.
+            helm.CurrentGalaxy = GalaxyId.Andromeda;
+            helm.CurrentSystem = StarSystemId.AndromedaCore;
+            helm.PositionKm = new SpaceVector(2.4e9, 1.2e8, -8.0e8);
+            helm.Rotation = Quaternion.Euler(-4f, 208f, 0f);
+            visuals.SetOpenSpaceFlightActive(helm, null, cam.transform);
+            yield return null;
+            yield return null;
+            yield return Capture(Path.Combine(outDir, "11-space-andromeda.png"), null);
+
+            // Hyperjump framing: the same place the player sees during a jump.
+            helm.InHyperjump = true;
+            helm.HyperjumpProgress = .45f;
+            visuals.SetOpenSpaceFlightActive(helm, null, cam.transform);
+            yield return null;
+            yield return Capture(Path.Combine(outDir, "12-space-hyperjump.png"), null);
+            helm.InHyperjump = false;
+            helm.HyperjumpProgress = 0f;
+
+            // Orbital station and Earth, the busiest composition.
+            helm.CurrentGalaxy = GalaxyId.MilkyWay;
+            helm.CurrentSystem = StarSystemId.SolarSystem;
+            helm.PositionKm = CelestialAtlas.WorldPositionKm(CelestialBodyId.Earth, 12.0) + new SpaceVector(16000.0, 4200.0, 16000.0);
+            helm.Rotation = Quaternion.Euler(-10f, 292f, 0f);
+            visuals.SetOpenSpaceFlightActive(helm, null, cam.transform);
+            yield return null;
+            yield return null;
+            yield return Capture(Path.Combine(outDir, "13-space-earth-station.png"), null);
+
+            Debug.Log("[VisualReview] PASS: 5 space review frames saved to " + outDir);
             finishing = true;
             Application.Quit(0);
         }
