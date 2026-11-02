@@ -23,7 +23,7 @@ namespace LestingCraft.Presentation
         public static VisualSettings Current { get; private set; }
         public static bool IsMobile { get { return Application.isMobilePlatform; } }
 
-        public VisualQualityPolicy.Profile Profile { get { return VisualQualityPolicy.For(Preset); } }
+        public VisualQualityPolicy.Profile Profile { get { return VisualQualityPolicy.For(Preset, IsMobile); } }
         public int DetailQuality { get { return Profile.DetailQuality; } }
         public int CloudSteps { get { return VolumetricQuality == 0 ? Mathf.Max(8, Profile.CloudSteps / 2) : VolumetricQuality == 2 ? Profile.CloudSteps + 8 : Profile.CloudSteps; } }
         public int FogSteps { get { return VolumetricQuality == 0 ? Mathf.Max(4, Profile.FogSteps / 2) : VolumetricQuality == 2 ? Profile.FogSteps + 8 : Profile.FogSteps; } }
@@ -43,7 +43,7 @@ namespace LestingCraft.Presentation
             if (empty)
             {
                 parsed.Preset = VisualQualityPolicy.DefaultPreset(IsMobile);
-                var profile = VisualQualityPolicy.For(parsed.Preset);
+                var profile = VisualQualityPolicy.For(parsed.Preset, IsMobile);
                 parsed.ViewDistance = IsMobile ? 2 : 3;
                 parsed.ShadowResolution = profile.ShadowResolution;
                 parsed.VolumetricQuality = IsMobile ? 0 : 1;

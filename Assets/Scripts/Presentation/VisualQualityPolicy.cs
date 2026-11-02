@@ -64,8 +64,25 @@ namespace LestingCraft.Presentation
             return resolution >= 4096 ? 4096 : resolution >= 2048 ? 2048 : 1024;
         }
 
-        public static Profile For(int preset)
+        public static Profile For(int preset) { return For(preset, false); }
+
+        /// <summary>Platform-aware budgets. Mobile Ultra is deliberately below desktop Ultra.</summary>
+        public static Profile For(int preset, bool mobile)
         {
+            if (mobile)
+            {
+                switch (ClampPreset(preset, true))
+                {
+                    case Mobile:
+                        return new Profile { DetailQuality = 0, ShadowResolution = 512, ShadowCascades = 1, ParallaxSteps = 0, WaterSteps = 6, GrassRange = 22, CloudSteps = 10, FogSteps = 6, ShadowDistanceMultiplier = 16, UltraEffects = false };
+                    case Balanced:
+                        return new Profile { DetailQuality = 1, ShadowResolution = 1024, ShadowCascades = 2, ParallaxSteps = 4, WaterSteps = 8, GrassRange = 32, CloudSteps = 16, FogSteps = 12, ShadowDistanceMultiplier = 20, UltraEffects = false };
+                    case High:
+                        return new Profile { DetailQuality = 2, ShadowResolution = 1024, ShadowCascades = 2, ParallaxSteps = 4, WaterSteps = 8, GrassRange = 32, CloudSteps = 16, FogSteps = 12, ShadowDistanceMultiplier = 20, UltraEffects = false };
+                    default:
+                        return new Profile { DetailQuality = 3, ShadowResolution = 2048, ShadowCascades = 3, ParallaxSteps = 6, WaterSteps = 10, GrassRange = 42, CloudSteps = 24, FogSteps = 20, ShadowDistanceMultiplier = 24, UltraEffects = false };
+                }
+            }
             switch (ClampPreset(preset, false))
             {
                 case Mobile:

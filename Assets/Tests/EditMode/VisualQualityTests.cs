@@ -59,5 +59,16 @@ namespace LestingCraft.Tests
             Assert.LessOrEqual(VisualSettings.GradeVignette, .15f);
             Assert.IsFalse(VisualSettings.PipelineRayTracing);
         }
+
+        [Test]
+        public void MobileUltraIsCapped()
+        {
+            var p = VisualQualityPolicy.For(VisualQualityPolicy.Cinematic, true);
+            Assert.LessOrEqual(p.ShadowResolution, 2048);
+            Assert.LessOrEqual(p.ShadowCascades, 3);
+            Assert.LessOrEqual(p.GrassRange, 42);
+            Assert.LessOrEqual(p.CloudSteps, 24);
+            Assert.IsFalse(p.UltraEffects);
+        }
     }
 }

@@ -24,6 +24,13 @@ public static class VisualQualityCoreCheck
         Require(VisualQualityPolicy.ClampViewDistance(99, true) == 4, "mobile view distance cap");
         Require(VisualQualityPolicy.ClampViewDistance(99, false) == 5, "desktop view distance cap");
 
+        var mobileUltra = VisualQualityPolicy.For(VisualQualityPolicy.Cinematic, true);
+        Require(mobileUltra.ShadowResolution <= 2048, "mobile Ultra shadow cap");
+        Require(mobileUltra.ShadowCascades <= 3, "mobile Ultra cascade cap");
+        Require(mobileUltra.GrassRange <= 42 && mobileUltra.CloudSteps <= 24 && mobileUltra.FogSteps <= 20, "mobile Ultra raymarch/grass caps");
+        Require(!mobileUltra.UltraEffects, "mobile Ultra avoids desktop-only ultra effects");
+        Require(VisualQualityPolicy.For(VisualQualityPolicy.Cinematic, true).DetailQuality == VisualQualityPolicy.For(VisualQualityPolicy.Ultra, true).DetailQuality, "mobile Cinematic clamps to Ultra");
+
         int lastDetail = -1, lastGrass = -1, lastCloud = -1;
         for (int preset = VisualQualityPolicy.Mobile; preset <= VisualQualityPolicy.Cinematic; preset++)
         {
