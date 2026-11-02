@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 ROOT=Path(__file__).resolve().parents[1]
-OUT=ROOT.parent.parent / 'work/station-preview/station_v2_iso.png'
+OUT=Path(__import__('os').environ.get('STATION_PREVIEW_DIR', str(ROOT / 'Builds' / 'StationPreview'))) / 'station_v2_iso.png'
 DRAFT=OUT.with_name('station_v2_draft.json')
 X,Y,Z=112,56,104
 palette=[('vacuum','#000000'),('white ceramic','#e9eef2'),('edge plate','#a8b4c2'),('titanium','#647789'),

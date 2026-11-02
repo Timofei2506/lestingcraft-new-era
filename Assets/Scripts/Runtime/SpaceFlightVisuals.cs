@@ -2334,8 +2334,8 @@ namespace LestingCraft.Runtime
             Part(PrimitiveType.Cube, "RightForearm", rightArm, new Vector3(0f, -1.65f, 0.35f), new Vector3(0.92f, 3.1f, 1.05f), armorMat);
             Part(PrimitiveType.Cube, "RightGauntletBlade", rightArm, new Vector3(0f, -3.1f, 0.55f), new Vector3(1.15f, 0.85f, 1.45f), coreMat);
 
-            haloRing = Part(PrimitiveType.Cube, "OrbitalCrownRing", bodyPivot, new Vector3(0f, 7.35f, 0f), new Vector3(3.4f, 0.10f, 3.4f), coreMat);
-            shockwaveRing = Part(PrimitiveType.Cube, "TelegraphShockwave", transform, new Vector3(0f, 0.08f, 0f), new Vector3(1f, 0.06f, 1f), coreMat);
+            haloRing = BuildVoxelRing("OrbitalCrownRing", bodyPivot, new Vector3(0f, 7.35f, 0f), 1.7f, 12, .30f, .10f, .55f, coreMat);
+            shockwaveRing = BuildVoxelRing("TelegraphShockwave", transform, new Vector3(0f, 0.08f, 0f), 1f, 24, .10f, .06f, .28f, coreMat);
             shockwaveRing.gameObject.SetActive(false);
 
             ShapeForArchetype(LestingCraft.Gameplay.BossCatalog.For(dim).Archetype);
@@ -2374,7 +2374,7 @@ namespace LestingCraft.Runtime
                     if (rightLeg) { rightLeg.localScale = new Vector3(1f, 0.42f, 1f); rightLeg.localPosition = new Vector3(1.05f, 2.05f, 0f); }
                     if (chest) { chest.localScale = new Vector3(3.2f, 3.0f, 1.95f); chest.localPosition = new Vector3(0f, 4.55f, 0f); }
                     if (core) { core.localScale = new Vector3(1.6f, 1.6f, 1.05f); core.localPosition = new Vector3(0f, 4.7f, 0.95f); }
-                    if (haloRing) haloRing.localScale = new Vector3(4.6f, 0.10f, 4.6f);
+                    if (haloRing) haloRing.localScale = new Vector3(1.35f, 1f, 1.35f);
                     break;
                 case LestingCraft.Gameplay.BossArchetype.Warden:
                     // Forest guardian: heavy shoulders, longer arms, lower head.
@@ -2398,6 +2398,23 @@ namespace LestingCraft.Runtime
                     if (rightArm) rightArm.localScale = new Vector3(0.85f, 0.9f, 0.85f);
                     break;
             }
+        }
+
+        /// <summary>A readable voxel ring instead of a solid square slab; segments share one material.</summary>
+        static Transform BuildVoxelRing(string name, Transform parent, Vector3 center, float radius, int segments, float height, float depth, float thickness, Material mat)
+        {
+            var root = new GameObject(name).transform;
+            root.SetParent(parent, false);
+            root.localPosition = center;
+            float arc = 2f * Mathf.PI * radius / Mathf.Max(3, segments);
+            for (int i = 0; i < segments; i++)
+            {
+                float angle = i * 2f * Mathf.PI / segments;
+                var pos = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+                var segment = Part(PrimitiveType.Cube, name + "Segment" + i, root, pos, new Vector3(arc * .92f, height, Mathf.Max(depth, thickness)), mat);
+                segment.localRotation = Quaternion.Euler(0f, -angle * Mathf.Rad2Deg, 0f);
+            }
+            return root;
         }
 
         Material MakeMat(string name, Color col, Color emission, float metal, float smooth)
@@ -2483,7 +2500,7 @@ namespace LestingCraft.Runtime
                 {
                     shockwaveRing.gameObject.SetActive(true);
                     float rad = Mathf.Lerp(2f, 16f, p);
-                    shockwaveRing.localScale = new Vector3(rad, 0.06f, rad);
+                    shockwaveRing.localScale = new Vector3(rad, 1f, rad);
                 }
                 if (telegraphTimer <= 0f)
                 {

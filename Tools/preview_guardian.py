@@ -64,5 +64,5 @@ for k,mat in cells.items():
    glow[y0:y1+1,x0:x1+1][valid]=np.clip(albedo[valid]*energy,0,1)
 im=np.uint8(np.clip(rgb,0,1)*255);g=Image.fromarray(np.uint8(glow*255)).filter(ImageFilter.GaussianBlur(9))
 im=Image.fromarray(np.uint8(np.clip(im.astype(float)+np.asarray(g,float)*.33,0,255))).resize((1000,1000),Image.Resampling.LANCZOS)
-out=Path(sys.argv[1]) if len(sys.argv)>1 else Path('/home/user/Предпросмотр/Страж-корней-v2.jpg');out.parent.mkdir(exist_ok=True,parents=True);im.save(out,quality=93,optimize=True)
+out=Path(sys.argv[1]) if len(sys.argv)>1 else Path(__file__).resolve().parents[1] / 'Builds' / 'GuardianPreview' / 'root-guardian-v2.jpg';out.parent.mkdir(exist_ok=True,parents=True);im.save(out,quality=93,optimize=True)
 print('Software model preview, NOT a Unity screenshot:',len(cells),'voxels;',faces,'camera-facing surface quads;',out.stat().st_size,'bytes;',out)

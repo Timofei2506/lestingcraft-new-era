@@ -60,8 +60,8 @@ public static class BuildScript
         if(LestingCraft.Gameplay.GameRules.Version!=14)throw new InvalidOperationException("Expected rules14 era-v9 build");
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
-        // Developer playtest build from the space branch; not a public release until Unity smoke passes.
-        PlayerSettings.bundleVersion = "0.5.2-era-v9";
+        // Developer playtest build; not a public release until Unity smoke and visual review pass.
+        PlayerSettings.bundleVersion = "0.5.3-forest-review";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");

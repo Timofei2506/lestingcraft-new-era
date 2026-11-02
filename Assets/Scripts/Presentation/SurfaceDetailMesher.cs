@@ -3,28 +3,42 @@ using LestingCraft.World;
 
 namespace LestingCraft.Presentation
 {
+    /// <summary>
+    /// Deterministic, non-colliding meadow geometry baked into the chunk detail submesh.
+    /// Quality is the explicit VisualQualityPolicy detail budget (0 mobile .. 4 cinematic),
+    /// never a hidden FPS-based downgrade. Roots stay fixed; only the upper blade bends.
+    /// </summary>
     public static class SurfaceDetailMesher
     {
+        static readonly int[] BladeBaseline = { 2, 4, 7, 10, 13 };
+        public static int BladesFor(int quality, uint hash)
+        {
+            int q = Mathf.Clamp(quality, 0, 4);
+            return BladeBaseline[q] + (int)(hash % 2);
+        }
+
         public static void AddGrass(ChunkMeshData mesh, int x, int y, int z, int ox, int oz, int seed, int quality = 0)
         {
             uint hash = TerrainGenerator.Hash(ox + x, y, oz + z, seed ^ 9371);
+            // Sparse gaps read as soil and prevent a uniform carpet.
             if (hash % 7 == 0) return;
-            // Ultra increases blade density AND curvature while keeping full 16x16 quality-0 meadow well below 10,000 indices.
-            int count = quality > 0 ? 5 + (int)(hash % 2) : 2 + (int)(hash % 2);
-            int segments = quality > 0 ? 3 : 2;
+            int q = Mathf.Clamp(quality, 0, 4);
+            int count = BladesFor(q, hash);
+            int segments = q >= 3 ? 4 : q >= 1 ? 3 : 2;
+            float heightScale = q >= 3 ? 1.25f : q >= 1 ? 1.10f : 1f;
             for (int blade = 0; blade < count; blade++)
             {
                 uint h = TerrainGenerator.Hash(ox + x, blade + 17, oz + z, seed);
                 float angle = (h & 1023) / 1023f * Mathf.PI * 2;
-                float height = .16f + ((h >> 10) & 255) / 255f * .30f;
-                float width = .009f + ((h >> 18) & 63) / 63f * .012f;
+                float height = (.20f + ((h >> 10) & 255) / 255f * .34f) * heightScale;
+                float width = .011f + ((h >> 18) & 63) / 63f * .016f;
                 var side = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle));
                 var forward = new Vector3(-side.z, 0, side.x);
                 float spread = ((h >> 24) & 127) / 127f;
-                var root = new Vector3(x + .10f + ((h >> 4) & 255) / 255f * .80f,
-                    y + 1.003f, z + .10f + ((h >> 12) & 255) / 255f * .80f);
+                var root = new Vector3(x + .08f + ((h >> 4) & 255) / 255f * .84f,
+                    y + 1.003f, z + .08f + ((h >> 12) & 255) / 255f * .84f);
                 int first = mesh.Vertices.Count;
-                float lean = .06f + spread * .13f;
+                float lean = .07f + spread * .17f;
                 bool flower = hash % 19 == 0 && blade == 0;
                 bool clover = !flower && hash % 11 == 0;
                 for (int segment = 0; segment <= segments; segment++)

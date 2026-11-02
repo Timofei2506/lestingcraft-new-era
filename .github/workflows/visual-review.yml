@@ -1,0 +1,110 @@
+name: Visual review (forest + UI)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unity-license
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: EditMode + Linux player visual review
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Source and asset gates
+        run: |
+          python -m pip install --quiet Pillow numpy
+          python Tools/audit_hygiene.py
+          python Tools/check_art.py
+          python Tools/check_content.py
+          python Tools/check_nature_render.py
+
+      - name: Free runner disk space for Unity
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Install Xvfb and Mesa OpenGL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils clang lld zlib1g-dev
+
+      - name: Restore Library cache
+        uses: actions/cache/restore@v4
+        with:
+          path: Library
+          key: Library-visual-review-v1-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
+          restore-keys: |
+            Library-visual-review-v1-
+            Library-il2cpp-v3-
+
+      - name: Drop stale Bee build graph
+        run: rm -rf Library/Bee
+
+      - name: Install Unity Editor
+        uses: buildalon/unity-setup@v2
+        with:
+          hub-version: 3.12.0
+          cache-installation: true
+          build-targets: StandaloneLinux64
+
+      - name: Activate Unity license (Personal)
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Run EditMode tests
+        uses: buildalon/unity-action@v3
+        with:
+          log-name: visual-review-editmode
+          build-target: StandaloneLinux64
+          args: -batchmode -nographics -runTests -testPlatform EditMode -testResults ${{ github.workspace }}/TestResults/editmode.xml
+
+      - name: Build Linux player
+        uses: buildalon/unity-action@v3
+        with:
+          log-name: visual-review-build
+          build-target: StandaloneLinux64
+          args: -quit -batchmode -nographics -executeMethod BuildScript.BuildLinux64
+
+      - name: Save Library cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: Library-visual-review-v1-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
+
+      - name: Capture real player review frames
+        run: |
+          chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
+          mkdir -p Builds/StandaloneLinux64/VisualReview Builds/Logs
+          timeout -k 10 900 xvfb-run -a -s "-screen 0 1600x900x24" \
+            env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
+            ./Builds/StandaloneLinux64/LestingCraft.x86_64 \
+            -force-glcore -screen-fullscreen 0 -screen-width 1600 -screen-height 900 \
+            -lc-visual-review -logFile Builds/Logs/visual-review.log
+          echo "=== Visual review log tail ==="
+          tail -n 160 Builds/Logs/visual-review.log || true
+          grep -q "\[VisualReview\] PASS" Builds/Logs/visual-review.log
+          test "$(find Builds/StandaloneLinux64/VisualReview -maxdepth 1 -name '*.png' | wc -l)" -eq 7
+
+      - name: Upload review frames and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VisualReview
+          path: |
+            Builds/StandaloneLinux64/VisualReview/*.png
+            Builds/Logs/**
+            TestResults/**
+          retention-days: 30
+          if-no-files-found: warn

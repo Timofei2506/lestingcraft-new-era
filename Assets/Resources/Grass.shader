@@ -78,6 +78,8 @@ Shader "LestingCraft/Grass"
                 half back=pow(saturate(dot(-sun.direction,lighting.viewDirectionWS)),3);
                 surface.emission=albedo*i.color.rgb*sun.color*half3(1,.94,.76)*
                     back*.24*root*sun.shadowAttenuation*LC_SkyEnergy(sky);
+                surface.emission+=albedo*i.color.rgb*(_EnvironmentHorizon.rgb*.62+_EnvironmentZenith.rgb*.38)*
+                    sky*sky*saturate(_EnvironmentDaylight)*.30*root;
                 if(_LCAmbientOcclusionProbe>.5)
                 {
                     #if defined(_SCREEN_SPACE_OCCLUSION)
