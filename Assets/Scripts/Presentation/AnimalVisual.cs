@@ -214,8 +214,10 @@ namespace LestingCraft.Presentation
         /// <summary>Quadrupeds get shoulder/haunch massing; bipeds, hoverers and flyers do not.</summary>
         static bool legCountPreview(int kind)
         {
+            // True only for the four-legged walkers: they get shoulder and haunch massing.
+            // Kinds 33 (sky whale) and 26 (gamma ray) are swimmers and must not inherit it.
             return kind != 11 && kind != 12 && kind != 13 && kind != 19 && kind != 21 &&
-                   kind != 25 && kind != 26 && kind != 28 && kind != 29 && kind != 33;
+                   kind != 25 && kind != 26 && kind != 28 && kind != 29 && kind != 33 && kind != 15 && kind != 22 && kind != 24;
         }
 
         public void Build(int kind)
@@ -238,6 +240,14 @@ namespace LestingCraft.Presentation
             body = Attach("Body", rig, Vector3.zero, p =>
             {
                 Box(p, 0, by, 0, width, bh, length);
+                if (kind == 33 || kind == 19 || kind == 26)
+                {
+                    // Swimmers: a tapered tail stock and a rounded rostrum instead of a crate.
+                    Box(p, 0, by, -length * .40f, width * .52f, bh * .70f, length * .30f);
+                    Box(p, 0, by, -length * .54f, width * .28f, bh * .44f, length * .16f);
+                    Box(p, 0, by - .01f, length * .40f, width * .62f, bh * .72f, length * .22f);
+                    Box(p, 0, by - .02f, length * .50f, width * .40f, bh * .50f, length * .10f);
+                }
                 // Shoulder and haunch masses: a barrel-shaped body reads as an animal instead of a slab.
                 if (legCountPreview(kind)) {
                     Box(p, 0, by + bh * .16f, length * .26f, width * 1.04f, bh * .78f, length * .46f);
@@ -408,26 +418,39 @@ namespace LestingCraft.Presentation
                 }
             });
 
-            int legCount = (kind == 19 || kind == 21 || kind == 26) ? 0
+            // Leg table, and the single source of truth for it: hoverers and swimmers get none,
+            // birds and the vitrified humanoids get two, the arthropods get six, the rest four.
+            int legCount = (kind == 19 || kind == 21 || kind == 26 || kind == 33) ? 0
                          : (kind == 11 || kind == 12 || kind == 13 || kind == 25 || kind == 28 || kind == 29) ? 2
                          : (kind == 15 || kind == 22 || kind == 24) ? 6 : 4;
             float[] legLengths = { .65f, .19f, .36f, .53f, .58f, .32f, .64f, .56f, .43f, .19f, .16f, .2f, .18f, .16f, .86f, .18f, .14f, .88f, .22f, 0f,
                                    .62f, 0f, .24f, .52f, .28f, .22f, 0f, .96f, .82f, .86f,
                                    .62f, .30f, .18f, .18f };
             float ll = legLengths[kind];
+            // Two-bone legs: a thick upper limb from the hip to the knee, a thin lower limb
+            // reaching the ground, and a hoof/paw pad. The old single stick made every
+            // quadruped read as furniture.
+            bool hooved = kind == 0 || kind == 6 || kind == 7 || kind == 14 || kind == 17;
+            bool padded = kind == 3 || kind == 4 || kind == 5 || kind == 8 || kind == 9 || kind == 30;
             for (int i = 0; i < legCount; i++)
             {
                 int legIndex = i;
                 bool rear = i < legCount / 2;
-                float thick = kind == 4 || kind == 6 || kind == 17 ? .22f : kind == 0 || kind == 7 ? .095f : .12f;
+                float upper = (kind == 4 || kind == 6 || kind == 17) ? .26f : padded ? .17f : hooved ? .115f : .13f;
+                float lower = upper * .62f;
                 float zOff = legCount == 2 ? .06f : legCount == 6 ? (-length * .34f + (i / 2) * length * .34f) : (rear ? -1 : 1) * length * .32f;
                 Vector3 position = new Vector3((i % 2 == 0 ? -1 : 1) * width * .36f, ll, zOff);
                 Transform leg = Attach("Leg" + i, rig, position, p =>
                 {
-                    Box(p, 0, -ll * .42f, 0, thick, ll * .82f, thick * 1.25f);
-                    Mark(p, 0, -ll * .9f, .045f, thick * 1.25f, .08f,
-                        kind == 13 ? .26f : .18f,
-                        kind == 13 ? new Color(.95f, .50f, .12f) : dark, keratin);
+                    float knee = -ll * .46f;
+                    Box(p, 0, knee * .5f, 0, upper, Mathf.Abs(knee) * 1.02f, upper * 1.15f);
+                    Box(p, 0, knee * 1.42f, .012f, lower, Mathf.Abs(knee) * .92f, lower * 1.2f);
+                    if (hooved)
+                        Mark(p, 0, -ll * .96f, .02f, lower * 1.5f, .10f, lower * 1.7f, dark, keratin);
+                    else if (padded)
+                        Mark(p, 0, -ll * .94f, .03f, lower * 1.55f, .085f, lower * 2.0f, dark, keratin);
+                    if (kind == 13)
+                        Mark(p, 0, -ll * .9f, .05f, lower * 1.5f, .07f, .21f, new Color(.95f, .50f, .12f), keratin);
                 });
                 leg.name = "Articulated leg " + legIndex;
                 Legs.Add(leg);
@@ -498,7 +521,7 @@ namespace LestingCraft.Presentation
         {
             if (kind == 0) // Sika deer: a branched rack above the brow, not two bare poles.
             {
-                Attach("AntlerRack", Head, new Vector3(0, .30f, -.04f), p =>
+                Attach("AntlerRack", Head, new Vector3(0, .17f, -.04f), p =>
                 {
                     for (int side = -1; side <= 1; side += 2)
                     {
