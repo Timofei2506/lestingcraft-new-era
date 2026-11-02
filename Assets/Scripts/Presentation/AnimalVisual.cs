@@ -68,6 +68,23 @@ namespace LestingCraft.Presentation
         Vector3 last, headPosition;
         float gait, elapsed, filteredSpeed, animationClock;
         Color coat = Color.white;
+
+        /// <summary>Coat tint per species. Assigned before any part is authored.</summary>
+        static readonly Color[] CoatTints =
+        {
+            new Color(.52f, .34f, .20f), new Color(.56f, .48f, .38f), new Color(.32f, .22f, .17f), // deer, hare, boar
+            new Color(.40f, .40f, .42f), new Color(.30f, .20f, .12f), new Color(.72f, .36f, .12f), // wolf, bear, fox
+            new Color(.26f, .20f, .16f), new Color(.62f, .58f, .52f), new Color(.66f, .55f, .38f), // bison, goat, lynx
+            new Color(.34f, .24f, .16f), new Color(.36f, .44f, .24f), new Color(.36f, .26f, .16f), // beaver, toad, eagle
+            new Color(.90f, .90f, .94f), new Color(.16f, .18f, .22f), new Color(.74f, .62f, .44f), // owl, penguin, camel
+            new Color(.48f, .40f, .20f), new Color(.30f, .36f, .24f), new Color(.28f, .22f, .18f), // scorpion, turtle, moose
+            new Color(.46f, .34f, .22f), new Color(.24f, .18f, .34f),                              // capybara, voidray
+            new Color(.22f, .20f, .19f), new Color(.30f, .62f, .40f), new Color(.34f, .16f, .16f), // ash hound, leech, rad scorpion
+            new Color(.44f, .26f, .20f), new Color(.36f, .30f, .28f), new Color(.20f, .18f, .20f), // mutant boar, slag crab, crow
+            new Color(.26f, .40f, .46f), new Color(.62f, .58f, .50f), new Color(.30f, .34f, .30f), // gamma ray, bone stalker, vitrified
+            new Color(.24f, .22f, .30f), new Color(.72f, .78f, .86f), new Color(.62f, .70f, .74f), // wraith, frost wolf, glass spider
+            new Color(.56f, .40f, .26f), new Color(.42f, .48f, .58f)                               // mushroom beetle, sky whale
+        };
         readonly Color cream = new Color(.94f, .89f, .8f);
         readonly Color dark = new Color(.19f, .17f, .15f);
 
@@ -96,17 +113,21 @@ namespace LestingCraft.Presentation
                 for (int f = 0; f < 6; f++)
                 {
                     int start = v.Count;
-                    Vector3 u = Vector3.Scale(Corners[C[f][3]] - Corners[C[f][0]], size);
-                    Vector3 w = Vector3.Scale(Corners[C[f][1]] - Corners[C[f][0]], size);
-                    Vector3 tangent = u.normalized;
+                    Vector3 tangent = Vector3.Scale(Corners[C[f][3]] - Corners[C[f][0]], size).normalized;
+                    // Colour alpha carries fur length: the shader uses it to bend the shared fur
+                    // normal map, so a cuboid body still reads as a rounded animal.
                     Color32 shade = color;
                     shade.a = 0;
                     for (int i = 0; i < 4; i++)
                     {
-                        v.Add(Vector3.Scale(Corners[C[f][i]] - Vector3.one * .5f, size) + center);
+                        Vector3 local = Vector3.Scale(Corners[C[f][i]] - Vector3.one * .5f, size);
+                        Vector3 world = local + center;
+                        v.Add(world);
                         n.Add(D[f]);
-                        uv.Add(new Vector3(i >= 2 ? u.magnitude * 3 : 0,
-                            i == 1 || i == 2 ? w.magnitude * 3 : 0, layer));
+                        // Continuous metre-space tiling: adjacent boxes share grain instead of each
+                        // one repeating a full 1x1 patch of hide.
+                        Vector2 t2 = f < 2 ? new Vector2(world.z, world.y) : f < 4 ? new Vector2(world.x, world.z) : new Vector2(world.x, world.y);
+                        uv.Add(new Vector3(t2.x * .9f, t2.y * .9f, layer));
                         t.Add(new Vector4(tangent.x, tangent.y, tangent.z, -1));
                         c.Add(shade);
                     }
@@ -179,7 +200,10 @@ namespace LestingCraft.Presentation
 
         void Box(Part p, float x, float y, float z, float w, float h, float d)
         {
-            p.Box(new Vector3(x, y, z), new Vector3(w, h, d), coat, fur);
+            // Alpha carries fur length; the shader reads it from the mask channel.
+            Color tinted = coat;
+            tinted.a = .55f;
+            p.Box(new Vector3(x, y, z), new Vector3(w, h, d), tinted, fur);
         }
 
         void Mark(Part p, float x, float y, float z, float w, float h, float d, Color color, int layer)
@@ -187,9 +211,17 @@ namespace LestingCraft.Presentation
             p.Box(new Vector3(x, y, z), new Vector3(w, h, d), color, layer);
         }
 
+        /// <summary>Quadrupeds get shoulder/haunch massing; bipeds, hoverers and flyers do not.</summary>
+        static bool legCountPreview(int kind)
+        {
+            return kind != 11 && kind != 12 && kind != 13 && kind != 19 && kind != 21 &&
+                   kind != 25 && kind != 26 && kind != 28 && kind != 29 && kind != 33;
+        }
+
         public void Build(int kind)
         {
             if (rig) throw new InvalidOperationException("An animal visual is built once and then pooled.");
+            coat = kind >= 0 && kind < CoatTints.Length ? CoatTints[kind] : Color.white;
             fur = FurLayerForSpecies(kind);
             species = kind;
             underfur = Surface("animal-underfur");
@@ -206,6 +238,11 @@ namespace LestingCraft.Presentation
             body = Attach("Body", rig, Vector3.zero, p =>
             {
                 Box(p, 0, by, 0, width, bh, length);
+                // Shoulder and haunch masses: a barrel-shaped body reads as an animal instead of a slab.
+                if (legCountPreview(kind)) {
+                    Box(p, 0, by + bh * .16f, length * .26f, width * 1.04f, bh * .78f, length * .46f);
+                    Box(p, 0, by - bh * .06f, -length * .26f, width * .92f, bh * .70f, length * .44f);
+                }
                 Mark(p, 0, by - bh * .38f, .03f, width * .77f, bh * .23f, length * .8f, cream, underfur);
                 if (kind >= 20 && kind < 30)
                 {
@@ -337,10 +374,20 @@ namespace LestingCraft.Presentation
                 }
                 else if (kind != 10 && kind != 19)
                 {
-                    float snout = kind == 18 ? .30f : kind == 3 || kind == 5 ? .32f : kind == 2 ? .29f : .2f;
-                    Box(p, 0, -.055f, .23f, hw * (kind == 18 ? .86f : .63f), hh * (kind == 18 ? .76f : .48f), snout);
-                    Mark(p, 0, -.035f, .23f + snout * .5f, hw * .46f, hh * .27f, .035f,
-                        kind == 2 ? cream * .7f : dark, keratin);
+                    // Predators get a long wedge; grazers a blunt box; rodents a short taper.
+                    bool predator = kind == 3 || kind == 5 || kind == 8 || kind == 20 || kind == 22 || kind == 27 || kind == 30 || kind == 31;
+                    bool rodent = kind == 1 || kind == 9 || kind == 18;
+                    float snout = kind == 18 ? .26f : predator ? .36f : kind == 2 ? .30f : rodent ? .18f : .24f;
+                    float snoutW = hw * (rodent ? .58f : predator ? .52f : .64f);
+                    float snoutH = hh * (rodent ? .56f : predator ? .40f : .50f);
+                    Box(p, 0, -.055f, .20f, snoutW, snoutH, snout);
+                    Box(p, 0, -.055f - snoutH * .16f, .20f + snout * .34f, snoutW * .86f, snoutH * .52f, snout * .72f);
+                    Mark(p, 0, -.045f, .20f + snout * .82f, snoutW * .52f, snoutH * .40f, .03f,
+                        kind == 2 ? cream * .70f : predator ? Color.black : dark, keratin);
+                    if (predator) // fangs: two lit keratin points under the wedge
+                        for (int side = -1; side <= 1; side += 2)
+                            Mark(p, side * snoutW * .30f, -.055f - snoutH * .58f, .20f + snout * .74f,
+                                .028f, .07f, .028f, cream, keratin);
                 }
                 for (int side = -1; side <= 1; side += 2)
                 {
