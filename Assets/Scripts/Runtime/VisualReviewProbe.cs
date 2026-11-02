@@ -230,7 +230,29 @@ namespace LestingCraft.Runtime
                 if (button.name == "Home.Settings") { button.onClick.Invoke(); break; }
             yield return Capture(Path.Combine(outDir, "07-settings-presets.png"), null);
 
-            Debug.Log("[VisualReview] PASS: 7 real-player review frames saved to " + outDir);
+            // Boss line-up: all five sculpt archetypes side by side, no HUD, for art review.
+            Vector3 linePos, lineCam;
+            if (FindReviewStage(eye, seed, content, forward, out linePos, out lineCam, 26f, 4f, 2f, 3, 8, 12f, 34f))
+            {
+                var lineRoot = new GameObject("BossSculptLineup");
+                lineRoot.transform.position = linePos;
+                string[] keys = { "warden", "colossus", "archon", "titan", "ember" };
+                var material = Resources.Load<Material>("Generated/VoxelObjects");
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    var built = BossSculpture.Build(lineRoot.transform, keys[i], material);
+                    built.Root.transform.localPosition = new Vector3((i - 2) * 4.4f, 0f, 0f);
+                    built.Root.transform.localRotation = Quaternion.Euler(0f, 18f, 0f);
+                }
+                cam.transform.position = lineCam;
+                cam.fieldOfView = 60;
+                cam.transform.LookAt(linePos + Vector3.up * 3.4f);
+                yield return Capture(Path.Combine(outDir, "08-boss-lineup.png"), null);
+                Destroy(lineRoot);
+            }
+            else Debug.Log("[VisualReview] Boss lineup stage skipped.");
+
+            Debug.Log("[VisualReview] PASS: 8 real-player review frames saved to " + outDir);
             finishing = true;
             Application.Quit(0);
         }
