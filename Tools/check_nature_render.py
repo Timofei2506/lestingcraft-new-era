@@ -9,7 +9,7 @@ assert leaf.shape==(512,512) and .15<(leaf<128).mean()<.35
 voxel=read('Assets/Resources/VoxelPBR.shader')
 assert voxel.count('LeafClip(i.uv)')==4
 mesher=read('Assets/Scripts/World/ChunkMesher.cs')
-assert mesher.count('SurfaceLayers.BarkUV')>=2 and 'public static Vector2 BarkUV' in read('Assets/Scripts/Presentation/SurfaceLayers.cs')
+assert mesher.count('BarkUV')>=3 and 'static Vector2 BarkUV' in mesher
 assert read('Assets/Resources/VoxelObjects.shader').count('LeafClip(i.uv)')==4
 for name in ['ForwardLit','ShadowCaster','DepthOnly','DepthNormals']:assert f'Name "{name}"' in voxel
 for name in ['VoxelPBR','VoxelObjects','Grass','AvatarLit']:

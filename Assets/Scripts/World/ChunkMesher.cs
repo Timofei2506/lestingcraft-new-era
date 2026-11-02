@@ -241,7 +241,7 @@ namespace LestingCraft.World
                                 data.Normals.Add(dir);
                                 data.Colors.Add(new Color32(shade, (byte)((skylight != null ? skylight(ox + nx, ny, oz + nz) : 15) * 17), shade, 255));
                                 Vector2 uv = id == BlockRegistry.WoodId && face != 2 && face != 3
-                                    ? SurfaceLayers.BarkUV(ox + x, oz + z, new Vector3(ox, 0, oz) + vertex, u, seed)
+                                    ? BarkUV(ox + x, oz + z, new Vector3(ox, 0, oz) + vertex, u, seed)
                                     : new Vector2(ux, vy);
                                 data.UVs.Add(new Vector3(uv.x, uv.y, layer));
                                 data.Tangents.Add(new Vector4(u.x, u.y, u.z, -1));
@@ -319,7 +319,7 @@ namespace LestingCraft.World
                                 byte shade = Byte(tile.AO, c);
                                 data.Colors.Add(new Color32(shade, Byte(tile.Sky, c), shade, 255));
                                 Vector2 uv = tile.Id == BlockRegistry.WoodId && face != 2 && face != 3
-                                    ? SurfaceLayers.BarkUV(ox + cell.x, oz + cell.z, new Vector3(ox, 0, oz) + vertex, u, seed)
+                                    ? BarkUV(ox + cell.x, oz + cell.z, new Vector3(ox, 0, oz) + vertex, u, seed)
                                     : new Vector2(ux * width, vy * height);
                                 data.UVs.Add(new Vector3(uv.x, uv.y, tile.Layer));
                                 data.Tangents.Add(new Vector4(u.x, u.y, u.z, -1));
@@ -332,6 +332,16 @@ namespace LestingCraft.World
                 }
             }
             return data;
+        }
+
+        // Continuous trunk appearance without a shader-side world-UV path: stacked wood
+        // blocks share vertical grain, while each column gets a stable offset.
+        static Vector2 BarkUV(int blockX, int blockZ, Vector3 worldPos, Vector3 u, int seed)
+        {
+            uint h = TerrainGenerator.Hash(blockX, 0, blockZ, seed ^ 1094861643);
+            float uu = Vector3.Dot(worldPos, u) * .5f + (h % 1024u) / 128f;
+            float vv = worldPos.y * .5f + ((h >> 10) % 1024u) / 128f;
+            return new Vector2(uu, vv);
         }
 
         static Vector3Int Cell(int face, int slice, int a, int b)
