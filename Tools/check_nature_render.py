@@ -8,6 +8,7 @@ leaf=np.asarray(Image.open(root/'Assets/Resources/GeneratedLeafOpacity.png').con
 assert leaf.shape==(512,512) and .15<(leaf<128).mean()<.35
 voxel=read('Assets/Resources/VoxelPBR.shader')
 assert voxel.count('LeafClip(i.uv)')==4
+assert 'LC_BarkUV' in voxel and 'barkSide' in voxel and 'ws.y*.5' in voxel and 'floor((ws-n*.5).xz)' in voxel
 assert read('Assets/Resources/VoxelObjects.shader').count('LeafClip(i.uv)')==4
 for name in ['ForwardLit','ShadowCaster','DepthOnly','DepthNormals']:assert f'Name "{name}"' in voxel
 for name in ['VoxelPBR','VoxelObjects','Grass','AvatarLit']:
@@ -19,4 +20,4 @@ fire=read('Assets/Scripts/Presentation/DynamicWeather.cs');assert 'source.shadow
 assert 'VisualSettings.Current.FogSteps' in fire and 'VisualSettings.Current.CloudSteps' in fire
 import re
 assert re.search(r'int\s+contentVersion\s*=\s*7', read('Assets/Scripts/Runtime/VoxelWorld.cs'))
-print(f'PASS render source contracts: four cutout passes, {np.mean(leaf<128):.1%} leaf holes, spatial sky PBR, additional lights preserved, depth-tested glare, policy-driven shaft samples. NOT shader/GPU validation.')
+print(f'PASS render source contracts: four cutout passes, {np.mean(leaf<128):.1%} leaf holes, spatial sky PBR, additional lights preserved, depth-tested glare, policy-driven shaft samples, continuous per-column bark UV. NOT shader/GPU validation.')

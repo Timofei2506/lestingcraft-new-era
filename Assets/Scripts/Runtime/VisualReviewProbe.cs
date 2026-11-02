@@ -307,7 +307,18 @@ namespace LestingCraft.Runtime
                         Vector3 cam = ground - camDir * distance + Vector3.up * height;
                         if (Occludes(cam, seed, content)) continue;
                         if (!ClearLine(cam, ground + Vector3.up * lookHeight, seed, content)) continue;
-                        if (lookHeight > 2f && !ClearLine(cam, ground + Vector3.up * (lookHeight + 3f), seed, content)) continue;
+                        if (lookHeight > 2f)
+                        {
+                            Vector3 camRight = Vector3.Cross(Vector3.up, camDir).normalized;
+                            bool wideClear = ClearLine(cam, ground + Vector3.up * (lookHeight + 3f), seed, content);
+                            for (int side = -1; side <= 1 && wideClear; side += 2)
+                            {
+                                Vector3 edge = ground + camRight * (side * 2.6f);
+                                wideClear = ClearLine(cam, edge + Vector3.up * lookHeight, seed, content) &&
+                                            ClearLine(cam, edge + Vector3.up * (lookHeight + 2.5f), seed, content);
+                            }
+                            if (!wideClear) continue;
+                        }
                         float score = 20 - Mathf.Abs(r - (minRadius + maxRadius) * .5f) - Vector3.Angle(camDir, preferred) * .05f;
                         if (score > best) { best = score; stage = ground; camera = cam; }
                     }

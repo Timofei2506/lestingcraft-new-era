@@ -45,6 +45,17 @@ Shader "LestingCraft/VoxelPBR"
             TEXTURE2D_ARRAY(_AlbedoArray); SAMPLER(sampler_AlbedoArray);
             TEXTURE2D_ARRAY(_NormalArray); SAMPLER(sampler_NormalArray);
             TEXTURE2D_ARRAY(_MaskArray); SAMPLER(sampler_MaskArray);
+            // Continuous bark: vertical UV follows world height, while a per-column hash
+            // de-synchronizes neighbouring trunks. End-grain rings keep their local UVs.
+            float LC_BarkHash(float3 ws, half3 n)
+            {
+                float2 column=floor((ws-n*.5).xz);
+                return frac(sin(dot(column,float2(127.1,311.7)))*43758.5453);
+            }
+            float2 LC_BarkUV(float3 ws, half3 n, half3 t, float h)
+            {
+                return float2(dot(ws,t)*.5+h*8.0, ws.y*.5+frac(h*13.73)*8.0);
+            }
             float _LCAmbientOcclusionProbe, _GlobalWetness, _GlobalSnow, _LCParallaxSteps, _LCUltra;
             float _EnvironmentWaterReflection;
             struct Attributes
@@ -87,13 +98,16 @@ Shader "LestingCraft/VoxelPBR"
                 half3 view=GetWorldSpaceNormalizeViewDir(i.positionWS);
                 half3 viewTS=half3(dot(view,t),dot(view,b),dot(view,n));
                 float cameraDistance=distance(_WorldSpaceCameraPos,i.positionWS);
-                float2 dx=ddx(i.uv.xy),dy=ddy(i.uv.xy);
+                bool barkSide=abs(i.uv.z-4)<.25&&abs(n.y)<.5;
+                float barkHash=LC_BarkHash(i.positionWS,n);
+                float2 baseUV=barkSide?LC_BarkUV(i.positionWS,n,t,barkHash):i.uv.xy;
+                float2 dx=ddx(baseUV),dy=ddy(baseUV);
                 bool leaf=abs(i.uv.z-6)<.25;
                 bool foliage=leaf||abs(i.uv.z-81)<.25;
                 bool lava=abs(i.uv.z-9)<.25;
                 bool cherenkov=abs(i.uv.z-94)<.25;
                 float fade=(1-smoothstep(8,24,cameraDistance))*smoothstep(.10,.35,abs(viewTS.z));
-                float2 surfaceUV=i.uv.xy;
+                float2 surfaceUV=baseUV;
                 float reliefShadow=1;
                 Light sun=GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 if(fade>.005&&!foliage&&!lava)
@@ -138,6 +152,7 @@ Shader "LestingCraft/VoxelPBR"
                 }
                 if(lava)surfaceUV+=_EnvironmentTime*float2(.006,.0035);
                 half4 albedo=SAMPLE_TEXTURE2D_ARRAY_GRAD(_AlbedoArray,sampler_AlbedoArray,surfaceUV,i.uv.z,dx,dy);
+                if(barkSide)albedo.rgb*=lerp(.88,1.12,barkHash);
                 half3 normalTS=SAMPLE_TEXTURE2D_ARRAY_GRAD(_NormalArray,sampler_NormalArray,surfaceUV,i.uv.z,dx,dy).xyz*2-1;
                 half4 mask=SAMPLE_TEXTURE2D_ARRAY_GRAD(_MaskArray,sampler_MaskArray,surfaceUV,i.uv.z,dx,dy);
                 float upward=saturate(n.y);
