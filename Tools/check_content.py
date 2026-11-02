@@ -5,11 +5,11 @@ import json,re
 from PIL import Image
 R=Path(__file__).resolve().parents[1]
 blocks=json.loads((R/'Assets/Resources/Models/ExpandedBlocks.json').read_text())['blocks']
-assert [b['id'] for b in blocks]==list(range(19,90))
+assert [b['id'] for b in blocks]==list(range(19,92))
 names=re.findall(r'"([a-z0-9-]+)"',(R/'Assets/Scripts/Presentation/SurfaceLayers.cs').read_text().split('Names={')[1].split('};')[0])
-assert len(names) in (63,72,88,112) and len(set(names))==len(names)
+assert len(names) in (63,72,88,112,114) and len(set(names))==len(names)
 rows=re.findall(r'new ExpandedBlock\((\d+),"([^"]+)","([^"]+)",([\d.]+)f,(true|false),(\d+)\)',(R/'Assets/Scripts/Gameplay/ExpandedContent.cs').read_text())
-assert len(rows)==71
+assert len(rows)==73
 for b,row in zip(blocks,rows):
  id,name,surface,hardness,pick,layer=row
  assert int(id)==b['id'] and name==b['name'] and surface==b['surface']
