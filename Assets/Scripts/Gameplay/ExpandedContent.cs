@@ -5,7 +5,7 @@ namespace LestingCraft.Gameplay
  {public readonly int Id,Layer;public readonly string Name,Surface;public readonly float Hardness;public readonly bool Pick;public ExpandedBlock(int id,string name,string surface,float hardness,bool pick,int layer){Id=id;Name=name;Surface=surface;Hardness=hardness;Pick=pick;Layer=layer;}}
  public static class ExpandedContent
  {
-  public const int MaxBlock=89,Version=4;
+  public const int MaxBlock=91,Version=4;
   public static readonly ExpandedBlock[] Blocks={
    new ExpandedBlock(19,"Угольная руда","ore-coal",2.5f,true,25),
    new ExpandedBlock(20,"Железная руда","ore",3.0f,true,14),
@@ -77,7 +77,11 @@ namespace LestingCraft.Gameplay
    new ExpandedBlock(86,"Контактный электрорельс","powered-rail",1.9f,true,99),
    new ExpandedBlock(87,"Фугасный заряд С-4","c4-explosive",0.8f,false,100),
    new ExpandedBlock(88,"Остеклованный тринитит","obsidian",4.4f,true,35),
-   new ExpandedBlock(89,"Шлюзовой терминал Затона","nuclear-reactor",9.0f,true,93)
+   new ExpandedBlock(89,"Шлюзовой терминал Затона","nuclear-reactor",9.0f,true,93),
+   new ExpandedBlock(90,"Жёлтые обои Уровня 0","backrooms-wallpaper",0.9f,true,120),
+   new ExpandedBlock(91,"Влажный ковёр Уровня 0","backrooms-carpet",0.8f,true,121),
+   new ExpandedBlock(90,"Жёлтые обои Уровня 0","backrooms-wallpaper",0.9f,true,120),
+   new ExpandedBlock(91,"Влажный ковёр Уровня 0","backrooms-carpet",0.8f,true,121)
   };
   public static bool Has(int id)=>id>=19&&id<=89;
   public static bool NeedsPick(int id)=>id==1||id>=10&&id<=13||id==17||Has(id)&&Blocks[id-19].Pick;

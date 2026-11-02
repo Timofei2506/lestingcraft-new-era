@@ -277,8 +277,8 @@ namespace LestingCraft.Tests
         {
             Assert.AreEqual(14, GameRules.Version);
             Assert.AreEqual(71, ExpandedContent.Blocks.Length);
-            Assert.AreEqual(89, ExpandedContent.MaxBlock);
-            Assert.AreEqual(112, SurfaceLayers.Names.Length);
+            Assert.AreEqual(91, ExpandedContent.MaxBlock);
+            Assert.AreEqual(114, SurfaceLayers.Names.Length);
             Assert.AreEqual(12, BiomeGenerator.Names.Length);
             Assert.AreEqual(34, WildlifeSimulation.SpeciesCount);
             Assert.GreaterOrEqual(TradeOffer.ProfessionCount, 10);

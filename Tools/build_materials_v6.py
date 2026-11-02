@@ -8,7 +8,7 @@ from pathlib import Path
 import json
 import numpy as np
 from PIL import Image,ImageFilter
-R=Path(__file__).resolve().parents[1]; O=R/'Assets/Art/PBR'; S=R/'ArtSource/Textures/Iteration11'; N=512
+R=Path(__file__).resolve().parents[1]; O=R/'Assets/Art/PBR'; S=R/'ArtSource/_Archive/Iteration11'; N=512
 y,x=np.mgrid[:N,:N]
 def master(n):return np.asarray(Image.open(S/(n+'.jpg')).convert('RGB').resize((N,N),Image.Resampling.LANCZOS),float)/255
 A={n:master(n) for n in ['iron-ore','copper-ore','gold-ore','coal-ore','bedrock','limestone-marble','obsidian','clay-brick']}
@@ -55,6 +55,31 @@ add('wildlife-fur',master('wildlife-fur'),.12,strength=2.8)
 add('metal-ingot',(.58+blur(A['copper-ore'].mean(-1),1)*.32)[:,:,None]*np.ones(3),.72,.94,strength=.45)
 # Colourless fine fractures for a transmitting violet-tinted crystal material, no painted candy stripes.
 add('crystal',rock.mean(-1)[:,:,None]*np.array([.94,.96,1.0]),.94,strength=.25)
+
+# --- Backrooms Level 0 (blocks 90/91): mustard wallpaper with a woven vinyl relief and a
+# damp mono-yellow carpet. Master = limestone-marble photo grain, re-tinted; the pattern
+# comes from analytic weave/damask masks so it stays seamless at any tiling distance.
+lam = A['limestone-marble'].mean(-1)
+def vnoise(N, cells, seed):
+    r = np.random.default_rng(seed)
+    g = r.random((cells + 1, cells + 1))
+    g[-1, :] = g[0, :]; g[:, -1] = g[:, 0]
+    ys = np.linspace(0, cells, N, endpoint=False); xs = np.linspace(0, cells, N, endpoint=False)
+    y0 = ys.astype(int); x0 = xs.astype(int); fy = ys - y0; fx = xs - x0
+    fy = fy*fy*(3-2*fy); fx = fx*fx*(3-2*fx)
+    a = g[np.ix_(y0, x0)]; b = g[np.ix_(y0, x0+1)]; c = g[np.ix_(y0+1, x0)]; d = g[np.ix_(y0+1, x0+1)]
+    return (a*(1-fx)+b*fx)*(1-fy) + (c*(1-fx)+d*fx)*fy
+# Wallpaper: fine vertical vinyl ribbing (real wall covering), photographic grain on top.
+rib = np.sin(x*2*np.pi/16)*0.5 + 0.5
+fiber = vnoise(N, 64, 11)*0.5 + vnoise(N, 16, 12)*0.5
+wall_a = np.clip(0.74 + (rib-0.5)*0.045 + (fiber-0.5)*0.085 + (lam-0.5)*0.10, 0, 1)[:,:,None] * np.array([0.96, 0.81, 0.37])
+add('backrooms-wallpaper', wall_a, .26, strength=1.8)
+# Carpet: dense short pile (fine noise, no visible blobs) + faint damp patches.
+pile = vnoise(N, 256, 21)*0.55 + vnoise(N, 64, 22)*0.45
+damp = np.clip(vnoise(N, 4, 23)-0.5, 0, 1)*0.5
+carpet_a = np.clip(0.56 + (pile-0.5)*0.26 - damp*0.13, 0, 1)[:,:,None] * np.array([0.88, 0.79, 0.42])
+add('backrooms-carpet', carpet_a, .10, strength=5.0)
+
 for name,(a,smooth,metal,strength) in spec.items():
  a=periodic(np.clip(a,0,1));h=periodic(blur(a.mean(-1),.7));dx=(np.roll(h,-1,1)-np.roll(h,1,1))*strength;dy=(np.roll(h,-1,0)-np.roll(h,1,0))*strength
  normal=np.stack([-dx,dy,np.ones_like(h)],-1);normal/=np.linalg.norm(normal,axis=-1)[:,:,None]

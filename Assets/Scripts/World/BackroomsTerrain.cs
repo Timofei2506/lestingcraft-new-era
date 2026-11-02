@@ -7,8 +7,9 @@ namespace LestingCraft.World
     /// mono-yellow wallpaper, damp carpet floor, buzzing fluorescent ceiling panels, and
     /// rare red rooms that must not be entered. Pure deterministic math - no allocation,
     /// usable from Burst jobs and from gameplay code alike. All blocks reuse the existing
-    /// baked palette (no new textures needed): 43 sandstone carpet, 28 limestone wallpaper,
-    /// 30 marble ceiling tiles, 56 lantern fluorescents, 62 red terracotta for red rooms.
+    /// palette: 91 damp Level 0 carpet, 90 mustard vinyl wallpaper, 30 marble-white ceiling
+    /// tiles, 56 lantern fluorescents, 62 red terracotta for red rooms. Blocks 90/91 exist
+    /// only for the Backrooms and carry their own photo-derived PBR materials.
     /// Floors step gently between 16x16 regions (rare ledges of the canon) so the level has
     /// real relief while every room stays walkable.
     /// </summary>
@@ -18,7 +19,7 @@ namespace LestingCraft.World
         public const int CeilingTop = 73;
         public const int WallTop = 71;
 
-        const ushort Carpet = 43, Wallpaper = 28, CeilingTile = 30, Fluorescent = 56, RedWall = 62;
+        const ushort Carpet = 91, Wallpaper = 90, CeilingTile = 30, Fluorescent = 56, RedWall = 62;
 
         /// <summary>Backrooms is multi-level per community canon: white labyrinths (Level 484
         /// "The Whiteout"), classic yellow Level 0, and dark service halls (Level 6 "Lights Out").
