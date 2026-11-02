@@ -877,19 +877,36 @@ namespace LestingCraft.Runtime
             radiaWorld.SwitchPlanet(Dimension.Backrooms, Array.Empty<SavedBlock>());
             WorldAtmosphere.Configure(cam, (int)Dimension.Backrooms, game.Session.Data.clock);
             spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Backrooms, player, cam);
-            Vector3 brEye = new Vector3(23.5f, 65.35f, 12.5f);
-            player.TeleportTo(brEye - Vector3.up * 1.5f, false);
+            // Уровень 0 живёт при постоянном люминесцентном свете — никакого ночного провала (кадр 12 оставлял clock=900).
+            game.Session.Data.clock = 600.0;
+            int brSeed = radiaWorld.Seed;
+            int brFloor = LestingCraft.World.BackroomsTerrain.FloorTop(18, 19, brSeed);
+            Vector3 brEye = new Vector3(18.5f, brFloor + 2.45f, 19.5f);
+            player.TeleportTo(new Vector3(18.5f, brFloor + 1.0f, 19.5f), false);
             yield return WaitWorldMeshed(radiaWorld, 35f);
-            player.TeleportTo(brEye, false);
+            player.TeleportTo(brEye, true);
             yield return WaitWorldMeshed(radiaWorld, 15f);
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "13-backrooms-level0-yellow-rooms.png"), () =>
             {
+                // Жёлтая глухая влажность Level 0: ровный тёплый ambient + мягкий направленный свет.
+                var sunObj = GameObject.Find("Sun");
+                var sunLamp = sunObj ? sunObj.GetComponent<Light>() : null;
+                if (sunLamp)
+                {
+                    sunLamp.color = new Color(1f, .965f, .78f);
+                    sunLamp.intensity = 1.15f;
+                    sunLamp.transform.rotation = Quaternion.Euler(62f, -28f, 0f);
+                }
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = new Color(.52f, .47f, .28f);
                 RenderSettings.fog = true;
-                RenderSettings.fogDensity = 0.0055f;
+                RenderSettings.fogMode = FogMode.Exponential;
+                RenderSettings.fogColor = new Color(.66f, .60f, .33f);
+                RenderSettings.fogDensity = 0.085f;
                 cam.fieldOfView = 74f;
-                cam.farClipPlane = 90f;
+                cam.farClipPlane = 120f;
                 cam.transform.position = brEye;
-                cam.transform.LookAt(new Vector3(41.5f, 65.1f, 30.5f));
+                cam.transform.LookAt(new Vector3(42.5f, brFloor + 2.6f, 19.6f));
                 game.Session.Notice = "УРОВЕНЬ 0 · ЖЁЛТЫЕ КОМНАТЫ: влажный ковёр, гудящие лампы, бесконечные проёмы";
             });
 
