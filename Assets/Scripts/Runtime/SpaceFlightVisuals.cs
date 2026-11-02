@@ -2350,7 +2350,7 @@ namespace LestingCraft.Runtime
                 int x = cx + Mathf.RoundToInt(Mathf.Cos(angle) * (radius + 2));
                 int z = cz + Mathf.RoundToInt(Mathf.Sin(angle) * (radius + 2));
                 for (int h = 1; h <= 4; h++) world.Edit(x, cy + 1 + h, z, (ushort)37, h == 1);
-                world.Edit(x, cy + 6, z, BlockRegistry.LanternId);
+                world.Edit(x, cy + 6, z, BlockRegistry.LanternBlockId);
             }
         }
 

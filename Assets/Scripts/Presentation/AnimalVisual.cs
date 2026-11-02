@@ -261,10 +261,13 @@ namespace LestingCraft.Presentation
                 }
                 if (kind == 0)
                 {
-                    Box(p, 0, 1.22f, .4f, .27f, .55f, .29f);
+                    // Rising neck: base sits on the shoulder, crown meets the head pivot,
+                    // so the rack above has something to stand on.
+                    Box(p, 0, 1.10f, .34f, .30f, .62f, .34f);
+                    Box(p, 0, 1.36f, .42f, .25f, .40f, .28f);
                     for (int i = 0; i < 12; i++)
-                        Mark(p, (i % 2 == 0 ? -1 : 1) * .246f, .9f + (i / 6) * .17f,
-                            -.4f + ((i / 2) % 3) * .28f, .016f, .055f, .09f, cream, underfur);
+                        Mark(p, (i % 2 == 0 ? -1 : 1) * .152f, 1.02f + (i / 6) * .17f,
+                            .18f + ((i / 2) % 3) * .10f, .016f, .055f, .09f, cream, underfur);
                 }
                 if (kind == 2)
                     for (int i = 0; i < 8; i++)
@@ -482,7 +485,118 @@ namespace LestingCraft.Presentation
             }
 
             BuildSpeciesDetail(kind, width, length, bh, by);
+            BuildSignatureSilhouette(kind, width, length, bh, by);
             ResetMotion();
+        }
+
+        /// <summary>
+        /// The one feature a player reads at 20 m. Only species whose old rig had no
+        /// silhouette marker of its own are authored here; deer, wolves, bears, bison and
+        /// camels already carry theirs inside the body pass.
+        /// </summary>
+        void BuildSignatureSilhouette(int kind, float width, float length, float bodyHeight, float bodyY)
+        {
+            if (kind == 0) // Sika deer: a branched rack above the brow, not two bare poles.
+            {
+                Attach("AntlerRack", Head, new Vector3(0, .30f, -.04f), p =>
+                {
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        Mark(p, side * .07f, .02f, 0, .05f, .18f, .05f, cream * .84f, keratin);
+                        Mark(p, side * .19f, .11f, -.04f, .21f, .045f, .045f, cream * .86f, keratin);
+                        for (int tine = 0; tine < 3; tine++)
+                            Mark(p, side * (.12f + tine * .08f), .21f + tine * .02f, -.05f - tine * .05f,
+                                .035f, .19f - tine * .03f, .035f, cream * .88f, keratin);
+                        Mark(p, side * .30f, .20f, .02f, .035f, .14f, .035f, cream * .80f, keratin);
+                    }
+                });
+            }
+            if (kind == 1) // Hare: ears as tall as the body is high, with a dark tip.
+            {
+                Attach("HareEars", Head, new Vector3(0, .10f, -.02f), p =>
+                {
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        Mark(p, side * .06f, .14f, -.03f, .075f, .28f, .055f, coat * 1.02f, fur);
+                        Mark(p, side * .065f, .30f, -.045f, .06f, .10f, .045f, dark, fur);
+                        Mark(p, side * .055f, .13f, .02f, .045f, .21f, .03f, cream * .94f, underfur);
+                    }
+                });
+                Attach("HareTuft", tail, new Vector3(0, 0, -.10f), p =>
+                    Mark(p, 0, 0, 0, .13f, .13f, .09f, cream, underfur));
+            }
+            if (kind == 10) // Toad: two eye domes on top, a wide jaw line, folded hind haunches.
+            {
+                Attach("ToadFace", Head, new Vector3(0, 0, 0), p =>
+                {
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        Mark(p, side * .19f, .16f, .07f, .16f, .14f, .16f, coat * 1.06f, fur);
+                        Mark(p, side * .19f, .21f, .14f, .10f, .07f, .05f, new Color(.82f, .72f, .18f), keratin);
+                        Mark(p, side * .19f, .21f, .17f, .05f, .05f, .02f, Color.black, keratin);
+                    }
+                    Mark(p, 0, -.09f, .24f, .40f, .035f, .10f, dark, keratin);
+                });
+                Attach("ToadHaunches", rig, new Vector3(0, bodyY, 0), p =>
+                {
+                    for (int side = -1; side <= 1; side += 2)
+                        Mark(p, side * width * .46f, -.02f, -length * .28f, .20f, bodyHeight * .74f, .34f,
+                            coat * .94f, fur);
+                });
+            }
+            if (kind == 15) // Sand scorpion: segmented tail curled over the back, stinger up.
+            {
+                Attach("ScorpionTail", tail, new Vector3(0, .04f, 0), p =>
+                {
+                    Mark(p, 0, .14f, -.16f, .10f, .10f, .22f, coat * .92f, keratin);
+                    Mark(p, 0, .30f, -.30f, .09f, .09f, .20f, coat * .88f, keratin);
+                    Mark(p, 0, .44f, -.34f, .08f, .08f, .16f, coat * .84f, keratin);
+                    Mark(p, 0, .54f, -.24f, .07f, .07f, .14f, coat * .80f, keratin);
+                    Mark(p, 0, .60f, -.14f, .11f, .10f, .10f, new Color(.42f, .26f, .12f), keratin);
+                    Mark(p, 0, .66f, -.08f, .035f, .09f, .035f, cream * .70f, keratin);
+                });
+            }
+            if (kind == 21) // Cherenkov leech: five glowing rings and a sucker mouth.
+            {
+                Attach("LeechRings", body, new Vector3(0, 0, 0), p =>
+                {
+                    int glow = Surface("cherenkov-crystal");
+                    for (int ring = 0; ring < 5; ring++)
+                        Mark(p, 0, 0, -length * .38f + ring * length * .19f, width * 1.06f, bodyHeight * 1.06f, .06f,
+                            ring % 2 == 0 ? new Color(.30f, .92f, 1f) : coat * .92f, glow);
+                });
+                Attach("LeechSucker", Head, new Vector3(0, 0, .22f), p =>
+                {
+                    Mark(p, 0, 0, 0, width * .70f, bodyHeight * .54f, .10f, coat * .80f, fur);
+                    Mark(p, 0, 0, .05f, width * .34f, bodyHeight * .26f, .05f, new Color(.20f, .66f, .72f), keratin);
+                });
+            }
+            if (kind == 23) // Two-headed boar: a second, smaller head on a short neck.
+            {
+                Attach("SecondHead", rig, new Vector3(-width * .52f, bodyY + bodyHeight * .46f, length * .40f), p =>
+                {
+                    Mark(p, 0, 0, 0, width * .34f, bodyHeight * .34f, .20f, coat * .96f, fur);
+                    Mark(p, 0, -.02f, .18f, width * .26f, bodyHeight * .24f, .22f, coat * .90f, fur);
+                    Mark(p, 0, -.02f, .30f, width * .12f, bodyHeight * .10f, .05f, cream * .70f, keratin);
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        Mark(p, side * width * .10f, .14f, -.02f, .04f, .10f, .04f, cream * .74f, keratin);
+                        Mark(p, side * width * .14f, bodyHeight * .06f, .16f, .04f, .05f, .04f,
+                            new Color(.92f, .30f, .18f), keratin);
+                    }
+                });
+            }
+            if (kind == 27) // Bone stalker: exposed rib blades along both flanks.
+            {
+                Attach("RibCage", rig, new Vector3(0, bodyY, 0), p =>
+                {
+                    for (int rib = 0; rib < 6; rib++)
+                        for (int side = -1; side <= 1; side += 2)
+                            Mark(p, side * width * .52f, bodyHeight * .12f, -length * .26f + rib * length * .10f,
+                                .05f, bodyHeight * .78f - rib * .03f, .06f, cream * .84f, keratin);
+                    Mark(p, 0, bodyHeight * .58f, -length * .10f, .06f, .18f, length * .34f, cream * .80f, keratin);
+                });
+            }
         }
 
         /// <summary>
