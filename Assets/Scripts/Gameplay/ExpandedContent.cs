@@ -79,8 +79,6 @@ namespace LestingCraft.Gameplay
    new ExpandedBlock(88,"Остеклованный тринитит","obsidian",4.4f,true,35),
    new ExpandedBlock(89,"Шлюзовой терминал Затона","nuclear-reactor",9.0f,true,93),
    new ExpandedBlock(90,"Жёлтые обои Уровня 0","backrooms-wallpaper",0.9f,true,120),
-   new ExpandedBlock(91,"Влажный ковёр Уровня 0","backrooms-carpet",0.8f,true,121),
-   new ExpandedBlock(90,"Жёлтые обои Уровня 0","backrooms-wallpaper",0.9f,true,120),
    new ExpandedBlock(91,"Влажный ковёр Уровня 0","backrooms-carpet",0.8f,true,121)
   };
   public static bool Has(int id)=>id>=19&&id<=89;
