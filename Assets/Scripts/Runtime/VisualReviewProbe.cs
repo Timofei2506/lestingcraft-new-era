@@ -147,10 +147,11 @@ namespace LestingCraft.Runtime
             Debug.Log("[VisualReview] Forest clearing: " + bestX + "," + bestY + "," + bestZ + " score=" + bestScore);
 
             Vector3 eye = new Vector3(bestX + .5f, bestY + 2.6f, bestZ + .5f);
+            Vector3 viewDir = ChooseViewDirection(eye, seed, content, bestDir);
             player.TeleportTo(eye - Vector3.up * 1.6f, false);
-            player.transform.rotation = Quaternion.LookRotation(new Vector3(bestDir.x, 0, bestDir.z).normalized, Vector3.up);
+            player.transform.rotation = Quaternion.LookRotation(viewDir, Vector3.up);
             cam.transform.position = eye;
-            cam.transform.rotation = Quaternion.LookRotation((eye + bestDir * 12 + Vector3.down * 1.2f) - eye, Vector3.up);
+            cam.transform.rotation = Quaternion.LookRotation((eye + viewDir * 12 + Vector3.down * 1.2f) - eye, Vector3.up);
             cam.fieldOfView = 70;
             game.Session.Data.clock = 500;
             yield return WaitWorld(game.Session.World, 90);
@@ -163,37 +164,47 @@ namespace LestingCraft.Runtime
             if (hands) { if (hands.ViewCamera) hands.ViewCamera.enabled = false; hands.enabled = false; }
             if (contentRoot) contentRoot.gameObject.SetActive(false);
 
-            // Model review: one articulated animal group and one planetary boss ring.
+            // Model review: choose natural open stages with a verified line of sight instead of
+            // hiding the subject behind the nearest trunk. The world itself is not edited.
             var modelRoot = new GameObject("VisualReviewModels");
-            Vector3 forward = new Vector3(bestDir.x, 0, bestDir.z).normalized;
-            Vector3 stage = eye + forward * 7f;
-            stage.y = TerrainGenerator.Height(Mathf.RoundToInt(stage.x), Mathf.RoundToInt(stage.z), seed, Dimension.Lestingia) + 1;
+            Vector3 forward = viewDir;
+            Vector3 stage, modelCam;
+            if (!FindReviewStage(eye, seed, content, forward, out stage, out modelCam, 8f, 3.2f, 1.0f, 2, 4, 5f, 14f))
+            { Fail("Could not find an unobstructed wildlife review stage."); yield break; }
             modelRoot.transform.position = stage;
+            Vector3 animalRight = Vector3.Cross(Vector3.up, (stage - modelCam).normalized).normalized;
             int[] kinds = { 0, 3, 5 };
             for (int i = 0; i < kinds.Length; i++)
             {
                 var animal = new GameObject("ReviewAnimal" + kinds[i]).AddComponent<AnimalVisual>();
                 animal.transform.SetParent(modelRoot.transform, false);
-                animal.transform.localPosition = new Vector3((i - 1) * 2.2f, 0, 0);
+                animal.transform.localPosition = animalRight * ((i - 1) * 2.2f);
                 animal.Build(kinds[i]);
                 animal.Animate(.016f, 0);
             }
-            cam.transform.position = stage - forward * 7f + Vector3.up * 2.2f;
+            cam.transform.position = modelCam;
+            cam.fieldOfView = 60;
             cam.transform.LookAt(stage + Vector3.up * .9f);
             yield return Capture(Path.Combine(outDir, "04-wildlife-models.png"), null);
             Destroy(modelRoot);
 
-            Vector3 bossPos = stage + forward * 12f;
-            bossPos.y = TerrainGenerator.Height(Mathf.RoundToInt(bossPos.x), Mathf.RoundToInt(bossPos.z), seed, Dimension.Lestingia) + 1;
+            Vector3 bossPos, bossCam;
+            if (!FindReviewStage(eye, seed, content, forward, out bossPos, out bossCam, 18f, 6f, 4f, 3, 8, 10f, 30f))
+            { Fail("Could not find an unobstructed boss review arena."); yield break; }
             var boss = PlanetaryBossController.SpawnForPlanet(game.Session.World.transform, Dimension.Lestingia, game.Session.World, seed, false, bossPos);
-            if (boss)
-            {
-                boss.transform.position = bossPos;
-                cam.transform.position = bossPos - forward * 16f + Vector3.up * 5f;
-                cam.transform.LookAt(bossPos + Vector3.up * 4f);
-                yield return WaitWorld(game.Session.World, 45);
-                yield return Capture(Path.Combine(outDir, "05-boss-ring.png"), null);
-            }
+            if (!boss) { Fail("Lestingia boss did not spawn for visual review."); yield break; }
+            boss.PlaceArena(bossPos);
+            cam.transform.position = bossCam;
+            cam.fieldOfView = 65;
+            cam.transform.LookAt(bossPos + Vector3.up * 4.2f);
+            yield return WaitWorld(game.Session.World, 45);
+            // Drive the real telegraph state so the shockwave ring is visible without damaging the player.
+            Vector3 viewer = bossPos + (bossCam - bossPos).normalized * 5f;
+            viewer.y = bossPos.y + 1f;
+            boss.TickBoss(5f, viewer, null);
+            boss.TickBoss(.45f, viewer, null);
+            yield return null;
+            yield return Capture(Path.Combine(outDir, "05-boss-ring.png"), null);
 
             game.Session.Inventory.slots[4] = new ItemStack { item = 55, count = 2 };
             game.Session.Inventory.slots[5] = new ItemStack { item = 56, count = 4 };
@@ -218,6 +229,90 @@ namespace LestingCraft.Runtime
             Debug.Log("[VisualReview] PASS: 7 real-player review frames saved to " + outDir);
             finishing = true;
             Application.Quit(0);
+        }
+
+        static int BlockAt(Vector3 p, int seed, int content)
+        {
+            return TerrainGenerator.SampleContent(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.y), Mathf.FloorToInt(p.z), seed, Dimension.Lestingia, content);
+        }
+
+        static bool Occludes(Vector3 p, int seed, int content)
+        {
+            int id = BlockAt(p, seed, content);
+            return id != 0 && id != BlockRegistry.GrassId;
+        }
+
+        static bool ClearLine(Vector3 a, Vector3 b, int seed, int content)
+        {
+            int steps = Mathf.Max(2, Mathf.CeilToInt(Vector3.Distance(a, b) * 2f));
+            for (int i = 1; i < steps; i++)
+                if (Occludes(Vector3.Lerp(a, b, i / (float)steps), seed, content)) return false;
+            return true;
+        }
+
+        static bool OpenColumn(Vector3 ground, int radius, int height, int seed, int content)
+        {
+            int gx = Mathf.FloorToInt(ground.x), gz = Mathf.FloorToInt(ground.z), gy = Mathf.FloorToInt(ground.y);
+            for (int dx = -radius; dx <= radius; dx++)
+                for (int dz = -radius; dz <= radius; dz++)
+                {
+                    int h = TerrainGenerator.Height(gx + dx, gz + dz, seed, Dimension.Lestingia);
+                    if (Mathf.Abs(h - (gy - 1)) > 1) return false;
+                    for (int y = 0; y <= height; y++)
+                        if (BlockAt(new Vector3(gx + dx + .5f, gy + y, gz + dz + .5f), seed, content) != 0) return false;
+                }
+            return true;
+        }
+
+        static Vector3 ChooseViewDirection(Vector3 eye, int seed, int content, Vector3 fallback)
+        {
+            Vector3 bestDir = new Vector3(fallback.x, 0, fallback.z).normalized;
+            if (bestDir.sqrMagnitude < .5f) bestDir = Vector3.forward;
+            float best = float.NegativeInfinity;
+            for (int i = 0; i < 24; i++)
+            {
+                Vector3 dir = Quaternion.Euler(0, i * 15f, 0) * Vector3.forward;
+                float score = 0; bool clear = true;
+                for (int s = 2; s <= 16; s += 2)
+                    for (int h = -1; h <= 2; h++)
+                    {
+                        int id = BlockAt(eye + dir * s + Vector3.up * h, seed, content);
+                        if (id == BlockRegistry.WoodId) { score -= 12; clear = false; }
+                        else if (id == BlockRegistry.LeavesId) score += h >= 1 ? 2 : -4;
+                        else if (id == 0) score += 1;
+                    }
+                if (clear) score += 20;
+                if (score > best) { best = score; bestDir = dir; }
+            }
+            return bestDir;
+        }
+
+        static bool FindReviewStage(Vector3 eye, int seed, int content, Vector3 preferred, out Vector3 stage, out Vector3 camera,
+            float distance, float height, float lookHeight, int radius, int clearance, float minRadius, float maxRadius)
+        {
+            stage = camera = Vector3.zero;
+            float best = float.NegativeInfinity;
+            for (float r = minRadius; r <= maxRadius; r += 1f)
+                for (int a = 0; a < 24; a++)
+                {
+                    Vector3 dir = Quaternion.Euler(0, a * 15f, 0) * preferred;
+                    Vector3 candidate = eye + dir * r;
+                    int gx = Mathf.RoundToInt(candidate.x), gz = Mathf.RoundToInt(candidate.z);
+                    int gy = TerrainGenerator.Height(gx, gz, seed, Dimension.Lestingia);
+                    Vector3 ground = new Vector3(gx + .5f, gy + 1, gz + .5f);
+                    if (!OpenColumn(ground, radius, clearance, seed, content)) continue;
+                    for (int c = 0; c < 16; c++)
+                    {
+                        Vector3 camDir = Quaternion.Euler(0, c * 22.5f, 0) * preferred;
+                        Vector3 cam = ground - camDir * distance + Vector3.up * height;
+                        if (Occludes(cam, seed, content)) continue;
+                        if (!ClearLine(cam, ground + Vector3.up * lookHeight, seed, content)) continue;
+                        if (lookHeight > 2f && !ClearLine(cam, ground + Vector3.up * (lookHeight + 3f), seed, content)) continue;
+                        float score = 20 - Mathf.Abs(r - (minRadius + maxRadius) * .5f) - Vector3.Angle(camDir, preferred) * .05f;
+                        if (score > best) { best = score; stage = ground; camera = cam; }
+                    }
+                }
+            return best > float.NegativeInfinity;
         }
 
         IEnumerator WaitWorld(VoxelWorld world, float seconds)

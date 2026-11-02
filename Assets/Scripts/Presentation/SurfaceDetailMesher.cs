@@ -10,7 +10,7 @@ namespace LestingCraft.Presentation
     /// </summary>
     public static class SurfaceDetailMesher
     {
-        static readonly int[] BladeBaseline = { 2, 4, 9, 13, 17 };
+        static readonly int[] BladeBaseline = { 2, 4, 12, 20, 28 };
         public static int BladesFor(int quality, uint hash)
         {
             int q = Mathf.Clamp(quality, 0, 4);
@@ -22,16 +22,16 @@ namespace LestingCraft.Presentation
             uint hash = TerrainGenerator.Hash(ox + x, y, oz + z, seed ^ 9371);
             int q = Mathf.Clamp(quality, 0, 4);
             // Sparse gaps read as soil and prevent a uniform carpet.
-            if (hash % (q >= 2 ? 11 : 7) == 0) return;
+            if (hash % (q >= 2 ? 13 : 7) == 0) return;
             int count = BladesFor(q, hash);
             int segments = q >= 3 ? 4 : q >= 1 ? 3 : 2;
-            float heightScale = q >= 3 ? 1.30f : q >= 1 ? 1.15f : 1f;
+            float heightScale = q >= 3 ? 1.45f : q >= 1 ? 1.30f : 1.10f;
             for (int blade = 0; blade < count; blade++)
             {
                 uint h = TerrainGenerator.Hash(ox + x, blade + 17, oz + z, seed);
                 float angle = (h & 1023) / 1023f * Mathf.PI * 2;
                 float height = (.20f + ((h >> 10) & 255) / 255f * .34f) * heightScale;
-                float width = .012f + ((h >> 18) & 63) / 63f * .018f;
+                float width = .014f + ((h >> 18) & 63) / 63f * .020f;
                 var side = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle));
                 var forward = new Vector3(-side.z, 0, side.x);
                 float spread = ((h >> 24) & 127) / 127f;

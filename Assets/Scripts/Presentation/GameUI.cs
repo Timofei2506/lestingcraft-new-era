@@ -145,7 +145,7 @@ namespace LestingCraft.Presentation
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
             Box(content.transform,64,119,96,2,Accent,false);
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            Label(content.transform,Application.version+"  /  графика 08 · лесная экспедиция",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,Application.version+"  /  графика 08 · лесная экспедиция",64,866,1472,22,12,Muted,false,TextAnchor.MiddleRight);
         }
         public void ShowHome()
         {
@@ -279,8 +279,9 @@ namespace LestingCraft.Presentation
             inventoryViews.Clear();craftRevision=-1;
             if(game.Session&&game.Session.Creative)Button("Каталог предметов",424,28,244,52,ShowCreativeCatalog);
             if(!game.Session)return;
+            string[] slotNames={"Голова","Одежда","Штаны","Обувь","Шлем","Нагрудник","Поножи","Сапоги"};
             for(int i=0;i<Equipment.Count;i++)
-            {float x=32+i*96;Label(content.transform,i==7?"Броне-\nсапоги":Equipment.Names[i],x,145,90,49,16,Muted);CreateCell(58+i,x,197,62,62);}
+            {float x=32+i*96;Label(content.transform,slotNames[i],x,145,92,40,14,Muted);CreateCell(58+i,x,197,62,62);}
             Label(content.transform,"Левая рука · G",800,145,100,45,16,Muted);CreateCell(66,800,197,62,62);
             equipmentStatus=Label(content.transform,"",936,144,166,135,18,White);equipmentStatus.name="Equipment summary";
             var portrait=Rect("3D equipped character",content.transform,1124,130,120,180).gameObject.AddComponent<RawImage>();portrait.raycastTarget=false;portrait.gameObject.AddComponent<CharacterPreview>().Initialize(game);
@@ -332,8 +333,8 @@ namespace LestingCraft.Presentation
             bool cooking=stationKind==17;
             Label(content.transform,cooking?"РЕЦЕПТЫ ПЕЧИ":"КНИГА РЕЦЕПТОВ",944,318,304,38,20,Accent,true);
             Input("",recipeSearch,"Поиск рецепта…",944,344,304,v=>{recipeSearch=v;RefreshRecipeBook();});
-            Button(recipeFitsOnly?"Показывать: помещается":"Показывать: все рецепты",944,410,304,36,()=>{recipeFitsOnly=!recipeFitsOnly;ShowInventory(stationKind,stationCell);},recipeFitsOnly);
-            var viewport=Rect("Recipe viewport",content.transform,944,454,304,307);viewport.gameObject.AddComponent<RectMask2D>();
+            Button(recipeFitsOnly?"Показывать: помещается":"Показывать: все рецепты",944,446,304,36,()=>{recipeFitsOnly=!recipeFitsOnly;ShowInventory(stationKind,stationCell);},recipeFitsOnly);
+            var viewport=Rect("Recipe viewport",content.transform,944,490,304,271);viewport.gameObject.AddComponent<RectMask2D>();
             var backing=viewport.gameObject.AddComponent<Image>();backing.color=new Color(.06f,.10f,.11f,.95f);
             recipeList=Rect("Recipes",viewport,0,0,304,0);
             recipeScroll=viewport.gameObject.AddComponent<ScrollRect>();recipeScroll.viewport=viewport;recipeScroll.content=recipeList;recipeScroll.horizontal=false;recipeScroll.movementType=ScrollRect.MovementType.Clamped;recipeScroll.scrollSensitivity=35;
@@ -458,8 +459,9 @@ namespace LestingCraft.Presentation
             for(int i=0;i<presets.Length;i++)
             {
                 int preset=presets[i];bool allowed=!VisualSettings.IsMobile||preset<=VisualQualityPolicy.Ultra;
-                var presetButton=Button(VisualQualityPolicy.DisplayName(preset)+(settings.Preset==preset?" ✓":""),296+i*200,798,190,54,()=>{settings.ApplyPreset(preset);ShowSettings(settingsBack);},settings.Preset==preset);
+                var presetButton=Button(VisualQualityPolicy.DisplayName(preset)+(settings.Preset==preset?" ✓":""),296+i*230,798,220,54,()=>{settings.ApplyPreset(preset);ShowSettings(settingsBack);},settings.Preset==preset);
                 presetButton.interactable=allowed;presetButton.name="Settings.Preset."+preset;
+                var presetText=presetButton.GetComponentInChildren<Text>();if(presetText)presetText.fontSize=16;
             }
             Label(content.transform,"URP · без аппаратной трассировки лучей. Кино-пресет доступен на ПК.",810,730,726,50,15,Muted,false,TextAnchor.MiddleRight);
         }

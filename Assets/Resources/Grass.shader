@@ -69,7 +69,7 @@ Shader "LestingCraft/Grass"
                 half3 albedo=SAMPLE_TEXTURE2D_ARRAY(_AlbedoArray,sampler_AlbedoArray,i.uv*float2(.35,.6),2).rgb;
                 half root=smoothstep(0,.65,i.uv.y);
                 SurfaceData surface=(SurfaceData)0;
-                surface.albedo=albedo*i.color.rgb*lerp(.60,1.12,root)*1.10;
+                surface.albedo=albedo*i.color.rgb*lerp(.68,1.18,root)*1.22*half3(.86,1.06,.78);
                 surface.alpha=1;
                 surface.smoothness=.16;
                 surface.occlusion=lerp(.60,1,root);
@@ -77,9 +77,9 @@ Shader "LestingCraft/Grass"
                 half sky=LC_SurfaceSky(i.ws,normal,1);
                 half back=pow(saturate(dot(-sun.direction,lighting.viewDirectionWS)),3);
                 surface.emission=albedo*i.color.rgb*sun.color*half3(1,.94,.76)*
-                    back*.30*root*sun.shadowAttenuation*LC_SkyEnergy(sky);
+                    back*.34*root*sun.shadowAttenuation*LC_SkyEnergy(sky);
                 surface.emission+=albedo*i.color.rgb*(_EnvironmentHorizon.rgb*.62+_EnvironmentZenith.rgb*.38)*
-                    pow(saturate(sky),1.35)*saturate(_EnvironmentDaylight)*.45*root;
+                    pow(saturate(sky),1.35)*saturate(_EnvironmentDaylight)*.50*root;
                 if(_LCAmbientOcclusionProbe>.5)
                 {
                     #if defined(_SCREEN_SPACE_OCCLUSION)

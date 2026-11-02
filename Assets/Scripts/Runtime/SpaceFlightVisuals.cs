@@ -2283,6 +2283,13 @@ namespace LestingCraft.Runtime
             return boss;
         }
 
+        /// <summary>Review/editor placement keeps arena-dependent effects and loot anchored to the visible boss.</summary>
+        public void PlaceArena(Vector3 arena)
+        {
+            ArenaPosition = arena;
+            transform.position = arena;
+        }
+
         void BuildSculpt(Dimension dim)
         {
             // Every world has its own named guardian; the catalogue stays pure data so it is testable.
