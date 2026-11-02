@@ -27,11 +27,13 @@ namespace LestingCraft.World
         public static int LevelKind(int x, int z, int seed)
         {
             int rx = x >> 8, rz = z >> 8;
-            return (int)(Hash(rx, 57, rz, seed ^ 0x77A1) % 4); // 0,1 white · 2 yellow · 3 dark
+            return (int)(Hash(rx, 57, rz, seed ^ 0x77A1) % 8); // 0..4 Level 0 yellow · 5,6 white · 7 dark
         }
-        static ushort WallFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return k < 2 ? (ushort)42 : k == 2 ? Wallpaper : (ushort)29; }
-        static ushort FloorFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return k < 2 ? (ushort)40 : k == 2 ? Carpet : (ushort)29; }
-        static ushort CeilingFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return k == 3 ? (ushort)29 : CeilingTile; }
+        static bool IsYellow(int k) => k <= 4;
+        static bool IsWhite(int k) => k == 5 || k == 6;
+        static ushort WallFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return IsYellow(k) ? Wallpaper : IsWhite(k) ? (ushort)42 : (ushort)29; }
+        static ushort FloorFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return IsYellow(k) ? Carpet : IsWhite(k) ? (ushort)40 : (ushort)29; }
+        static ushort CeilingFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return k == 7 ? (ushort)29 : CeilingTile; }
 
         static uint Hash(int a, int b, int c, int seed)
         {
@@ -110,19 +112,33 @@ namespace LestingCraft.World
             if (y >= CeilingBottom)
             {
                 // Fluorescent panels above room centres (never in red rooms), exit always glows.
-                bool roomLight = Room(x, z, seed) % (LevelKind(x, z, seed) == 3 ? 7 : 4) == 0;
+                int lk = LevelKind(x, z, seed);
+                uint roomRoll = Room(x, z, seed) % 100;
+                bool roomLight = IsYellow(lk) ? roomRoll < 78 : IsWhite(lk) ? roomRoll < 55 : roomRoll < 14;
                 int mx = ((x % 8) + 8) % 8, mz = ((z % 8) + 8) % 8;
                 bool inPanel = mx >= 2 && mx <= 5 && mz >= 2 && mz <= 5;
                 if (y == CeilingBottom && (exitCell || (roomLight && inPanel && !red))) return Fluorescent;
                 return red ? RedWall : CeilingFor(x, z, seed);
             }
 
-            // Walls on the 8-grid borders: most segments solid, some open into doorways.
+            // Walls on the 8-grid borders: solid continuous runs with 2-cell doorways
+            // punched through some runs (classic Level 0 rooms, not scattered stubs).
             int wx = ((x % 8) + 8) % 8, wz = ((z % 8) + 8) % 8;
             bool borderX = wx == 0, borderZ = wz == 0;
-            bool segX = Hash(x >> 3, 77, z, seed ^ 0x51A1) % 10 < 7;
-            bool segZ = Hash(x, 78, z >> 3, seed ^ 0x51A2) % 10 < 7;
-            bool wall = (borderX && segX) || (borderZ && segZ);
+            bool wall = false;
+            if (borderX)
+            {
+                int mz = ((z % 8) + 8) % 8;
+                int rollX = (int)(Hash(x >> 3, 77, z >> 3, seed ^ 0x51A1) % 10);
+                wall = rollX < 7 || mz < 3 || mz > 4;
+            }
+            if (borderZ)
+            {
+                int mx = ((x % 8) + 8) % 8;
+                int rollZ = (int)(Hash(x >> 3, 78, z >> 3, seed ^ 0x51A2) % 10);
+                bool segWall = rollZ < 7 || mx < 3 || mx > 4;
+                wall = wall || segWall;
+            }
             if (SpawnPlaza(x, z)) wall = false;
             if (exitCell) wall = false;
             if (wall) return red ? RedWall : WallFor(x, z, seed);

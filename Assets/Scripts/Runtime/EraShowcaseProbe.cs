@@ -13,7 +13,7 @@ using LestingCraft.Presentation;
 namespace LestingCraft.Runtime
 {
     /// <summary>
-    /// Renders 14 authentic 1920x1080 in-engine ERA-V9 Ultra URP gameplay screenshots.
+    /// Renders 15 authentic 1920x1080 in-engine ERA-V9 Ultra URP gameplay screenshots.
     /// Covers the spaceflight, Radia, industrial and secret thermonuclear features (rules14 / contentVersion 9).
     /// Activated strictly when "-lc-showcase" is passed on the command line.
     /// </summary>
@@ -873,8 +873,28 @@ namespace LestingCraft.Runtime
                 game.Session.Notice = "☢ СЕКРЕТНЫЙ ОБЪЕКТ 666 (/give 666) · Термоядерный гриб и оплавленный кратер тринитита!";
             });
 
+            // SHOT 13: Backrooms Level 0 — endless mono-yellow rooms, doorways and buzzing panels.
+            radiaWorld.SwitchPlanet(Dimension.Backrooms, Array.Empty<SavedBlock>());
+            WorldAtmosphere.Configure(cam, (int)Dimension.Backrooms, game.Session.Data.clock);
+            spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Backrooms, player, cam);
+            Vector3 brEye = new Vector3(23.5f, 65.35f, 12.5f);
+            player.TeleportTo(brEye - Vector3.up * 1.5f, false);
+            yield return WaitWorldMeshed(radiaWorld, 35f);
+            player.TeleportTo(brEye, false);
+            yield return WaitWorldMeshed(radiaWorld, 15f);
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "13-backrooms-level0-yellow-rooms.png"), () =>
+            {
+                RenderSettings.fog = true;
+                RenderSettings.fogDensity = 0.0055f;
+                cam.fieldOfView = 74f;
+                cam.farClipPlane = 90f;
+                cam.transform.position = brEye;
+                cam.transform.LookAt(new Vector3(41.5f, 65.1f, 30.5f));
+                game.Session.Notice = "УРОВЕНЬ 0 · ЖЁЛТЫЕ КОМНАТЫ: влажный ковёр, гудящие лампы, бесконечные проёмы";
+            });
+
             finishing = true;
-            Debug.Log("[Showcase] PASS: 14 authentic 1920x1080 URP screenshots saved to " + outDir);
+            Debug.Log("[Showcase] PASS: 15 authentic 1920x1080 URP screenshots saved to " + outDir);
             Application.Quit(0);
             yield return null;
             Environment.Exit(0);

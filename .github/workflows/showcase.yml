@@ -83,7 +83,7 @@ jobs:
           grep -E "\\[Showcase\\]|\\[Smoke\\]|FAIL|Error|Exception" Builds/Logs/linux-showcase.log || true
           test -f Builds/StandaloneLinux64/ShowcaseResults/08-inventory-new-blocks-and-bed.png
           test -f Builds/StandaloneLinux64/ShowcaseResults/12-secret-666-thermonuclear-mushroom.png
-          test "$(find Builds/StandaloneLinux64/ShowcaseResults -maxdepth 1 -name '*.png' | wc -l)" -eq 14
+          test "$(find Builds/StandaloneLinux64/ShowcaseResults -maxdepth 1 -name '*.png' | wc -l)" -eq 15
           ls -lh Builds/StandaloneLinux64/ShowcaseResults/
 
       - name: Upload 1920x1080 Showcase Screenshots

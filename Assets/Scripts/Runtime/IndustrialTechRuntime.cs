@@ -145,6 +145,24 @@ namespace LestingCraft.Runtime
         static Transform PartCube(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
             => PartPrimitive(PrimitiveType.Cube, name, parent, pos, scale, mat);
 
+        /// <summary>Unit voxel ball (3x3x3 minus corner cells) so the plumes match the blocky world.</summary>
+        static Transform PartVoxelBlob(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
+        {
+            var blob = new GameObject(name).transform;
+            blob.SetParent(parent, false);
+            blob.localPosition = pos;
+            blob.localScale = scale;
+            for (int x = -1; x <= 1; x++)
+                for (int y = -1; y <= 1; y++)
+                    for (int z = -1; z <= 1; z++)
+                    {
+                        if (Mathf.Abs(x) + Mathf.Abs(y) + Mathf.Abs(z) == 3) continue;
+                        PartCube("Vox_" + name + "_" + (x + 1) + "" + (y + 1) + "" + (z + 1), blob,
+                            new Vector3(x, y, z) * 0.33f, Vector3.one * 0.34f, mat);
+                    }
+            return blob;
+        }
+
         static Transform PartSphere(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
             => PartPrimitive(PrimitiveType.Sphere, name, parent, pos, scale, mat);
 
@@ -758,9 +776,14 @@ namespace LestingCraft.Runtime
                 var root = new GameObject("Thermonuke666_MushroomCloud");
                 root.transform.SetParent(transform, false);
                 root.transform.position = ch.Position;
-                // Smooth 3D plume: a rising spherical stem, incandescent fireball, and a multi-lobed cap.
-                var stem = PartSphere("MushroomStem", root.transform, Vector3.up * 6f, new Vector3(8f, 12f, 8f), smokeCloudMat);
-                var ball = PartSphere("NuclearFireball", root.transform, Vector3.up * 12f, new Vector3(14f, 10f, 14f), blastFireMat);
+                // Voxel plume: a blocky stepped stem, incandescent voxel fireball, and multi-lobed voxel cap.
+                var stem = new GameObject("MushroomStem").transform;
+                stem.SetParent(root.transform, false);
+                stem.localPosition = Vector3.up * 6f;
+                PartCube("StemSeg0", stem, new Vector3(0f, -0.33f, 0f), new Vector3(1f, 0.34f, 1f), smokeCloudMat);
+                PartCube("StemSeg1", stem, new Vector3(0f, 0f, 0f), new Vector3(0.8f, 0.32f, 0.8f), smokeCloudMat);
+                PartCube("StemSeg2", stem, new Vector3(0f, 0.33f, 0f), new Vector3(1f, 0.34f, 1f), smokeCloudMat);
+                var ball = PartVoxelBlob("NuclearFireball", root.transform, Vector3.up * 12f, new Vector3(14f, 10f, 14f), blastFireMat);
                 var cap = new GameObject("PyrocumulusCap").transform;
                 cap.SetParent(root.transform, false);
                 cap.localPosition = Vector3.up * 15f;
@@ -777,7 +800,7 @@ namespace LestingCraft.Runtime
                     new Vector3(0.42f, 0.52f, 0.44f), new Vector3(0.42f, 0.52f, 0.44f)
                 };
                 for (int lobe = 0; lobe < lobePositions.Length; lobe++)
-                    PartSphere("PyrocumulusLobe_" + lobe, cap, lobePositions[lobe], lobeScales[lobe], smokeCloudMat);
+                    PartVoxelBlob("PyrocumulusLobe_" + lobe, cap, lobePositions[lobe], lobeScales[lobe], smokeCloudMat);
                 var ring = PartShockwaveAnnulus("SupersonicWilsonRing", root.transform, shockWaveMat, out Mesh ringMesh);
                 ring.localPosition = Vector3.up * 1.2f;
                 var lGo = new GameObject("ThermonukeFlashLight");
