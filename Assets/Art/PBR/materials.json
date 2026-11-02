@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 6,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -116,22 +116,24 @@
     "gamma-ray-membrane",
     "bone-stalker-hide",
     "vitrified-golem-crust",
-    "wraith-shroud"
+    "wraith-shroud",
+    "backrooms-wallpaper",
+    "backrooms-carpet"
   ],
   "stationSource": "Original procedural joinery/masonry + derived PBR estimates",
   "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries",
   "iteration10": "Original firebrick/soot/iron firebox, fractured bedrock, quartz inclusions/striations; iron/copper/coal-like visual lodes of the SAME existing ore block. Derived PBR, not scans.",
   "iteration11": {
     "masters": [
-      "ArtSource/Textures/Iteration11/wildlife-fur.jpg",
-      "ArtSource/Textures/Iteration11/gold-ore.jpg",
-      "ArtSource/Textures/Iteration11/clay-brick.jpg",
-      "ArtSource/Textures/Iteration11/copper-ore.jpg",
-      "ArtSource/Textures/Iteration11/obsidian.jpg",
-      "ArtSource/Textures/Iteration11/coal-ore.jpg",
-      "ArtSource/Textures/Iteration11/limestone-marble.jpg",
-      "ArtSource/Textures/Iteration11/bedrock.jpg",
-      "ArtSource/Textures/Iteration11/iron-ore.jpg"
+      "ArtSource/_Archive/Iteration11/coal-ore.jpg",
+      "ArtSource/_Archive/Iteration11/bedrock.jpg",
+      "ArtSource/_Archive/Iteration11/copper-ore.jpg",
+      "ArtSource/_Archive/Iteration11/gold-ore.jpg",
+      "ArtSource/_Archive/Iteration11/obsidian.jpg",
+      "ArtSource/_Archive/Iteration11/iron-ore.jpg",
+      "ArtSource/_Archive/Iteration11/wildlife-fur.jpg",
+      "ArtSource/_Archive/Iteration11/limestone-marble.jpg",
+      "ArtSource/_Archive/Iteration11/clay-brick.jpg"
     ],
     "derivatives": [
       "ore",
@@ -164,7 +166,9 @@
       "polished-marble",
       "wildlife-fur",
       "metal-ingot",
-      "crystal"
+      "crystal",
+      "backrooms-wallpaper",
+      "backrooms-carpet"
     ],
     "resolution": 512,
     "maps": "AI-derived albedo, estimated normal / metallic-AO-height-smoothness; not scans",

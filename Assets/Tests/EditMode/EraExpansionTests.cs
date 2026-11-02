@@ -276,7 +276,7 @@ namespace LestingCraft.Tests
         public void DiverseVillagersTwentyAnimalsFiftyOneExpandedBlocksAndTwelveBiomes()
         {
             Assert.AreEqual(14, GameRules.Version);
-            Assert.AreEqual(71, ExpandedContent.Blocks.Length);
+            Assert.AreEqual(73, ExpandedContent.Blocks.Length);
             Assert.AreEqual(91, ExpandedContent.MaxBlock);
             Assert.AreEqual(114, SurfaceLayers.Names.Length);
             Assert.AreEqual(12, BiomeGenerator.Names.Length);
