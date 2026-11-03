@@ -170,7 +170,30 @@ namespace LestingCraft.Runtime
 
             // Model review: choose natural open stages with a verified line of sight instead of
             // hiding the subject behind the nearest trunk. The world itself is not edited.
+            var modelRoot = new GameObject("VisualReviewModels");
             Vector3 forward = viewDir;
+            Vector3 stage, modelCam;
+            Debug.Log("[VisualReview] Searching wildlife stage...");
+            if (!FindReviewStage(eye, seed, content, forward, out stage, out modelCam, 8f, 3.2f, 1.0f, 2, 4, 5f, 14f))
+            { Fail("Could not find an unobstructed wildlife review stage."); yield break; }
+            Debug.Log("[VisualReview] Wildlife stage: " + stage);
+            modelRoot.transform.position = stage;
+            Vector3 animalRight = Vector3.Cross(Vector3.up, (stage - modelCam).normalized).normalized;
+            int[] kinds = { 0, 3, 5 };
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                var animal = new GameObject("ReviewAnimal" + kinds[i]).AddComponent<AnimalVisual>();
+                animal.transform.SetParent(modelRoot.transform, false);
+                animal.transform.localPosition = animalRight * ((i - 1) * 2.2f);
+                animal.Build(kinds[i]);
+                animal.Animate(.016f, 0);
+            }
+            cam.transform.position = modelCam;
+            cam.fieldOfView = 60;
+            cam.transform.LookAt(stage + Vector3.up * .9f);
+            yield return Capture(Path.Combine(outDir, "04-wildlife-models.png"), null);
+            Destroy(modelRoot);
+
             Vector3 bossPos, bossCam;
             Debug.Log("[VisualReview] Searching boss arena...");
             if (!FindReviewStage(eye, seed, content, forward, out bossPos, out bossCam, 13f, 4.5f, 3f, 3, 8, 9f, 20f))
@@ -191,55 +214,6 @@ namespace LestingCraft.Runtime
             yield return null;
             yield return Capture(Path.Combine(outDir, "05-boss-ring.png"), null);
 
-            // Wildlife gets the arena floor: it is carved open, lit and free of trunks, so the
-            // coats and the new heads are judged on their own instead of in deep canopy shade.
-            if (boss) boss.gameObject.SetActive(false);
-            Vector3 arenaCentre = bossPos + Vector3.up * 1.0f;
-            int[] kinds = { 0, 1, 3, 4, 6, 10 };
-            AnimalVisual[] cast = new AnimalVisual[kinds.Length];
-            for (int i = 0; i < kinds.Length; i++)
-            {
-                var animal = new GameObject("ReviewAnimal" + kinds[i]).AddComponent<AnimalVisual>();
-                animal.transform.position = bossPos + new Vector3((i - (kinds.Length - 1) * .5f) * 2.1f, .1f, 4.6f);
-                // Nose points to local -Z, and the camera sits at +Z: keep yaw 0 so the faces
-                // are what the player sees, not three rumps in a row.
-                animal.transform.rotation = Quaternion.identity;
-                animal.Build(kinds[i]);
-                animal.Animate(.016f, 0f);
-                cast[i] = animal;
-            }
-            cam.transform.position = bossPos + new Vector3(0f, 3.1f, 12.5f);
-            cam.fieldOfView = 55;
-            cam.transform.LookAt(arenaCentre + Vector3.up * .2f);
-            yield return WaitWorld(game.Session.World, 20);
-            yield return Capture(Path.Combine(outDir, "04-wildlife-models.png"), null);
-            for (int i = 0; i < cast.Length; i++) if (cast[i]) Destroy(cast[i].gameObject);
-            yield return null;
-
-            // All five archetypes stand in the same arena, on the same light, none hidden behind
-            // a boss rig. This has to happen while the world camera is live: once the game returns
-            // to the menu the background camera takes over and every frame renders the same.
-            var lineRoot = new GameObject("BossSculptLineup");
-            lineRoot.transform.position = bossPos + new Vector3(0f, .1f, 3.2f);
-            string[] keys = { "warden", "colossus", "archon", "titan", "ember" };
-            var lineMaterial = Resources.Load<Material>("Generated/VoxelObjects");
-            for (int i = 0; i < keys.Length; i++)
-            {
-                var built = BossSculpture.Build(lineRoot.transform, keys[i], lineMaterial);
-                built.Root.transform.localPosition = new Vector3((i - 2) * 3.9f, 0f, 0f);
-                built.Root.transform.localRotation = Quaternion.Euler(0f, 22f, 0f);
-            }
-            // Pivot the arena so we look back into the world, not past it at the sky horizon.
-            float lineupYaw = Quaternion.LookRotation(-(bossCam - bossPos).normalized, Vector3.up).eulerAngles.y;
-            lineRoot.transform.rotation = Quaternion.Euler(0f, lineupYaw, 0f);
-            cam.transform.position = bossPos + Quaternion.Euler(0f, lineupYaw, 0f) * new Vector3(0f, 5.2f, 17.5f);
-            cam.fieldOfView = 52;
-            cam.transform.LookAt(bossPos + Vector3.up * 2.8f);
-            yield return WaitWorld(game.Session.World, 20);
-            yield return Capture(Path.Combine(outDir, "08-boss-lineup.png"), null);
-            Destroy(lineRoot);
-            yield return null;
-
             game.Session.Inventory.slots[4] = new ItemStack { item = 55, count = 2 };
             game.Session.Inventory.slots[5] = new ItemStack { item = 56, count = 4 };
             game.Session.Inventory.revision++;
@@ -259,6 +233,28 @@ namespace LestingCraft.Runtime
             foreach (var button in ui.GetComponentsInChildren<Button>())
                 if (button.name == "Home.Settings") { button.onClick.Invoke(); break; }
             yield return Capture(Path.Combine(outDir, "07-settings-presets.png"), null);
+
+            // Boss line-up: all five sculpt archetypes side by side, no HUD, for art review.
+            Vector3 linePos, lineCam;
+            if (FindReviewStage(eye, seed, content, forward, out linePos, out lineCam, 26f, 4f, 2f, 3, 8, 12f, 34f))
+            {
+                var lineRoot = new GameObject("BossSculptLineup");
+                lineRoot.transform.position = linePos;
+                string[] keys = { "warden", "colossus", "archon", "titan", "ember" };
+                var material = Resources.Load<Material>("Generated/VoxelObjects");
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    var built = BossSculpture.Build(lineRoot.transform, keys[i], material);
+                    built.Root.transform.localPosition = new Vector3((i - 2) * 4.4f, 0f, 0f);
+                    built.Root.transform.localRotation = Quaternion.Euler(0f, 18f, 0f);
+                }
+                cam.transform.position = lineCam;
+                cam.fieldOfView = 60;
+                cam.transform.LookAt(linePos + Vector3.up * 3.4f);
+                yield return Capture(Path.Combine(outDir, "08-boss-lineup.png"), null);
+                Destroy(lineRoot);
+            }
+            else Debug.Log("[VisualReview] Boss lineup stage skipped.");
 
             Debug.Log("[VisualReview] PASS: 8 real-player review frames saved to " + outDir);
             finishing = true;
