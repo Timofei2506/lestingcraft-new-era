@@ -15,8 +15,8 @@ for b,row in zip(blocks,rows):
  assert int(id)==b['id'] and name==b['name'] and surface==b['surface']
  assert float(hardness)==b['hardness'] and (pick=='true')==b['pick'] and names[int(layer)]==surface
 catalog=load_catalog(R)
-expected=set(range(1,18))|set(range(19,90))|set(range(100,109))|set(range(110,115))|set(range(120,124))|set(range(130,133))|{135,136,138,139,140,141,142,143,144,145,146,147,148}|set(range(149,166))|set(range(170,178))|set(range(190,196))|{666}
-assert len(expected)==154 and {m['id'] for m in catalog['models']}==expected
+expected=set(range(1,18))|set(range(19,92))|set(range(100,109))|set(range(110,115))|set(range(120,124))|set(range(130,133))|{135,136,138,139,140,141,142,143,144,145,146,147,148}|set(range(149,166))|set(range(170,178))|set(range(190,196))|{666}
+assert len(expected)==156 and {m['id'] for m in catalog['models']}==expected
 assert len(catalog['colors'])==len(catalog['layers']) and all(0<=x<len(names) for x in catalog['layers'])
 for m in catalog['models']:
  assert len(m['cells'])%4==0 and len(m['cells'])>(400 if m['id']==165 else 900)
@@ -39,6 +39,6 @@ assert len(animal_info['masters'])==3
 visual=(R/'Assets/Scripts/Presentation/AnimalVisual.cs').read_text()
 assert re.search(r'fur\s*=\s*FurLayerForSpecies\(kind\)', visual) and 'if(fur<0)fur=4' not in visual
 assert '_Tint'  in (R/'Assets/Resources/CrystalGlass.shader').read_text()
-print(f'PASS: 71 catalog/registry/layer definitions, {len(names)} surface layers, 154 shared voxel models and 384px transparent icons, 30 species PBR coats; no missing resource assets')
+print(f'PASS: 73 catalog/registry/layer definitions, {len(names)} surface layers, 156 shared voxel models and 384px transparent icons, 30 species PBR coats; no missing resource assets')
 
 assert "145,146,147,148" in (R/"Assets/Scripts/Presentation/ItemArtwork.cs").read_text(), "Torch omitted from generated icon index"

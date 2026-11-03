@@ -65,10 +65,10 @@ namespace LestingCraft.Presentation
             var se=snow.emission;se.rateOverTime=outside*effSnow*80;
             float realmClouds=AtmosphereLighting.CloudCoverageForRealm(Session.World.Dimension,clouds);
             var light=AtmosphereLighting.At(Session.Data.clock,Session.World.Dimension,clouds,precipitation);light.Apply(sunlight,Session.Data.clock);
-            sky.SetVector("_CloudOffset",CloudField.Offset(Session.Data.clock,Session.Data.seed,wind));sky.SetFloat("_CloudCoverage",realmClouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.VolumetricQuality==0?12:VisualSettings.Current.VolumetricQuality==2?40:24);
+            sky.SetVector("_CloudOffset",CloudField.Offset(Session.Data.clock,Session.Data.seed,wind));sky.SetFloat("_CloudCoverage",realmClouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.CloudSteps);
             Shader.SetGlobalFloat("_LCSunGlareWeather",1-Mathf.SmoothStep(0,1,Mathf.InverseLerp(.3f,.9f,realmClouds))*.95f);
             fog.SetFloat("_Density",AtmosphereProfile.Density(effPrecip,submerged)*AtmosphereLighting.FogDensityMultiplierForRealm(Session.World.Dimension));
-            fog.SetFloat("_Steps",VisualSettings.Current.VolumetricQuality==0?8:VisualSettings.Current.VolumetricQuality==2?48:32);
+            fog.SetFloat("_Steps",VisualSettings.Current.FogSteps);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);
             Shader.SetGlobalFloat("_FogHeight",44);
             float height=Mathf.Tan(cameraView.fieldOfView*Mathf.Deg2Rad*.5f)*2;

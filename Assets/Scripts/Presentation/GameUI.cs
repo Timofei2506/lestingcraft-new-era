@@ -14,7 +14,7 @@ namespace LestingCraft.Presentation
     public sealed partial class GameUI : MonoBehaviour
     {
         enum Page{Account,Achievements,Home,World,Rooms,AddServer,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby,Journal,Store,Market,Friends}
-        static readonly Color Ink=new Color(.055f,.086f,.10f), Panel=new Color(.07f,.115f,.13f,.96f), Muted=new Color(.58f,.66f,.66f), White=new Color(.91f,.94f,.90f), Accent=new Color(.88f,.77f,.53f);
+        static readonly Color Ink=new Color(.045f,.070f,.075f), Panel=new Color(.065f,.105f,.115f,.97f), Muted=new Color(.68f,.75f,.74f), White=new Color(.94f,.96f,.93f), Accent=new Color(.90f,.78f,.52f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
         Page page,settingsBack;Text status,loadingHUD;Image[] slots;RectTransform[] slotRects;
@@ -31,6 +31,7 @@ namespace LestingCraft.Presentation
         sealed class CellView {public int Index;public RawImage Icon;public Text Count;public ItemHover Hover;public Image Wear;public float WearWidth;}
         readonly List<CellView> inventoryViews=new List<CellView>();int stationKind,craftWidth=2;Vector3Int stationCell;
         RawImage craftOutput,cursorImage;Text craftCount,cursorCount,stoveStatus,equipmentStatus;RectTransform cursorRoot;int craftRevision=-1;
+        string recipeSearch="";bool recipeFitsOnly;RectTransform recipeList;ScrollRect recipeScroll;
         public bool InventoryOpen=>page==Page.Inventory||page==Page.Creative||page==Page.Trade;
         public bool TradeOpen=>page==Page.Trade;
         public bool EditingText=>EventSystem.current&&EventSystem.current.currentSelectedGameObject&&EventSystem.current.currentSelectedGameObject.GetComponent<InputField>()&&EventSystem.current.currentSelectedGameObject.GetComponent<InputField>().isFocused;
@@ -76,7 +77,7 @@ namespace LestingCraft.Presentation
             background=Rect("Menu Art",transform,0,0,0,0).gameObject;Stretch(background.GetComponent<RectTransform>());
             var image=background.AddComponent<RawImage>();image.texture=MenuArtwork.Backdrop;image.color=image.texture?Color.white:new Color(.035f,.065f,.078f);image.raycastTarget=false;background.AddComponent<MenuBackdropFit>();
             var shade=Rect("Art Shade",background.transform,0,0,0,0);Stretch(shade);var shading=shade.gameObject.AddComponent<RawImage>();shading.texture=MenuArtwork.Shade;shading.raycastTarget=false;
-            frame=Rect("1600x900 Interface",transform,0,0,1600,900);frame.anchorMin=frame.anchorMax=new Vector2(.5f,.5f);frame.pivot=new Vector2(.5f,.5f);frame.anchoredPosition=Vector2.zero;
+            frame=Rect("1600x900 Interface",transform,0,0,1600,900);frame.anchorMin=frame.anchorMax=new Vector2(.5f,.5f);frame.pivot=new Vector2(.5f,.5f);frame.anchoredPosition=Vector2.zero;frame.gameObject.AddComponent<UiSafeArea>().Initialize(canvas,frame);
             content=Rect("Content",frame,0,0,1600,900).gameObject;ShowHome();ready=true;
             Debug.Log("[Presentation] Home screen created");
         }
@@ -144,7 +145,7 @@ namespace LestingCraft.Presentation
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
             Box(content.transform,64,119,96,2,Accent,false);
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            Label(content.transform,"0.3.3  /  графика 07 · золотой час",945,830,590,24,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,Application.version+"  /  графика 08 · лесная экспедиция",64,866,1472,22,12,Muted,false,TextAnchor.MiddleRight);
         }
         public void ShowHome()
         {
@@ -155,7 +156,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,"L / C",76,66,120,36,27,Accent,true);
             Label(content.transform,"НОВАЯ ЭРА · ПЕРВАЯ ЭКСПЕДИЦИЯ",207,71,750,28,13,White);
             var version=Box(content.transform,1190,61,346,39,new Color(.035f,.055f,.065f,.86f));
-            Label(version.transform,"WINDOWS  /  РАННЯЯ ВЕРСИЯ",15,0,316,39,12,White,false,TextAnchor.MiddleCenter);
+            Label(version.transform,(VisualSettings.IsMobile?"ANDROID":"WINDOWS")+"  /  РАННЯЯ ВЕРСИЯ",15,0,316,39,12,White,false,TextAnchor.MiddleCenter);
             var account=Button("Аккаунт · достижения",1190,114,346,52,ShowAccount);account.name="Home.Account";
             if(game.Accounts!=null&&game.Accounts.Logged){var walletEntry=Button("Кошелёк и друзья",1190,174,346,48,ShowStore);walletEntry.name="Home.Store";}
             var panel=Box(content.transform,56,189,710,610,new Color(.023f,.047f,.055f,.87f));
@@ -180,13 +181,13 @@ namespace LestingCraft.Presentation
             }
             var settings=Button("Настройки",88,821,200,52,()=>ShowSettings(Page.Home));settings.name="Home.Settings";
             var quit=Button("Выйти",302,821,170,52,()=>Application.Quit());quit.name="Home.Quit";
-            Label(content.transform,"Космические полёты пока в разработке",1057,601,465,32,17,White,true);
+            Label(content.transform,"Космические полёты · экспериментально",1057,601,465,32,17,White,true);
             var card=Box(content.transform,1047,646,474,138,new Color(.021f,.043f,.052f,.88f));
             card.raycastTarget=false;
             Box(card.transform,0,0,4,138,Accent,false);
             Label(card.transform,"01   /   ЛЕСТИНГИЯ",22,18,425,27,13,Accent,true);
             Label(card.transform,"Приключение начинается здесь",22,53,425,38,21,White,true);
-            Label(card.transform,"Космос и совместные перелёты — следующая глава.",22,101,430,25,13,White);
+            Label(card.transform,"Леса, пещеры и деревни — уже в игре. Космос развивается.",22,101,430,25,13,White);
             Label(content.transform,"Фон — концепт-арт · разработка продолжается",1049,818,472,34,11,White,false,TextAnchor.MiddleRight);
         }
         void HomeAction(string title,string subtitle,float y,Action action,bool primary,string objectName)
@@ -200,7 +201,7 @@ namespace LestingCraft.Presentation
         {
             Clear(Page.World);Header("Режим новой экспедиции");
             Label(content.transform,"КАК НАЧНЁТСЯ ТВОЯ ЭРА?",64,171,1400,67,36,White,true);
-            Label(content.transform,"Все начинают в Лестингии. Космос и планеты пока в разработке: здесь экспедиция начинается в Лестингии.",66,247,1440,42,19,Muted);
+            Label(content.transform,"Все начинают в Лестингии. Космос и планеты доступны как экспериментальные механики; основной путь — наземная экспедиция.",66,247,1440,42,19,Muted);
             for(int i=0;i<4;i++)
             {
                 int mode=i;bool chosen=game.SelectedMode==i;var button=Button("",64+i*368,331,352,254,()=>{game.SelectedMode=mode;ShowWorld();},chosen);
@@ -278,8 +279,9 @@ namespace LestingCraft.Presentation
             inventoryViews.Clear();craftRevision=-1;
             if(game.Session&&game.Session.Creative)Button("Каталог предметов",424,28,244,52,ShowCreativeCatalog);
             if(!game.Session)return;
+            string[] slotNames={"Голова","Одежда","Штаны","Обувь","Шлем","Нагрудник","Поножи","Сапоги"};
             for(int i=0;i<Equipment.Count;i++)
-            {float x=32+i*96;Label(content.transform,i==7?"Броне-\nсапоги":Equipment.Names[i],x,145,90,49,16,Muted);CreateCell(58+i,x,197,62,62);}
+            {float x=32+i*96;Label(content.transform,slotNames[i],x,145,92,40,14,Muted);CreateCell(58+i,x,197,62,62);}
             Label(content.transform,"Левая рука · G",800,145,100,45,16,Muted);CreateCell(66,800,197,62,62);
             equipmentStatus=Label(content.transform,"",936,144,166,135,18,White);equipmentStatus.name="Equipment summary";
             var portrait=Rect("3D equipped character",content.transform,1124,130,120,180).gameObject.AddComponent<RawImage>();portrait.raycastTarget=false;portrait.gameObject.AddComponent<CharacterPreview>().Initialize(game);
@@ -330,29 +332,44 @@ namespace LestingCraft.Presentation
         {
             bool cooking=stationKind==17;
             Label(content.transform,cooking?"РЕЦЕПТЫ ПЕЧИ":"КНИГА РЕЦЕПТОВ",944,318,304,38,20,Accent,true);
-            var viewport=Rect("Recipe viewport",content.transform,944,366,304,395);viewport.gameObject.AddComponent<RectMask2D>();
+            Input("",recipeSearch,"Поиск рецепта…",944,344,304,v=>{recipeSearch=v;RefreshRecipeBook();});
+            Button(recipeFitsOnly?"Показывать: помещается":"Показывать: все рецепты",944,446,304,36,()=>{recipeFitsOnly=!recipeFitsOnly;ShowInventory(stationKind,stationCell);},recipeFitsOnly);
+            var viewport=Rect("Recipe viewport",content.transform,944,490,304,271);viewport.gameObject.AddComponent<RectMask2D>();
             var backing=viewport.gameObject.AddComponent<Image>();backing.color=new Color(.06f,.10f,.11f,.95f);
-            var list=Rect("Recipes",viewport,0,0,304,0);
-            var scroll=viewport.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.content=list;scroll.horizontal=false;scroll.movementType=ScrollRect.MovementType.Clamped;scroll.scrollSensitivity=35;
+            recipeList=Rect("Recipes",viewport,0,0,304,0);
+            recipeScroll=viewport.gameObject.AddComponent<ScrollRect>();recipeScroll.viewport=viewport;recipeScroll.content=recipeList;recipeScroll.horizontal=false;recipeScroll.movementType=ScrollRect.MovementType.Clamped;recipeScroll.scrollSensitivity=35;
+            Label(content.transform,"Колёсико — прокрутка",944,777,304,27,16,Muted);
+            RefreshRecipeBook();
+        }
+        void RefreshRecipeBook()
+        {
+            if(!recipeList||page!=Page.Inventory)return;
+            for(int i=recipeList.childCount-1;i>=0;i--){var child=recipeList.GetChild(i).gameObject;child.SetActive(false);if(Application.isPlaying)Destroy(child);else DestroyImmediate(child);}
+            bool cooking=stationKind==17;string query=(recipeSearch??"").Trim();int row=0;
             if(cooking)
             {
-                int row=0;foreach(int id in ItemArtwork.AllIds)
-                {int output=FurnaceState.Result(id);if(output<=0)continue;
-                 var entry=Box(list,0,row*67,298,62,Panel);Icon(entry.transform,id,3,6,46);Label(entry.transform,"→",50,15,30,40,20,Accent);Icon(entry.transform,output,78,6,46);
-                 Label(entry.transform,Items.Get(output).Name,135,4,158,32,16,White);Label(entry.transform,FurnaceState.CookSeconds+" с",135,34,158,24,15,Muted);row++;}
-                list.sizeDelta=new Vector2(304,row*67);
+                foreach(int id in ItemArtwork.AllIds)
+                {
+                    int output=FurnaceState.Result(id);if(output<=0)continue;
+                    string name=Items.Get(output).Name;if(query.Length>0&&name.IndexOf(query,StringComparison.OrdinalIgnoreCase)<0)continue;
+                    var entry=Box(recipeList,0,row*67,298,62,Panel);Icon(entry.transform,id,3,6,46);Label(entry.transform,"→",50,15,30,40,20,Accent);Icon(entry.transform,output,78,6,46);
+                    Label(entry.transform,name,135,4,158,32,16,White);Label(entry.transform,FurnaceState.CookSeconds+" с",135,34,158,24,15,Muted);row++;
+                }
             }
             else
             {
-                list.sizeDelta=new Vector2(304,CraftingTable.All.Length*62);
                 for(int i=0;i<CraftingTable.All.Length;i++)
                 {
-                    int index=i;var r=CraftingTable.All[i];
-                    var button=Button("",0,i*62,298,57,()=>{game.Session.FillRecipe(index,craftWidth);RefreshCraftInventory();},false,list);
-                    Icon(button.transform,r.Output,3,3,49);Label(button.transform,Items.Get(r.Output).Name+(r.Fits(craftWidth)?"":" · 3×3"),58,6,234,49,17,r.Fits(craftWidth)?White:Muted);
+                    int index=i;var r=CraftingTable.All[i];string name=Items.Get(r.Output).Name;
+                    if(query.Length>0&&name.IndexOf(query,StringComparison.OrdinalIgnoreCase)<0)continue;
+                    if(recipeFitsOnly&&!r.Fits(craftWidth))continue;
+                    var button=Button("",0,row*62,298,57,()=>{game.Session.FillRecipe(index,craftWidth);RefreshCraftInventory();},false,recipeList);
+                    Icon(button.transform,r.Output,3,3,49);Label(button.transform,name+(r.Fits(craftWidth)?"":" · 3×3"),58,6,234,49,17,r.Fits(craftWidth)?White:Muted);row++;
                 }
             }
-            Label(content.transform,"Колёсико — прокрутка",944,777,304,27,16,Muted);
+            recipeList.sizeDelta=new Vector2(304,Mathf.Max(1,row*67));
+            if(recipeScroll)recipeScroll.verticalNormalizedPosition=1;
+            if(row==0)Label(recipeList,"Ничего не найдено.\nИзмените запрос или фильтр.",12,20,280,80,17,Muted,false,TextAnchor.MiddleCenter);
         }
         public bool BeginInventoryDrag(int index)
         {
@@ -375,7 +392,7 @@ namespace LestingCraft.Presentation
                 var stack=InventoryInteraction.Get(inv,view.Index);view.Icon.texture=ItemArtwork.Get(stack.item);view.Icon.enabled=stack.count>0&&view.Icon.texture;
                 view.Count.text=stack.count>0?stack.count.ToString():"";view.Hover.Item=stack.count>0?stack.item:0;view.Hover.Durability=stack.count>0?stack.durability:-1;
                 int max=Items.Get(stack.item).Durability;bool worn=stack.count>0&&max>0;view.Wear.gameObject.SetActive(worn);
-                if(worn){float fraction=Mathf.Clamp01((float)stack.durability/max);view.Wear.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal,view.WearWidth*fraction);view.Wear.color=Color.Lerp(new Color(.95f,.25f,.12f),Accent,fraction);view.Count.text=Mathf.RoundToInt(fraction*100)+"%";}
+                if(worn){float fraction=Mathf.Clamp01((float)stack.durability/max);view.Wear.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal,view.WearWidth*fraction);view.Wear.color=Color.Lerp(new Color(.95f,.25f,.12f),Accent,fraction);}
             }
             if(equipmentStatus)equipmentStatus.text="Защита: "+Mathf.RoundToInt(Equipment.Protection(inv)*100)+"%\nТепло: +"+Equipment.Insulation(inv).ToString("0")+"°\n\nБроня: верстак";
             if(stationKind!=17&&craftOutput)
@@ -398,16 +415,19 @@ namespace LestingCraft.Presentation
             if(item<=0||!frame)return;
             if(!tooltip)
             {
-                var panel=Box(frame,0,0,400,144,new Color(.025f,.045f,.05f,1f),false);tooltip=panel.rectTransform;
-                tooltip.name="Item name tooltip";tooltipText=Label(tooltip,"",18,7,364,130,18,White,false,TextAnchor.MiddleLeft);
+                var panel=Box(frame,0,0,360,64,new Color(.025f,.045f,.05f,.98f),false);tooltip=panel.rectTransform;
+                tooltip.name="Item name tooltip";tooltipText=Label(tooltip,"",16,8,328,48,17,White,false,TextAnchor.MiddleLeft);
             }
             var definition=Items.Get(item);tooltipText.text=definition.Name;
             if(definition.Durability>0&&durability>=0)tooltipText.text+="\nПрочность: "+durability+" / "+definition.Durability;
             if(Equipment.ItemProtection(item)>0)tooltipText.text+=" · защита "+Mathf.RoundToInt(Equipment.ItemProtection(item)*100)+"%";
             if(definition.Insulation>0)tooltipText.text+="\nУтепление: +"+definition.Insulation.ToString("0")+"°";
-            if(Equipment.Slot(item)>=0)tooltipText.text+="\nShift + клик — надеть / снять";tooltip.gameObject.SetActive(true);tooltip.SetAsLastSibling();
+            if(Equipment.Slot(item)>=0)tooltipText.text+="\nShift + клик — надеть / снять";
+            int lines=1;foreach(char ch in tooltipText.text)if(ch=='\n')lines++;
+            float height=lines*24+18;tooltip.sizeDelta=new Vector2(360,height);tooltipText.rectTransform.sizeDelta=new Vector2(328,height-16);
+            tooltip.gameObject.SetActive(true);tooltip.SetAsLastSibling();
             RectTransformUtility.ScreenPointToLocalPointInRectangle(frame,screenPosition,null,out var local);
-            tooltip.anchoredPosition=new Vector2(Mathf.Clamp(local.x-frame.rect.xMin+18,8,frame.rect.width-408),-Mathf.Clamp(frame.rect.yMax-local.y+20,8,frame.rect.height-152));
+            tooltip.anchoredPosition=new Vector2(Mathf.Clamp(local.x-frame.rect.xMin+18,8,frame.rect.width-368),-Mathf.Clamp(frame.rect.yMax-local.y+20,8,frame.rect.height-height-8));
         }
         public void HideItemTooltip(){if(tooltip)tooltip.gameObject.SetActive(false);}
         public void ShowDeathScreen()
@@ -422,12 +442,12 @@ namespace LestingCraft.Presentation
         {
             settingsBack=back;Clear(Page.Settings);Header("Графика и управление",false);
             Label(content.transform,"НАСТРОЙ ПОД СЕБЯ",64,171,1400,68,36,White,true);
-            Label(content.transform,"Средние — качественный PBR без RTX. Ultra — усиленные эффекты, без автоматического понижения.",66,247,1400,42,19,Muted);
+            Label(content.transform,"Единая шкала качества: от мобильного до кино. Пресеты не понижаются автоматически по FPS; дальность и масштаб можно настроить вручную.",66,247,1400,42,19,Muted);
             var settings=VisualSettings.Current;
             Box(content.transform,64,323,713,402,Panel);Box(content.transform,800,323,736,402,Panel);
-            Slider("Дальность мира",64+28,354,655,settings.ViewDistance,2,5,true,v=>{settings.ViewDistance=Mathf.RoundToInt(v);settings.Save();},v=>(int)v+" чанка/сторону");
-            Slider("Масштаб рендера",92,469,655,settings.RenderScale,.85f,1.5f,false,v=>{settings.RenderScale=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
-            Button("Тени: "+settings.ShadowResolution.ToString(),92,589,309,58,()=>{settings.ShadowResolution=settings.ShadowResolution==1024?2048:settings.ShadowResolution==2048?4096:1024;settings.Save();ShowSettings(settingsBack);});
+            Slider("Дальность мира",64+28,354,655,settings.ViewDistance,2,VisualSettings.IsMobile?4:5,true,v=>{settings.ViewDistance=Mathf.RoundToInt(v);settings.Save();},v=>(int)v+" чанка/сторону");
+            Slider("Масштаб рендера",92,469,655,settings.RenderScale,VisualSettings.IsMobile?.65f:.85f,VisualSettings.IsMobile?1f:1.5f,false,v=>{settings.RenderScale=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
+            Button("Тени: "+settings.ShadowResolution.ToString(),92,589,309,58,()=>{settings.ShadowResolution=VisualSettings.IsMobile?(settings.ShadowResolution==512?1024:settings.ShadowResolution==1024?2048:512):(settings.ShadowResolution==1024?2048:settings.ShadowResolution==2048?4096:1024);settings.Save();ShowSettings(settingsBack);});
             Button("Постэффекты: "+(settings.PostEffects?"вкл.":"выкл."),419,589,328,58,()=>{settings.PostEffects=!settings.PostEffects;settings.Save();ShowSettings(settingsBack);});
             Button("Объёмы: "+(settings.VolumetricQuality==2?"Ultra":settings.VolumetricQuality==1?"высокие":"сокращённые"),92,667,315,38,()=>{settings.VolumetricQuality=(settings.VolumetricQuality+1)%3;settings.Save();ShowSettings(settingsBack);});
             Button("SSAO: "+(settings.AmbientOcclusion?"вкл.":"выкл."),424,667,323,38,()=>{settings.AmbientOcclusion=!settings.AmbientOcclusion;settings.Save();ShowSettings(settingsBack);});
@@ -435,9 +455,15 @@ namespace LestingCraft.Presentation
             Slider("Чувствительность мыши",828,469,680,settings.Sensitivity,.04f,.25f,false,v=>{settings.Sensitivity=v;settings.Save();},v=>v.ToString("0.00"));
             Label(content.transform,"WASD — движение     SPACE — прыжок\nЛКМ — убрать блок     ПКМ — поставить\n1–9 — быстрые слоты     E — инвентарь         ESC — меню",828,596,679,106,18,White);
             Button("←  Готово",64,798,210,54,()=>{settings.Save();if(settingsBack==Page.Pause)ShowPause();else ShowHome();},true);
-            Button("Средние · PBR",296,798,240,54,()=>{settings.HighDefault();ShowSettings(settingsBack);});
-            Button("Ultra · без RT",551,798,230,54,()=>{settings.Ultra();ShowSettings(settingsBack);});
-            Label(content.transform,"Аппаратные лучи: URP не поддерживает. Текущий API/GPU RT: "+(VisualSettings.HardwareRayTracing?"да":"нет"),810,792,726,69,15,Muted,false,TextAnchor.MiddleRight);
+            int[] presets={VisualQualityPolicy.Mobile,VisualQualityPolicy.Balanced,VisualQualityPolicy.High,VisualQualityPolicy.Ultra,VisualQualityPolicy.Cinematic};
+            for(int i=0;i<presets.Length;i++)
+            {
+                int preset=presets[i];bool allowed=!VisualSettings.IsMobile||preset<=VisualQualityPolicy.Ultra;
+                var presetButton=Button(VisualQualityPolicy.DisplayName(preset)+(settings.Preset==preset?" ✓":""),296+i*230,798,220,54,()=>{settings.ApplyPreset(preset);ShowSettings(settingsBack);},settings.Preset==preset);
+                presetButton.interactable=allowed;presetButton.name="Settings.Preset."+preset;
+                var presetText=presetButton.GetComponentInChildren<Text>();if(presetText)presetText.fontSize=16;
+            }
+            Label(content.transform,"URP · без аппаратной трассировки лучей. Кино-пресет доступен на ПК.",810,730,726,50,15,Muted,false,TextAnchor.MiddleRight);
         }
         void Slider(string title,float x,float y,float w,float value,float min,float max,bool integer,Action<float> changed,Func<float,string> format)
         {
@@ -679,8 +705,7 @@ namespace LestingCraft.Presentation
                 Label(content.transform,"Без электронной почты\n\nПри регистрации вы получите личный код восстановления. Сохраните его вне игры и никому не показывайте. При восстановлении старый код заменяется.\n\nПароль и токен входа не записываются в PlayerPrefs. Вход действует в памяти текущего запуска игры. Без сервиса аккаунтов локальное выживание остаётся доступным.",800,285,650,390,20,Muted);
                 status=Label(content.transform,a.Message,800,705,650,90,18,Accent);return;
             }
-            var p=a.Profile;Label(content.transform,p.username+" · уровень "+p.level+" · "+p.xp+" XP",64,205,1450,46,27,White,true);
-            Label(content.transform,p.titleName+" · "+p.achievements.Length+" / 200 достижений",64,260,1450,36,21,Accent);
+            var p=a.Profile;
             if(!string.IsNullOrEmpty(a.RecoveryCode))
             {
                 Label(content.transform,"СОХРАНИТЕ КОД ВОССТАНОВЛЕНИЯ. Он не будет храниться в игре. Не отправляйте его в чат.",64,340,1410,90,23,White);

@@ -8,6 +8,8 @@ leaf=np.asarray(Image.open(root/'Assets/Resources/GeneratedLeafOpacity.png').con
 assert leaf.shape==(512,512) and .15<(leaf<128).mean()<.35
 voxel=read('Assets/Resources/VoxelPBR.shader')
 assert voxel.count('LeafClip(i.uv)')==4
+mesher=read('Assets/Scripts/World/ChunkMesher.cs')
+assert mesher.count('BarkUV')>=3 and 'static Vector2 BarkUV' in mesher
 assert read('Assets/Resources/VoxelObjects.shader').count('LeafClip(i.uv)')==4
 for name in ['ForwardLit','ShadowCaster','DepthOnly','DepthNormals']:assert f'Name "{name}"' in voxel
 for name in ['VoxelPBR','VoxelObjects','Grass','AvatarLit']:
@@ -16,7 +18,7 @@ pbr=read('Assets/Shaders/VoxelLighting.hlsl');assert 'mainLight.color*=step' in 
 assert 'lightingData.additionalLightsColor +=' in pbr and 'CreateLightingData(inputData, surfaceData)' in pbr
 fog=read('Assets/Resources/VolumetricAtmosphere.shader');assert 'SolarOpen' in fog and 'SampleSceneDepth(uv)' in fog and '*LC_SkyEnergy(sky)' in fog and '*step(.001,sky)' in fog
 fire=read('Assets/Scripts/Presentation/DynamicWeather.cs');assert 'source.shadows=LightShadows.Soft' in fire
-assert 'VolumetricQuality==2?48:32' in fire
+assert 'VisualSettings.Current.FogSteps' in fire and 'VisualSettings.Current.CloudSteps' in fire
 import re
 assert re.search(r'int\s+contentVersion\s*=\s*7', read('Assets/Scripts/Runtime/VoxelWorld.cs'))
-print(f'PASS render source contracts: four cutout passes, {np.mean(leaf<128):.1%} leaf holes, spatial sky PBR, additional lights preserved, depth-tested glare, 32/48 shaft samples. NOT shader/GPU validation.')
+print(f'PASS render source contracts: four cutout passes, {np.mean(leaf<128):.1%} leaf holes, spatial sky PBR, additional lights preserved, depth-tested glare, policy-driven shaft samples, continuous per-column mesh bark UV. NOT shader/GPU validation.')

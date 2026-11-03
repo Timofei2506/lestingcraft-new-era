@@ -204,37 +204,7 @@ public static class PresentationAssets
             profile = ScriptableObject.CreateInstance<VolumeProfile>();
             AssetDatabase.CreateAsset(profile, Folder + "/WorldVolume.asset");
         }
-        var bloom = Component<Bloom>(profile);
-        bloom.threshold.Override(.75f);
-        bloom.intensity.Override(.95f);
-        bloom.scatter.Override(.80f);
-        bloom.highQualityFiltering.Override(true);
-        var tone = Component<Tonemapping>(profile);
-        tone.mode.Override(TonemappingMode.ACES);
-        var colors = Component<ColorAdjustments>(profile);
-        colors.contrast.Override(14);
-        colors.saturation.Override(12);
-        colors.postExposure.Override(.12f);
-        var split = Component<SplitToning>(profile);
-        // Cinematic split grade: cool steel shadows against warm golden highlights.
-        split.shadows.Override(new Color(.42f, .47f, .55f));
-        split.highlights.Override(new Color(.58f, .52f, .42f));
-        split.balance.Override(-8f);
-        var lift = Component<LiftGammaGain>(profile);
-        lift.lift.Override(new Vector4(-.004f, -.001f, .004f, 0));
-        lift.gamma.Override(new Vector4(1, 1, 1, 0));
-        lift.gain.Override(new Vector4(1.015f, 1, .985f, 0));
-        // A whisper of photographic grain and lens fringing sells the seascape-photo look
-        // visible in the reference frame; kept subtle so native resolution stays crisp.
-        var grain = Component<FilmGrain>(profile);
-        grain.type.Override(FilmGrainLookup.Medium1);
-        grain.intensity.Override(.22f);
-        grain.response.Override(.8f);
-        var aberration = Component<ChromaticAberration>(profile);
-        aberration.intensity.Override(.12f);
-        var vignette = Component<Vignette>(profile);
-        vignette.intensity.Override(.17f);
-        vignette.smoothness.Override(.58f);
+        LestingCraft.Presentation.VisualSettings.ConfigureBaseVolume(profile);
         foreach (var component in profile.components) EditorUtility.SetDirty(component);
         EditorUtility.SetDirty(material);
         EditorUtility.SetDirty(water);

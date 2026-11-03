@@ -174,6 +174,9 @@ namespace LestingCraft.Tests
                     StringAssert.DoesNotContain("Sphere", mf.sharedMesh.name, "Space body must be cubic voxel geometry, never spherical");
                     if (mf.gameObject.name.StartsWith("Atlas_"))
                         Assert.AreEqual(24, mf.sharedMesh.vertexCount, "Atlas body " + mf.gameObject.name + " must be a crisp 6-face 24-vertex voxel cube");
+                    // Rings keep the game's square-voxel language: a square plate with a ring
+                    // painted into it, 24 vertices like every other space body. Round annuli
+                    // break the identity the rest of the sky is built on.
                     if (mf.gameObject.name.StartsWith("Rings_"))
                         Assert.AreEqual(24, mf.sharedMesh.vertexCount, "Planetary rings " + mf.gameObject.name + " must be a crisp 3D square voxel ring plate");
                 }
@@ -276,7 +279,7 @@ namespace LestingCraft.Tests
         public void DiverseVillagersTwentyAnimalsFiftyOneExpandedBlocksAndTwelveBiomes()
         {
             Assert.AreEqual(14, GameRules.Version);
-            Assert.AreEqual(71, ExpandedContent.Blocks.Length);
+            Assert.AreEqual(73, ExpandedContent.Blocks.Length);
             Assert.AreEqual(91, ExpandedContent.MaxBlock);
             Assert.AreEqual(114, SurfaceLayers.Names.Length);
             Assert.AreEqual(12, BiomeGenerator.Names.Length);

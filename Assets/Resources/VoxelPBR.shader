@@ -89,13 +89,14 @@ Shader "LestingCraft/VoxelPBR"
                 float cameraDistance=distance(_WorldSpaceCameraPos,i.positionWS);
                 float2 dx=ddx(i.uv.xy),dy=ddy(i.uv.xy);
                 bool leaf=abs(i.uv.z-6)<.25;
+                bool foliage=leaf||abs(i.uv.z-81)<.25;
                 bool lava=abs(i.uv.z-9)<.25;
                 bool cherenkov=abs(i.uv.z-94)<.25;
                 float fade=(1-smoothstep(8,24,cameraDistance))*smoothstep(.10,.35,abs(viewTS.z));
                 float2 surfaceUV=i.uv.xy;
                 float reliefShadow=1;
                 Light sun=GetMainLight(TransformWorldToShadowCoord(i.positionWS));
-                if(fade>.005&&!leaf&&!lava)
+                if(fade>.005&&!foliage&&!lava)
                 {
                     int steps=(int)clamp(lerp(4,_LCParallaxSteps,fade),4,16);
                     float2 travel=-viewTS.xy/max(.35,abs(viewTS.z))*.024*fade;
@@ -150,6 +151,7 @@ Shader "LestingCraft/VoxelPBR"
                 float2 breakup=float2(sin(dot(i.positionWS,float3(.41,.27,.19))),
                     cos(dot(i.positionWS,float3(.23,.31,.37))))*.025;
                 normalTS.xy=(normalTS.xy+breakup)*_NormalStrength;
+                if(foliage)normalTS.xy*=.55;
                 normalTS.xy*=1-puddle*.65;
                 if(_GlobalWetness>.05&&upward>.5&&microFade>.01)
                 {
@@ -191,12 +193,16 @@ Shader "LestingCraft/VoxelPBR"
                 surface.occlusion=ao*ao;
                 surface.alpha=1;
                 half sky=LC_SurfaceSky(i.positionWS,n,i.color.g);
-                if(leaf)
+                if(foliage)
                 {
                     half transmission=pow(saturate(dot(-sun.direction,view)),3);
-                    surface.emission=albedo.rgb*sun.color*transmission*.28*
+                    half canopySky=max(sky,i.color.g*.85);
+                    half canopyEnergy=pow(saturate(canopySky),1.5);
+                    half3 bounce=albedo.rgb*(_EnvironmentHorizon.rgb*.62+_EnvironmentZenith.rgb*.38)*
+                        canopyEnergy*saturate(_EnvironmentDaylight)*.55;
+                    surface.emission=bounce+albedo.rgb*sun.color*transmission*.30*
                         sun.shadowAttenuation*LC_SkyEnergy(sky);
-                    surface.smoothness=min(surface.smoothness,.28);
+                    surface.smoothness=min(surface.smoothness,.24);
                 }
                 if(lava)
                 {

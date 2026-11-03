@@ -182,7 +182,7 @@ namespace LestingCraft.Runtime
         public void Initialize(int seed, Dimension dimension, bool online, int contentVersion = 7)
         {
             Seed = seed; ContentVersion = contentVersion; Dimension = dimension; Online = online;
-            detailQuality = LestingCraft.Presentation.VisualSettings.Current.Preset;
+            detailQuality = LestingCraft.Presentation.VisualSettings.Current.DetailQuality;
             crystalMaterial = new Material(Resources.Load<Material>("Generated/Crystal"));
             glassMaterial = new Material(Resources.Load<Material>("Generated/Glass"));
             // Glacial ice shares the transmission shader but stays frosted, white and near-opaque.
@@ -251,9 +251,9 @@ namespace LestingCraft.Runtime
         }
         public void ShowcasePumpSync()
         {
-            if (detailQuality != LestingCraft.Presentation.VisualSettings.Current.Preset)
+            if (detailQuality != LestingCraft.Presentation.VisualSettings.Current.DetailQuality)
             {
-                detailQuality = LestingCraft.Presentation.VisualSettings.Current.Preset;
+                detailQuality = LestingCraft.Presentation.VisualSettings.Current.DetailQuality;
                 foreach (var key in chunks.Keys) dirty.Add(key);
             }
             synchronousPump=true;
@@ -420,9 +420,9 @@ namespace LestingCraft.Runtime
             // Skylight.Process are indivisible APIs; a stopwatch cannot preempt them.
             // Profiling on target hardware is required before claiming a hard frame bound.
             Skylight.Process();
-            if (detailQuality != LestingCraft.Presentation.VisualSettings.Current.Preset)
+            if (detailQuality != LestingCraft.Presentation.VisualSettings.Current.DetailQuality)
             {
-                detailQuality = LestingCraft.Presentation.VisualSettings.Current.Preset;
+                detailQuality = LestingCraft.Presentation.VisualSettings.Current.DetailQuality;
                 foreach (var key in chunks.Keys) dirty.Add(key);
             }
             Vector2Int center = Center();
