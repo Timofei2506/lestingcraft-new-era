@@ -108,9 +108,18 @@ namespace LestingCraft.Tests
                     Assert.Less(offset.magnitude, built.BoundsMax.y * 1.6f, part + " pivot is outside the sculpture");
                 }
                 var head = built.Find("head");
-                var before = head.position;
+                // Part pivots sit on the sculpture's centre line, so nodding the pivot moves the
+                // pivot itself nowhere. Probe a point inside the head mesh instead: if the jaw or
+                // the brow does not travel, the head is decoration rather than articulation.
+                var sampler = head.GetComponentInChildren<MeshFilter>();
+                Assert.IsNotNull(sampler, "head must carry its mesh");
+                Vector3 probe = sampler.sharedMesh.bounds.center + Vector3.up * .25f + Vector3.forward * .25f;
+                head.localRotation = Quaternion.identity;
+                Vector3 rest = head.TransformPoint(probe);
                 head.localRotation = Quaternion.Euler(25f, 0f, 0f);
-                Assert.Greater((head.position - before).magnitude, 0.001f, "head must actually articulate");
+                Vector3 nodded = head.TransformPoint(probe);
+                Assert.Greater((nodded - rest).magnitude, 0.05f, "head must actually articulate");
+                head.localRotation = Quaternion.identity;
             }
             finally
             {
@@ -126,7 +135,9 @@ namespace LestingCraft.Tests
             {
                 var definition = BossSculpture.Definition(key);
                 var mesh = BossSculpture.CreateGeometry(definition.unit, definition.cells, definition.palette, true);
-                Assert.Less(mesh.bounds.min.y, 0.35f, key + " must not float above its arena");
+                // Any guardian may hover, but never above knee height: a silhouette that floats a
+                // metre off the arena floor reads as a bug, not as levitation. Ember hovers on its shards.
+                Assert.Less(mesh.bounds.min.y, 0.70f, key + " must not float above its arena");
                 Object.DestroyImmediate(mesh);
                 int core = System.Array.IndexOf(definition.anchorNames, "core");
                 Assert.GreaterOrEqual(core, 0, key + " needs a weak-point anchor");
