@@ -7,7 +7,7 @@ namespace LestingCraft.Story
   public string ActiveObjective=>Enabled&&State!=null?StoryRules.Objective(State):"";
   // Scene-time impacts of the three knocks in the stage 1 witness scene (subtitle: "три удара" from t=9).
   static readonly float[] KnockTimes={9f,9.9f,10.8f};
-  StoryContent content;StoryActors actors;Camera cameraView;Canvas canvas;Text quest,speaker,subtitle,hint,boss;Image panel,topBar,bottomBar;Button next,choiceA,choiceB;bool journalHidden;bool arenaPlaced;bool wasCinematic;bool readySent;int shownRevision=-1,oldStage=-1;long pauseAt;long remoteTime;float received;float attackTime=-10;float readyRetry;Vector3 cameraVelocity;Vector3 cameraHome;Quaternion cameraRotation;
+  StoryContent content;StoryActors actors;Camera cameraView;Canvas canvas;Text quest,speaker,subtitle,hint,boss;Image panel,topBar,bottomBar;Button next,choiceA,choiceB;bool journalHidden;bool arenaPlaced;bool wasCinematic;bool readySent;int shownRevision=-1,oldStage=-1;long pauseAt;long remoteTime;float received;float attackTime=-10;float readyRetry;float barMix;float subtitleFade=1;string lastSubtitle="";Vector3 cameraVelocity;Vector3 cameraHome;Quaternion cameraRotation;
   long Now=>Game.Online&&remoteTime>0?remoteTime+(long)((Time.unscaledTime-received)*1000):DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
   public void Initialize(PrototypeGame game,StoryState network=null,long serverNow=0)
   {
@@ -79,10 +79,23 @@ namespace LestingCraft.Story
    Vector3 end=new Vector3(at.x+.5f,StoryWorld.Floor(Game.Session.World.Seed)+(action=="rune"?3.2f:action=="pylon"?4.2f:action=="altar"?2.4f:1.4f),at.y+.5f),start=cameraView.transform.position,dir=end-start;
    if(VoxelRaycast.Trace(start,dir.normalized,Mathf.Max(0,dir.magnitude-.9f),(x,y,z)=>{ushort b=Game.Session.World.GetBlock(x,y,z);return b==5||b==44||b==15?(ushort)0:b;},out _))return false;return true;
   }
+  // Letterbox bars slide in/out and subtitles fade in instead of popping.
+  void Polish(bool cinematic)
+  {
+   barMix=Mathf.MoveTowards(barMix,cinematic?1:0,Time.unscaledDeltaTime*1.6f);
+   bool show=cinematic||barMix>0;topBar.gameObject.SetActive(show);bottomBar.gameObject.SetActive(show);
+   float e=CutscenePath.EaseInOut(barMix);
+   float th=76*e,bh=50*e;
+   topBar.rectTransform.sizeDelta=new Vector2(1700,th);topBar.rectTransform.anchoredPosition=new Vector2(0,900-th*.5f);
+   bottomBar.rectTransform.sizeDelta=new Vector2(1700,bh);bottomBar.rectTransform.anchoredPosition=new Vector2(0,bh*.5f);
+   if(subtitle.text!=lastSubtitle){lastSubtitle=subtitle.text;subtitleFade=0;}
+   subtitleFade=Mathf.MoveTowards(subtitleFade,1,Time.unscaledDeltaTime*3f);
+   var c=subtitle.color;c.a=subtitleFade;subtitle.color=c;
+  }
   void Cinematic()
   {
    bool cinematic=State.stage==1||State.stage==12||State.stage==10&&State.sceneAt>0;
-   topBar.gameObject.SetActive(cinematic);bottomBar.gameObject.SetActive(cinematic);
+   Polish(cinematic);
    if(StoryRules.Dialogue(State.stage)&&State.line>=0){if(!wasCinematic)cameraRotation=cameraView.transform.localRotation;wasCinematic=true;DialogueCamera();return;}
    if(!cinematic){if(wasCinematic){cameraView.transform.localPosition=cameraHome;cameraView.transform.localRotation=cameraRotation;wasCinematic=false;}if(cameraView.transform.parent==Game.Session.Player.transform&&Locked){cameraView.transform.localPosition=cameraHome;cameraView.transform.localRotation=cameraRotation;}return;}
    if(!wasCinematic)cameraRotation=cameraView.transform.localRotation;wasCinematic=true;

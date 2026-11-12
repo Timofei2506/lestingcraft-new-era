@@ -30,6 +30,13 @@ namespace LestingCraft.Presentation
             return CatmullRom(p0, p1, p2, p3, u);
         }
 
+        /// <summary>Smoothstep ease for fades, letterbox slides and camera blends. Clamped to 0..1.</summary>
+        public static float EaseInOut(float x)
+        {
+            x = Mathf.Clamp01(x);
+            return x * x * (3f - 2f * x);
+        }
+
         public static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float u)
         {
             float u2 = u * u;
