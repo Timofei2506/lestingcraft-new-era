@@ -6,7 +6,7 @@ namespace LestingCraft.Presentation
     public sealed class CharacterVisual : MonoBehaviour
     {
         Transform leftLeg,rightLeg,leftArm,rightArm;Vector3 previous;float phase;Material material,metal;string skinKey="";readonly List<GameObject> extras=new List<GameObject>();string gearKey="";
-        GameObject carried;int carriedId=-1;bool resting;int restingVariant;
+        GameObject carried;int carriedId=-1;bool resting;int restingVariant;float smoothSpeed,airWeight;
         public void SetRestPose(int variant){resting=true;restingVariant=variant;ApplyRestPose();}
         void ApplyRestPose(){if(!leftLeg)return;leftLeg.localRotation=Quaternion.Euler(restingVariant==0?-8:12,0,restingVariant==0?-9:13);rightLeg.localRotation=Quaternion.Euler(restingVariant==0?14:-7,0,restingVariant==0?16:-8);leftArm.localRotation=Quaternion.Euler(restingVariant==0?-10:24,0,restingVariant==0?28:-38);rightArm.localRotation=Quaternion.Euler(restingVariant==0?12:-25,0,restingVariant==0?-17:35);}
         /// <summary>
@@ -80,9 +80,26 @@ namespace LestingCraft.Presentation
         {extras.Add(BlockGeometry.Part(name,parent,position,scale,armored?metal:material,tile).gameObject);}
         void LateUpdate()
         {
-            if(!leftLeg)return;if(resting){ApplyRestPose();previous=transform.position;return;}float speed=(transform.position-previous).magnitude/Mathf.Max(.001f,Time.deltaTime);previous=transform.position;
-            phase+=Time.deltaTime*Mathf.Clamp(speed*2,0,12);float swing=Mathf.Sin(phase)*Mathf.Clamp(speed*7,0,32);
-            leftLeg.localRotation=Quaternion.Euler(swing,0,0);rightLeg.localRotation=Quaternion.Euler(-swing,0,0);leftArm.localRotation=Quaternion.Euler(-swing*.7f,0,0);rightArm.localRotation=Quaternion.Euler(swing*.7f,0,0);
+            if(!leftLeg)return;
+            float dt=Mathf.Max(.0001f,Time.deltaTime);
+            Vector3 delta=transform.position-previous;previous=transform.position;
+            if(resting){ApplyRestPose();return;}
+            float speed=new Vector3(delta.x,0,delta.z).magnitude/dt,vy=delta.y/dt;
+            if(speed>45||Mathf.Abs(vy)>60){speed=0;vy=0;} // teleport / respawn: no animation spike
+            float follow=1-Mathf.Exp(-12*dt);
+            smoothSpeed=Mathf.Lerp(smoothSpeed,speed,follow);
+            airWeight=Mathf.Lerp(airWeight,Mathf.Abs(vy)>2.2f?1f:0f,1-Mathf.Exp(-10*dt));
+            phase+=dt*Mathf.Clamp(smoothSpeed*2,0,12);
+            float swing=Mathf.Sin(phase)*Mathf.Clamp(smoothSpeed*7,0,32);
+            float idle=1-Mathf.Clamp01(smoothSpeed*2);float t=Time.time;
+            // Idle breathing: arms drift a few degrees; fades out as soon as the character moves.
+            float breatheX=Mathf.Sin(t*1.3f)*1.6f*idle,breatheZ=Mathf.Sin(t*1.6f)*2.6f*idle;
+            // Airborne pose: arms lift outward, legs split a little (blended in/out smoothly).
+            float armL=Mathf.Lerp(-swing*.7f+breatheX,-30f,airWeight),armR=Mathf.Lerp(swing*.7f-breatheX,-30f,airWeight),legL=Mathf.Lerp(swing,-14f,airWeight),legR=Mathf.Lerp(-swing,16f,airWeight);
+            float spread=Mathf.Lerp(0f,24f,airWeight);
+            leftLeg.localRotation=Quaternion.Euler(legL,0,0);rightLeg.localRotation=Quaternion.Euler(legR,0,0);
+            leftArm.localRotation=Quaternion.Euler(armL,0,-breatheZ-spread);
+            rightArm.localRotation=Quaternion.Euler(armR,0,breatheZ+spread);
         }
         public void Release(){if(metal){if(Application.isPlaying)Destroy(metal);else DestroyImmediate(metal);metal=null;}if(material){if(Application.isPlaying)Destroy(material);else DestroyImmediate(material);material=null;}}
         void OnDestroy(){Release();}
