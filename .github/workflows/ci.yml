@@ -111,6 +111,25 @@ jobs:
           build-target: StandaloneLinux64
           args: -batchmode -nographics -runTests -testPlatform EditMode -testResults ${{ github.workspace }}/TestResults/editmode.xml
 
+      - name: Annotate failed tests and compile errors
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import re, glob, xml.etree.ElementTree as ET
+          n = 0
+          for f in glob.glob('TestResults/*.xml'):
+              for tc in ET.parse(f).getroot().iter('test-case'):
+                  if tc.get('result') == 'Failed':
+                      msg = (tc.findtext('.//message') or '').strip().replace('\n', ' ')[:600]
+                      print('::error title=Failed test::%s -> %s' % (tc.get('fullname'), msg)); n += 1
+          for f in glob.glob('Builds/Logs/*.log'):
+              seen = set()
+              for line in open(f, errors='replace'):
+                  if re.search(r'error CS\d+|Exception:|FileNotFound', line) and line not in seen and len(seen) < 25:
+                      seen.add(line); print('::error title=Unity log::' + line.strip()[:500])
+          print('failed tests:', n)
+          PY
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
