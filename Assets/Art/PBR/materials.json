@@ -116,7 +116,9 @@
     "gamma-ray-membrane",
     "bone-stalker-hide",
     "vitrified-golem-crust",
-    "wraith-shroud"
+    "wraith-shroud",
+    "backrooms-wallpaper",
+    "backrooms-carpet"
   ],
   "stationSource": "Original procedural joinery/masonry + derived PBR estimates",
   "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries",
