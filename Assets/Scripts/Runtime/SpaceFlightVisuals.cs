@@ -47,6 +47,7 @@ namespace LestingCraft.Runtime
         readonly Dictionary<CelestialBodyId, GameObject> atlasBodyObjects = new Dictionary<CelestialBodyId, GameObject>();
 
         GameObject plumeRoot;
+        Mesh plumeMesh;
         Transform mainFlame, leftPlume, rightPlume, plasmaShield;
         Light engineLight;
 
@@ -1019,9 +1020,10 @@ namespace LestingCraft.Runtime
                 var flameMat = MakeLitMaterial("RocketPlumeFlame", new Color(1f, 0.65f, 0.22f), new Color(3.2f, 1.6f, 0.45f), 0f, 0.2f);
                 var plasmaMat = MakeLitMaterial("ReentryPlasma", new Color(1f, 0.42f, 0.16f), new Color(2.5f, 0.85f, 0.25f), 0f, 0.15f);
 
-                mainFlame = MakePlumeCone("MainEnginePlume", plumeRoot.transform, new Vector3(0.5f, -5.5f, 3.2f), new Vector3(2.4f, 9.5f, 2.4f), flameMat);
-                leftPlume = MakePlumeCone("BoosterPlumePort", plumeRoot.transform, new Vector3(-2.1f, -4.2f, 3.2f), new Vector3(1.4f, 6.8f, 1.4f), flameMat);
-                rightPlume = MakePlumeCone("BoosterPlumeStarboard", plumeRoot.transform, new Vector3(3.1f, -4.2f, 3.2f), new Vector3(1.4f, 6.8f, 1.4f), flameMat);
+                var coreMat = MakeLitMaterial("RocketPlumeCore", new Color(1f, 0.95f, 0.8f), new Color(5.5f, 4.6f, 3.2f), 0f, 0.1f);
+                mainFlame = MakeTaperedPlume("MainEnginePlume", plumeRoot.transform, new Vector3(0.5f, -5.5f, 3.2f), new Vector3(2.4f, 9.5f, 2.4f), flameMat, coreMat);
+                leftPlume = MakeTaperedPlume("BoosterPlumePort", plumeRoot.transform, new Vector3(-2.1f, -4.2f, 3.2f), new Vector3(1.4f, 6.8f, 1.4f), flameMat, coreMat);
+                rightPlume = MakeTaperedPlume("BoosterPlumeStarboard", plumeRoot.transform, new Vector3(3.1f, -4.2f, 3.2f), new Vector3(1.4f, 6.8f, 1.4f), flameMat, coreMat);
                 plasmaShield = MakePlumeCone("AtmosphericPlasmaEnvelope", plumeRoot.transform, new Vector3(0.5f, 47f, 4.2f), new Vector3(7.4f, 5.2f, 7.4f), plasmaMat);
 
                 var lightGo = new GameObject("RocketExhaustLight");
@@ -1039,6 +1041,68 @@ namespace LestingCraft.Runtime
                 plumeRoot.transform.localPosition = Vector3.zero;
                 plumeRoot.transform.localRotation = Quaternion.identity;
             }
+        }
+
+        // Eight-sided exhaust cone: wide at the nozzle (top, +Y), narrowing to a point downstream (-Y).
+        // Rendered double-sided (separate vertex copies so normals stay correct) with a hot inner core.
+        Mesh PlumeMesh()
+        {
+            if (plumeMesh) return plumeMesh;
+            const int n = 8;
+            var v = new List<Vector3>(); var t = new List<int>();
+            for (int copy = 0; copy < 2; copy++)
+            {
+                int b = v.Count;
+                for (int i = 0; i < n; i++)
+                {
+                    float a = i * Mathf.PI * 2f / n;
+                    v.Add(new Vector3(Mathf.Cos(a) * 0.5f, 0.5f, Mathf.Sin(a) * 0.5f));
+                }
+                v.Add(new Vector3(0f, -0.5f, 0f)); // tip
+                for (int i = 0; i < n; i++)
+                {
+                    int i0 = b + i, i1 = b + (i + 1) % n, tip = b + n;
+                    if (copy == 0) { t.Add(i0); t.Add(i1); t.Add(tip); }
+                    else { t.Add(i1); t.Add(i0); t.Add(tip); }
+                }
+            }
+            plumeMesh = new Mesh { name = "RocketPlumeCone" };
+            plumeMesh.SetVertices(v); plumeMesh.SetTriangles(t, 0);
+            plumeMesh.RecalculateNormals(); plumeMesh.RecalculateBounds();
+            ownedObjects.Add(plumeMesh);
+            return plumeMesh;
+        }
+
+        Transform MakeTaperedPlume(string name, Transform parent, Vector3 localPos, Vector3 scale, Material mat, Material coreMat)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = localPos;
+            root.transform.localScale = scale;
+            AddPlumeLayer(root.transform, "Outer", mat, 1f);
+            AddPlumeLayer(root.transform, "Core", coreMat, 0.5f);
+            return root.transform;
+        }
+
+        void AddPlumeLayer(Transform parent, string name, Material mat, float widthScale)
+        {
+            var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(parent, false);
+            go.transform.localScale = new Vector3(widthScale, widthScale < 1f ? 0.82f : 1f, widthScale);
+            go.GetComponent<MeshFilter>().sharedMesh = PlumeMesh();
+            var mr = go.GetComponent<MeshRenderer>();
+            mr.sharedMaterial = mat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+        }
+
+        // Tiny nozzle-side wobble so the flame reads as turbulent rather than a rigid solid.
+        void WobblePlumes()
+        {
+            float t = Time.time;
+            if (mainFlame) mainFlame.localRotation = Quaternion.Euler(Mathf.Sin(t * 31f), 0f, Mathf.Cos(t * 27f));
+            if (leftPlume) leftPlume.localRotation = Quaternion.Euler(Mathf.Cos(t * 29f), 0f, Mathf.Sin(t * 33f));
+            if (rightPlume) rightPlume.localRotation = Quaternion.Euler(Mathf.Sin(t * 35f), 0f, Mathf.Cos(t * 25f));
         }
 
         static Transform MakePlumeCone(string name, Transform parent, Vector3 localPos, Vector3 scale, Material mat)
@@ -1123,6 +1187,7 @@ namespace LestingCraft.Runtime
                 if (rightPlume) rightPlume.gameObject.SetActive(stage == FlightStage.Ascent);
                 if (plasmaShield) plasmaShield.gameObject.SetActive(stage == FlightStage.Approach && retroBurning);
                 if (engineLight) engineLight.intensity = engineOn ? 6.5f * flicker : 1.2f;
+                WobblePlumes();
             }
         }
 
@@ -1304,6 +1369,7 @@ namespace LestingCraft.Runtime
                 if (rightPlume) rightPlume.gameObject.SetActive(helm.Boost);
                 if (plasmaShield) plasmaShield.gameObject.SetActive(helm.InHyperjump);
                 if (engineLight) engineLight.intensity = engineOn ? Mathf.Lerp(1.6f, 7.5f, helm.Throttle) * flicker : 0.6f;
+                WobblePlumes();
             }
         }
 
@@ -2240,6 +2306,8 @@ namespace LestingCraft.Runtime
     {
         readonly List<Material> bossMaterials = new List<Material>();
         Transform bodyPivot, coreSphere, leftArm, rightArm, haloRing, shockwaveRing;
+        Transform[] orbiters = new Transform[0];
+        float orbitRadius = 3.6f, orbitHeight = 4.6f, orbitSpeed = 0.9f;
         Light coreLight;
         float attackTimer = 4.5f;
         float telegraphTimer;
@@ -2339,6 +2407,7 @@ namespace LestingCraft.Runtime
             shockwaveRing.gameObject.SetActive(false);
 
             ShapeForArchetype(LestingCraft.Gameplay.BossCatalog.For(dim).Archetype);
+            AddArchetypeDetails(profile.Archetype, armorMat, trimMat, coreMat);
 
             var hitBox = gameObject.AddComponent<CapsuleCollider>();
             hitBox.center = new Vector3(0f, 3.6f, 0f);
@@ -2400,6 +2469,84 @@ namespace LestingCraft.Runtime
             }
         }
 
+        /// <summary>Extra silhouette pieces per archetype (voxel cubes, no curved primitives).</summary>
+        void AddArchetypeDetails(LestingCraft.Gameplay.BossArchetype archetype, Material armorMat, Material trimMat, Material coreMat)
+        {
+            if (!bodyPivot) return;
+            switch (archetype)
+            {
+                case LestingCraft.Gameplay.BossArchetype.Archon:
+                    // Four crystal shards orbit the caster's chest.
+                    orbitRadius = 3.9f; orbitHeight = 4.7f; orbitSpeed = 0.9f;
+                    orbiters = new Transform[4];
+                    for (int i = 0; i < 4; i++)
+                    {
+                        orbiters[i] = Part(PrimitiveType.Cube, "ArchonShard" + i, bodyPivot, Vector3.zero, new Vector3(0.34f, 0.95f, 0.34f), i % 2 == 0 ? coreMat : trimMat);
+                        orbiters[i].localRotation = Quaternion.Euler(0f, 45f, 20f);
+                    }
+                    Part(PrimitiveType.Cube, "ArchonSash", bodyPivot, new Vector3(0f, 2.9f, 0.1f), new Vector3(1.1f, 1.6f, 0.35f), trimMat);
+                    break;
+                case LestingCraft.Gameplay.BossArchetype.Warden:
+                    // Branching antlers and mossy shoulder tines.
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        var main = Part(PrimitiveType.Cube, side < 0 ? "WardenAntlerL" : "WardenAntlerR", bodyPivot, new Vector3(0.55f * side, 7.0f, 0.1f), new Vector3(0.2f, 1.35f, 0.2f), trimMat);
+                        main.localRotation = Quaternion.Euler(0f, 0f, -22f * side);
+                        var tineA = Part(PrimitiveType.Cube, "WardenTine" + side + "a", bodyPivot, new Vector3(0.95f * side, 7.35f, 0.1f), new Vector3(0.16f, 0.8f, 0.16f), trimMat);
+                        tineA.localRotation = Quaternion.Euler(0f, 0f, -48f * side);
+                        var tineB = Part(PrimitiveType.Cube, "WardenTine" + side + "b", bodyPivot, new Vector3(0.8f * side, 6.55f, 0.1f), new Vector3(0.16f, 0.6f, 0.16f), trimMat);
+                        tineB.localRotation = Quaternion.Euler(0f, 0f, -70f * side);
+                        var spike = Part(PrimitiveType.Cube, "WardenShoulderSpike" + side, bodyPivot, new Vector3(2.45f * side, 6.0f, 0f), new Vector3(0.28f, 1.1f, 0.28f), armorMat);
+                        spike.localRotation = Quaternion.Euler(0f, 0f, -14f * side);
+                    }
+                    break;
+                case LestingCraft.Gameplay.BossArchetype.Titan:
+                    // Glacial mantle and jagged ice spires.
+                    Part(PrimitiveType.Cube, "TitanIceMantle", bodyPivot, new Vector3(0f, 5.75f, -1.15f), new Vector3(4.5f, 1.0f, 1.2f), trimMat);
+                    for (int side = -1; side <= 1; side += 2)
+                        for (int k = 0; k < 3; k++)
+                        {
+                            var spire = Part(PrimitiveType.Cube, "TitanIceSpire" + side + k, bodyPivot,
+                                new Vector3((2.0f + k * 0.55f) * side, 6.0f + (k == 1 ? 0.5f : 0f), -0.2f + k * 0.15f),
+                                new Vector3(0.3f, 1.2f + (k == 1 ? 0.6f : 0f), 0.3f), k == 1 ? coreMat : trimMat);
+                            spire.localRotation = Quaternion.Euler(0f, 0f, -10f * side * (k + 1));
+                        }
+                    break;
+                case LestingCraft.Gameplay.BossArchetype.Ember:
+                    // Twin exhaust stacks with glowing mouths and slow-orbiting embers.
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        Part(PrimitiveType.Cube, "EmberStack" + side, bodyPivot, new Vector3(1.1f * side, 5.4f, -1.15f), new Vector3(0.55f, 1.5f, 0.55f), armorMat);
+                        Part(PrimitiveType.Cube, "EmberStackMouth" + side, bodyPivot, new Vector3(1.1f * side, 6.2f, -1.15f), new Vector3(0.4f, 0.18f, 0.4f), coreMat);
+                    }
+                    orbitRadius = 2.7f; orbitHeight = 3.4f; orbitSpeed = 1.5f;
+                    orbiters = new Transform[3];
+                    for (int i = 0; i < 3; i++)
+                        orbiters[i] = Part(PrimitiveType.Cube, "EmberSpark" + i, bodyPivot, Vector3.zero, new Vector3(0.32f, 0.32f, 0.32f), coreMat);
+                    break;
+            }
+        }
+
+        // Orbiting pieces circle the body; core and light pulse so the weak point reads as alive.
+        void AnimateDetails(float t, float telegraphProgress)
+        {
+            for (int i = 0; i < orbiters.Length; i++)
+            {
+                var o = orbiters[i];
+                if (!o) continue;
+                float a = t * orbitSpeed + i * Mathf.PI * 2f / orbiters.Length;
+                o.localPosition = new Vector3(Mathf.Cos(a) * orbitRadius, orbitHeight + Mathf.Sin(t * 2f + i) * 0.28f, Mathf.Sin(a) * orbitRadius);
+                o.Rotate(0f, 90f * Time.deltaTime, 0f, Space.Self);
+            }
+            float pulse = 0.88f + 0.22f * Mathf.Sin(t * 3.1f) + telegraphProgress * 0.9f;
+            if (coreLight) coreLight.intensity = 4.2f * pulse;
+            if (hitFlashTimer <= 0f && coreSphere)
+            {
+                var cm = coreSphere.GetComponent<MeshRenderer>().sharedMaterial;
+                if (cm && cm.HasProperty("_EmissionColor")) cm.SetColor("_EmissionColor", baseCoreEmission * pulse);
+            }
+        }
+
         Material MakeMat(string name, Color col, Color emission, float metal, float smooth)
         {
             var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
@@ -2452,6 +2599,7 @@ namespace LestingCraft.Runtime
             float t = Time.time;
             bodyPivot.localPosition = new Vector3(0f, Mathf.Sin(t * 2.2f) * 0.14f, 0f);
             if (haloRing) haloRing.Rotate(0f, dt * 55f, 0f, Space.Self);
+            AnimateDetails(t, telegraphTimer > 0f ? 1f - Mathf.Clamp01(telegraphTimer / 1.15f) : 0f);
 
             if (hitFlashTimer > 0f)
             {
