@@ -81,7 +81,7 @@ namespace LestingCraft.Gameplay
    new ExpandedBlock(90,"Жёлтые обои Уровня 0","backrooms-wallpaper",0.9f,true,112),
    new ExpandedBlock(91,"Влажный ковёр Уровня 0","backrooms-carpet",0.8f,true,113)
   };
-  public static bool Has(int id)=>id>=19&&id<=89;
+  public static bool Has(int id)=>id>=19&&id<=MaxBlock;
   public static bool NeedsPick(int id)=>id==1||id>=10&&id<=13||id==17||Has(id)&&Blocks[id-19].Pick;
   public static int Smelt(int id)=>id==70?190:id>=20&&id<=26?140+id-20:id==6?44:id==33?39:id==135?138:0;
  }
