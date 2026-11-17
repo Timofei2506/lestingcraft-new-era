@@ -31,6 +31,9 @@ public static class BuildScript
     public static void BuildAndroidArm64()
     {
         var android = UnityEditor.Build.NamedBuildTarget.Android;
+        // Unity passes -Dorg.gradle.jvmargs from this preference on the Gradle command line,
+        // overriding gradle.properties; 4096 MB default OOMs while compressing the ~3 GB asset payload.
+        UnityEditor.Android.AndroidExternalToolsSettings.maxJvmHeapSize = 7168;
         PlayerSettings.SetApplicationIdentifier(android, "com.lestingcraft.newera");
         PlayerSettings.SetScriptingBackend(android, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
