@@ -3,8 +3,9 @@
    - 14 industrial / electrical / nuclear / rail / explosive PBR layers (88..101)
    - 10 hostile irradiated-abyss mutant hides & carapaces (102..111 -> 30 species total)
    Each has seamless _albedo.jpg, tangent-space _normal.png (Z > 180), _mask.png [Metallic, AO, Height, Smoothness], .meta, and materials.json registration.
-2. Appends 20 new placeable blocks (IDs 70..89 -> 71 ExpandedBlocks, MaxBlock = 89) +
-   6 industrial/vehicle/tech items (IDs 190..195) + SECRET THERMONUKE ID 666 (154 total 3D VoxelItems & 384x384 RGBA icons).
+2. Appends 20 new placeable blocks (IDs 70..89) while preserving later blocks (including IDs 90/91) already in ExpandedBlocks.json.
+   MaxBlock is derived from the final catalog; the builder must not truncate content added by later expansions.
+   Also creates 6 industrial/vehicle/tech items (IDs 190..195) + SECRET THERMONUKE ID 666 and shared 3D voxel icons.
 """
 from model_io import load_catalog, save_catalog
 from pathlib import Path
@@ -369,11 +370,14 @@ surf_cs = re.sub(
 surf_cs_path.write_text(surf_cs, encoding='utf-8')
 
 # ==============================================================================
-# 4. UPDATE ExpandedBlocks.json & ExpandedContent.cs (IDs 19..89 = 71 BLOCKS)
+# 4. UPDATE ExpandedBlocks.json & ExpandedContent.cs (IDs 19..max_block; preserve later additions)
 # ==============================================================================
 exp_json_path = R / 'Assets/Resources/Models/ExpandedBlocks.json'
-prev_blocks = [b for b in json.loads(exp_json_path.read_text(encoding='utf-8'))['blocks'] if b['id'] <= 69]
+existing_blocks = json.loads(exp_json_path.read_text(encoding='utf-8'))['blocks']
+prev_blocks = [b for b in existing_blocks if b['id'] <= 69]
+later_blocks = [b for b in existing_blocks if b['id'] > 89]
 assert [b['id'] for b in prev_blocks] == list(range(19, 70))
+assert len({b['id'] for b in existing_blocks}) == len(existing_blocks), 'duplicate expanded block IDs'
 
 V9_BLOCKS = [
     dict(id=70, name='Урановая руда',             surface='uranium-ore',         hardness=4.2, pick=True,  layer=ALL_NAMES.index('uranium-ore')),
@@ -398,7 +402,8 @@ V9_BLOCKS = [
     dict(id=89, name='Шлюзовой терминал Затона',  surface='nuclear-reactor',     hardness=9.0, pick=True,  layer=ALL_NAMES.index('nuclear-reactor')),
 ]
 
-all_blocks = prev_blocks + V9_BLOCKS
+all_blocks = sorted(prev_blocks + V9_BLOCKS + later_blocks, key=lambda block: block['id'])
+max_block = max(block['id'] for block in all_blocks)
 exp_json_path.write_text(json.dumps({'blocks': all_blocks}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 exp_cs_path = R / 'Assets/Scripts/Gameplay/ExpandedContent.cs'
@@ -407,7 +412,7 @@ block_entries = ',\n   '.join(
     f'new ExpandedBlock({b["id"]},"{b["name"]}","{b["surface"]}",{b["hardness"]}f,{"true" if b["pick"] else "false"},{b["layer"]})'
     for b in all_blocks
 )
-exp_cs_new = re.sub(r'MaxBlock=\d+', 'MaxBlock=89', exp_cs_old, count=1)
+exp_cs_new = re.sub(r'MaxBlock=\d+', f'MaxBlock={max_block}', exp_cs_old, count=1)
 exp_cs_new = re.sub(
     r'public static readonly ExpandedBlock\[\] Blocks=\{.*?\};',
     f'public static readonly ExpandedBlock[] Blocks={{\n   {block_entries}\n  }};',
@@ -415,7 +420,7 @@ exp_cs_new = re.sub(
     count=1,
     flags=re.S,
 )
-exp_cs_new = re.sub(r'id<=69', 'id<=89', exp_cs_new)
+exp_cs_new = re.sub(r'id<=\d+', f'id<={max_block}', exp_cs_new)
 # Allow smelting Uranium Ore (70) -> Uranium Fuel Rod (190)!
 exp_cs_new = re.sub(
     r'public static int Smelt\(int id\)=>([^;]+);',
@@ -610,4 +615,4 @@ d['models'].sort(key=lambda item: item['id'])
 d['colors'] = [c for c, l in palette]
 d['layers'] = [l for c, l in palette]
 save_catalog(R, d)
-print(f'SUCCESS: {len(ALL_NAMES)} PBR layers, {len(all_blocks)} ExpandedBlocks (19..89), {len(d["models"])} VoxelModels + 384px icons (including hidden #666)!')
+print(f'SUCCESS: {len(ALL_NAMES)} PBR layers, {len(all_blocks)} ExpandedBlocks (19..{max_block}), {len(d["models"])} VoxelModels + 384px icons (including hidden #666)!')

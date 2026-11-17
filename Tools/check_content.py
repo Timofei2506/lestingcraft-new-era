@@ -39,6 +39,6 @@ assert len(animal_info['masters'])==3
 visual=(R/'Assets/Scripts/Presentation/AnimalVisual.cs').read_text()
 assert re.search(r'fur\s*=\s*FurLayerForSpecies\(kind\)', visual) and 'if(fur<0)fur=4' not in visual
 assert '_Tint'  in (R/'Assets/Resources/CrystalGlass.shader').read_text()
-print(f'PASS: 71 catalog/registry/layer definitions, {len(names)} surface layers, 156 shared voxel models and 384px transparent icons, 30 species PBR coats; no missing resource assets')
+print(f'PASS: {len(blocks)} expanded blocks / {len(rows)} registry rows, {len(names)} surface layers, {len(catalog["models"])} shared voxel models and 384px transparent icons, 30 species PBR coats; no missing resource assets')
 
 assert "145,146,147,148" in (R/"Assets/Scripts/Presentation/ItemArtwork.cs").read_text(), "Torch omitted from generated icon index"
