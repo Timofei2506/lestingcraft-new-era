@@ -26,7 +26,7 @@ namespace LestingCraft.Tests
   [Test] public void GrassIsCurvedDenseDeterministicAndNonColliding()
   {var a=new ChunkMeshData();var b=new ChunkMeshData();for(int x=0;x<8;x++){SurfaceDetailMesher.AddGrass(a,x,10,0,0,0,2506);SurfaceDetailMesher.AddGrass(b,x,10,0,0,0,2506);}Assert.Greater(a.Vertices.Count,100);CollectionAssert.AreEqual(a.Vertices,b.Vertices);Assert.AreEqual(a.Vertices.Count,a.UVs.Count);Assert.AreEqual(a.Vertices.Count,a.Colors.Count);Assert.AreEqual(0,a.ColliderTriangles.Count);}
   [Test] public void UltraGrassAddsDetailWithoutChangingCollisionOrAutoSelectingQuality()
-  {var medium=new ChunkMeshData();var ultra=new ChunkMeshData();for(int x=0;x<8;x++){SurfaceDetailMesher.AddGrass(medium,x,10,0,0,0,2506,0);SurfaceDetailMesher.AddGrass(ultra,x,10,0,0,0,2506,1);}Assert.Greater(ultra.Vertices.Count,medium.Vertices.Count*2);CollectionAssert.AreEqual(medium.ColliderTriangles,ultra.ColliderTriangles);}
+  {var medium=new ChunkMeshData();var ultra=new ChunkMeshData();for(int x=0;x<8;x++){SurfaceDetailMesher.AddGrass(medium,x,10,0,0,0,2506,0);SurfaceDetailMesher.AddGrass(ultra,x,10,0,0,0,2506,VisualQualityPolicy.For(VisualQualityPolicy.Ultra).DetailQuality);}Assert.Greater(ultra.Vertices.Count,medium.Vertices.Count*2);CollectionAssert.AreEqual(medium.ColliderTriangles,ultra.ColliderTriangles);}
   [Test] public void CommandsCannotCheatInSurvivalOrCoop()
   {var inv=new Inventory();ChatCommands.Execute("/give 105",false,true,inv,1,Vector3.zero,1);ChatCommands.Execute("/give 105",true,false,inv,1,Vector3.zero,2);Assert.AreEqual(0,inv.Count(105));ChatCommands.Execute("/give 105",true,true,inv,1,Vector3.zero,1);Assert.AreEqual(1,inv.Count(105));Assert.AreEqual("",ChatCommands.Execute("/time night",true,false,inv,1,Vector3.zero,1).Action);}
   [Test] public void CommandsRejectInvalidAmountsAndUnknownItems()
@@ -36,6 +36,6 @@ namespace LestingCraft.Tests
   [Test] public void OldRoomsRequireAnEquipmentCapableServerBeforeMigration()
   {Assert.IsTrue(GameRules.AcceptsRoom(5,GameRules.Version));Assert.IsTrue(GameRules.AcceptsRoom(4,GameRules.Version));Assert.IsTrue(GameRules.AcceptsRoom(3,GameRules.Version));Assert.IsFalse(GameRules.AcceptsRoom(5,6));Assert.IsFalse(GameRules.AcceptsRoom(4,4));Assert.IsFalse(GameRules.AcceptsRoom(3,3));Assert.IsFalse(GameRules.AcceptsRoom(3,0));Assert.IsFalse(GameRules.AcceptsRoom(2,4));}
   [Test] public void MediumAndUltraAreExplicitAndNeverClaimUrpRayTracing()
-  {var s=new VisualSettings();Assert.AreEqual(0,s.Preset);s.ShadowResolution=4096;s.VolumetricQuality=2;s.RenderScale=1.5f;s.Clamp();Assert.AreEqual(4096,s.ShadowResolution);Assert.AreEqual(2,s.VolumetricQuality);Assert.AreEqual(1.5f,s.RenderScale);Assert.IsFalse(VisualSettings.PipelineRayTracing);}
+  {var s=new VisualSettings();Assert.AreEqual(VisualQualityPolicy.High,s.Preset);s.ShadowResolution=4096;s.VolumetricQuality=2;s.RenderScale=1.5f;s.Clamp();Assert.AreEqual(4096,s.ShadowResolution);Assert.AreEqual(2,s.VolumetricQuality);Assert.AreEqual(1.5f,s.RenderScale);Assert.IsFalse(VisualSettings.PipelineRayTracing);}
  }
 }

@@ -61,7 +61,7 @@ namespace LestingCraft.Tests
                     if (kind < 20 || kind >= 30)
                     {
                         bool winged = kind == 11 || kind == 12 || kind == 13 || kind == 19 || kind == 33;
-                        int expectedLegs = kind == 19 ? 0 : kind == 15 ? 6 : (kind == 11 || kind == 12 || kind == 13) ? 2 : 4;
+                        int expectedLegs = (kind == 19 || kind == 33) ? 0 : kind == 15 ? 6 : (kind == 11 || kind == 12 || kind == 13) ? 2 : 4;
                         Assert.AreEqual(expectedLegs, visual.Legs.Count);
                         if (winged) Assert.AreEqual(2, visual.Wings.Count);
                     }
