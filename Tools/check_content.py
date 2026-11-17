@@ -10,6 +10,12 @@ names=re.findall(r'"([a-z0-9-]+)"',(R/'Assets/Scripts/Presentation/SurfaceLayers
 assert len(names) in (63,72,88,112,114) and len(set(names))==len(names)
 rows=re.findall(r'new ExpandedBlock\((\d+),"([^"]+)","([^"]+)",([\d.]+)f,(true|false),(\d+)\)',(R/'Assets/Scripts/Gameplay/ExpandedContent.cs').read_text())
 assert len(rows)==73
+# The legacy Era-v9 generator must preserve newer content and derive the registered maximum,
+# otherwise rerunning it silently removes Backrooms blocks 90/91 from the source catalog.
+builder=(R/'Tools/build_era_v9_assets.py').read_text()
+assert "later_blocks = [b for b in existing_blocks if b['id'] > 89]" in builder
+assert 'prev_blocks + V9_BLOCKS + later_blocks' in builder and 'max_block = max(' in builder
+assert "f'MaxBlock={max_block}'" in builder
 for b,row in zip(blocks,rows):
  id,name,surface,hardness,pick,layer=row
  assert int(id)==b['id'] and name==b['name'] and surface==b['surface']
