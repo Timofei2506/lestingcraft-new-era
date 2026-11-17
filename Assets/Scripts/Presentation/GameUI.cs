@@ -76,6 +76,7 @@ namespace LestingCraft.Presentation
             background=Rect("Menu Art",transform,0,0,0,0).gameObject;Stretch(background.GetComponent<RectTransform>());
             var image=background.AddComponent<RawImage>();image.texture=MenuArtwork.Backdrop;image.color=image.texture?Color.white:new Color(.035f,.065f,.078f);image.raycastTarget=false;background.AddComponent<MenuBackdropFit>();
             var shade=Rect("Art Shade",background.transform,0,0,0,0);Stretch(shade);var shading=shade.gameObject.AddComponent<RawImage>();shading.texture=MenuArtwork.Shade;shading.raycastTarget=false;
+            var vig=Rect("Art Vignette",background.transform,0,0,0,0);Stretch(vig);var vignette=vig.gameObject.AddComponent<RawImage>();vignette.texture=MenuArtwork.Vignette;vignette.raycastTarget=false;
             frame=Rect("1600x900 Interface",transform,0,0,1600,900);frame.anchorMin=frame.anchorMax=new Vector2(.5f,.5f);frame.pivot=new Vector2(.5f,.5f);frame.anchoredPosition=Vector2.zero;
             content=Rect("Content",frame,0,0,1600,900).gameObject;ShowHome();ready=true;
             Debug.Log("[Presentation] Home screen created");
@@ -127,6 +128,10 @@ namespace LestingCraft.Presentation
             field.placeholder=Label(image.transform,placeholder,18,0,w-36,58,19,Muted,false,TextAnchor.MiddleLeft);
             field.text=value;field.onValueChanged.AddListener(v=>changed(v));return field;
         }
+        Text ShadowLabel(Transform parent,string text,float x,float y,float w,float h,int size,bool title,TextAnchor align=TextAnchor.UpperLeft)
+        {
+            return Label(parent,text,x+3,y+3,w,h,size,new Color(0,0,0,.55f),title,align);
+        }
         void Header(string section,bool back=true)
         {
             if(InventoryOpen)
@@ -162,9 +167,12 @@ namespace LestingCraft.Presentation
             panel.raycastTarget=false;
             Box(content.transform,56,189,4,610,Accent,false);
             Label(content.transform,"МИР, КОТОРЫЙ ТЫ СТРОИШЬ САМ",86,214,640,27,13,Accent,true);
+            ShadowLabel(content.transform,"LESTINGCRAFT",82,254,660,73,54,true);
             Label(content.transform,"LESTINGCRAFT",82,254,660,73,54,White,true);
+            ShadowLabel(content.transform,"N E W   E R A",89,330,588,41,25,true);
             Label(content.transform,"N E W   E R A",89,330,588,41,25,Accent,true);
             Box(content.transform,88,393,78,2,Accent,false);
+            ShadowLabel(content.transform,"Исследуй. Строй. Выживай. Вместе.",88,420,632,39,22,true);
             Label(content.transform,"Исследуй. Строй. Выживай. Вместе.",88,420,632,39,22,White,true);
             Label(content.transform,"Лестингия ждёт: леса, пещеры, деревни и ваша история.\nВыбери свою экспедицию или позови друга.",88,472,624,54,17,White);
             if(game.HasSave)

@@ -1847,7 +1847,8 @@ namespace LestingCraft.Runtime
     /// <summary>Rank-and-file mechanical mobs from the concept art: drones and robots in squads.</summary>
     public sealed class PlanetaryDroneController : MonoBehaviour
     {
-        readonly List<Material> mats = new List<Material>();
+        BossSculpture sculpt;
+        readonly List<Transform> rotors = new List<Transform>();
         Transform scanner;
         float hoverBase, hoverPhase;
         public LestingCraft.Gameplay.DroneProfile Profile { get; private set; }
@@ -1889,7 +1890,7 @@ namespace LestingCraft.Runtime
             if (Health <= 0)
             {
                 Dead = true; killed = true;
-                foreach (var m in mats) if (m) m.color = m.color * 0.25f;
+                if (sculpt) sculpt.SetEmissionBoost(0f);
                 Destroy(gameObject, 0.35f);
             }
             return true;
@@ -2014,110 +2015,34 @@ namespace LestingCraft.Runtime
             }
         }
 
-        Material Mat(Color color, Color emission, float smooth)
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var m = new Material(shader) { color = color };
-            if (m.HasProperty("_EmissionColor")) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", emission); }
-            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smooth);
-            mats.Add(m);
-            return m;
-        }
-
-        Transform Part(PrimitiveType type, string name, Transform parent, Vector3 pos, Vector3 size, Material m)
-        {
-            var go = GameObject.CreatePrimitive(type);
-            go.name = name;
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = pos;
-            go.transform.localScale = size;
-            go.GetComponent<Renderer>().sharedMaterial = m;
-            var own = go.GetComponent<Collider>();
-            if (own) Destroy(own);
-            return go.transform;
-        }
-
         void BuildBody()
         {
             var profile = Profile;
-            var armor = Mat(new Color(profile.ArmorR, profile.ArmorG, profile.ArmorB), Color.black, 0.5f);
-            var dark = Mat(new Color(0.10f, 0.11f, 0.13f), Color.black, 0.35f);
-            var glowCol = new Color(profile.GlowR, profile.GlowG, profile.GlowB);
-            var glow = Mat(glowCol, glowCol * 2.2f, 0.2f);
-            switch (profile.Kind)
+            var data = LestingCraft.Gameplay.BossSculpts.Drone(profile.Kind);
+            sculpt = BossSculpture.Build(transform, data, BossSculpture.SharedVoxelMaterial());
+            scanner = sculpt.FindPart("turret");
+            rotors.Clear();
+            for (int i = 0; i < 4; i++)
             {
-                case LestingCraft.Gameplay.DroneKind.Scout:
-                    Part(PrimitiveType.Cube, "ScoutCore", transform, Vector3.zero, new Vector3(.55f, .45f, .7f), armor);
-                    Part(PrimitiveType.Cube, "ScoutEye", transform, new Vector3(0f, .02f, .42f), new Vector3(.22f, .16f, .12f), glow);
-                    for (int i = 0; i < 4; i++)
-                        Part(PrimitiveType.Cube, "ScoutVane" + i, transform, new Vector3(i % 2 == 0 ? -.5f : .5f, 0f, i < 2 ? -.35f : .35f), new Vector3(.45f, .06f, .22f), dark);
-                    Part(PrimitiveType.Cube, "ScoutAntenna", transform, new Vector3(0f, .38f, -.1f), new Vector3(.05f, .35f, .05f), dark);
-                    break;
-                case LestingCraft.Gameplay.DroneKind.Combat:
-                    Part(PrimitiveType.Cube, "CombatBody", transform, Vector3.zero, new Vector3(.9f, .55f, 1.05f), armor);
-                    Part(PrimitiveType.Cube, "CombatVisor", transform, new Vector3(0f, .12f, .56f), new Vector3(.55f, .14f, .1f), glow);
-                    Part(PrimitiveType.Cube, "CombatGunL", transform, new Vector3(-.55f, -.05f, .35f), new Vector3(.16f, .16f, .9f), dark);
-                    Part(PrimitiveType.Cube, "CombatGunR", transform, new Vector3(.55f, -.05f, .35f), new Vector3(.16f, .16f, .9f), dark);
-                    Part(PrimitiveType.Cube, "CombatSkirt", transform, new Vector3(0f, -.32f, -.1f), new Vector3(.7f, .18f, .8f), dark);
-                    break;
-                case LestingCraft.Gameplay.DroneKind.Repair:
-                    Part(PrimitiveType.Cube, "RepairBody", transform, Vector3.zero, new Vector3(.7f, .6f, .7f), armor);
-                    Part(PrimitiveType.Cube, "RepairDome", transform, new Vector3(0f, .38f, 0f), new Vector3(.42f, .2f, .42f), glow);
-                    Part(PrimitiveType.Cube, "RepairArmL", transform, new Vector3(-.48f, -.15f, .25f), new Vector3(.12f, .5f, .12f), dark);
-                    Part(PrimitiveType.Cube, "RepairArmR", transform, new Vector3(.48f, -.15f, .25f), new Vector3(.12f, .5f, .12f), dark);
-                    Part(PrimitiveType.Cube, "RepairToolL", transform, new Vector3(-.48f, -.42f, .32f), new Vector3(.18f, .12f, .22f), glow);
-                    break;
-                case LestingCraft.Gameplay.DroneKind.Ground:
-                    Part(PrimitiveType.Cube, "SentryTrackL", transform, new Vector3(-.5f, -.35f, 0f), new Vector3(.32f, .42f, 1.1f), dark);
-                    Part(PrimitiveType.Cube, "SentryTrackR", transform, new Vector3(.5f, -.35f, 0f), new Vector3(.32f, .42f, 1.1f), dark);
-                    Part(PrimitiveType.Cube, "SentryHull", transform, new Vector3(0f, .05f, 0f), new Vector3(.95f, .48f, .95f), armor);
-                    scanner = Part(PrimitiveType.Cube, "SentryTurret", transform, new Vector3(0f, .48f, 0f), new Vector3(.5f, .3f, .55f), armor);
-                    Part(PrimitiveType.Cube, "SentryEye", scanner, new Vector3(0f, .02f, .32f), new Vector3(.26f, .12f, .12f), glow);
-                    Part(PrimitiveType.Cube, "SentryBarrel", scanner, new Vector3(0f, -.02f, .5f), new Vector3(.12f, .12f, .55f), dark);
-                    break;
-                case LestingCraft.Gameplay.DroneKind.Heavy:
-                    Part(PrimitiveType.Cube, "HeavyLegL", transform, new Vector3(-.55f, -.55f, 0f), new Vector3(.42f, .8f, .55f), dark);
-                    Part(PrimitiveType.Cube, "HeavyLegR", transform, new Vector3(.55f, -.55f, 0f), new Vector3(.42f, .8f, .55f), dark);
-                    Part(PrimitiveType.Cube, "HeavyTorso", transform, new Vector3(0f, .25f, 0f), new Vector3(1.5f, 1.0f, 1.1f), armor);
-                    Part(PrimitiveType.Cube, "HeavyPodL", transform, new Vector3(-1.0f, .55f, 0f), new Vector3(.55f, .5f, .8f), dark);
-                    Part(PrimitiveType.Cube, "HeavyPodR", transform, new Vector3(1.0f, .55f, 0f), new Vector3(.55f, .5f, .8f), dark);
-                    Part(PrimitiveType.Cube, "HeavyCore", transform, new Vector3(0f, .28f, .62f), new Vector3(.5f, .5f, .12f), glow);
-                    Part(PrimitiveType.Cube, "HeavyHead", transform, new Vector3(0f, .95f, .15f), new Vector3(.5f, .32f, .5f), armor);
-                    break;
-                case LestingCraft.Gameplay.DroneKind.Guard:
-                    Part(PrimitiveType.Cube, "GuardLegL", transform, new Vector3(-.28f, -.5f, 0f), new Vector3(.24f, .8f, .3f), dark);
-                    Part(PrimitiveType.Cube, "GuardLegR", transform, new Vector3(.28f, -.5f, 0f), new Vector3(.24f, .8f, .3f), dark);
-                    Part(PrimitiveType.Cube, "GuardTorso", transform, new Vector3(0f, .3f, 0f), new Vector3(.8f, .9f, .6f), armor);
-                    Part(PrimitiveType.Cube, "GuardVisor", transform, new Vector3(0f, .55f, .34f), new Vector3(.4f, .12f, .1f), glow);
-                    Part(PrimitiveType.Cube, "GuardShield", transform, new Vector3(-.62f, .25f, .1f), new Vector3(.12f, .95f, .7f), armor);
-                    Part(PrimitiveType.Cube, "GuardCrest", transform, new Vector3(0f, .82f, 0f), new Vector3(.5f, .12f, .5f), dark);
-                    break;
-                default:
-                    Part(PrimitiveType.Cube, "BuilderBody", transform, Vector3.zero, new Vector3(.85f, .6f, .75f), armor);
-                    Part(PrimitiveType.Cube, "BuilderLamp", transform, new Vector3(0f, .42f, .18f), new Vector3(.3f, .14f, .3f), glow);
-                    Part(PrimitiveType.Cube, "BuilderCrane", transform, new Vector3(.55f, .35f, -.1f), new Vector3(.12f, .9f, .12f), dark);
-                    Part(PrimitiveType.Cube, "BuilderHook", transform, new Vector3(.55f, -.12f, -.1f), new Vector3(.2f, .14f, .2f), glow);
-                    Part(PrimitiveType.Cube, "BuilderTread", transform, new Vector3(0f, -.38f, 0f), new Vector3(.9f, .18f, .85f), dark);
-                    break;
+                var r = sculpt.FindPart("rotor_" + i);
+                if (r) rotors.Add(r);
             }
-            var lgo = new GameObject("DroneGlowLight");
-            lgo.transform.SetParent(transform, false);
-            lgo.transform.localPosition = new Vector3(0f, .3f, .6f);
-            var light = lgo.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.color = glowCol;
-            light.range = 4.5f;
-            light.intensity = 1.6f;
+            var wl = sculpt.FindPart("wing_l");
+            var wr = sculpt.FindPart("wing_r");
+            if (wl) rotors.Add(wl);
+            if (wr) rotors.Add(wr);
             hoverBase = transform.position.y;
             hoverPhase = (GetInstanceID() & 255) * 0.02f;
+            float size = Mathf.Max(.7f, profile.Size);
             var col = gameObject.AddComponent<CapsuleCollider>();
-            col.center = Vector3.zero;
-            col.radius = .6f;
-            col.height = 1.5f;
+            col.center = new Vector3(0f, data.Height * .5f - .2f, 0f);
+            col.radius = .6f * size;
+            col.height = 1.5f * size;
         }
 
         void Update()
         {
+            if (Dead) return;
             if (Profile.Fly)
             {
                 var p = transform.position;
@@ -2125,16 +2050,19 @@ namespace LestingCraft.Runtime
                 transform.position = p;
             }
             if (scanner) scanner.Rotate(0f, 42f * Time.deltaTime, 0f);
+            for (int i = 0; i < rotors.Count; i++) rotors[i].Rotate(0f, 640f * Time.deltaTime, 0f);
+            if (sculpt) sculpt.SetEmissionBoost(1f + .25f * Mathf.Sin(Time.time * 4f + hoverPhase));
         }
 
-        void OnDestroy() { foreach (var m in mats) if (m) Destroy(m); }
+        void OnDestroy() { }
+
     }
 
     /// <summary>The black bacteria of the Backrooms (Kane Pixels entity): a tall, wiry
     /// black figure with a heavy head and floor-length arms, luring prey with imitated voices.</summary>
     public sealed class BacteriaMobController : MonoBehaviour
     {
-        readonly List<Material> mats = new List<Material>();
+        BossSculpture sculpt;
         Transform head;
         float swayPhase;
 
@@ -2173,7 +2101,7 @@ namespace LestingCraft.Runtime
             if (Health <= 0)
             {
                 Dead = true; killed = true;
-                foreach (var m in mats) if (m) m.color = m.color * 0.22f;
+                if (sculpt) sculpt.SetEmissionBoost(0f);
                 Destroy(gameObject, 0.35f);
             }
             return true;
@@ -2226,67 +2154,16 @@ namespace LestingCraft.Runtime
             }
         }
 
-        Material Mat(Color color, Color emission, float smooth)
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var m = new Material(shader) { color = color };
-            if (m.HasProperty("_EmissionColor")) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", emission); }
-            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smooth);
-            mats.Add(m);
-            return m;
-        }
-
-        Transform Part(PrimitiveType type, string name, Transform parent, Vector3 pos, Vector3 size, Material m)
-        {
-            var go = GameObject.CreatePrimitive(type);
-            go.name = name;
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = pos;
-            go.transform.localScale = size;
-            go.GetComponent<Renderer>().sharedMaterial = m;
-            var own = go.GetComponent<Collider>();
-            if (own) Destroy(own);
-            return go.transform;
-        }
-
         void BuildBody()
         {
-            var black = Mat(new Color(0.045f, 0.045f, 0.06f), Color.black, 0.28f);
-            var wire = Mat(new Color(0.16f, 0.16f, 0.20f), Color.black, 0.55f);
-            var face = Mat(new Color(0.72f, 0.78f, 0.90f), new Color(0.55f, 0.62f, 0.80f) * 1.4f, 0.15f);
-            // long wiry legs
-            Part(PrimitiveType.Cube, "LegL", transform, new Vector3(-0.16f, -0.55f, 0f), new Vector3(0.13f, 1.15f, 0.16f), black);
-            Part(PrimitiveType.Cube, "LegR", transform, new Vector3(0.16f, -0.55f, 0f), new Vector3(0.13f, 1.15f, 0.16f), black);
-            Part(PrimitiveType.Cube, "FootL", transform, new Vector3(-0.16f, -1.06f, 0.10f), new Vector3(0.16f, 0.10f, 0.34f), wire);
-            Part(PrimitiveType.Cube, "FootR", transform, new Vector3(0.16f, -1.06f, 0.10f), new Vector3(0.16f, 0.10f, 0.34f), wire);
-            // thin torso of tangled wires
-            Part(PrimitiveType.Cube, "Torso", transform, new Vector3(0f, 0.28f, 0f), new Vector3(0.38f, 0.85f, 0.26f), black);
-            Part(PrimitiveType.Cube, "RibWire1", transform, new Vector3(0f, 0.12f, 0f), new Vector3(0.46f, 0.07f, 0.32f), wire);
-            Part(PrimitiveType.Cube, "RibWire2", transform, new Vector3(0f, 0.42f, 0f), new Vector3(0.46f, 0.07f, 0.32f), wire);
-            // floor-length arms
-            Part(PrimitiveType.Cube, "ArmL", transform, new Vector3(-0.34f, -0.18f, 0.05f), new Vector3(0.11f, 1.55f, 0.13f), black);
-            Part(PrimitiveType.Cube, "ArmR", transform, new Vector3(0.34f, -0.18f, 0.05f), new Vector3(0.11f, 1.55f, 0.13f), black);
-            Part(PrimitiveType.Cube, "HandL", transform, new Vector3(-0.34f, -0.92f, 0.12f), new Vector3(0.15f, 0.20f, 0.22f), wire);
-            Part(PrimitiveType.Cube, "HandR", transform, new Vector3(0.34f, -0.92f, 0.12f), new Vector3(0.15f, 0.20f, 0.22f), wire);
-            // heavy head with pale face plate
-            head = new GameObject("HeadPivot").transform;
-            head.SetParent(transform, false);
-            head.localPosition = new Vector3(0f, 0.92f, 0.02f);
-            Part(PrimitiveType.Cube, "Skull", head, Vector3.zero, new Vector3(0.52f, 0.58f, 0.50f), black);
-            Part(PrimitiveType.Cube, "FacePlate", head, new Vector3(0f, -0.02f, 0.28f), new Vector3(0.30f, 0.34f, 0.06f), face);
-            var lgo = new GameObject("BacteriaGlow");
-            lgo.transform.SetParent(transform, false);
-            lgo.transform.localPosition = new Vector3(0f, 0.9f, 0.5f);
-            var light = lgo.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.color = new Color(0.62f, 0.70f, 0.88f);
-            light.range = 5f;
-            light.intensity = 1.1f;
+            var data = LestingCraft.Gameplay.BossSculpts.BacteriaMob(GetInstanceID());
+            sculpt = BossSculpture.Build(transform, data, BossSculpture.SharedVoxelMaterial());
+            head = sculpt.FindPart("head");
             swayPhase = (GetInstanceID() & 255) * 0.031f;
             var col = gameObject.AddComponent<CapsuleCollider>();
-            col.center = new Vector3(0f, 0.1f, 0f);
+            col.center = new Vector3(0f, data.Height * .5f, 0f);
             col.radius = 0.42f;
-            col.height = 2.3f;
+            col.height = data.Height + .6f;
         }
 
         void Update()
@@ -2297,22 +2174,34 @@ namespace LestingCraft.Runtime
             var p = transform.position;
             p.y += Mathf.Sin(t * 2.1f) * 0.0016f;
             transform.position = p;
+            if (sculpt) sculpt.SetEmissionBoost(1f + .3f * Mathf.Sin(t * 2.6f));
         }
 
-        void OnDestroy() { foreach (var m in mats) if (m) Destroy(m); }
+        void OnDestroy() { }
+
     }
 
+    /// <summary>
+    /// Planetary guardian: ONE coherent voxel sculpt with articulated parts, authored in the
+    /// pure core (<see cref="LestingCraft.Gameplay.BossSculpts"/>) and meshed surface-culled by
+    /// <see cref="LestingCraft.Presentation.BossSculpture"/>. No stretched primitives, no flat
+    /// colours: real PBR layers, emissive weak points, per-world anatomy. Combat rules unchanged.
+    /// </summary>
     public sealed class PlanetaryBossController : MonoBehaviour
     {
-        readonly List<Material> bossMaterials = new List<Material>();
-        Transform bodyPivot, coreSphere, leftArm, rightArm, haloRing, shockwaveRing;
-        Transform[] orbiters = new Transform[0];
-        float orbitRadius = 3.6f, orbitHeight = 4.6f, orbitSpeed = 0.9f;
-        Light coreLight;
+        LestingCraft.Presentation.BossSculpture sculpt;
+        Transform root, leftArm, rightArm, leftArm2, rightArm2, head;
+        Transform[] shards = new Transform[0];
+        Transform shockwaveRing;
+        Material ringMat;
+        bool floater;
         float attackTimer = 4.5f;
         float telegraphTimer;
         float hitFlashTimer;
-        Color baseCoreEmission;
+        float baseLight;
+        float walkPhase;
+        Vector3 prevPos;
+        Vector3 hitCenter = new Vector3(0f, 3.6f, 0f), hitHalf = new Vector3(2.6f, 3.8f, 2.6f);
 
         public Dimension BossDimension { get; private set; }
         public string BossName { get; private set; }
@@ -2353,232 +2242,69 @@ namespace LestingCraft.Runtime
 
         void BuildSculpt(Dimension dim)
         {
-            // Every world has its own named guardian; the catalogue stays pure data so it is testable.
             var profile = LestingCraft.Gameplay.BossCatalog.For(dim);
             BossName = profile.Name;
             MaxHealth = profile.MaxHealth;
-            var armorCol = new Color(profile.ArmorR, profile.ArmorG, profile.ArmorB);
-            var trimCol = new Color(profile.TrimR, profile.TrimG, profile.TrimB);
-            var coreCol = new Color(profile.CoreR, profile.CoreG, profile.CoreB);
-            transform.localScale = Vector3.one * Mathf.Max(0.6f, profile.Scale);
-            BossTitle = profile.Title;
             Health = MaxHealth;
-            baseCoreEmission = coreCol * 2.8f;
+            BossTitle = profile.Title;
+            transform.localScale = Vector3.one * Mathf.Max(0.6f, profile.Scale);
 
-            var armorMat = MakeMat("BossArmor", armorCol, Color.black, 0.72f, 0.45f);
-            var trimMat = MakeMat("BossTrim", trimCol, coreCol * 0.45f, 0.80f, 0.55f);
-            var coreMat = MakeMat("BossCore", coreCol, baseCoreEmission, 0.1f, 0.85f);
-
-            bodyPivot = new GameObject("BossArticulatedRoot").transform;
-            bodyPivot.SetParent(transform, false);
-
-            // Legs & armored torso
-            Part(PrimitiveType.Cube, "LeftLeg", bodyPivot, new Vector3(-1.05f, 1.2f, 0f), new Vector3(0.95f, 2.4f, 1.05f), armorMat);
-            Part(PrimitiveType.Cube, "RightLeg", bodyPivot, new Vector3(1.05f, 1.2f, 0f), new Vector3(0.95f, 2.4f, 1.05f), armorMat);
-            Part(PrimitiveType.Cube, "PelvisPlate", bodyPivot, new Vector3(0f, 2.55f, 0f), new Vector3(2.9f, 0.75f, 1.5f), trimMat);
-            Part(PrimitiveType.Cube, "ArmoredChest", bodyPivot, new Vector3(0f, 4.15f, 0f), new Vector3(3.6f, 2.5f, 1.95f), armorMat);
-            Part(PrimitiveType.Cube, "LeftPauldron", bodyPivot, new Vector3(-2.35f, 5.1f, 0f), new Vector3(1.45f, 1.25f, 2.15f), trimMat);
-            Part(PrimitiveType.Cube, "RightPauldron", bodyPivot, new Vector3(2.35f, 5.1f, 0f), new Vector3(1.45f, 1.25f, 2.15f), trimMat);
-
-            // Crowned guardian head + glowing visor
-            Part(PrimitiveType.Cube, "GuardianHelm", bodyPivot, new Vector3(0f, 6.05f, 0.1f), new Vector3(1.45f, 1.35f, 1.45f), armorMat);
-            Part(PrimitiveType.Cube, "VisorSlit", bodyPivot, new Vector3(0f, 6.12f, 0.78f), new Vector3(1.18f, 0.26f, 0.18f), coreMat);
-            Part(PrimitiveType.Cube, "CrownCrestLeft", bodyPivot, new Vector3(-0.65f, 6.95f, 0.1f), new Vector3(0.24f, 0.95f, 0.45f), trimMat);
-            Part(PrimitiveType.Cube, "CrownCrestRight", bodyPivot, new Vector3(0.65f, 6.95f, 0.1f), new Vector3(0.24f, 0.95f, 0.45f), trimMat);
-
-            // Radiant weak-point core in chest (voxel cube!)
-            coreSphere = Part(PrimitiveType.Cube, "RadiantCore", bodyPivot, new Vector3(0f, 4.25f, 0.85f), new Vector3(1.25f, 1.25f, 0.9f), coreMat);
-
-            // Articulated twin arms
-            leftArm = new GameObject("LeftArmPivot").transform;
-            leftArm.SetParent(bodyPivot, false);
-            leftArm.localPosition = new Vector3(-2.55f, 4.85f, 0f);
-            Part(PrimitiveType.Cube, "LeftForearm", leftArm, new Vector3(0f, -1.65f, 0.35f), new Vector3(0.92f, 3.1f, 1.05f), armorMat);
-            Part(PrimitiveType.Cube, "LeftGauntletBlade", leftArm, new Vector3(0f, -3.1f, 0.55f), new Vector3(1.15f, 0.85f, 1.45f), coreMat);
-
-            rightArm = new GameObject("RightArmPivot").transform;
-            rightArm.SetParent(bodyPivot, false);
-            rightArm.localPosition = new Vector3(2.55f, 4.85f, 0f);
-            Part(PrimitiveType.Cube, "RightForearm", rightArm, new Vector3(0f, -1.65f, 0.35f), new Vector3(0.92f, 3.1f, 1.05f), armorMat);
-            Part(PrimitiveType.Cube, "RightGauntletBlade", rightArm, new Vector3(0f, -3.1f, 0.55f), new Vector3(1.15f, 0.85f, 1.45f), coreMat);
-
-            haloRing = Part(PrimitiveType.Cube, "OrbitalCrownRing", bodyPivot, new Vector3(0f, 7.35f, 0f), new Vector3(3.4f, 0.10f, 3.4f), coreMat);
-            shockwaveRing = Part(PrimitiveType.Cube, "TelegraphShockwave", transform, new Vector3(0f, 0.08f, 0f), new Vector3(1f, 0.06f, 1f), coreMat);
-            shockwaveRing.gameObject.SetActive(false);
-
-            ShapeForArchetype(LestingCraft.Gameplay.BossCatalog.For(dim).Archetype);
-            AddArchetypeDetails(profile.Archetype, armorMat, trimMat, coreMat);
+            var data = LestingCraft.Gameplay.BossSculpts.For(dim, lootSeed);
+            sculpt = LestingCraft.Presentation.BossSculpture.Build(transform, data,
+                LestingCraft.Presentation.BossSculpture.SharedVoxelMaterial());
+            root = sculpt.transform;
+            leftArm = sculpt.FindPart("arm_l");
+            rightArm = sculpt.FindPart("arm_r");
+            leftArm2 = sculpt.FindPart("arm2_l");
+            rightArm2 = sculpt.FindPart("arm2_r");
+            head = sculpt.FindPart("head");
+            var shardList = new List<Transform>();
+            for (int i = 0; i < 4; i++)
+            {
+                var sh = sculpt.FindPart("shard_" + i);
+                if (sh) shardList.Add(sh);
+            }
+            shards = shardList.ToArray();
+            floater = !sculpt.HasPartPrefix("leg");
+            baseLight = sculpt.LightIntensity;
+            hitCenter = new Vector3(0f, data.Height * .5f, 0f);
+            hitHalf = new Vector3(Mathf.Max(1.6f, data.Width * .5f + .4f), data.Height * .5f + .4f,
+                Mathf.Max(1.6f, data.Depth * .5f + .4f));
 
             var hitBox = gameObject.AddComponent<CapsuleCollider>();
-            hitBox.center = new Vector3(0f, 3.6f, 0f);
-            hitBox.radius = 2.4f;
-            hitBox.height = 7.4f;
+            hitBox.center = hitCenter;
+            hitBox.radius = hitHalf.x;
+            hitBox.height = data.Height + 1f;
 
-            var lgo = new GameObject("BossCoreLight");
-            lgo.transform.SetParent(bodyPivot, false);
-            lgo.transform.localPosition = new Vector3(0f, 4.3f, 1.4f);
-            coreLight = lgo.AddComponent<Light>();
-            coreLight.type = LightType.Point;
-            coreLight.color = coreCol;
-            coreLight.range = 24f;
-            coreLight.intensity = 4.2f;
-        }
-
-        /// <summary>Small silhouette differences so guardians of different worlds do not look cloned.</summary>
-        void ShapeForArchetype(LestingCraft.Gameplay.BossArchetype archetype)
-        {
-            if (!bodyPivot) return;
-            var leftLeg = bodyPivot.Find("LeftLeg");
-            var rightLeg = bodyPivot.Find("RightLeg");
-            var chest = bodyPivot.Find("ArmoredChest");
-            var core = bodyPivot.Find("RadiantCore");
-            var helm = bodyPivot.Find("GuardianHelm");
-            if (leftLeg) leftLeg.localScale = new Vector3(0.95f, 1f, 1.05f);
-            if (rightLeg) rightLeg.localScale = new Vector3(0.95f, 1f, 1.05f);
-            switch (archetype)
+            // Telegraph: an expanding additive energy ring on the arena floor.
+            var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Particles/Additive");
+            if (shader)
             {
-                case LestingCraft.Gameplay.BossArchetype.Archon:
-                    // Floating caster: stubby legs, longer torso, wider crown.
-                    if (leftLeg) { leftLeg.localScale = new Vector3(1f, 0.42f, 1f); leftLeg.localPosition = new Vector3(-1.05f, 2.05f, 0f); }
-                    if (rightLeg) { rightLeg.localScale = new Vector3(1f, 0.42f, 1f); rightLeg.localPosition = new Vector3(1.05f, 2.05f, 0f); }
-                    if (chest) { chest.localScale = new Vector3(3.2f, 3.0f, 1.95f); chest.localPosition = new Vector3(0f, 4.55f, 0f); }
-                    if (core) { core.localScale = new Vector3(1.6f, 1.6f, 1.05f); core.localPosition = new Vector3(0f, 4.7f, 0.95f); }
-                    if (haloRing) haloRing.localScale = new Vector3(4.6f, 0.10f, 4.6f);
-                    break;
-                case LestingCraft.Gameplay.BossArchetype.Warden:
-                    // Forest guardian: heavy shoulders, longer arms, lower head.
-                    if (chest) { chest.localScale = new Vector3(3.9f, 2.3f, 2.15f); chest.localPosition = new Vector3(0f, 4.05f, 0f); }
-                    if (helm) helm.localPosition = new Vector3(0f, 5.85f, 0.16f);
-                    if (leftArm) { leftArm.localPosition = new Vector3(-2.75f, 4.75f, 0f); leftArm.localScale = new Vector3(1f, 1.18f, 1f); }
-                    if (rightArm) { rightArm.localPosition = new Vector3(2.75f, 4.75f, 0f); rightArm.localScale = new Vector3(1f, 1.18f, 1f); }
-                    break;
-                case LestingCraft.Gameplay.BossArchetype.Titan:
-                    // Frost titan: wide stance, taller body.
-                    if (leftLeg) { leftLeg.localScale = new Vector3(1.35f, 1.22f, 1.3f); leftLeg.localPosition = new Vector3(-1.25f, 1.35f, 0f); }
-                    if (rightLeg) { rightLeg.localScale = new Vector3(1.35f, 1.22f, 1.3f); rightLeg.localPosition = new Vector3(1.25f, 1.35f, 0f); }
-                    if (chest) { chest.localScale = new Vector3(4.05f, 2.4f, 2.1f); chest.localPosition = new Vector3(0f, 4.5f, 0f); }
-                    if (helm) helm.localPosition = new Vector3(0f, 6.35f, 0.12f);
-                    break;
-                case LestingCraft.Gameplay.BossArchetype.Ember:
-                    // Burning core: compact chassis, oversized weak point.
-                    if (chest) chest.localScale = new Vector3(2.9f, 2.1f, 1.8f);
-                    if (core) { core.localScale = new Vector3(1.9f, 1.9f, 1.1f); core.localPosition = new Vector3(0f, 4.35f, 1.0f); }
-                    if (leftArm) leftArm.localScale = new Vector3(0.85f, 0.9f, 0.85f);
-                    if (rightArm) rightArm.localScale = new Vector3(0.85f, 0.9f, 0.85f);
-                    break;
+                ringMat = new Material(shader);
+                ringMat.SetFloat("_Surface", 1);
+                ringMat.SetFloat("_SrcBlend", 5);
+                ringMat.SetFloat("_DstBlend", 1);
+                ringMat.SetFloat("_ZWrite", 0);
+                ringMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                ringMat.renderQueue = 3000;
+                ringMat.SetColor("_BaseColor", new Color(profile.CoreR, profile.CoreG, profile.CoreB) * 2.2f);
+                var ringGo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                if (Application.isPlaying) Destroy(ringGo.GetComponent<Collider>());
+                else DestroyImmediate(ringGo.GetComponent<Collider>());
+                ringGo.name = "TelegraphShockwave";
+                ringGo.transform.SetParent(transform, false);
+                ringGo.transform.localPosition = new Vector3(0f, 0.08f, 0f);
+                ringGo.transform.localScale = new Vector3(1f, 0.02f, 1f);
+                ringGo.GetComponent<MeshRenderer>().sharedMaterial = ringMat;
+                shockwaveRing = ringGo.transform;
+                shockwaveRing.gameObject.SetActive(false);
             }
-        }
-
-        /// <summary>Extra silhouette pieces per archetype (voxel cubes, no curved primitives).</summary>
-        void AddArchetypeDetails(LestingCraft.Gameplay.BossArchetype archetype, Material armorMat, Material trimMat, Material coreMat)
-        {
-            if (!bodyPivot) return;
-            switch (archetype)
-            {
-                case LestingCraft.Gameplay.BossArchetype.Archon:
-                    // Four crystal shards orbit the caster's chest.
-                    orbitRadius = 3.9f; orbitHeight = 4.7f; orbitSpeed = 0.9f;
-                    orbiters = new Transform[4];
-                    for (int i = 0; i < 4; i++)
-                    {
-                        orbiters[i] = Part(PrimitiveType.Cube, "ArchonShard" + i, bodyPivot, Vector3.zero, new Vector3(0.34f, 0.95f, 0.34f), i % 2 == 0 ? coreMat : trimMat);
-                        orbiters[i].localRotation = Quaternion.Euler(0f, 45f, 20f);
-                    }
-                    Part(PrimitiveType.Cube, "ArchonSash", bodyPivot, new Vector3(0f, 2.9f, 0.1f), new Vector3(1.1f, 1.6f, 0.35f), trimMat);
-                    break;
-                case LestingCraft.Gameplay.BossArchetype.Warden:
-                    // Branching antlers and mossy shoulder tines.
-                    for (int side = -1; side <= 1; side += 2)
-                    {
-                        var main = Part(PrimitiveType.Cube, side < 0 ? "WardenAntlerL" : "WardenAntlerR", bodyPivot, new Vector3(0.55f * side, 7.0f, 0.1f), new Vector3(0.2f, 1.35f, 0.2f), trimMat);
-                        main.localRotation = Quaternion.Euler(0f, 0f, -22f * side);
-                        var tineA = Part(PrimitiveType.Cube, "WardenTine" + side + "a", bodyPivot, new Vector3(0.95f * side, 7.35f, 0.1f), new Vector3(0.16f, 0.8f, 0.16f), trimMat);
-                        tineA.localRotation = Quaternion.Euler(0f, 0f, -48f * side);
-                        var tineB = Part(PrimitiveType.Cube, "WardenTine" + side + "b", bodyPivot, new Vector3(0.8f * side, 6.55f, 0.1f), new Vector3(0.16f, 0.6f, 0.16f), trimMat);
-                        tineB.localRotation = Quaternion.Euler(0f, 0f, -70f * side);
-                        var spike = Part(PrimitiveType.Cube, "WardenShoulderSpike" + side, bodyPivot, new Vector3(2.45f * side, 6.0f, 0f), new Vector3(0.28f, 1.1f, 0.28f), armorMat);
-                        spike.localRotation = Quaternion.Euler(0f, 0f, -14f * side);
-                    }
-                    break;
-                case LestingCraft.Gameplay.BossArchetype.Titan:
-                    // Glacial mantle and jagged ice spires.
-                    Part(PrimitiveType.Cube, "TitanIceMantle", bodyPivot, new Vector3(0f, 5.75f, -1.15f), new Vector3(4.5f, 1.0f, 1.2f), trimMat);
-                    for (int side = -1; side <= 1; side += 2)
-                        for (int k = 0; k < 3; k++)
-                        {
-                            var spire = Part(PrimitiveType.Cube, "TitanIceSpire" + side + k, bodyPivot,
-                                new Vector3((2.0f + k * 0.55f) * side, 6.0f + (k == 1 ? 0.5f : 0f), -0.2f + k * 0.15f),
-                                new Vector3(0.3f, 1.2f + (k == 1 ? 0.6f : 0f), 0.3f), k == 1 ? coreMat : trimMat);
-                            spire.localRotation = Quaternion.Euler(0f, 0f, -10f * side * (k + 1));
-                        }
-                    break;
-                case LestingCraft.Gameplay.BossArchetype.Ember:
-                    // Twin exhaust stacks with glowing mouths and slow-orbiting embers.
-                    for (int side = -1; side <= 1; side += 2)
-                    {
-                        Part(PrimitiveType.Cube, "EmberStack" + side, bodyPivot, new Vector3(1.1f * side, 5.4f, -1.15f), new Vector3(0.55f, 1.5f, 0.55f), armorMat);
-                        Part(PrimitiveType.Cube, "EmberStackMouth" + side, bodyPivot, new Vector3(1.1f * side, 6.2f, -1.15f), new Vector3(0.4f, 0.18f, 0.4f), coreMat);
-                    }
-                    orbitRadius = 2.7f; orbitHeight = 3.4f; orbitSpeed = 1.5f;
-                    orbiters = new Transform[3];
-                    for (int i = 0; i < 3; i++)
-                        orbiters[i] = Part(PrimitiveType.Cube, "EmberSpark" + i, bodyPivot, Vector3.zero, new Vector3(0.32f, 0.32f, 0.32f), coreMat);
-                    break;
-            }
-        }
-
-        // Orbiting pieces circle the body; core and light pulse so the weak point reads as alive.
-        void AnimateDetails(float t, float telegraphProgress)
-        {
-            for (int i = 0; i < orbiters.Length; i++)
-            {
-                var o = orbiters[i];
-                if (!o) continue;
-                float a = t * orbitSpeed + i * Mathf.PI * 2f / orbiters.Length;
-                o.localPosition = new Vector3(Mathf.Cos(a) * orbitRadius, orbitHeight + Mathf.Sin(t * 2f + i) * 0.28f, Mathf.Sin(a) * orbitRadius);
-                o.Rotate(0f, 90f * Time.deltaTime, 0f, Space.Self);
-            }
-            float pulse = 0.88f + 0.22f * Mathf.Sin(t * 3.1f) + telegraphProgress * 0.9f;
-            if (coreLight) coreLight.intensity = 4.2f * pulse;
-            if (hitFlashTimer <= 0f && coreSphere)
-            {
-                var cm = coreSphere.GetComponent<MeshRenderer>().sharedMaterial;
-                if (cm && cm.HasProperty("_EmissionColor")) cm.SetColor("_EmissionColor", baseCoreEmission * pulse);
-            }
-        }
-
-        Material MakeMat(string name, Color col, Color emission, float metal, float smooth)
-        {
-            var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var m = new Material(sh) { name = name, color = col };
-            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", col);
-            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metal);
-            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smooth);
-            if (emission.maxColorComponent > 0.001f)
-            {
-                m.EnableKeyword("_EMISSION");
-                if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", emission);
-            }
-            bossMaterials.Add(m);
-            return m;
-        }
-
-        static Transform Part(PrimitiveType prim, string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
-        {
-            var go = GameObject.CreatePrimitive(prim);
-            go.name = name;
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = pos;
-            go.transform.localScale = scale;
-            if (Application.isPlaying) Destroy(go.GetComponent<Collider>());
-            else DestroyImmediate(go.GetComponent<Collider>());
-            go.GetComponent<MeshRenderer>().sharedMaterial = mat;
-            return go.transform;
+            prevPos = transform.position;
         }
 
         public void TickBoss(float dt, Vector3 playerPos, Action<float, Vector3, string> onHitPlayer)
         {
-            if (Defeated || !bodyPivot) return;
+            if (Defeated || !sculpt) return;
 
             Vector3 toPlayer = playerPos - transform.position;
             Vector3 flat = new Vector3(toPlayer.x, 0f, toPlayer.z);
@@ -2590,34 +2316,59 @@ namespace LestingCraft.Runtime
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, dt * 3.5f);
                 if (dist > 6.5f)
                 {
-                    float moveSpeed = BossDimension == Dimension.Mercury ? 3.4f : 2.5f;
-                    Vector3 next = transform.position + flat.normalized * (moveSpeed * dt);
-                    transform.position = next;
+                    float moveSpeed = BossDimension == Dimension.Mercury ? 3.4f : floater ? 2.0f : 2.5f;
+                    transform.position += flat.normalized * (moveSpeed * dt);
                 }
             }
-
+            float move = Vector3.Distance(transform.position, prevPos) / Mathf.Max(.0001f, dt);
+            prevPos = transform.position;
+            walkPhase += dt * Mathf.Clamp(move * 1.6f, 0f, 9f);
             float t = Time.time;
-            bodyPivot.localPosition = new Vector3(0f, Mathf.Sin(t * 2.2f) * 0.14f, 0f);
-            if (haloRing) haloRing.Rotate(0f, dt * 55f, 0f, Space.Self);
-            AnimateDetails(t, telegraphTimer > 0f ? 1f - Mathf.Clamp01(telegraphTimer / 1.15f) : 0f);
 
+            // Root motion: walkers tread-bob, floating casters hover and sway.
+            root.localPosition = floater
+                ? new Vector3(0f, .30f + Mathf.Sin(t * 1.5f) * .22f, 0f)
+                : new Vector3(0f, Mathf.Abs(Mathf.Sin(walkPhase)) * .10f * Mathf.Clamp01(move / 2.5f), 0f);
+
+            float tele = telegraphTimer > 0f ? 1f - Mathf.Clamp01(telegraphTimer / 1.15f) : -1f;
+            float swing = Mathf.Sin(walkPhase) * Mathf.Clamp(move * 6f, 0f, 26f);
+            float idleSway = Mathf.Sin(t * 2.4f) * 6f;
+            if (tele >= 0f)
+            {
+                float raise = Mathf.Lerp(-75f, 35f, tele);
+                if (leftArm) leftArm.localRotation = Quaternion.Euler(raise, 0f, -14f);
+                if (rightArm) rightArm.localRotation = Quaternion.Euler(raise, 0f, 14f);
+            }
+            else if (dist > 34f)
+            {
+                if (leftArm) leftArm.localRotation = Quaternion.Euler(idleSway, 0f, 0f);
+                if (rightArm) rightArm.localRotation = Quaternion.Euler(-idleSway, 0f, 0f);
+            }
+            else
+            {
+                if (leftArm) leftArm.localRotation = Quaternion.Euler(-swing * .8f, 0f, 0f);
+                if (rightArm) rightArm.localRotation = Quaternion.Euler(swing * .8f, 0f, 0f);
+            }
+            if (leftArm2) leftArm2.localRotation = Quaternion.Euler(swing * .5f + idleSway * .4f, 0f, -8f);
+            if (rightArm2) rightArm2.localRotation = Quaternion.Euler(-swing * .5f - idleSway * .4f, 0f, 8f);
+            if (head) head.localRotation = Quaternion.Euler(Mathf.Sin(t * 1.1f) * 3f, Mathf.Sin(t * .6f) * 10f, 0f);
+            for (int i = 0; i < shards.Length; i++)
+                shards[i].localRotation = Quaternion.Euler(0f, t * 40f + i * 120f, Mathf.Sin(t * 1.3f + i) * 12f);
+
+            // Weak-point pulse and hit flash ride the instance mesh vertex emission.
+            float pulse = 1f + .18f * Mathf.Sin(t * 3.1f) + (tele >= 0f ? tele * .9f : 0f);
             if (hitFlashTimer > 0f)
             {
                 hitFlashTimer -= dt;
-                if (coreSphere)
-                {
-                    var cm = coreSphere.GetComponent<MeshRenderer>().sharedMaterial;
-                    if (cm.HasProperty("_EmissionColor"))
-                        cm.SetColor("_EmissionColor", hitFlashTimer > 0f ? Color.white * 5f : baseCoreEmission);
-                }
+                pulse = 3.4f;
             }
+            sculpt.SetEmissionBoost(pulse);
+            sculpt.LightIntensity = baseLight * (.8f + .25f * pulse);
 
             if (dist > 34f)
             {
                 telegraphTimer = 0f;
                 if (shockwaveRing) shockwaveRing.gameObject.SetActive(false);
-                if (leftArm) leftArm.localRotation = Quaternion.Euler(Mathf.Sin(t * 2.4f) * 18f, 0f, 0f);
-                if (rightArm) rightArm.localRotation = Quaternion.Euler(-Mathf.Sin(t * 2.4f) * 18f, 0f, 0f);
                 return;
             }
 
@@ -2625,13 +2376,11 @@ namespace LestingCraft.Runtime
             {
                 telegraphTimer -= dt;
                 float p = 1f - Mathf.Clamp01(telegraphTimer / 1.15f);
-                if (leftArm) leftArm.localRotation = Quaternion.Euler(Mathf.Lerp(-75f, 35f, p), 0f, 0f);
-                if (rightArm) rightArm.localRotation = Quaternion.Euler(Mathf.Lerp(-75f, 35f, p), 0f, 0f);
                 if (shockwaveRing)
                 {
                     shockwaveRing.gameObject.SetActive(true);
                     float rad = Mathf.Lerp(2f, 16f, p);
-                    shockwaveRing.localScale = new Vector3(rad, 0.06f, rad);
+                    shockwaveRing.localScale = new Vector3(rad, 0.02f, rad);
                 }
                 if (telegraphTimer <= 0f)
                 {
@@ -2684,8 +2433,8 @@ namespace LestingCraft.Runtime
             drops = Array.Empty<ItemStack>();
             if (Defeated) return false;
 
-            Vector3 center = transform.position + new Vector3(0f, 3.6f, 0f);
-            Vector3 half = new Vector3(2.6f, 3.8f, 2.6f);
+            Vector3 center = transform.position + hitCenter;
+            Vector3 half = hitHalf;
             bool hitPhysics = Physics.Raycast(aimRay, out var hit, maxReach) && (hit.transform == transform || hit.transform.IsChildOf(transform));
             if (!hitPhysics && !RayHitsBox(aimRay, center - half, center + half, maxReach))
                 return false;
@@ -2697,12 +2446,12 @@ namespace LestingCraft.Runtime
             {
                 Defeated = true;
                 defeatedNow = true;
-                LestingCraft.Gameplay.BossCatalog.LootFor(BossDimension, lootSeed, out int diamonds, out int crystals, out int shards);
+                LestingCraft.Gameplay.BossCatalog.LootFor(BossDimension, lootSeed, out int diamonds, out int crystals, out int shardsOut);
                 drops = new[]
                 {
                     new ItemStack { item = 142, count = diamonds }, // Алмазы
                     new ItemStack { item = 11, count = crystals },  // Кристаллы
-                    new ItemStack { item = 123, count = shards },   // Слитки металла
+                    new ItemStack { item = 123, count = shardsOut },   // Слитки металла
                     new ItemStack { item = 111, count = 6 }         // Провизия
                 };
                 if (Application.isPlaying) Destroy(gameObject, 0.1f);
@@ -2713,13 +2462,7 @@ namespace LestingCraft.Runtime
 
         void OnDestroy()
         {
-            for (int i = 0; i < bossMaterials.Count; i++)
-                if (bossMaterials[i])
-                {
-                    if (Application.isPlaying) Destroy(bossMaterials[i]);
-                    else DestroyImmediate(bossMaterials[i]);
-                }
-            bossMaterials.Clear();
+            if (ringMat) Destroy(ringMat);
         }
     }
 }

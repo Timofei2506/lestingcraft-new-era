@@ -35,6 +35,26 @@ namespace LestingCraft.Presentation
                 return texture;
             }
         }
+        static Texture2D vignette;
+        public static Texture2D Vignette
+        {
+            get
+            {
+                if(vignette)return vignette;
+                const int size=256;
+                vignette=new Texture2D(size,size,TextureFormat.RGBA32,false){name="UI cinematic vignette",wrapMode=TextureWrapMode.Clamp};
+                var pixels=new Color32[size*size];
+                for(int y=0;y<size;y++)for(int x=0;x<size;x++)
+                {
+                    float dx=(x/(size-1f)-.5f)*2,dy=(y/(size-1f)-.5f)*2;
+                    float r=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy)/1.42f);
+                    float alpha=Mathf.Pow(r,2.4f)*.55f;
+                    pixels[y*size+x]=new Color32(4,7,9,(byte)(alpha*255));
+                }
+                vignette.SetPixels32(pixels);vignette.Apply(false,false);
+                return vignette;
+            }
+        }
         public static Texture2D Shade
         {
             get

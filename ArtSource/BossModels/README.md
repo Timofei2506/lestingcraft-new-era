@@ -1,5 +1,9 @@
 # Planet-boss model candidates — NOT in game
 
+> Обновление 17.11.2026: внутриигровые боссы больше не кубы-заглушки — они собраны воксельными
+> скульптами v3 (см. `Docs/Боссы-воксельные-скульпты-v3.md` и `SculptPreviews/`). Кандидаты Blender
+> ниже остаются арт-источниками для будущей замены скульптов импортируемыми мешами после утверждения.
+
 The user explicitly requested that the first rejected voxel boss silhouettes be used **as a starting point**, with markedly better textured relief, translucent elements, anatomical eye assemblies and articulated body parts. This directory contains the current 3D **review candidates**, not approved encounters and not Unity screenshots.
 
 - `Blockouts/*.json`: the historical blockout silhouettes, kept OUTSIDE `Assets/` and never loaded by the game. The first Unity JSON implementation was reverted after the art was rejected and its Windows smoke failed.

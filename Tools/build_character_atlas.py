@@ -18,11 +18,32 @@ for i in range(16):
   for j in range(45):
    px,py=map(int,rng.integers(12,117,2));d.rectangle((px,py,px+int(rng.integers(1,5)),py+1),fill=tuple(int(v*.86) for v in c))
  if i%8==3:
+  closed = (i==11)
   d.rectangle((12,8,115,27),fill=(69,48,34));d.rectangle((20,26,107,33),fill=(89,58,39))
+  for k in range(9):d.point((16+k*11,28+((k*7)%5)),fill=(58,40,28))
   for x0 in [29,79]:
-   d.rectangle((x0,45,x0+24,51),fill=(73,45,32));d.rectangle((x0+1,54,x0+22,65),fill=(209,203,171));d.rectangle((x0+9,54,x0+17,65),fill=(46,51,41));d.rectangle((x0+10,54,x0+12,57),fill=(210,219,200))
+   if closed:
+    d.rectangle((x0+1,50,x0+22,53),fill=(150,96,66))          # relaxed lid
+    d.rectangle((x0+1,58,x0+22,61),fill=(74,46,32))          # lash line
+    d.rectangle((x0+2,44,x0+21,47),fill=(83,52,36))          # calm brow
+   else:
+    d.rectangle((x0,44,x0+24,50),fill=(73,45,32));d.point((x0+22,49),fill=(73,45,32));d.point((x0+1,49),fill=(73,45,32))
+    d.rectangle((x0+1,53,x0+22,56),fill=(176,124,92))        # socket shade
+    d.rectangle((x0+1,55,x0+22,66),fill=(214,208,178))       # white
+    d.rectangle((x0+9,55,x0+17,66),fill=(64,74,52))          # iris
+    d.rectangle((x0+11,57,x0+14,63),fill=(24,26,22))         # pupil
+    d.rectangle((x0+10,56,x0+12,58),fill=(235,240,228))      # catch light
+    d.rectangle((x0+1,66,x0+22,67),fill=(150,96,66))         # lower lid
   d.rectangle((56,62,72,84),fill=(147,88,58));d.rectangle((58,64,66,80),fill=(179,120,80))
-  d.rectangle((37,93,93,113),fill=(91,58,41));d.rectangle((49,93,80,99),fill=(128,73,49))
+  d.rectangle((58,80,66,84),fill=(120,70,46))
+  if closed:
+   d.rectangle((44,96,84,102),fill=(96,60,42));d.rectangle((50,96,78,100),fill=(132,78,52))
+  else:
+   d.rectangle((37,93,93,113),fill=(91,58,41));d.rectangle((49,93,80,99),fill=(128,73,49))
+   d.rectangle((37,108,93,113),fill=(74,46,32))              # lower lip shade
+  for cx0,cy0 in [(24,78),(104,78)]:
+   for a in range(3):
+    for b in range(2):d.point((cx0-a+ b,cy0+a),fill=(158,102,72))   # cheek tone
  if i%8==5:
   d.rectangle((12,12,116,116),outline=(86,63,29),width=8);d.rectangle((26,27,99,99),outline=(230,188,94),width=4)
  if i in [8,9]:
