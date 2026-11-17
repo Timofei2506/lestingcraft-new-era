@@ -32,8 +32,14 @@ public static class BuildScript
     {
         var android = UnityEditor.Build.NamedBuildTarget.Android;
         // Unity passes -Dorg.gradle.jvmargs from this preference on the Gradle command line,
-        // overriding gradle.properties; 4096 MB default OOMs while compressing the ~3 GB asset payload.
-        UnityEditor.Android.AndroidExternalToolsSettings.maxJvmHeapSize = 7168;
+        // overriding gradle.properties; the 4096 MB default OOMs while compressing the ~3 GB
+        // asset payload. Reflection keeps compilation green in CI jobs without the Android module.
+        try
+        {
+            var settings = System.Type.GetType("UnityEditor.Android.AndroidExternalToolsSettings, UnityEditor.Android.Extensions");
+            settings?.GetProperty("maxJvmHeapSize")?.SetValue(null, 7168);
+        }
+        catch (System.Exception e) { Debug.LogWarning($"BuildScript: JVM heap preference not applied: {e.Message}"); }
         PlayerSettings.SetApplicationIdentifier(android, "com.lestingcraft.newera");
         PlayerSettings.SetScriptingBackend(android, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
