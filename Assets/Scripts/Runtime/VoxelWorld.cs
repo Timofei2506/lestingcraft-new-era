@@ -118,6 +118,7 @@ namespace LestingCraft.Runtime
             public NativeArray<ushort> Buffer;
             public JobHandle Job;
         }
+        static bool GenerationBufferAvailable(NativeArray<ushort> buffer) => buffer.IsCreated;
         readonly Dictionary<Vector2Int, Generation> generating = new Dictionary<Vector2Int, Generation>();
         readonly Stack<Snapshot> snapshots = new Stack<Snapshot>();
         int GenerationWorkers { get { return Math.Max(2, Math.Min(8, Environment.ProcessorCount - 1)); } }
@@ -585,9 +586,13 @@ namespace LestingCraft.Runtime
             }
             while (!entry.Job.IsCompleted) yield return null;
             entry.Job.Complete();
+            // A teleport can make ScheduleGeneration evict this completed prefetch while
+            // this foreground iterator is suspended. Never read/dispose a stale NativeArray.
+            if (!GenerationBufferAvailable(entry.Buffer)) yield break;
             var data = new ChunkData(entry.Buffer.ToArray());
             entry.Buffer.Dispose();
-            generating.Remove(key);
+            if (generating.TryGetValue(key, out var current) && ReferenceEquals(current, entry))
+                generating.Remove(key);
             var v = new View { Data = data };
             // Record special blocks once, incrementally, rather than scanning during rebuilds.
             for (int y = 0; y < 256; y++)
