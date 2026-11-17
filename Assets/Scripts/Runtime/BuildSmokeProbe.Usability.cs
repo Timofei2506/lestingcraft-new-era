@@ -12,6 +12,8 @@ namespace LestingCraft.Runtime
 {
  public sealed partial class BuildSmokeProbe
  {
+  /// CharacterVisual v2 nests head parts under pivots; find rig parts at any depth.
+  static Transform DeepPart(Transform root,string name){foreach(var t in root.GetComponentsInChildren<Transform>(true))if(t.name==name)return t;return null;}
   IEnumerator CaptureGameplay(string folder,string name)
   {
    yield return null;yield return null;yield return new WaitForEndOfFrame();string path=Path.GetFullPath(Path.Combine(folder,name));ScreenCapture.CaptureScreenshot(path);yield return WaitForScreenshot(path);
@@ -27,7 +29,7 @@ namespace LestingCraft.Runtime
    var inspectedHand=s.Inventory.Active;s.Inventory.slots[s.Inventory.selected]=new ItemStack();s.Inventory.revision++;
    camera.transform.position=new Vector3(-33,LestingCraft.Story.StoryWorld.Floor(world.Seed)+4.3f,-28.7f);camera.transform.LookAt((oren.transform.position+marta.transform.position)*.5f+new Vector3(-.1f,-.6f,.1f));
    yield return null;
-   foreach(var witness in new[]{oren,marta})foreach(string part in new[]{"Block torso","Cubical head"}){var mesh=witness.transform.Find(part).GetComponent<MeshRenderer>();Vector3 point=mesh.bounds.center,delta=point-camera.transform.position;Vector3 projected=camera.WorldToViewportPoint(point);Debug.Log("[Smoke] WITNESS_VISIBILITY "+witness.name+" / "+part+" center="+point+" viewport="+projected+" solid="+world.GetBlock(Mathf.FloorToInt(point.x),Mathf.FloorToInt(point.y),Mathf.FloorToInt(point.z)));if(!mesh.enabled||!mesh.gameObject.activeInHierarchy||projected.z<=0||projected.x<.06f||projected.x>.94f||projected.y<.08f||projected.y>.9f||VoxelRaycast.Trace(camera.transform.position,delta.normalized,delta.magnitude-.15f,world.GetBlock,out _)){Fail("Opening witness body/head hidden behind level geometry: "+witness.name+" / "+part);yield break;}}
+   foreach(var witness in new[]{oren,marta})foreach(string part in new[]{"Block torso","Cubical head"}){var mesh=DeepPart(witness.transform,part).GetComponent<MeshRenderer>();Vector3 point=mesh.bounds.center,delta=point-camera.transform.position;Vector3 projected=camera.WorldToViewportPoint(point);Debug.Log("[Smoke] WITNESS_VISIBILITY "+witness.name+" / "+part+" center="+point+" viewport="+projected+" solid="+world.GetBlock(Mathf.FloorToInt(point.x),Mathf.FloorToInt(point.y),Mathf.FloorToInt(point.z)));if(!mesh.enabled||!mesh.gameObject.activeInHierarchy||projected.z<=0||projected.x<.06f||projected.x>.94f||projected.y<.08f||projected.y>.9f||VoxelRaycast.Trace(camera.transform.position,delta.normalized,delta.magnitude-.15f,world.GetBlock,out _)){Fail("Opening witness body/head hidden behind level geometry: "+witness.name+" / "+part);yield break;}}
    yield return CaptureGameplay(folder,"opening-witnesses.png");if(finishing)yield break;s.Inventory.slots[s.Inventory.selected]=inspectedHand;s.Inventory.revision++;camera.transform.SetPositionAndRotation(originalPosition,originalRotation);
    Debug.Log("[Smoke] DISTINCT_WITNESSES: different builds, front/back resting poses, individual hair/beard/skin/costumes; original blood/dialogue retained");
    // Explicit smoke fixture: real simulation actor + the same ray/GUI/transaction path as gameplay.
