@@ -35,7 +35,7 @@ namespace LestingCraft.Tests
         {for(ushort id=1;id<=14;id++)for(int face=0;face<6;face++)Assert.That(SurfaceLayers.ForFace(id,face),Is.InRange(0,15));}
         [Test] public void DefaultPresetIsHighAndSmallAdjustmentIsBounded()
         {
-            var settings=new VisualSettings();Assert.AreEqual(2048,settings.ShadowResolution);Assert.AreEqual(1,settings.RenderScale);Assert.IsTrue(settings.PostEffects);
+            var settings=new VisualSettings();Assert.AreEqual(VisualQualityPolicy.High,settings.Preset);Assert.AreEqual(2048,settings.ShadowResolution);Assert.AreEqual(1,settings.RenderScale);Assert.IsTrue(settings.PostEffects);
             settings.RenderScale=.2f;settings.ViewDistance=999;settings.Clamp();Assert.AreEqual(.85f,settings.RenderScale);Assert.AreEqual(5,settings.ViewDistance);
         }
         [Test] public void LocalFontsContainCyrillicGlyphs()

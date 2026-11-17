@@ -196,7 +196,6 @@ namespace LestingCraft.World
         {
             var data = new ChunkMeshData();
             var grassCells = decorate ? new List<Vector3Int>() : null;
-            var cornerShade = new int[4];
             for (int y = 0; y < ChunkData.SizeY; y++)
                 for (int z = 0; z < 16; z++)
                     for (int x = 0; x < 16; x++)
@@ -231,20 +230,23 @@ namespace LestingCraft.World
                                 int corner = Solid(chunk, ox, oz, nx + su.x + sv.x, ny + su.y + sv.y, nz + su.z + sv.z, neighbor);
                                 int ao = a == 1 && b == 1 ? 3 : a + b + corner;
                                 byte shade = (byte)(255 - ao * 30);
-                                cornerShade[c] = shade;
                                 Vector3 position = Corners[face][c];
                                 if (liquid && fluidHeight != null && neighbor(ox + x, y + 1, oz + z) != id)
                                     position.y = other == id && face != 2 && face != 3
                                         ? Mathf.Lerp(adjacentHeight, ownHeight, position.y) : position.y * ownHeight;
                                 if (id == 15) position.y *= .34f;
                                 else if (id == BlockRegistry.BedBlockId) position.y *= .58f;
-                                data.Vertices.Add(new Vector3(x, y, z) + position);
+                                Vector3 vertex = new Vector3(x, y, z) + position;
+                                data.Vertices.Add(vertex);
                                 data.Normals.Add(dir);
                                 data.Colors.Add(new Color32(shade, (byte)((skylight != null ? skylight(ox + nx, ny, oz + nz) : 15) * 17), shade, 255));
-                                data.UVs.Add(new Vector3(ux, vy, layer));
+                                Vector2 uv = id == BlockRegistry.WoodId && face != 2 && face != 3
+                                    ? BarkUV(ox + x, oz + z, new Vector3(ox, 0, oz) + vertex, u, seed)
+                                    : new Vector2(ux, vy);
+                                data.UVs.Add(new Vector3(uv.x, uv.y, layer));
                                 data.Tangents.Add(new Vector4(u.x, u.y, u.z, -1));
                             }
-                            AddIndices(data, id, solid, start, FlipDiagonal(cornerShade[0], cornerShade[1], cornerShade[2], cornerShade[3]));
+                            AddIndices(data, id, solid, start);
                             if (decorate && id == BlockRegistry.GrassId && face == 2 && other == 0)
                                 grassCells.Add(new Vector3Int(x, y, z));
                         }
@@ -286,11 +288,14 @@ namespace LestingCraft.World
                             Face tile = mask[a + b * 16];
                             if (tile.Id == 0) continue;
                             int width = 1, height = 1;
-                            if (tile.AlongU)
+                            // Keep bark faces per-block so the continuous per-column UV path stays
+                            // identical between the compatibility and greedy meshing routes.
+                            bool barkSide = tile.Id == BlockRegistry.WoodId && face != 2 && face != 3;
+                            if (tile.AlongU && !barkSide)
                                 while (a + width < 16 && tile.Same(mask[a + width + b * 16])) width++;
                             // Vertical stacking of shortened fluid faces would erase gaps/steps.
                             bool stack = horizontal || (tile.Bottom == 0 && tile.Top == 1);
-                            if (tile.AlongV && stack)
+                            if (tile.AlongV && stack && !barkSide)
                             {
                                 bool grow = true;
                                 while (b + height < rows && grow)
@@ -308,15 +313,18 @@ namespace LestingCraft.World
                                 Vector3 p = Corners[face][c];
                                 p.y = Mathf.Lerp(tile.Bottom, tile.Top, p.y);
                                 p += u * ((width - 1) * ux) + v * ((height - 1) * vy);
-                                data.Vertices.Add((Vector3)cell + p);
+                                Vector3 vertex = (Vector3)cell + p;
+                                data.Vertices.Add(vertex);
                                 data.Normals.Add(Directions[face]);
                                 byte shade = Byte(tile.AO, c);
                                 data.Colors.Add(new Color32(shade, Byte(tile.Sky, c), shade, 255));
-                                data.UVs.Add(new Vector3(ux * width, vy * height, tile.Layer));
+                                Vector2 uv = tile.Id == BlockRegistry.WoodId && face != 2 && face != 3
+                                    ? BarkUV(ox + cell.x, oz + cell.z, new Vector3(ox, 0, oz) + vertex, u, seed)
+                                    : new Vector2(ux * width, vy * height);
+                                data.UVs.Add(new Vector3(uv.x, uv.y, tile.Layer));
                                 data.Tangents.Add(new Vector4(u.x, u.y, u.z, -1));
                             }
-                            AddIndices(data, tile.Id, tile.Solid, start,
-                                FlipDiagonal(Byte(tile.AO, 0), Byte(tile.AO, 1), Byte(tile.AO, 2), Byte(tile.AO, 3)));
+                            AddIndices(data, tile.Id, tile.Solid, start);
                             for (int j = 0; j < height; j++)
                                 for (int k = 0; k < width; k++)
                                     mask[a + k + (b + j) * 16] = default(Face);
@@ -324,6 +332,16 @@ namespace LestingCraft.World
                 }
             }
             return data;
+        }
+
+        // Continuous trunk appearance without a shader-side world-UV path: stacked wood
+        // blocks share vertical grain, while each column gets a stable offset.
+        static Vector2 BarkUV(int blockX, int blockZ, Vector3 worldPos, Vector3 u, int seed)
+        {
+            uint h = TerrainGenerator.Hash(blockX, 0, blockZ, seed ^ 1094861643);
+            float uu = Vector3.Dot(worldPos, u) * .5f + (h % 1024u) / 128f;
+            float vv = worldPos.y * .5f + ((h >> 10) % 1024u) / 128f;
+            return new Vector2(uu, vv);
         }
 
         static Vector3Int Cell(int face, int slice, int a, int b)
@@ -389,31 +407,18 @@ namespace LestingCraft.World
                 ? chunk.GetBlock(x, y, z) : neighbor(ox + x, y, oz + z)) ? 1 : 0;
         }
 
-        // Anisotropy fix: split the quad along the diagonal that joins the two brighter
-        // corners, so ambient occlusion interpolates smoothly instead of forming a seam.
-        static bool FlipDiagonal(int s0, int s1, int s2, int s3)
-        {
-            return s0 + s2 < s1 + s3;
-        }
-
-        static void AddIndices(ChunkMeshData data, ushort id, bool solid, int start, bool flip = false)
+        static void AddIndices(ChunkMeshData data, ushort id, bool solid, int start)
         {
             AddFace(data.Triangles, start);
             if (id != 15 && id != BlockRegistry.TorchBlockId && id != BlockRegistry.BedBlockId && id != BlockRegistry.LanternBlockId)
                 AddFace(id == BlockRegistry.GlacialIceId ? data.IceTriangles :
                     id == 44 || id == BlockRegistry.ArmoredGlassId ? data.TransparentTriangles :
-                    id == BlockRegistry.WaterId ? data.WaterTriangles : data.OpaqueTriangles, start, flip);
+                    id == BlockRegistry.WaterId ? data.WaterTriangles : data.OpaqueTriangles, start);
             if (solid) AddFace(data.ColliderTriangles, start);
         }
 
-        static void AddFace(List<int> indices, int start, bool flip = false)
+        static void AddFace(List<int> indices, int start)
         {
-            if (flip)
-            {
-                indices.Add(start + 1); indices.Add(start + 2); indices.Add(start + 3);
-                indices.Add(start + 1); indices.Add(start + 3); indices.Add(start);
-                return;
-            }
             indices.Add(start); indices.Add(start + 1); indices.Add(start + 2);
             indices.Add(start); indices.Add(start + 2); indices.Add(start + 3);
         }
