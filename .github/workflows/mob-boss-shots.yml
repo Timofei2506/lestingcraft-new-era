@@ -1,0 +1,101 @@
+name: Mob & Boss Showcase Screenshots (Linux 64)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: unity-license
+  cancel-in-progress: false
+
+jobs:
+  mob-boss:
+    name: Build & Capture 34 Mobs + 26 Bosses as Voxel Screenshots
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free runner disk space for Unity
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Install Xvfb, Mesa OpenGL 4.5 & IL2CPP clang toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils clang lld zlib1g-dev
+
+      - name: Restore Library & IL2CPP Cache
+        uses: actions/cache/restore@v4
+        with:
+          path: Library
+          key: Library-il2cpp-v3-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
+          restore-keys: |
+            Library-il2cpp-v3-
+
+      - name: Drop stale Bee build graph
+        run: rm -rf Library/Bee
+
+      - name: Install Unity Editor
+        uses: buildalon/unity-setup@v2
+        with:
+          hub-version: 3.12.0
+          cache-installation: true
+          build-targets: StandaloneLinux64
+
+      - name: Activate Unity license (Personal)
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Build StandaloneLinux64 Player
+        uses: buildalon/unity-action@v3
+        with:
+          log-name: build-StandaloneLinux64
+          build-target: StandaloneLinux64
+          args: -quit -batchmode -nographics -executeMethod BuildScript.BuildLinux64
+
+      - name: Save Full IL2CPP Library Cache Always
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: Library-il2cpp-v3-${{ hashFiles('Assets/Scripts/**/*.cs', 'Assets/Editor/**/*.cs', 'Packages/manifest.json') }}
+
+      - name: Render 34 Mob + 26 Boss 1920x1080 Voxel Screenshots in Real Game Binary
+        run: |
+          chmod +x Builds/StandaloneLinux64/LestingCraft.x86_64
+          ls -lh Builds/StandaloneLinux64/
+          mkdir -p Builds/StandaloneLinux64/ShowcaseResults/mobs Builds/StandaloneLinux64/ShowcaseResults/bosses Builds/Logs
+          timeout -k 10 1100 xvfb-run -a -s "-screen 0 1920x1080x24" \
+            env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
+            ./Builds/StandaloneLinux64/LestingCraft.x86_64 \
+            -force-glcore \
+            -screen-fullscreen 0 \
+            -screen-width 1920 \
+            -screen-height 1080 \
+            -lc-mobs \
+            -logFile Builds/Logs/linux-mobs.log
+          echo "=== Mob/Boss showcase log tail ==="; tail -n 200 Builds/Logs/linux-mobs.log || true
+          grep -E "\\[Showcase\\]|\\[MobBoss\\]|FAIL|Error|Exception" Builds/Logs/linux-mobs.log || true
+          # Spot-check a mob and a boss render, then assert the full expected counts.
+          test -f Builds/StandaloneLinux64/ShowcaseResults/mobs/00-Олень.png
+          test -f Builds/StandaloneLinux64/ShowcaseResults/bosses/00-Древний-Страж.png
+          test "$(find Builds/StandaloneLinux64/ShowcaseResults/mobs -maxdepth 1 -name '*.png' | wc -l)" -eq 34
+          test "$(find Builds/StandaloneLinux64/ShowcaseResults/bosses -maxdepth 1 -name '*.png' | wc -l)" -eq 26
+          ls -lh Builds/StandaloneLinux64/ShowcaseResults/mobs/
+          ls -lh Builds/StandaloneLinux64/ShowcaseResults/bosses/
+
+      - name: Upload Mob & Boss Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MobBoss-Screenshots-${{ github.sha }}
+          path: |
+            Builds/StandaloneLinux64/ShowcaseResults/mobs/*.png
+            Builds/StandaloneLinux64/ShowcaseResults/bosses/*.png
+            Builds/Logs/**
+          retention-days: 30

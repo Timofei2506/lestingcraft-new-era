@@ -22,6 +22,12 @@ namespace LestingCraft.Runtime
         public VoxelRaycast.Hit Target {get;private set;}
         float pitch,vertical;
         Vector3 spawn,impulse,zeroGVelocity;
+        // Feel-quality movement physics: coyote time (grace window after leaving the
+        // ground), jump buffer (queue a jump pressed slightly before landing) and a
+        // variable jump height (release space early to cut the ascent).
+        const float CoyoteTime = .12f, JumpBuffer = .12f;
+        float coyoteTimer, jumpBufferTimer;
+        bool wasGrounded, jumpCutApplied;
 
         public void Knockback(Vector3 force){impulse=Vector3.ClampMagnitude(impulse+force,12);}
 
@@ -190,12 +196,34 @@ namespace LestingCraft.Runtime
             float speed=swimming?2.6f:Sprinting?8:5;
             speed*=Game.Session.Vitals.body.Movement;
             float grav=Mathf.Clamp(GravityScale,.12f,2.0f);
-            if(controller.isGrounded&&vertical<0)vertical=-2;
-            if(swimming)vertical=keyboard.spaceKey.isPressed?3:keyboard.leftCtrlKey.isPressed?-3:Mathf.MoveTowards(vertical,-.35f,Time.deltaTime*8);
+
+            // Coyote time: keep the grounded window open briefly after walking off an edge,
+            // so a jump pressed at the very edge still registers. Jump buffer: remember a
+            // jump pressed slightly before landing so it fires on the next ground contact.
+            if(controller.isGrounded){coyoteTimer=CoyoteTime;wasGrounded=true;}
+            else if(wasGrounded){coyoteTimer-=Time.deltaTime;if(coyoteTimer<=0)wasGrounded=false;}
+            if(keyboard.spaceKey.wasPressedThisFrame)jumpBufferTimer=JumpBuffer;
+            else jumpBufferTimer-=Time.deltaTime;
+
+            if(swimming)
+            {
+                // Buoyancy: vertical velocity eases toward a neutral band; space rises,
+                // ctrl dives, otherwise settle with a gentle surface bob near the top.
+                float target=keyboard.spaceKey.isPressed?2.8f:keyboard.leftCtrlKey.isPressed?-2.8f:0f;
+                vertical=Mathf.MoveTowards(vertical,target,Time.deltaTime*7f);
+                // Gentle surface bob while swimming.
+                vertical+=Mathf.Sin(Time.time*2.4f)*.22f;
+            }
             else
             {
-                if(controller.isGrounded&&keyboard.spaceKey.wasPressedThisFrame)
+                if(controller.isGrounded&&vertical<0)vertical=-2;
+                if(jumpBufferTimer>0&&coyoteTimer>0)
+                {
                     vertical=8f*Mathf.Lerp(1f,1.35f,1f-Mathf.Clamp01(grav))*Game.Session.Vitals.body.Movement;
+                    jumpBufferTimer=0;coyoteTimer=0;wasGrounded=false;jumpCutApplied=false;
+                }
+                // Variable jump height: releasing space early cuts the ascent once.
+                if(vertical>0&&!keyboard.spaceKey.isPressed&&!jumpCutApplied){vertical*=.45f;jumpCutApplied=true;}
                 vertical=Mathf.Max(vertical-22f*grav*Time.deltaTime,-40f*grav);
             }
             Vector3 velocity=(transform.right*move.x+transform.forward*move.y)*speed;

@@ -70,6 +70,16 @@ namespace LestingCraft.Gameplay
             double r2 = s.X * s.X + s.Y * s.Y, r = Math.Sqrt(r2);
             double g = -GMEarth / (r2 * r);
             ax = g * s.X; ay = g * s.Y;
+            // Lunar perturbation: the Moon sits at a fixed inertial position (MoonDistance along
+            // +X). Its pull is negligible in low Earth orbit but materially shapes lunar transfer
+            // and flyby trajectories, so real multi-body gravity instead of a pure two-body model.
+            double mdx = s.X - MoonDistance, mdy = s.Y;
+            double mr2 = mdx * mdx + mdy * mdy, mr = Math.Sqrt(mr2);
+            if (mr > 0)
+            {
+                double mg = -GMMoon / (mr2 * mr);
+                ax += mg * mdx; ay += mg * mdy;
+            }
             double v = Math.Sqrt(s.Vx * s.Vx + s.Vy * s.Vy);
             if (v > 0 && dragArea > 0 && s.M > 0)
             {
