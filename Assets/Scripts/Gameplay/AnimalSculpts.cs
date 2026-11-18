@@ -119,7 +119,7 @@ namespace LestingCraft.Gameplay
         public static SculptData For(int kind)
         {
             if (kind < 0 || kind >= Table.Length) kind = 3;
-            var s = new Sculptor(Unit, (kind * 2654435761u & 0x7fffffff));
+            var s = new Sculptor(Unit, (int)(kind * 2654435761u & 0x7fffffff));
             Palette(s, kind);
             var m = Table[kind];
             Build(s, m, kind);
