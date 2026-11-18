@@ -209,8 +209,8 @@ namespace LestingCraft.Runtime
             {
                 // Buoyancy: vertical velocity eases toward a neutral band; space rises,
                 // ctrl dives, otherwise settle with a gentle surface bob near the top.
-                float target=keyboard.spaceKey.isPressed?2.8f:keyboard.leftCtrlKey.isPressed?-2.8f:0f;
-                vertical=Mathf.MoveTowards(vertical,target,Time.deltaTime*7f);
+                float buoyTarget=keyboard.spaceKey.isPressed?2.8f:keyboard.leftCtrlKey.isPressed?-2.8f:0f;
+                vertical=Mathf.MoveTowards(vertical,buoyTarget,Time.deltaTime*7f);
                 // Gentle surface bob while swimming.
                 vertical+=Mathf.Sin(Time.time*2.4f)*.22f;
             }
