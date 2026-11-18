@@ -18,7 +18,7 @@ namespace LestingCraft.Runtime
     /// </summary>
     public sealed class MobBossShowcaseProbe : MonoBehaviour
     {
-        bool finishing;
+        static bool finishing;
         Camera showcaseCam;
         Light sun;
         GameObject floorRoot;
@@ -127,7 +127,7 @@ namespace LestingCraft.Runtime
 
             showcaseCam = CreateShowcaseCamera();
             sun = CreateSun();
-            yield return WaitForEndOfFrame();
+            yield return new WaitForEndOfFrame();
 
             // ---- Wildlife mobs ----
             var mobRoot = new GameObject("MobShowcaseRig");
@@ -293,7 +293,7 @@ namespace LestingCraft.Runtime
             bool any = false;
             for (int i = 0; i < renderers.Length; i++)
             {
-                if (!renderers[i] || !renderers[i].bounds.hasValue) continue;
+                if (!renderers[i]) continue;
                 any = true;
                 top = Mathf.Max(top, renderers[i].bounds.max.y);
                 bottom = Mathf.Min(bottom, renderers[i].bounds.min.y);
