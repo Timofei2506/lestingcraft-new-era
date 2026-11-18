@@ -318,8 +318,9 @@ namespace LestingCraft.Gameplay
     }
 
     /// <summary>
-    /// Authored guardians: one real voxel sculpt per world with its own anatomy, palette and
-    /// articulated parts. Replaces the old stretched-cube rig; silhouettes differ without materials.
+    /// Authored guardians: clean, readable voxel sculpts — blocky anatomy with clear silhouettes,
+    /// articulated limbs, blocky heads and emissive weak points. One sculpt per world; combat rules
+    /// and part names the controllers rely on (arm_l/arm_r, arm2_l/arm2_r, head, shard_*, leg_*) are kept.
     /// </summary>
     public static class BossSculpts
     {
@@ -355,113 +356,55 @@ namespace LestingCraft.Gameplay
             return Warden(seed, true);
         }
 
-        // ---------- shared anatomy helpers ----------
+        // ---------- shared blocky anatomy helpers ----------
 
-        static void DigitigradeLeg(Sculptor s, float side, float hipX, float hipY, float scale, int plate, int joint)
+        /// <summary>Blocky arm: upper box, lower box and a rounded elbow joint. Hangs below the shoulder pivot.</summary>
+        static void Arm(Sculptor s, float sx, float sy, float sz, float len, float t, int up, int lo, int joint)
         {
-            // thigh up-forward, shin back-down, foot forward: reverse-jointed frost stride
-            s.Path(new[] {
-                side * hipX, hipY, 0f,
-                side * (hipX + .28f * scale), hipY - .78f * scale, .34f * scale,
-                side * (hipX + .34f * scale), hipY - 1.62f * scale, -.42f * scale,
-                side * (hipX + .36f * scale), .30f * scale, .18f * scale,
-                side * (hipX + .40f * scale), .12f * scale, .62f * scale },
-                new[] { .34f * scale, .30f * scale, .24f * scale, .20f * scale, .26f * scale }, plate);
-            s.Ellipsoid(side * (hipX + .28f * scale), hipY - .78f * scale, .34f * scale, .30f * scale, .30f * scale, .30f * scale, joint);
-            s.Ellipsoid(side * (hipX + .34f * scale), hipY - 1.62f * scale, -.42f * scale, .24f * scale, .24f * scale, .24f * scale, joint);
+            s.Box(sx, sy - len * .5f, sz, t * .5f, len * .5f, t * .5f, up);
+            s.Box(sx, sy - len * 1.42f, sz, t * .62f, len * .52f, t * .62f, lo);
+            s.Ellipsoid(sx, sy - len * .94f, sz, t * .5f, t * .5f, t * .5f, joint, 1.05f);
         }
 
-        static void RootLeg(Sculptor s, float side, int bark, int root)
+        /// <summary>Blocky leg: thigh, shin, blocky foot and a rounded knee. Total height = len so the
+        /// foot lands at y = sy - len. Creates its own leg_l/leg_r part so the controller sees a walker.</summary>
+        static void Leg(Sculptor s, float sx, float sy, float sz, float len, float t, int up, int lo, int foot, int joint)
         {
-            for (int j = -1; j <= 1; j++)
-            {
-                s.Path(new[] {
-                    side * .52f, 2.25f, -.08f,
-                    side * (.70f + j * .12f), 1.52f, -.08f,
-                    side * (.65f + j * .13f), .82f, .12f,
-                    side * (.69f + j * .16f), .20f, .38f },
-                    new[] { .22f, .24f, .21f, .16f }, j == 0 ? root : bark);
-                s.Path(new[] {
-                    side * (.69f + j * .16f), .22f, .32f,
-                    side * (.72f + j * .20f), .12f, .65f,
-                    side * (.79f + j * .22f), .10f, .99f - Math.Abs(j) * .11f },
-                    new[] { .19f, .16f, .055f }, bark);
-            }
+            s.Part(sx < 0 ? "leg_l" : "leg_r", sx, sy, sz);
+            s.Box(sx, sy - len * .05f, sz, t * .6f, len * .12f, t * .6f, up);
+            s.Box(sx, sy - len * .30f, sz, t * .5f, len * .30f, t * .5f, up);
+            s.Box(sx, sy - len * .80f, sz, t * .55f, len * .25f, t * .55f, lo);
+            s.Box(sx, sy - len * .98f, sz + t * .12f, t * .8f, t * .22f, t * 1.0f, foot);
+            s.Ellipsoid(sx, sy - len * .58f, sz, t * .5f, t * .5f, t * .5f, joint, 1.05f);
         }
 
-        // ---------- Lestingia / Kepler: forest wardens ----------
-
-        public static SculptData Warden(int seed, bool variant)
+        /// <summary>Blocky digitigrade leg: thigh, shin angled back, clawed foot. Total height = len.</summary>
+        static void DigitLeg(Sculptor s, float sx, float sy, float sz, float len, float t, int up, int lo, int foot, int joint)
         {
-            var s = new Sculptor(.13f, seed);
-            int bark = s.Pal("old outer bark", "bark", .77f, .69f, .57f, 0);
-            int grain = s.Pal("inner root grain", "bark", 1f, .88f, .69f, 0);
-            int carved = s.Pal("petrified carved wood", "mossy-stone", .96f, .88f, .69f, 0);
-            int moss = s.Pal("moss in crevices", "mossy-stone", .68f, .86f, .52f, 0);
-            int heart = s.Pal("amber living heart", "glow-shroom", .95f, .30f, .04f, 1.2f);
-            int eye = s.Pal("ember eye", "glow-shroom", 1f, .64f, .15f, 2f);
-            int pupil = s.Pal("hollow socket", "obsidian", .10f, .07f, .05f, 0);
-            int charred = s.Pal("charred fissures", "bark", .35f, .31f, .26f, 0);
-
-            for (int side = -1; side <= 1; side += 2) RootLeg(s, side, bark, grain);
-            s.Part("body", 0, 0, 0);
-            // bent spine and pelvic arch
-            s.Path(new[] { -.55f, 2.12f, 0f, 0f, 2.27f, .05f, .55f, 2.12f, 0f }, new[] { .32f, .36f, .32f }, bark);
-            s.Path(new[] { 0f, 2.10f, -.13f, -.08f, 2.80f, -.43f, .08f, 3.62f, -.43f, 0f, 4.28f, -.10f, 0f, 4.55f, 0f },
-                new[] { .29f, .32f, .38f, .30f, .22f }, bark);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * .75f, 3.77f, -.03f);
-                s.Path(new[] { side * .43f, 2.15f, 0f, side * .85f, 2.65f, .15f, side * 1.02f, 3.39f, .01f, side * .88f, 3.94f, -.04f, side * .32f, 4.26f, 0f },
-                    new[] { .26f, .31f, .37f, .42f, .23f }, bark);
-                // open rib cage: three sweeping ribs per side, heart visible between them
-                for (int j = 0; j < 3; j++)
-                {
-                    float y = 3.74f - j * .36f;
-                    s.Path(new[] { side * .12f, y, -.36f, side * .68f, y + .06f, .10f, side * .83f, y - .05f, .49f, side * .53f, y - .28f, .79f, side * .44f, y - .41f, .84f },
-                        new[] { .16f, .19f, .18f, .13f, .07f }, j == 1 ? grain : bark);
-                }
-                // long root arm with separated fingers and claws
-                s.Path(new[] { side * .75f, 3.77f, -.03f, side * 1.16f, 3.30f, .02f, side * 1.42f, 2.60f, .12f, side * 1.50f, 1.90f, .30f },
-                    new[] { .38f, .36f, .30f, .24f }, bark);
-                for (int f = -1; f <= 1; f++)
-                    s.Path(new[] { side * 1.50f, 1.90f, .30f, side * (1.56f + f * .06f), 1.52f, .48f + f * .10f, side * (1.58f + f * .08f), 1.24f, .66f + f * .16f },
-                        new[] { .14f, .10f, .05f }, grain);
-                s.Part("body", 0, 0, 0);
-            }
-            // sunken amber heart behind the ribs
-            s.Ellipsoid(0, 3.62f, .30f, .30f, .34f, .26f, heart);
-            s.Ellipsoid(0, 3.62f, .46f, .16f, .18f, .12f, s.Pal("heart hot facet", "glow-shroom", 1f, .67f, .18f, 1.9f));
-            // carved mask head with deep sockets and branching antler crown
-            s.Part("head", 0, 4.55f, 0);
-            s.Ellipsoid(0, 4.86f, .06f, .34f, .46f, .34f, carved);
-            s.Ellipsoid(0, 4.62f, .30f, .22f, .26f, .18f, carved);
-            s.Eyes(0, 4.94f, .34f, .16f, .10f, pupil, eye, pupil);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Path(new[] { side * .18f, 5.24f, 0f, side * .40f, 5.66f, -.10f, side * .62f, 6.02f, .04f, side * .86f, 6.30f, -.12f },
-                    new[] { .12f, .10f, .07f, .04f }, bark);
-                s.Path(new[] { side * .40f, 5.66f, -.10f, side * .52f, 5.92f, .22f }, new[] { .07f, .04f }, bark);
-            }
-            s.Part("body", 0, 0, 0);
-            // Extra antler branching and mossy bark knots for a denser, more organic silhouette.
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * .18f, 5.24f, 0f, side * .34f, 5.78f, -.14f, side * .44f, 6.20f, -.30f },
-                    new[] { .09f, .06f, .03f }, bark);
-            for (int k = 0; k < 6; k++)
-            {
-                double a = k * Math.PI * 2 / 6 + .5;
-                s.Ellipsoid((float)Math.Cos(a) * .62f, 3.30f + (k % 2) * .22f, (float)Math.Sin(a) * .42f,
-                    .10f, .12f, .10f, k % 2 == 0 ? moss : grain);
-            }
-            s.Cracks(charred, 26, 7, .4f, 4.4f);
-            s.Cracks(moss, 18, 5, .2f, 3.4f);
-            s.Light(0, 3.62f, .60f, 1f, .38f, .055f, 3.5f, 2.7f);
-            var d = s.Finish(variant ? "Elder Root Warden" : "Ancient Guardian");
-            ApplyLight(s, d);
-            return d;
+            s.Part(sx < 0 ? "leg_l" : "leg_r", sx, sy, sz);
+            s.Box(sx, sy - len * .05f, sz, t * .6f, len * .12f, t * .6f, up);
+            s.Box(sx, sy - len * .30f, sz, t * .5f, len * .30f, t * .5f, up);
+            s.Box(sx, sy - len * .80f, sz - t * .08f, t * .55f, len * .25f, t * .55f, lo);
+            s.Box(sx, sy - len * .98f, sz + t * .35f, t * .8f, t * .22f, t * .9f, foot);
+            s.Ellipsoid(sx, sy - len * .58f, sz - t * .05f, t * .5f, t * .5f, t * .5f, joint, 1.05f);
         }
 
+        /// <summary>Blocky torso: a stacked chest + waist with a clear silhouette.</summary>
+        static void Torso(Sculptor s, float cx, float cy, float cz, float w, float h, float d, int chest, int waist)
+        {
+            s.Box(cx, cy + h * .28f, cz, w * .5f, h * .36f, d * .5f, chest);
+            s.Box(cx, cy - h * .22f, cz, w * .58f, h * .26f, d * .58f, waist);
+        }
+
+        /// <summary>Blocky head: a face block with a jaw and a brow, reads clearly as a head.</summary>
+        static void Head(Sculptor s, float cx, float cy, float cz, float w, float h, float d, int face, int jaw, int brow)
+        {
+            s.Box(cx, cy, cz, w * .5f, h * .5f, d * .5f, face);
+            s.Box(cx, cy - h * .34f, cz + d * .12f, w * .5f, h * .22f, d * .24f, jaw);
+            s.Box(cx, cy + h * .30f, cz, w * .56f, h * .16f, d * .56f, brow);
+        }
+
+        /// <summary>Copy the sculpt's local light spec onto the finished SculptData.</summary>
         static void ApplyLight(Sculptor s, SculptData d)
         {
             if (!s.HasLight) return;
@@ -471,730 +414,670 @@ namespace LestingCraft.Gameplay
             d.LightRange = l[6]; d.LightIntensity = l[7];
         }
 
-        // ---------- Mars: tall four-armed basalt colossus ----------
+        // ---------- Lestingia / Kepler: forest wardens ----------
+
+        public static SculptData Warden(int seed, bool variant)
+        {
+            var s = new Sculptor(.13f, seed);
+            int bark = s.Pal("old outer bark", "bark", .62f, .52f, .38f, 0);
+            int grain = s.Pal("inner root grain", "bark", .85f, .72f, .52f, 0);
+            int carved = s.Pal("petrified carved wood", "mossy-stone", .86f, .78f, .58f, 0);
+            int moss = s.Pal("moss in crevices", "mossy-stone", .58f, .78f, .42f, 0);
+            int heart = s.Pal("amber living heart", "glow-shroom", .95f, .30f, .04f, 1.2f);
+            int heartHot = s.Pal("heart hot facet", "glow-shroom", 1f, .67f, .18f, 1.9f);
+            int eye = s.Pal("ember eye", "glow-shroom", 1f, .64f, .15f, 2f);
+            int pupil = s.Pal("hollow socket", "obsidian", .10f, .07f, .05f, 0);
+            int charred = s.Pal("charred fissures", "bark", .32f, .28f, .22f, 0);
+
+            // blocky rooted legs
+            Leg(s, -.42f, 1.7f, 0f, 1.7f, .62f, bark, grain, grain, grain);
+            Leg(s, .42f, 1.7f, 0f, 1.7f, .62f, bark, grain, grain, grain);
+            s.Part("body", 0, 0, 0);
+            Torso(s, 0, 2.7f, 0f, 1.5f, 1.5f, 1.1f, bark, grain);
+            // mossy stone shoulder pauldrons
+            s.Box(-.92f, 3.1f, 0f, .42f, .34f, .5f, moss);
+            s.Box(.92f, 3.1f, 0f, .42f, .34f, .5f, moss);
+            // arms
+            s.Part("arm_l", -.78f, 3.35f, 0f);
+            Arm(s, -.78f, 3.35f, 0f, 1.5f, .46f, bark, grain, grain);
+            s.Part("arm_r", .78f, 3.35f, 0f);
+            Arm(s, .78f, 3.35f, 0f, 1.5f, .46f, bark, grain, grain);
+            // amber heart behind a blocky ribcage
+            s.Box(0, 2.85f, .42f, .2f, .26f, .18f, heart);
+            s.Ellipsoid(0, 2.85f, .56f, .12f, .14f, .1f, heartHot);
+            // carved mask head
+            s.Part("head", 0, 4.05f, 0f);
+            Head(s, 0, 4.05f, .04f, .9f, .72f, .7f, carved, carved, carved);
+            s.Eyes(0, 4.05f, .40f, .20f, .12f, pupil, eye, pupil);
+            // branching antler crown
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Box(side * .30f, 4.55f, 0f, .07f, .55f, .07f, bark);
+                s.Box(side * .30f, 4.78f, .12f, .07f, .42f, .07f, bark);
+                s.Box(side * .42f, 4.92f, .20f, .07f, .30f, .07f, bark);
+            }
+            s.Part("body", 0, 0, 0);
+            s.Cracks(charred, 22, 6, .4f, 4.2f);
+            s.Cracks(moss, 16, 5, .2f, 3.2f);
+            s.Light(0, 2.85f, .7f, 1f, .38f, .055f, 3.5f, 2.7f);
+            var d = s.Finish("Warden");
+            ApplyLight(s, d);
+            return d;
+        }
+
+        // ---------- Mars: rusted red colossus ----------
 
         static SculptData MarsColossus(int seed)
         {
-            var s = new Sculptor(.16f, seed);
-            int basalt = s.Pal("stacked basalt", "basalt", .62f, .34f, .28f, 0);
-            int dark = s.Pal("basalt shade", "basalt", .38f, .20f, .17f, 0);
-            int crack = s.Pal("magma fissure", "magma-basalt", 1f, .42f, .12f, 1.5f);
-            int obs = s.Pal("obsidian seam", "obsidian", .12f, .09f, .09f, 0);
-            int core = s.Pal("forge heart", "lava", 1f, .50f, .12f, 2.0f);
-            int eye = s.Pal("ember eye", "lava", 1f, .62f, .18f, 2.2f);
-            int socket = s.Pal("socket", "obsidian", .08f, .06f, .06f, 0);
+            var s = new Sculptor(.13f, seed);
+            int body = s.Pal("rusted hull", "metal-ingot", .72f, .42f, .30f, 0);
+            int dark = s.Pal("baked plating", "metal-ingot", .52f, .26f, .16f, 0);
+            int joint = s.Pal("arc joint", "generator-casing", .30f, .30f, .32f, 0);
+            int eye = s.Pal("core visor", "lava", 1f, .45f, .12f, 2f);
+            int glow = s.Pal("heat vent", "lava", 1f, .55f, .20f, 1.6f);
+            int metal = s.Pal("polished steel", "hazard-steel", .62f, .60f, .60f, 0);
 
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "leg_l" : "leg_r", side * 1.0f, 2.4f, 0);
-                s.Path(new[] { side * 1.0f, 2.5f, 0f, side * 1.15f, 1.5f, .1f, side * 1.05f, .6f, -.05f, side * 1.1f, .18f, .25f },
-                    new[] { .55f, .48f, .42f, .55f }, basalt);
-                s.Box(side * 1.1f, .12f, .35f, .62f, .14f, .55f, dark);
-            }
+            Leg(s, -.5f, 1.9f, 0f, 1.9f, .68f, body, dark, dark, joint);
+            Leg(s, .5f, 1.9f, 0f, 1.9f, .68f, body, dark, dark, joint);
             s.Part("body", 0, 0, 0);
-            // pelvis and tall layered torso: overlapping plates, not one box
-            s.Ellipsoid(0, 2.75f, 0, 1.15f, .55f, .80f, dark);
-            for (int i = 0; i < 5; i++)
-            {
-                float y = 3.2f + i * .62f;
-                float w = 1.55f - Math.Abs(i - 2) * .12f;
-                s.Box(0, y, -.10f + i * .02f, w, .34f, .78f - i * .04f, i % 2 == 0 ? basalt : dark);
-                s.Box(0, y - .18f, .62f - i * .05f, w * .82f, .16f, .18f, dark);
-            }
-            // magma veins between plates
-            for (int i = 0; i < 4; i++) s.Box(0, 3.5f + i * .62f, .74f - i * .05f, 1.05f - i * .08f, .05f, .06f, crack);
-            // four arms: two massive, two smaller under-arms
-            for (int pair = 0; pair < 2; pair++)
-            {
-                float ay = pair == 0 ? 5.5f : 4.45f;
-                float ax = pair == 0 ? 2.15f : 1.70f;
-                float ar = pair == 0 ? .52f : .36f;
-                for (int side = -1; side <= 1; side += 2)
-                {
-                    string nm = (pair == 0 ? "arm_" : "arm2_") + (side < 0 ? "l" : "r");
-                    s.Part(nm, side * ax, ay, 0);
-                    s.Ellipsoid(side * ax, ay, 0, ar * 1.5f, ar * 1.2f, ar * 1.4f, dark);
-                    s.Path(new[] { side * ax, ay, .1f, side * (ax + .45f), ay - .9f, .45f, side * (ax + .55f), ay - 1.9f, .70f },
-                        new[] { ar, ar * .82f, ar * .72f }, basalt);
-                    s.Box(side * (ax + .55f), ay - 2.35f, .80f, ar * 1.15f, ar * .95f, ar * 1.3f, dark);
-                    for (int f = -1; f <= 1; f++)
-                        s.Path(new[] { side * (ax + .55f), ay - 2.6f, .80f + f * .18f, side * (ax + .58f), ay - 3.0f, .98f + f * .26f },
-                            new[] { .12f, .06f }, obs);
-                }
-            }
-            s.Part("head", 0, 6.4f, 0);
-            s.Box(0, 6.6f, .1f, .72f, .62f, .66f, basalt);
-            s.Box(0, 6.42f, .68f, .55f, .16f, .12f, socket);
-            s.Eyes(0, 6.62f, .88f, .30f, .13f, socket, eye, socket);
-            // horn crest
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * .55f, 7.05f, 0f, side * 1.05f, 7.75f, -.15f, side * 1.35f, 8.45f, -.40f },
-                    new[] { .24f, .15f, .07f }, obs);
-            // Forged shoulder spikes rising between the torso and the great arms.
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * 1.30f, 5.50f, .12f, side * 1.70f, 5.92f, .02f, side * 1.95f, 6.40f, -.18f },
-                    new[] { .16f, .11f, .05f }, obs);
-            // Forged chest ridge over the forge heart.
-            s.Path(new[] { 0f, 4.15f, .66f, 0f, 4.85f, .84f, 0f, 5.55f, .74f }, new[] { .15f, .13f, .09f }, dark);
+            Torso(s, 0, 3.0f, 0f, 1.7f, 1.6f, 1.2f, body, dark);
+            s.Box(0, 3.6f, .45f, .5f, .4f, .3f, glow);
+            // blocky pauldrons
+            s.Box(-1.0f, 3.5f, 0f, .5f, .45f, .55f, dark);
+            s.Box(1.0f, 3.5f, 0f, .5f, .45f, .55f, dark);
+            s.Part("arm_l", -.88f, 3.7f, 0f);
+            Arm(s, -.88f, 3.7f, 0f, 1.7f, .5f, body, dark, joint);
+            s.Part("arm_r", .88f, 3.7f, 0f);
+            Arm(s, .88f, 3.7f, 0f, 1.7f, .5f, body, dark, joint);
+            // second pair of arms
+            s.Part("arm2_l", -.95f, 3.2f, -.1f);
+            Arm(s, -.95f, 3.2f, -.1f, 1.4f, .42f, dark, metal, joint);
+            s.Part("arm2_r", .95f, 3.2f, -.1f);
+            Arm(s, .95f, 3.2f, -.1f, 1.4f, .42f, dark, metal, joint);
+            s.Part("head", 0, 4.4f, .05f);
+            Head(s, 0, 4.4f, .05f, .85f, .6f, .6f, body, dark, dark);
+            s.Box(0, 4.45f, .38f, .34f, .12f, .08f, eye);
             s.Part("body", 0, 0, 0);
-            s.Ellipsoid(0, 4.6f, .78f, .42f, .46f, .30f, core);
-            s.Cracks(crack, 40, 9, .6f, 6.2f);
-            s.Cracks(obs, 26, 7, .6f, 6.6f);
-            s.Light(0, 4.6f, 1.2f, 1f, .42f, .10f, 24f, 4.2f);
-            var d = s.Finish("Red Colossus");
+            s.Cracks(dark, 20, 6, .5f, 4.0f);
+            s.Light(0, 3.6f, .75f, 1f, .55f, .20f, 3.5f, 2.2f);
+            var d = s.Finish("Mars Colossus");
             ApplyLight(s, d);
             return d;
         }
 
-        // ---------- Venus: six-legged acid predator with sickle forelimbs ----------
+        // ---------- Venus: golden predator ----------
 
         static SculptData VenusPredator(int seed)
         {
-            var s = new Sculptor(.14f, seed);
-            int chitin = s.Pal("storm chitin", "rad-scorpion-carapace", .42f, .46f, .55f, 0);
-            int plate = s.Pal("cut plate", "scorpion-chitin", .30f, .34f, .42f, 0);
-            int acid = s.Pal("acid tank", "cherenkov-crystal", .55f, .95f, .45f, .5f);
-            int acidHot = s.Pal("acid core", "cherenkov-crystal", .80f, 1f, .55f, 1.2f);
-            int eye = s.Pal("cluster eye", "glow-shroom", .85f, 1f, .50f, 2.1f);
-            int socket = s.Pal("socket", "obsidian", .07f, .08f, .10f, 0);
-            int tube = s.Pal("feed tube", "copper-cable", .55f, .48f, .30f, 0);
+            var s = new Sculptor(.13f, seed);
+            int gold = s.Pal("golden hide", "copper-block", .85f, .66f, .32f, 0);
+            int dark = s.Pal("shadowed underbelly", "metal-ingot", .55f, .36f, .20f, 0);
+            int joint = s.Pal("sinew joint", "generator-casing", .45f, .34f, .20f, 0);
+            int eye = s.Pal("predator eye", "lava", 1f, .60f, .10f, 2.2f);
+            int claw = s.Pal("ivory claw", "bone-stalker-hide", .88f, .80f, .66f, 0);
 
-            // six curved legs: three per side, splayed predator stance
-            for (int side = -1; side <= 1; side += 2)
-                for (int i = 0; i < 3; i++)
-                {
-                    float z = -.9f + i * .9f;
-                    s.Part("leg_" + (side < 0 ? "l" : "r") + i, side * 1.0f, 2.0f, z);
-                    s.Path(new[] { side * .9f, 2.0f, z, side * 1.9f, 2.3f, z + .2f, side * 2.6f, 1.2f, z + .35f, side * 2.9f, .14f, z + .1f },
-                        new[] { .38f, .32f, .24f, .13f }, chitin);
-                    s.Path(new[] { side * 2.9f, .12f, z + .1f, side * 3.05f, .10f, z - .25f }, new[] { .12f, .05f }, plate);
-                }
+            Leg(s, -.45f, 1.8f, .05f, 1.8f, .62f, gold, dark, dark, joint);
+            Leg(s, .45f, 1.8f, .05f, 1.8f, .62f, gold, dark, dark, joint);
             s.Part("body", 0, 0, 0);
-            // low elongated torso of overlapping cut plates
-            for (int i = 0; i < 6; i++)
-            {
-                float z = -1.3f + i * .55f;
-                s.Ellipsoid(0, 2.15f - Math.Abs(i - 2.5f) * .06f, z, 1.15f - Math.Abs(i - 2.5f) * .10f, .78f, .42f, i % 2 == 0 ? chitin : plate);
-            }
-            // acid tanks on the spine with feed tubes
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Ellipsoid(side * .55f, 2.88f, -.35f, .34f, .42f, .58f, acid);
-                s.Ellipsoid(side * .55f, 2.96f, -.35f, .17f, .24f, .34f, acidHot);
-                s.Path(new[] { side * .55f, 2.6f, .30f, side * .35f, 2.35f, .70f, side * .18f, 2.2f, 1.0f }, new[] { .10f, .08f, .06f }, tube);
-            }
-            // sickle forelimbs: raised scythe blades
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.0f, 2.3f, 1.3f);
-                s.Path(new[] { side * .9f, 2.3f, 1.2f, side * 1.5f, 2.6f, 1.9f, side * 1.7f, 3.1f, 2.3f },
-                    new[] { .34f, .28f, .22f }, chitin);
-                s.Path(new[] { side * 1.7f, 3.1f, 2.3f, side * 1.5f, 3.7f, 2.9f, side * .9f, 4.0f, 3.1f, side * .3f, 3.9f, 2.9f },
-                    new[] { .20f, .15f, .10f, .05f }, plate);
-            }
-            // lowered hunter head with compound eye cluster and mandibles
-            s.Part("head", 0, 2.2f, 1.7f);
-            s.Ellipsoid(0, 2.25f, 1.75f, .62f, .50f, .58f, chitin);
-            s.Ellipsoid(0, 2.05f, 2.20f, .40f, .30f, .30f, plate);
-            for (int i = -2; i <= 2; i++)
-                s.Ellipsoid(i * .16f, 2.42f, 2.16f, .07f, .07f, .06f, i == 0 ? eye : socket);
-            s.Eyes(0, 2.44f, 2.20f, .30f, .10f, socket, eye, socket);
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * .30f, 1.95f, 2.30f, side * .48f, 1.75f, 2.70f, side * .30f, 1.62f, 3.0f },
-                    new[] { .10f, .07f, .04f }, plate);
+            Torso(s, 0, 2.9f, 0f, 1.6f, 1.5f, 1.05f, gold, dark);
+            // arched back plates
+            for (int i = -1; i <= 1; i++) s.Box(i * .45f, 3.5f, -.15f, .35f, .2f, .35f, gold);
+            s.Part("arm_l", -.82f, 3.3f, 0f);
+            Arm(s, -.82f, 3.3f, 0f, 1.6f, .46f, gold, dark, joint);
+            s.Box(-.82f, 1.85f, .28f, .12f, .12f, .12f, claw);
+            s.Part("arm_r", .82f, 3.3f, 0f);
+            Arm(s, .82f, 3.3f, 0f, 1.6f, .46f, gold, dark, joint);
+            s.Box(.82f, 1.85f, .28f, .12f, .12f, .12f, claw);
+            s.Part("head", 0, 4.2f, .12f);
+            Head(s, 0, 4.2f, .12f, .8f, .66f, .6f, gold, dark, gold);
+            // jaw fangs
+            s.Box(-.14f, 3.94f, .42f, .07f, .14f, .07f, claw);
+            s.Box(.14f, 3.94f, .42f, .07f, .14f, .07f, claw);
+            s.Eyes(0, 4.32f, .44f, .20f, .11f, dark, eye, dark);
             s.Part("body", 0, 0, 0);
-            // Spine ridge of cut plates above the low torso.
-            s.Path(new[] { 0f, 2.60f, -1.15f, 0f, 2.96f, -.45f, 0f, 2.99f, .45f, 0f, 2.60f, 1.15f },
-                new[] { .13f, .15f, .15f, .13f }, plate);
-            s.Cracks(socket, 22, 6, 1.2f, 3.2f);
-            s.Light(0, 3.0f, -.35f, .62f, 1f, .45f, 14f, 3.2f);
-            var d = s.Finish("The Storm Herald");
+            s.Cracks(dark, 18, 6, .5f, 3.9f);
+            s.Light(0, 3.4f, .55f, 1f, .60f, .10f, 3.0f, 2.0f);
+            var d = s.Finish("Venus Predator");
             ApplyLight(s, d);
             return d;
         }
 
-        // ---------- Mercury: low six-legged mechanical scarab with mirror vanes ----------
+        // ---------- Mercury: mercury scarab ----------
 
         static SculptData MercuryScarab(int seed)
         {
             var s = new Sculptor(.13f, seed);
-            int hull = s.Pal("titanium hull", "titanium-hull", .62f, .66f, .72f, 0);
-            int dark = s.Pal("shadow housing", "generator-casing", .22f, .24f, .28f, 0);
-            int heat = s.Pal("heat erosion", "magma-basalt", .48f, .30f, .24f, 0);
-            int core = s.Pal("solar core", "lava", 1f, .55f, .15f, 2.2f);
-            int lens = s.Pal("mirror vane", "titanium-hull", .95f, .97f, 1.05f, .12f);
-            int eye = s.Pal("optic", "cherenkov-crystal", 1f, .75f, .30f, 2.0f);
+            int silver = s.Pal("mercury shell", "hazard-steel", .78f, .80f, .86f, 0);
+            int dark = s.Pal("shadowed seam", "obsidian", .22f, .24f, .28f, 0);
+            int joint = s.Pal("joint ligament", "generator-casing", .50f, .52f, .58f, 0);
+            int core = s.Pal("mercury core", "cherenkov-crystal", .60f, .90f, 1f, 2f);
+            int mandible = s.Pal("glass mandible", "crystal", .70f, .85f, 1f, 0);
 
-            // six stubby powered legs
-            for (int side = -1; side <= 1; side += 2)
-                for (int i = 0; i < 3; i++)
-                {
-                    float z = -.8f + i * .8f;
-                    s.Part("leg_" + (side < 0 ? "l" : "r") + i, side * .9f, 1.0f, z);
-                    s.Path(new[] { side * .8f, 1.0f, z, side * 1.5f, .9f, z + .1f, side * 1.8f, .25f, z + .2f, side * 2.1f, .10f, z },
-                        new[] { .26f, .22f, .16f, .20f }, dark);
-                    s.Ellipsoid(side * 1.5f, .9f, z + .1f, .20f, .20f, .20f, hull);
-                }
+            DigitLeg(s, -.5f, 1.7f, .1f, 1.7f, .5f, silver, dark, dark, joint);
+            DigitLeg(s, .5f, 1.7f, .1f, 1.7f, .5f, silver, dark, dark, joint);
             s.Part("body", 0, 0, 0);
-            // low wide carapace: layered metal flaps
-            s.Ellipsoid(0, 1.90f, 0, 1.45f, 1.10f, 1.55f, hull);
-            for (int i = 0; i < 4; i++)
-                s.Box(0, 2.50f + i * .10f, -.9f + i * .62f, 1.30f - i * .10f, .11f, .34f, i % 2 == 0 ? hull : dark);
-            s.Ellipsoid(0, 1.50f, 0, 1.20f, .60f, 1.30f, dark);
-            // solar core under the front carapace slit
-            s.Ellipsoid(0, 1.75f, 1.15f, .55f, .46f, .38f, core);
-            // wide flat mirror vanes fanned back from the carapace, like a scarab's solar sails
-            for (int side = -1; side <= 1; side += 2)
-                for (int v = 0; v < 3; v++)
-                {
-                    s.Part("vane_" + (side < 0 ? "l" : "r") + v, side * .6f, 2.1f, -.9f);
-                    float spread = .45f + v * .55f;
-                    float lift = .55f - v * .12f;
-                    for (int seg = 0; seg < 5; seg++)
-                    {
-                        float t = seg / 4f;
-                        float x = side * (.55f + spread * t);
-                        float y = 2.1f + lift * t + .18f * (float)Math.Sin(t * 3f);
-                        float z = -.95f - .95f * t;
-                        float w = .30f + .34f * t;
-                        s.Ellipsoid(x, y, z, w * .55f, .05f + .03f * t, w, lens);
-                    }
-                }
-            // digging mandibles and optic row
-            s.Part("head", 0, 1.95f, 1.5f);
-            s.Ellipsoid(0, 1.95f, 1.55f, .60f, .42f, .45f, dark);
-            for (int i = -1; i <= 1; i++) s.Ellipsoid(i * .28f, 2.07f, 1.92f, .09f, .09f, .07f, eye);
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * .45f, 1.65f, 1.8f, side * .70f, 1.35f, 2.2f, side * .55f, 1.15f, 2.6f }, new[] { .12f, .08f, .05f }, hull);
+            // beetle body: domed chest + smaller rear
+            s.Box(0, 2.6f, 0f, .7f, .6f, 1.0f, silver);
+            s.Box(0, 2.5f, -.75f, .5f, .5f, .6f, dark);
+            s.Box(0, 3.1f, 0f, .72f, .18f, 1.0f, dark);
+            s.Box(0, 2.5f, .75f, .3f, .35f, .2f, core);
+            // blocky wings folded
+            s.Box(-.85f, 2.7f, -.1f, .25f, .5f, .9f, silver);
+            s.Box(.85f, 2.7f, -.1f, .25f, .5f, .9f, silver);
+            s.Part("head", 0, 3.7f, .1f);
+            Head(s, 0, 3.7f, .1f, .75f, .55f, .6f, silver, dark, dark);
+            // mandibles
+            s.Box(-.18f, 3.6f, .55f, .08f, .25f, .3f, mandible);
+            s.Box(.18f, 3.6f, .55f, .08f, .25f, .3f, mandible);
+            s.Eyes(0, 3.78f, .42f, .16f, .1f, dark, core, dark);
             s.Part("body", 0, 0, 0);
-            s.Cracks(heat, 30, 8, 1.2f, 3.0f);
-            s.Light(0, 1.8f, 1.3f, 1f, .5f, .15f, 16f, 3.6f);
-            var d = s.Finish("Solar Core Guardian");
+            s.Cracks(dark, 14, 6, .5f, 3.6f);
+            s.Light(0, 2.5f, .95f, .60f, .90f, 1f, 3.0f, 2.0f);
+            var d = s.Finish("Mercury Scarab");
             ApplyLight(s, d);
             return d;
         }
 
-        // ---------- Moon / Europa / Pluto: digitigrade frost titans ----------
+        // ---------- Moon: grey titan ----------
 
         static SculptData MoonTitan(int seed)
         {
-            var s = new Sculptor(.15f, seed);
-            int ice = s.Pal("dust ice plate", "glacial-ice", .78f, .80f, .86f, 0);
-            int rock = s.Pal("regolith rock", "stone", .48f, .48f, .52f, 0);
-            int glow = s.Pal("cold core", "cherenkov-crystal", .62f, .82f, 1f, 1.4f);
-            int eye = s.Pal("pale eye", "cherenkov-crystal", .85f, .95f, 1f, 2.0f);
-            int socket = s.Pal("socket", "obsidian", .08f, .08f, .10f, 0);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "leg_l" : "leg_r", side * 1.0f, 2.6f, 0);
-                DigitigradeLeg(s, side, 1.0f, 2.6f, 1.15f, ice, rock);
-            }
+            var s = new Sculptor(.13f, seed);
+            int grey = s.Pal("lunar rock", "stone", .58f, .58f, .60f, 0);
+            int dark = s.Pal("basalt plate", "obsidian", .32f, .32f, .36f, 0);
+            int joint = s.Pal("regolith joint", "generator-casing", .45f, .45f, .48f, 0);
+            int eye = s.Pal("crater glow", "glow-shroom", .70f, .85f, 1f, 2f);
+            int crack = s.Pal("fissure glow", "lava", 1f, .6f, .2f, 1.6f);
+
+            Leg(s, -.52f, 2.0f, 0f, 2.0f, .72f, grey, dark, dark, joint);
+            Leg(s, .52f, 2.0f, 0f, 2.0f, .72f, grey, dark, dark, joint);
             s.Part("body", 0, 0, 0);
-            s.Ellipsoid(0, 3.1f, 0, 1.35f, .8f, .95f, rock);
-            for (int i = 0; i < 4; i++)
-                s.Box(0, 3.5f + i * .5f, -.05f, 1.30f - i * .08f, .28f, .80f - i * .05f, i % 2 == 0 ? ice : rock);
-            s.Ellipsoid(0, 4.1f, .72f, .40f, .42f, .26f, glow);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.5f, 4.3f, 0);
-                s.Path(new[] { side * 1.5f, 4.3f, 0f, side * 1.9f, 3.4f, .2f, side * 2.0f, 2.5f, .5f }, new[] { .42f, .34f, .28f }, ice);
-                s.Box(side * 2.0f, 2.2f, .6f, .34f, .30f, .42f, rock);
-            }
-            s.Part("head", 0, 5.1f, 0);
-            s.Box(0, 5.3f, .1f, .62f, .55f, .58f, ice);
-            s.Eyes(0, 5.42f, .62f, .26f, .11f, socket, eye, socket);
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * .40f, 5.75f, 0f, side * .70f, 6.2f, -.2f }, new[] { .14f, .06f }, ice);
-            // Frost spikes rising from the shoulders between the torso and the arms.
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * 1.12f, 4.60f, 0f, side * 1.48f, 5.05f, -.08f, side * 1.62f, 5.50f, -.22f },
-                    new[] { .15f, .10f, .05f }, ice);
+            Torso(s, 0, 3.2f, 0f, 1.8f, 1.7f, 1.3f, grey, dark);
+            // cratered chest
+            s.Ellipsoid(0, 3.4f, .5f, .35f, .3f, .3f, crack);
+            s.Box(-1.0f, 3.7f, 0f, .55f, .5f, .6f, dark);
+            s.Box(1.0f, 3.7f, 0f, .55f, .5f, .6f, dark);
+            s.Part("arm_l", -.92f, 3.85f, 0f);
+            Arm(s, -.92f, 3.85f, 0f, 1.8f, .52f, grey, dark, joint);
+            s.Part("arm_r", .92f, 3.85f, 0f);
+            Arm(s, .92f, 3.85f, 0f, 1.8f, .52f, grey, dark, joint);
+            s.Part("head", 0, 4.65f, 0f);
+            Head(s, 0, 4.65f, 0f, .9f, .7f, .7f, grey, dark, dark);
+            // helmet visor
+            s.Box(0, 4.72f, .34f, .42f, .12f, .08f, eye);
             s.Part("body", 0, 0, 0);
-            s.Cracks(glow, 24, 7, 1.0f, 5.0f);
-            s.Light(0, 4.1f, 1.0f, .62f, .82f, 1f, 18f, 3.4f);
-            var d = s.Finish("Лунный Титанит");
+            s.Cracks(dark, 22, 7, .5f, 4.4f);
+            s.Light(0, 3.4f, .8f, .70f, .85f, 1f, 3.5f, 2.0f);
+            var d = s.Finish("Moon Titan");
             ApplyLight(s, d);
             return d;
         }
+
+        // ---------- Europa: ice crustacean ----------
 
         static SculptData EuropaShell(int seed)
         {
-            var s = new Sculptor(.15f, seed);
-            int shell = s.Pal("cracked shell", "glacial-ice", .70f, .84f, .92f, 0);
-            int deep = s.Pal("deep ice", "glacial-ice", .42f, .62f, .80f, 0);
-            int vein = s.Pal("brine vein", "cherenkov-crystal", .44f, .86f, 1f, 1.6f);
-            int eye = s.Pal("abyss eye", "cherenkov-crystal", .55f, .90f, 1f, 2.1f);
-            int socket = s.Pal("socket", "obsidian", .06f, .08f, .12f, 0);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "leg_l" : "leg_r", side * 1.1f, 2.4f, 0);
-                DigitigradeLeg(s, side, 1.1f, 2.4f, 1.05f, shell, deep);
-            }
+            var s = new Sculptor(.13f, seed);
+            int ice = s.Pal("europa ice", "glacial-ice", .78f, .88f, .95f, 0);
+            int deep = s.Pal("deep freeze", "glacial-ice", .55f, .72f, .85f, 0);
+            int joint = s.Pal("frozen joint", "generator-casing", .60f, .75f, .85f, 0);
+            int glow = s.Pal("glow vent", "cherenkov-crystal", .60f, .90f, 1f, 2f);
+            int dark = s.Pal("ice shadow", "obsidian", .28f, .38f, .48f, 0);
+
+            DigitLeg(s, -.48f, 1.6f, .08f, 1.6f, .55f, ice, deep, deep, joint);
+            DigitLeg(s, .48f, 1.6f, .08f, 1.6f, .55f, ice, deep, deep, joint);
             s.Part("body", 0, 0, 0);
-            // wide shield back: a dome of cracked plates
-            s.Shell(0, 3.4f, -.2f, 1.9f, 1.5f, 1.5f, .38f, shell);
-            s.Ellipsoid(0, 3.2f, 0, 1.30f, 1.05f, 1.05f, deep);
-            for (int i = 0; i < 3; i++)
-                s.Box(0, 3.0f + i * .55f, .85f - i * .10f, 1.10f - i * .12f, .26f, .30f, shell);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.6f, 3.6f, .2f);
-                s.Path(new[] { side * 1.6f, 3.6f, .2f, side * 2.0f, 2.7f, .5f, side * 2.1f, 1.9f, .8f }, new[] { .40f, .32f, .26f }, shell);
-                // ice blade gauntlet
-                s.Path(new[] { side * 2.1f, 1.9f, .8f, side * 2.2f, 1.5f, 1.3f, side * 2.1f, 1.2f, 1.8f }, new[] { .18f, .12f, .06f }, deep);
-            }
-            s.Part("head", 0, 4.45f, .95f);
-            s.Ellipsoid(0, 4.55f, 1.05f, .55f, .48f, .50f, deep);
-            s.Ellipsoid(0, 4.62f, 1.42f, .34f, .30f, .22f, shell);
-            s.Eyes(0, 4.66f, 1.46f, .24f, .10f, socket, eye, socket);
-            // Ice shards bursting out of the shield back.
-            for (int side = -1; side <= 1; side += 2)
-                for (int k = 0; k < 2; k++)
-                {
-                    float y = 3.70f + k * .55f;
-                    s.Path(new[] { side * (.70f + k * .18f), y, -1.30f, side * (.86f + k * .22f), y + .45f, -1.48f, side * (.80f + k * .20f), y + .90f, -1.28f },
-                        new[] { .11f, .08f, .04f }, deep);
-                }
+            // domed shell
+            s.Box(0, 2.5f, 0f, .8f, .8f, 1.1f, ice);
+            s.Box(0, 3.0f, 0f, .72f, .35f, 1.0f, deep);
+            s.Box(0, 2.5f, .75f, .3f, .4f, .2f, glow);
+            // blocky side plates
+            s.Box(-.95f, 2.5f, 0f, .28f, .6f, 1.0f, ice);
+            s.Box(.95f, 2.5f, 0f, .28f, .6f, 1.0f, ice);
+            s.Part("head", 0, 3.6f, .1f);
+            Head(s, 0, 3.6f, .1f, .8f, .6f, .7f, ice, deep, ice);
+            s.Eyes(0, 3.72f, .44f, .2f, .1f, dark, glow, dark);
             s.Part("body", 0, 0, 0);
-            s.Cracks(vein, 46, 10, 1.0f, 5.0f);
-            s.Light(0, 3.6f, .9f, .44f, .86f, 1f, 16f, 3.0f);
-            var d = s.Finish("Ледяной Панцирь Европы");
+            s.Cracks(deep, 16, 6, .5f, 3.4f);
+            s.Light(0, 2.5f, .95f, .60f, .90f, 1f, 3.0f, 2.0f);
+            var d = s.Finish("Europa Shell");
             ApplyLight(s, d);
             return d;
         }
 
-        static SculptData PlutoHermit(int seed)
-        {
-            var s = new Sculptor(.14f, seed);
-            int crust = s.Pal("nitrogen crust", "snow", .82f, .84f, .88f, 0);
-            int rock = s.Pal("tholin rock", "red-mesa", .46f, .34f, .30f, 0);
-            int glow = s.Pal("faint heart", "cherenkov-crystal", .72f, .88f, 1f, 1.1f);
-            int eye = s.Pal("old eye", "glow-shroom", .90f, .95f, 1f, 1.8f);
-            int socket = s.Pal("socket", "obsidian", .07f, .07f, .09f, 0);
-            // hunched spine with a huge ice shell on the back
-            s.Path(new[] { 0f, 2.2f, .3f, 0f, 2.9f, -.2f, 0f, 3.6f, -.5f, 0f, 4.2f, -.2f }, new[] { .5f, .55f, .5f, .4f }, rock);
-            s.Shell(0, 3.6f, -.85f, 1.5f, 1.4f, 1.2f, .34f, crust);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "leg_l" : "leg_r", side * .8f, 2.2f, 0);
-                DigitigradeLeg(s, side, .8f, 2.2f, .95f, rock, crust);
-                // cane-like long arms reaching the ground
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.1f, 3.6f, -.2f);
-                s.Path(new[] { side * 1.1f, 3.6f, -.2f, side * 1.5f, 2.7f, .3f, side * 1.6f, 1.6f, .7f, side * 1.5f, .4f, .9f },
-                    new[] { .34f, .28f, .22f, .18f }, rock);
-                s.Ellipsoid(side * 1.5f, .3f, .95f, .26f, .18f, .30f, crust);
-            }
-            s.Part("head", 0, 4.35f, .45f);
-            s.Ellipsoid(0, 4.55f, .75f, .48f, .42f, .44f, crust);
-            s.Eyes(0, 4.62f, 1.10f, .20f, .09f, socket, eye, socket);
-            // beard of ice shards
-            for (int i = -2; i <= 2; i++)
-                s.Path(new[] { i * .14f, 4.3f, 1.0f, i * .18f, 3.9f, 1.12f }, new[] { .07f, .04f }, crust);
-            s.Ellipsoid(0, 3.1f, .35f, .30f, .30f, .24f, glow);
-            s.Part("body", 0, 0, 0);
-            s.Cracks(glow, 20, 6, 2.0f, 4.6f);
-            s.Light(0, 3.1f, .7f, .72f, .88f, 1f, 10f, 2.2f);
-            var d = s.Finish("Плутоновый Отшельник");
-            ApplyLight(s, d);
-            return d;
-        }
-
-        // ---------- Floating archons ----------
-
-        static void ArchonRobe(Sculptor s, int cloth, int trim, float topY, float width)
-        {
-            // tapering torn robe: no legs, ragged streams at the hem
-            for (int i = 0; i < 6; i++)
-            {
-                float t = i / 5f;
-                float y = topY - t * 2.6f;
-                float w = width * (1f - t * .72f);
-                s.Ellipsoid(0, y, 0, w, .28f, w * .8f, i % 2 == 0 ? cloth : trim);
-            }
-            for (int k = 0; k < 7; k++)
-            {
-                double a = k * Math.PI * 2 / 7 + .4;
-                float x = (float)Math.Cos(a) * width * .5f, z = (float)Math.Sin(a) * width * .45f;
-                s.Path(new[] { x, topY - 2.4f, z, x * 1.15f, topY - 3.1f, z * 1.15f, x * .9f, topY - 3.7f, z * .9f },
-                    new[] { .16f, .10f, .05f }, cloth);
-            }
-            // Glowing collar ring at the neck of the robe.
-            s.Ring(0, topY + .30f, 0, width * .86f, .055f, trim);
-        }
+        // ---------- Titan: ringed leviathan (floating robed entity) ----------
 
         static SculptData RingedLeviathan(int seed)
         {
-            var s = new Sculptor(.15f, seed);
-            int hide = s.Pal("leviathan hide", "voidray-skin", .30f, .22f, .46f, 0);
-            int ring = s.Pal("saturn ring fin", "andromeda-crystal", .85f, .65f, .30f, .8f);
-            int glow = s.Pal("throat light", "cherenkov-crystal", .75f, .45f, 1f, 1.5f);
-            int eye = s.Pal("deep eye", "glow-shroom", .95f, .75f, .35f, 2.0f);
-            int socket = s.Pal("socket", "obsidian", .08f, .06f, .10f, 0);
-            // coiled serpent body floating vertically
-            s.Part("body", 0, 3.4f, 0);
-            for (int i = 0; i < 9; i++)
-            {
-                float t = i / 8f;
-                double a = t * Math.PI * 1.6;
-                float x = (float)Math.Cos(a) * .8f * t, z = (float)Math.Sin(a) * .8f * t;
-                s.Ellipsoid(x, 1.2f + t * 4.4f, z, .95f - t * .35f, .55f, .85f - t * .30f, hide);
-                if (i % 2 == 1) s.Ring(x, 1.2f + t * 4.4f, z, 1.05f - t * .35f, .07f, ring);
-            }
-            // side fins
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "wing_l" : "wing_r", side * .9f, 4.4f, 0);
-                s.Path(new[] { side * .8f, 4.4f, 0f, side * 1.8f, 4.7f, -.3f, side * 2.6f, 4.5f, -.6f }, new[] { .22f, .30f, .14f }, hide);
-            }
-            s.Part("head", 0, 5.8f, 0);
-            s.Ellipsoid(0, 5.95f, .35f, .74f, .62f, .82f, hide);
-            s.Ellipsoid(0, 5.72f, .98f, .44f, .30f, .34f, glow);
-            s.Eyes(0, 6.12f, .95f, .32f, .12f, socket, eye, socket);
-            s.Ring(0, 6.9f, 0, 1.7f, .09f, ring);
+            var s = new Sculptor(.13f, seed);
+            int robe = s.Pal("void robe", "mossy-stone", .30f, .26f, .36f, 0);
+            int dark = s.Pal("dark hood", "obsidian", .16f, .13f, .20f, 0);
+            int trim = s.Pal("ring trim", "cherenkov-crystal", .55f, .85f, 1f, 2f);
+            int glow = s.Pal("leviathan core", "cherenkov-crystal", .60f, .90f, 1f, 2.2f);
+            int face = s.Pal("empty face", "bone-stalker-hide", .55f, .55f, .60f, 0);
+
             s.Part("body", 0, 0, 0);
-            s.Cracks(glow, 20, 6, 1.5f, 5.5f);
-            s.Light(0, 5.7f, 1.0f, .75f, .45f, 1f, 14f, 3.0f);
+            // tapered robe (floating, no legs)
+            s.Box(0, 2.2f, 0f, .7f, .9f, .7f, robe);
+            s.Box(0, 1.2f, 0f, .85f, .8f, .85f, robe);
+            s.Box(0, .2f, 0f, 1.0f, .7f, 1.0f, robe);
+            // glowing collar ring at the neck
+            s.Ring(0, 2.85f, 0f, .6f, .12f, trim);
+            s.Box(0, 3.0f, 0f, .5f, .4f, .5f, dark);
+            // arms from the robe
+            s.Part("arm_l", -.7f, 2.6f, 0f);
+            Arm(s, -.7f, 2.6f, 0f, 1.7f, .4f, robe, dark, dark);
+            s.Part("arm_r", .7f, 2.6f, 0f);
+            Arm(s, .7f, 2.6f, 0f, 1.7f, .4f, robe, dark, dark);
+            // second pair
+            s.Part("arm2_l", -.6f, 2.2f, .05f);
+            Arm(s, -.6f, 2.2f, .05f, 1.5f, .38f, robe, dark, dark);
+            s.Part("arm2_r", .6f, 2.2f, .05f);
+            Arm(s, .6f, 2.2f, .05f, 1.5f, .38f, robe, dark, dark);
+            s.Part("head", 0, 3.5f, 0f);
+            Head(s, 0, 3.5f, 0f, .85f, .7f, .6f, dark, dark, dark);
+            s.Box(0, 3.55f, .32f, .34f, .1f, .06f, glow);
+            // orbiting shards
+            for (int i = 0; i < 4; i++)
+            {
+                s.Part("shard_" + i, 0, 3.2f + i * .3f, 0);
+                double a = i * 2.1;
+                s.Box((float)Math.Cos(a) * 1.5f, 3.2f + i * .3f, (float)Math.Sin(a) * 1.5f, .14f, .14f, .14f, trim);
+            }
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 16, 6, .4f, 3.2f);
+            s.Light(0, 2.85f, 0f, .60f, .90f, 1f, 4.0f, 2.2f);
             var d = s.Finish("Ringed Leviathan");
             ApplyLight(s, d);
             return d;
         }
 
-        static SculptData TrappistChoir(int seed)
+        // ---------- Pluto: rocky hermit crab ----------
+
+        static SculptData PlutoHermit(int seed)
         {
-            var s = new Sculptor(.14f, seed);
-            int bell = s.Pal("resonant bell", "copper-block", .72f, .48f, .30f, 0);
-            int pipe = s.Pal("choir pipe", "steel-rail", .55f, .58f, .64f, 0);
-            int glow = s.Pal("resonance", "cherenkov-crystal", .78f, .62f, .92f, 1.6f);
-            int eye = s.Pal("watcher eye", "glow-shroom", .90f, .80f, 1f, 2.0f);
-            int socket = s.Pal("socket", "obsidian", .08f, .07f, .10f, 0);
-            ArchonRobe(s, bell, pipe, 4.6f, 1.5f);
-            // organ pipes around the shoulders
-            for (int k = 0; k < 8; k++)
-            {
-                double a = k * Math.PI * 2 / 8;
-                float x = (float)Math.Cos(a) * 1.05f, z = (float)Math.Sin(a) * .95f;
-                float h = .7f + (k % 3) * .35f;
-                s.Path(new[] { x, 4.5f, z, x * 1.1f, 4.5f + h, z * 1.1f }, new[] { .14f, .11f }, pipe);
-                s.Ellipsoid(x * 1.1f, 4.55f + h, z * 1.1f, .10f, .10f, .10f, glow);
-            }
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.2f, 4.2f, 0);
-                s.Path(new[] { side * 1.2f, 4.2f, 0f, side * 1.7f, 3.6f, .5f, side * 1.6f, 3.2f, 1.0f }, new[] { .26f, .20f, .16f }, bell);
-            }
-            s.Part("head", 0, 5.1f, 0);
-            s.Ellipsoid(0, 5.3f, .1f, .46f, .52f, .44f, bell);
-            s.Eyes(0, 5.4f, .46f, .20f, .09f, socket, eye, socket);
-            s.Ring(0, 6.1f, 0, 1.15f, .07f, glow);
-            s.Light(0, 4.6f, .6f, .78f, .62f, .92f, 12f, 2.6f);
-            var d = s.Finish("Траппист-Смотритель");
+            var s = new Sculptor(.13f, seed);
+            int rock = s.Pal("plutonian rock", "stone", .48f, .42f, .46f, 0);
+            int shell = s.Pal("fossil shell", "mossy-stone", .62f, .55f, .48f, 0);
+            int joint = s.Pal("rocky joint", "generator-casing", .40f, .36f, .42f, 0);
+            int glow = s.Pal("radioactive glow", "lava", 1f, .55f, .20f, 1.8f);
+            int dark = s.Pal("cave shadow", "obsidian", .20f, .18f, .22f, 0);
+
+            DigitLeg(s, -.5f, 1.5f, .05f, 1.5f, .5f, rock, dark, dark, joint);
+            DigitLeg(s, .5f, 1.5f, .05f, 1.5f, .5f, rock, dark, dark, joint);
+            s.Part("body", 0, 0, 0);
+            // hermit body + shell
+            s.Box(0, 2.1f, 0f, .75f, .7f, .9f, rock);
+            s.Box(0, 2.7f, 0f, .8f, .4f, .85f, shell);
+            s.Box(0, 2.7f, .5f, .3f, .3f, .2f, glow);
+            // claws
+            s.Part("arm_l", -.9f, 2.2f, .1f);
+            Arm(s, -.9f, 2.2f, .1f, 1.2f, .4f, rock, dark, joint);
+            s.Box(-.9f, 1.1f, .35f, .16f, .14f, .16f, shell);
+            s.Part("arm_r", .9f, 2.2f, .1f);
+            Arm(s, .9f, 2.2f, .1f, 1.2f, .4f, rock, dark, joint);
+            s.Box(.9f, 1.1f, .35f, .16f, .14f, .16f, shell);
+            s.Part("head", 0, 3.2f, .1f);
+            Head(s, 0, 3.2f, .1f, .75f, .55f, .6f, rock, dark, rock);
+            s.Eyes(0, 3.32f, .42f, .18f, .1f, dark, glow, dark);
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 18, 6, .4f, 3.0f);
+            s.Light(0, 2.7f, .7f, 1f, .55f, .20f, 3.0f, 2.0f);
+            var d = s.Finish("Pluto Hermit");
             ApplyLight(s, d);
             return d;
         }
+
+        // ---------- Proxima B: dark devourer ----------
+
+        static SculptData ProximaDevourer(int seed)
+        {
+            var s = new Sculptor(.13f, seed);
+            int hide = s.Pal("devourer hide", "wraith-shroud", .14f, .12f, .16f, 0);
+            int dark = s.Pal("shadowed flesh", "obsidian", .08f, .07f, .10f, 0);
+            int joint = s.Pal("obsidian joint", "obsidian", .28f, .24f, .30f, 0);
+            int eye = s.Pal("devourer eye", "lava", 1f, .40f, .10f, 2.2f);
+            int maw = s.Pal("glowing maw", "lava", 1f, .30f, .05f, 1.8f);
+
+            Leg(s, -.48f, 1.8f, 0f, 1.8f, .6f, hide, dark, dark, joint);
+            Leg(s, .48f, 1.8f, 0f, 1.8f, .6f, hide, dark, dark, joint);
+            s.Part("body", 0, 0, 0);
+            Torso(s, 0, 3.0f, 0f, 1.7f, 1.6f, 1.1f, hide, dark);
+            // hunched back
+            s.Box(0, 3.6f, -.2f, .8f, .4f, .6f, hide);
+            s.Part("arm_l", -.85f, 3.4f, 0f);
+            Arm(s, -.85f, 3.4f, 0f, 1.8f, .5f, hide, dark, joint);
+            s.Part("arm_r", .85f, 3.4f, 0f);
+            Arm(s, .85f, 3.4f, 0f, 1.8f, .5f, hide, dark, joint);
+            s.Part("arm2_l", -.9f, 3.0f, -.05f);
+            Arm(s, -.9f, 3.0f, -.05f, 1.5f, .44f, dark, hide, joint);
+            s.Part("arm2_r", .9f, 3.0f, -.05f);
+            Arm(s, .9f, 3.0f, -.05f, 1.5f, .44f, dark, hide, joint);
+            s.Part("head", 0, 4.4f, .08f);
+            Head(s, 0, 4.4f, .08f, .85f, .6f, .65f, hide, dark, dark);
+            s.Box(0, 4.3f, .4f, .4f, .2f, .2f, maw);
+            s.Eyes(0, 4.5f, .42f, .18f, .1f, dark, eye, dark);
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 20, 7, .5f, 4.2f);
+            s.Light(0, 4.3f, .55f, 1f, .30f, .05f, 3.2f, 2.2f);
+            var d = s.Finish("Proxima Devourer");
+            ApplyLight(s, d);
+            return d;
+        }
+
+        // ---------- Trappist-1e: crystal choir ----------
+
+        static SculptData TrappistChoir(int seed)
+        {
+            var s = new Sculptor(.13f, seed);
+            int crystal = s.Pal("crystal flesh", "crystal", .50f, .80f, .90f, 0);
+            int dark = s.Pal("resonant shadow", "obsidian", .18f, .22f, .30f, 0);
+            int joint = s.Pal("resonant joint", "cherenkov-crystal", .55f, .85f, 1f, 0);
+            int glow = s.Pal("choir glow", "cherenkov-crystal", .60f, .95f, 1f, 2.2f);
+            int eye = s.Pal("choir eye", "glow-shroom", 1f, .90f, .80f, 2f);
+
+            Leg(s, -.45f, 1.8f, 0f, 1.8f, .58f, crystal, dark, dark, joint);
+            Leg(s, .45f, 1.8f, 0f, 1.8f, .58f, crystal, dark, dark, joint);
+            s.Part("body", 0, 0, 0);
+            Torso(s, 0, 3.0f, 0f, 1.6f, 1.6f, 1.1f, crystal, dark);
+            // crystal growths on the chest
+            s.Box(0, 3.5f, .3f, .3f, .4f, .2f, glow);
+            s.Box(-.5f, 3.6f, .1f, .25f, .4f, .25f, crystal);
+            s.Box(.5f, 3.6f, .1f, .25f, .4f, .25f, crystal);
+            s.Part("arm_l", -.82f, 3.3f, 0f);
+            Arm(s, -.82f, 3.3f, 0f, 1.7f, .46f, crystal, dark, joint);
+            s.Part("arm_r", .82f, 3.3f, 0f);
+            Arm(s, .82f, 3.3f, 0f, 1.7f, .46f, crystal, dark, joint);
+            s.Part("head", 0, 4.4f, 0f);
+            Head(s, 0, 4.4f, 0f, .85f, .66f, .6f, crystal, dark, crystal);
+            s.Eyes(0, 4.52f, .38f, .18f, .1f, dark, eye, dark);
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 16, 6, .5f, 4.0f);
+            s.Light(0, 3.5f, .5f, .60f, .95f, 1f, 3.5f, 2.0f);
+            var d = s.Finish("Trappist Choir");
+            ApplyLight(s, d);
+            return d;
+        }
+
+        // ---------- Kepler-452b: gardener ----------
+
+        static SculptData KeplerGardener(int seed)
+        {
+            var s = new Sculptor(.13f, seed);
+            int leaf = s.Pal("gardener flesh", "leaves", .40f, .62f, .30f, 0);
+            int bark = s.Pal("wooden stem", "bark", .62f, .48f, .30f, 0);
+            int joint = s.Pal("root joint", "generator-casing", .40f, .46f, .30f, 0);
+            int flower = s.Pal("bloom glow", "glow-shroom", 1f, .70f, .30f, 2f);
+            int eye = s.Pal("gardener eye", "glow-shroom", .80f, 1f, .40f, 2f);
+
+            Leg(s, -.46f, 1.7f, 0f, 1.7f, .6f, bark, leaf, leaf, joint);
+            Leg(s, .46f, 1.7f, 0f, 1.7f, .6f, bark, leaf, leaf, joint);
+            s.Part("body", 0, 0, 0);
+            Torso(s, 0, 2.8f, 0f, 1.6f, 1.5f, 1.1f, leaf, bark);
+            // leafy canopy
+            s.Box(0, 3.6f, 0f, .9f, .4f, .9f, leaf);
+            s.Box(-.4f, 3.9f, 0f, .5f, .35f, .5f, leaf);
+            s.Box(.4f, 3.9f, 0f, .5f, .35f, .5f, leaf);
+            s.Box(0, 4.1f, 0f, .3f, .3f, .3f, flower);
+            s.Part("arm_l", -.8f, 3.2f, 0f);
+            Arm(s, -.8f, 3.2f, 0f, 1.6f, .44f, bark, leaf, joint);
+            s.Part("arm_r", .8f, 3.2f, 0f);
+            Arm(s, .8f, 3.2f, 0f, 1.6f, .44f, bark, leaf, joint);
+            s.Part("head", 0, 4.3f, 0f);
+            Head(s, 0, 4.3f, 0f, .8f, .6f, .6f, leaf, bark, leaf);
+            s.Eyes(0, 4.42f, .38f, .17f, .1f, bark, eye, bark);
+            s.Part("body", 0, 0, 0);
+            s.Cracks(bark, 14, 5, .4f, 3.8f);
+            s.Light(0, 4.1f, 0f, 1f, .70f, .30f, 3.2f, 2.0f);
+            var d = s.Finish("Kepler Gardener");
+            ApplyLight(s, d);
+            return d;
+        }
+
+        // ---------- Andromeda Prime: cosmic lord (floating) ----------
 
         static SculptData AndromedaLord(int seed)
         {
-            var s = new Sculptor(.15f, seed);
-            int robe = s.Pal("elysium robe", "wraith-shroud", .34f, .26f, .52f, 0);
-            int gold = s.Pal("crown gold", "ore-gold", .92f, .76f, .34f, .3f);
-            int crys = s.Pal("andromeda crystal", "andromeda-crystal", .80f, .55f, 1f, 1.4f);
-            int eye = s.Pal("violet eye", "glow-shroom", .95f, .70f, 1f, 2.2f);
-            int socket = s.Pal("socket", "obsidian", .09f, .06f, .12f, 0);
-            ArchonRobe(s, robe, gold, 4.8f, 1.7f);
-            for (int side = -1; side <= 1; side += 2)
+            var s = new Sculptor(.13f, seed);
+            int void = s.Pal("void robe", "obsidian", .12f, .10f, .18f, 0);
+            int star = s.Pal("starlight trim", "cherenkov-crystal", .70f, .85f, 1f, 2.2f);
+            int crown = s.Pal("cosmic crown", "crystal", .55f, .70f, .95f, 0);
+            int eye = s.Pal("cosmic eye", "cherenkov-crystal", .60f, .95f, 1f, 2.4f);
+            int dark = s.Pal("void shadow", "obsidian", .06f, .05f, .10f, 0);
+
+            s.Part("body", 0, 0, 0);
+            // floating robed body
+            s.Box(0, 2.2f, 0f, .75f, .9f, .75f, void);
+            s.Box(0, 1.2f, 0f, .9f, .85f, .9f, void);
+            s.Box(0, .2f, 0f, 1.05f, .7f, 1.05f, void);
+            s.Ring(0, 2.9f, 0f, .62f, .1f, star);
+            s.Box(0, 3.1f, 0f, .5f, .4f, .5f, dark);
+            s.Part("arm_l", -.75f, 2.6f, 0f);
+            Arm(s, -.75f, 2.6f, 0f, 1.7f, .42f, void, dark, dark);
+            s.Part("arm_r", .75f, 2.6f, 0f);
+            Arm(s, .75f, 2.6f, 0f, 1.7f, .42f, void, dark, dark);
+            s.Part("arm2_l", -.65f, 2.2f, .05f);
+            Arm(s, -.65f, 2.2f, .05f, 1.5f, .38f, void, dark, dark);
+            s.Part("arm2_r", .65f, 2.2f, .05f);
+            Arm(s, .65f, 2.2f, .05f, 1.5f, .38f, void, dark, dark);
+            s.Part("head", 0, 3.6f, 0f);
+            Head(s, 0, 3.6f, 0f, .9f, .72f, .6f, dark, dark, crown);
+            s.Box(0, 3.68f, .34f, .38f, .1f, .06f, eye);
+            for (int i = 0; i < 4; i++)
             {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.3f, 4.4f, 0);
-                s.Path(new[] { side * 1.3f, 4.4f, 0f, side * 1.8f, 3.9f, .4f, side * 1.7f, 3.5f, .9f }, new[] { .28f, .22f, .18f }, robe);
-                // Crystal growths on the shoulders.
-                s.Ellipsoid(side * .85f, 4.80f, .25f, .15f, .22f, .15f, crys);
+                s.Part("shard_" + i, 0, 3.3f + i * .28f, 0);
+                double a = i * 2.1;
+                s.Box((float)Math.Cos(a) * 1.7f, 3.3f + i * .28f, (float)Math.Sin(a) * 1.7f, .14f, .14f, .14f, star);
             }
-            // crystal sceptre in the right hand
-            s.Part("arm_r", 1.7f, 3.5f, .9f);
-            s.Path(new[] { 1.75f, 2.9f, .95f, 1.80f, 4.6f, 1.0f }, new[] { .07f, .06f }, gold);
-            s.Ellipsoid(1.80f, 4.85f, 1.0f, .22f, .34f, .22f, crys);
-            s.Part("head", 0, 5.3f, 0);
-            s.Ellipsoid(0, 5.5f, .1f, .44f, .50f, .42f, robe);
-            s.Eyes(0, 5.6f, .44f, .19f, .09f, socket, eye, socket);
-            // crown of seven crystals
-            for (int k = 0; k < 7; k++)
-            {
-                double a = Math.PI * (0.15 + 0.7 * k / 6f);
-                float x = (float)Math.Cos(a) * .52f, z = (float)Math.Sin(a) * .30f - .1f;
-                s.Path(new[] { x, 5.85f, z, x * 1.25f, 6.35f + (k % 2) * .18f, z * 1.2f }, new[] { .10f, .05f }, crys);
-            }
-            s.Ring(0, 6.5f, 0, 1.35f, .07f, gold);
-            s.Light(0, 5.0f, .6f, .80f, .55f, 1f, 14f, 3.0f);
-            var d = s.Finish("Элизиумский Владыка");
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 14, 6, .4f, 3.4f);
+            s.Light(0, 2.9f, 0f, .60f, .95f, 1f, 4.5f, 2.2f);
+            var d = s.Finish("Andromeda Lord");
             ApplyLight(s, d);
             return d;
         }
 
+        // ---------- Somnia: he who heard ----------
+
         static SculptData HeWhoHeard(int seed)
         {
-            var s = new Sculptor(.14f, seed);
-            int skin = s.Pal("pale dream skin", "bone-stalker-hide", .78f, .76f, .72f, 0);
-            int shroud = s.Pal("sleep shroud", "wraith-shroud", .22f, .22f, .34f, 0);
-            int eye = s.Pal("heard eye", "glow-shroom", .85f, .85f, 1f, 2.4f);
-            int hollow = s.Pal("hollow", "obsidian", .05f, .05f, .08f, 0);
-            ArchonRobe(s, shroud, shroud, 4.4f, 1.2f);
-            // gaunt torso and too-long arms
-            s.Ellipsoid(0, 4.3f, 0, .70f, .95f, .50f, skin);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * .8f, 4.8f, 0);
-                s.Path(new[] { side * .8f, 4.8f, 0f, side * 1.2f, 3.8f, .2f, side * 1.3f, 2.6f, .5f, side * 1.2f, 1.6f, .8f },
-                    new[] { .20f, .16f, .12f, .09f }, skin);
-                for (int f = -1; f <= 1; f++)
-                    s.Path(new[] { side * 1.2f, 1.6f, .8f, side * (1.25f + f * .05f), 1.1f, .95f + f * .10f }, new[] { .06f, .03f }, skin);
-            }
-            // elongated head with a single huge ear-fan and hollow face
-            s.Part("head", 0, 5.3f, 0);
-            s.Ellipsoid(0, 5.6f, 0, .38f, .68f, .36f, skin);
-            s.Ellipsoid(0, 5.75f, .30f, .26f, .34f, .16f, hollow);
-            s.Eyes(0, 5.85f, .40f, .15f, .07f, hollow, eye, hollow);
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * .36f, 5.6f, 0f, side * .80f, 5.9f, -.1f, side * 1.05f, 6.3f, -.2f }, new[] { .16f, .22f, .10f }, skin);
+            var s = new Sculptor(.13f, seed);
+            int dream = s.Pal("dream shroud", "wraith-shroud", .22f, .20f, .34f, 0);
+            int dark = s.Pal("night shadow", "obsidian", .10f, .09f, .16f, 0);
+            int joint = s.Pal("dream joint", "generator-casing", .30f, .30f, .45f, 0);
+            int eye = s.Pal("hearing eye", "glow-shroom", .80f, .85f, 1f, 2.2f);
+            int pulse = s.Pal("dream pulse", "cherenkov-crystal", .55f, .85f, 1f, 2f);
+
+            Leg(s, -.45f, 1.7f, 0f, 1.7f, .58f, dream, dark, dark, joint);
+            Leg(s, .45f, 1.7f, 0f, 1.7f, .58f, dream, dark, dark, joint);
             s.Part("body", 0, 0, 0);
-            s.Cracks(hollow, 14, 5, 2.0f, 5.0f);
-            s.Light(0, 5.8f, .6f, .85f, .85f, 1f, 9f, 2.4f);
+            Torso(s, 0, 2.8f, 0f, 1.6f, 1.6f, 1.1f, dream, dark);
+            s.Box(0, 3.4f, .3f, .3f, .4f, .25f, pulse);
+            s.Part("arm_l", -.82f, 3.2f, 0f);
+            Arm(s, -.82f, 3.2f, 0f, 1.7f, .46f, dream, dark, joint);
+            s.Part("arm_r", .82f, 3.2f, 0f);
+            Arm(s, .82f, 3.2f, 0f, 1.7f, .46f, dream, dark, joint);
+            s.Part("head", 0, 4.3f, 0f);
+            Head(s, 0, 4.3f, 0f, .85f, .66f, .6f, dark, dream, dark);
+            s.Box(0, 4.36f, .36f, .4f, .1f, .06f, eye);
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 16, 6, .5f, 4.0f);
+            s.Light(0, 3.4f, .4f, .80f, .85f, 1f, 3.2f, 2.0f);
             var d = s.Finish("He Who Heard");
             ApplyLight(s, d);
             return d;
         }
 
+        // ---------- Dream: first node (floating machine) ----------
+
         static SculptData FirstNode(int seed)
         {
-            var s = new Sculptor(.14f, seed);
-            int chassis = s.Pal("node chassis", "generator-casing", .26f, .28f, .34f, 0);
-            int panel = s.Pal("server panel", "hazard-steel", .48f, .50f, .56f, 0);
-            int cable = s.Pal("data cable", "copper-cable", .72f, .48f, .22f, 0);
-            int glow = s.Pal("machine heart", "cherenkov-crystal", .55f, .90f, 1f, 1.8f);
-            int eye = s.Pal("optic array", "glow-shroom", .60f, .95f, 1f, 2.2f);
-            ArchonRobe(s, chassis, panel, 4.4f, 1.4f);
-            // server torso with vent slots
-            s.Box(0, 4.2f, 0, .85f, 1.0f, .60f, chassis);
-            for (int i = 0; i < 4; i++) s.Box(0, 3.6f + i * .38f, .58f, .62f, .07f, .06f, glow);
-            // cable limbs
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.0f, 4.6f, 0);
-                s.Path(new[] { side * 1.0f, 4.6f, 0f, side * 1.5f, 3.9f, .3f, side * 1.4f, 3.2f, .8f }, new[] { .16f, .12f, .10f }, cable);
-                s.Box(side * 1.4f, 3.05f, .85f, .18f, .16f, .22f, panel);
-            }
-            s.Part("head", 0, 5.3f, 0);
-            s.Box(0, 5.5f, .05f, .42f, .40f, .40f, panel);
-            for (int i = -1; i <= 1; i++) s.Ellipsoid(i * .18f, 5.55f, .44f, .07f, .07f, .05f, eye);
-            s.Ring(0, 6.2f, 0, 1.05f, .06f, glow);
-            // hanging cables from the hem
-            for (int k = 0; k < 6; k++)
-            {
-                double a = k * Math.PI * 2 / 6;
-                s.Path(new[] { (float)Math.Cos(a) * .8f, 3.3f, (float)Math.Sin(a) * .7f, (float)Math.Cos(a) * 1.1f, 2.4f, (float)Math.Sin(a) * 1.0f },
-                    new[] { .07f, .04f }, cable);
-            }
-            s.Light(0, 4.2f, .8f, .55f, .90f, 1f, 12f, 2.8f);
-            var d = s.Finish("The First Node");
-            ApplyLight(s, d);
-            return d;
-        }
+            var s = new Sculptor(.13f, seed);
+            int metal = s.Pal("node casing", "hazard-steel", .48f, .52f, .58f, 0);
+            int dark = s.Pal("node shadow", "obsidian", .18f, .20f, .24f, 0);
+            int joint = s.Pal("node joint", "generator-casing", .35f, .38f, .42f, 0);
+            int core = s.Pal("first core", "cherenkov-crystal", .60f, .95f, 1f, 2.4f);
+            int eye = s.Pal("node eye", "cherenkov-crystal", .60f, .95f, 1f, 2.2f);
 
-        // ---------- Ember / Radia / Backrooms / extras ----------
-
-        static SculptData ProximaDevourer(int seed)
-        {
-            var s = new Sculptor(.15f, seed);
-            int crust = s.Pal("tidal crust", "magma-basalt", .34f, .18f, .14f, 0);
-            int core = s.Pal("devourer core", "lava", 1f, .46f, .16f, 2.2f);
-            int shard = s.Pal("tidal shard", "obsidian", .16f, .10f, .10f, 0);
-            int vein = s.Pal("plasma vein", "lava", 1f, .62f, .22f, 1.7f);
-            // cracked floating core sphere with peeled shell plates
-            s.Part("body", 0, 3.6f, 0);
-            s.Ellipsoid(0, 3.6f, 0, 1.35f, 1.35f, 1.35f, core);
-            for (int k = 0; k < 7; k++)
-            {
-                double a = k * Math.PI * 2 / 7, b = (k % 3 - 1) * .7;
-                float x = (float)(Math.Cos(a) * Math.Cos(b)) * 1.30f;
-                float y = 3.6f + (float)Math.Sin(b) * 1.30f;
-                float z = (float)(Math.Sin(a) * Math.Cos(b)) * 1.30f;
-                s.Part("plate_" + k, x, y, z);
-                s.Ellipsoid(x * 1.12f, 3.6f + (y - 3.6f) * 1.12f, z * 1.12f, .55f, .55f, .30f, crust);
-            }
-            s.Part("body", 0, 3.6f, 0);
-            s.Cracks(vein, 40, 8, 2.4f, 4.8f);
-            // orbiting shards as separate articulated parts
+            s.Part("body", 0, 0, 0);
+            // floating machine core + housing
+            s.Box(0, 2.4f, 0f, .8f, .8f, .8f, metal);
+            s.Box(0, 3.1f, 0f, .6f, .4f, .6f, dark);
+            s.Box(0, 2.4f, .45f, .35f, .35f, .2f, core);
+            s.Box(0, 1.4f, 0f, .9f, .5f, .9f, dark);
+            // arm struts
+            s.Part("arm_l", -.8f, 2.6f, 0f);
+            Arm(s, -.8f, 2.6f, 0f, 1.5f, .4f, metal, dark, joint);
+            s.Part("arm_r", .8f, 2.6f, 0f);
+            Arm(s, .8f, 2.6f, 0f, 1.5f, .4f, metal, dark, joint);
+            s.Part("arm2_l", -.7f, 2.1f, -.05f);
+            Arm(s, -.7f, 2.1f, -.05f, 1.3f, .36f, dark, metal, joint);
+            s.Part("arm2_r", .7f, 2.1f, -.05f);
+            Arm(s, .7f, 2.1f, -.05f, 1.3f, .36f, dark, metal, joint);
+            s.Part("head", 0, 3.7f, 0f);
+            Head(s, 0, 3.7f, 0f, .7f, .55f, .6f, metal, dark, dark);
+            s.Box(0, 3.76f, .32f, .3f, .1f, .06f, eye);
             for (int i = 0; i < 4; i++)
             {
-                s.Part("shard_" + i, 0, 3.6f + i * .3f, 0);
+                s.Part("shard_" + i, 0, 3.4f + i * .26f, 0);
                 double a = i * 2.1;
-                s.Path(new[] { (float)Math.Cos(a) * 2.2f, 3.6f + i * .3f, (float)Math.Sin(a) * 2.2f,
-                    (float)Math.Cos(a) * 2.6f, 4.1f + i * .3f, (float)Math.Sin(a) * 2.6f }, new[] { .22f, .10f }, shard);
+                s.Box((float)Math.Cos(a) * 1.6f, 3.4f + i * .26f, (float)Math.Sin(a) * 1.6f, .13f, .13f, .13f, core);
             }
-            s.Light(0, 3.6f, 0, 1f, .46f, .16f, 22f, 4.4f);
-            var d = s.Finish("Проксима-Пожиратель");
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 14, 5, .5f, 3.4f);
+            s.Light(0, 2.4f, .55f, .60f, .95f, 1f, 4.0f, 2.2f);
+            var d = s.Finish("First Node");
             ApplyLight(s, d);
             return d;
         }
 
-        static SculptData KeplerGardener(int seed)
-        {
-            var s = new Sculptor(.15f, seed);
-            int trunk = s.Pal("gardener trunk", "bark", .55f, .44f, .32f, 0);
-            int leaf = s.Pal("emerald canopy", "leaves", .30f, .62f, .30f, 0);
-            int bloom = s.Pal("dome bloom", "cherry-blossom", .90f, .60f, .70f, .4f);
-            int glow = s.Pal("sap heart", "glow-shroom", .60f, 1f, .45f, 1.5f);
-            int eye = s.Pal("gentle eye", "glow-shroom", .80f, 1f, .60f, 2.0f);
-            int socket = s.Pal("socket", "obsidian", .07f, .08f, .06f, 0);
-            // four trunk legs
-            for (int i = 0; i < 4; i++)
-            {
-                double a = Math.PI / 4 + i * Math.PI / 2;
-                float x = (float)Math.Cos(a), z = (float)Math.Sin(a);
-                s.Part("leg_" + i, x * .8f, 2.4f, z * .8f);
-                s.Path(new[] { x * .7f, 2.6f, z * .7f, x * 1.1f, 1.5f, z * 1.1f, x * 1.2f, .4f, z * 1.2f },
-                    new[] { .42f, .34f, .40f }, trunk);
-            }
-            s.Part("body", 0, 0, 0);
-            s.Path(new[] { 0f, 2.4f, 0f, 0f, 3.4f, -.1f, 0f, 4.4f, 0f }, new[] { .62f, .55f, .45f }, trunk);
-            // dome canopy crown
-            s.Shell(0, 4.9f, 0, 1.7f, 1.2f, 1.7f, .34f, leaf);
-            for (int k = 0; k < 9; k++)
-            {
-                double a = k * Math.PI * 2 / 9;
-                s.Ellipsoid((float)Math.Cos(a) * 1.3f, 5.2f + (k % 2) * .2f, (float)Math.Sin(a) * 1.3f, .34f, .26f, .34f, k % 3 == 0 ? bloom : leaf);
-            }
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * .9f, 3.8f, 0);
-                s.Path(new[] { side * .9f, 3.8f, 0f, side * 1.5f, 3.1f, .4f, side * 1.6f, 2.4f, .8f }, new[] { .34f, .26f, .22f }, trunk);
-                for (int f = -1; f <= 1; f++)
-                    s.Path(new[] { side * 1.6f, 2.4f, .8f, side * (1.7f + f * .08f), 2.0f, 1.0f + f * .14f }, new[] { .12f, .06f }, trunk);
-            }
-            s.Part("head", 0, 4.6f, .3f);
-            s.Ellipsoid(0, 4.75f, .55f, .42f, .44f, .40f, trunk);
-            s.Eyes(0, 4.85f, .88f, .18f, .09f, socket, eye, socket);
-            s.Part("body", 0, 0, 0);
-            s.Ellipsoid(0, 3.6f, .50f, .26f, .30f, .20f, glow);
-            s.Cracks(glow, 18, 6, 1.0f, 4.4f);
-            s.Light(0, 4.9f, 0, .60f, 1f, .45f, 14f, 2.6f);
-            var d = s.Finish("Кеплер-Садовник");
-            ApplyLight(s, d);
-            return d;
-        }
+        // ---------- Radia: radiant colossus ----------
 
         static SculptData RadiaColossus(int seed)
         {
-            var s = new Sculptor(.16f, seed);
-            int glass = s.Pal("trinitite glass", "vitrified-golem-crust", .55f, .62f, .40f, .35f);
-            int slag = s.Pal("slag plate", "slag-carapace", .32f, .34f, .26f, 0);
-            int glow = s.Pal("ash heart", "cherenkov-crystal", .62f, 1f, .38f, 1.8f);
-            int eye = s.Pal("gamma eye", "glow-shroom", .75f, 1f, .45f, 2.2f);
-            int socket = s.Pal("socket", "obsidian", .08f, .09f, .07f, 0);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "leg_l" : "leg_r", side * 1.1f, 2.6f, 0);
-                s.Path(new[] { side * 1.1f, 2.6f, 0f, side * 1.25f, 1.5f, .1f, side * 1.15f, .72f, 0f, side * 1.2f, .42f, .3f },
-                    new[] { .58f, .50f, .44f, .45f }, slag);
-            }
+            var s = new Sculptor(.13f, seed);
+            int bright = s.Pal("radiant plate", "hazard-steel", .85f, .82f, .78f, 0);
+            int gold = s.Pal("sun metal", "copper-block", .95f, .70f, .35f, 0);
+            int joint = s.Pal("radiant joint", "generator-casing", .60f, .55f, .45f, 0);
+            int core = s.Pal("radiant core", "lava", 1f, .75f, .30f, 2.4f);
+            int eye = s.Pal("radiant eye", "lava", 1f, .70f, .25f, 2.2f);
+
+            Leg(s, -.52f, 2.0f, 0f, 2.0f, .72f, bright, gold, gold, joint);
+            Leg(s, .52f, 2.0f, 0f, 2.0f, .72f, bright, gold, gold, joint);
             s.Part("body", 0, 0, 0);
-            // fused glass plates over a slag frame
-            s.Ellipsoid(0, 3.0f, 0, 1.30f, .70f, .90f, slag);
-            for (int i = 0; i < 5; i++)
-            {
-                float y = 3.4f + i * .55f;
-                s.Box(0, y, -.05f, 1.50f - Math.Abs(i - 2) * .10f, .30f, .80f, i % 2 == 0 ? glass : slag);
-            }
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.8f, 5.0f, 0);
-                s.Ellipsoid(side * 1.8f, 5.0f, 0, .62f, .50f, .58f, glass);
-                s.Path(new[] { side * 1.8f, 5.0f, 0f, side * 2.2f, 4.0f, .2f, side * 2.3f, 3.0f, .5f }, new[] { .44f, .36f, .30f }, slag);
-                s.Box(side * 2.3f, 2.7f, .6f, .40f, .34f, .48f, glass);
-            }
-            // Vitrified spikes rising from the top plates between the torso and the arms.
-            for (int side = -1; side <= 1; side += 2)
-                s.Path(new[] { side * 1.00f, 5.45f, .05f, side * 1.35f, 5.95f, -.02f, side * 1.50f, 6.45f, -.16f },
-                    new[] { .13f, .09f, .04f }, glass);
-            s.Part("head", 0, 6.1f, 0);
-            s.Box(0, 6.3f, .1f, .66f, .58f, .60f, slag);
-            s.Eyes(0, 6.42f, .64f, .28f, .12f, socket, eye, socket);
+            Torso(s, 0, 3.2f, 0f, 1.8f, 1.7f, 1.3f, bright, gold);
+            s.Box(0, 3.6f, .45f, .5f, .45f, .3f, core);
+            s.Box(-1.0f, 3.7f, 0f, .55f, .5f, .6f, gold);
+            s.Box(1.0f, 3.7f, 0f, .55f, .5f, .6f, gold);
+            s.Part("arm_l", -.92f, 3.85f, 0f);
+            Arm(s, -.92f, 3.85f, 0f, 1.8f, .52f, bright, gold, joint);
+            s.Part("arm_r", .92f, 3.85f, 0f);
+            Arm(s, .92f, 3.85f, 0f, 1.8f, .52f, bright, gold, joint);
+            s.Part("arm2_l", -.98f, 3.3f, -.05f);
+            Arm(s, -.98f, 3.3f, -.05f, 1.5f, .46f, gold, bright, joint);
+            s.Part("arm2_r", .98f, 3.3f, -.05f);
+            Arm(s, .98f, 3.3f, -.05f, 1.5f, .46f, gold, bright, joint);
+            s.Part("head", 0, 4.65f, 0f);
+            Head(s, 0, 4.65f, 0f, .9f, .7f, .7f, bright, gold, gold);
+            s.Box(0, 4.72f, .34f, .42f, .12f, .08f, eye);
             s.Part("body", 0, 0, 0);
-            s.Ellipsoid(0, 4.2f, .72f, .40f, .44f, .28f, glow);
-            s.Cracks(glow, 44, 10, .8f, 6.0f);
-            s.Light(0, 4.2f, 1.1f, .62f, 1f, .38f, 20f, 3.8f);
-            var d = s.Finish("Тринититовый Колосс");
+            s.Cracks(gold, 16, 6, .5f, 4.4f);
+            s.Light(0, 3.6f, .75f, 1f, .75f, .30f, 3.8f, 2.2f);
+            var d = s.Finish("Radia Colossus");
             ApplyLight(s, d);
             return d;
         }
+
+        // ---------- Backrooms: black bacteria ----------
 
         static SculptData BlackBacteria(int seed)
         {
-            var s = new Sculptor(.14f, seed);
-            int mass = s.Pal("entity mass", "wraith-shroud", .10f, .10f, .13f, 0);
-            int carpet = s.Pal("stolen carpet", "backrooms-carpet", .55f, .50f, .30f, 0);
-            int eye = s.Pal("many eyes", "glow-shroom", .80f, .85f, 1f, 2.3f);
-            int wet = s.Pal("wet sheen", "obsidian", .16f, .16f, .20f, .2f);
-            // amorphous hunched mass with tendrils
-            s.Part("body", 0, 2.6f, 0);
-            s.Ellipsoid(0, 2.6f, 0, 1.5f, 1.7f, 1.2f, mass);
-            s.Ellipsoid(.4f, 3.6f, -.3f, .9f, .8f, .8f, mass);
-            s.Ellipsoid(-.5f, 3.2f, .3f, .8f, .7f, .7f, mass);
-            for (int k = 0; k < 12; k++)
-            {
-                double a = k * Math.PI * 2 / 12 + .3;
-                float x = (float)Math.Cos(a), z = (float)Math.Sin(a);
-                s.Path(new[] { x * 1.2f, 1.6f, z * 1.0f, x * 1.9f, .8f, z * 1.6f, x * 2.3f, .25f, z * 2.0f },
-                    new[] { .24f, .14f, .06f }, mass);
-            }
-            // many eyes scattered over the mass
-            for (int k = 0; k < 16; k++)
-            {
-                double a = k * 2.39996;
-                float x = (float)(Math.Cos(a) * 1.35f), y = 2.4f + (float)Math.Sin(a * 1.7) * 1.1f, z = (float)(Math.Sin(a) * 1.05f);
-                s.Ellipsoid(x, y, z, .09f, .11f, .07f, k % 4 == 0 ? wet : eye);
-            }
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.3f, 3.2f, 0);
-                s.Path(new[] { side * 1.3f, 3.2f, 0f, side * 1.9f, 2.6f, .5f, side * 2.0f, 1.8f, 1.0f }, new[] { .30f, .22f, .14f }, mass);
-            }
-            s.Part("head", 0, 4.2f, .2f);
-            s.Ellipsoid(0, 4.3f, .3f, .55f, .50f, .50f, mass);
-            s.Ellipsoid(.15f, 4.4f, .72f, .14f, .16f, .10f, eye);
-            s.Ellipsoid(-.22f, 4.25f, .70f, .10f, .12f, .08f, eye);
+            var s = new Sculptor(.12f, seed);
+            int black = s.Pal("bacteria mass", "wraith-shroud", .05f, .05f, .07f, 0);
+            int wire = s.Pal("wire sinew", "obsidian", .14f, .14f, .18f, 0);
+            int face = s.Pal("lure face", "bone-stalker-hide", .66f, .72f, .84f, .9f);
+            int eye = s.Pal("lure eye", "glow-shroom", .55f, .62f, .80f, 2.0f);
+
             s.Part("body", 0, 0, 0);
-            s.Ellipsoid(0, 3.4f, .95f, .5f, .3f, .2f, carpet);
+            // tall wiry body
+            s.Box(0, 2.0f, 0f, .45f, 1.3f, .3f, black);
+            s.Box(0, 1.2f, 0f, .55f, .7f, .35f, black);
+            // wiry legs
+            Leg(s, -.28f, 1.0f, 0f, 1.0f, .32f, wire, black, black, wire);
+            Leg(s, .28f, 1.0f, 0f, 1.0f, .32f, wire, black, black, wire);
+            // long arms hanging to the floor
+            s.Part("arm_l", -.55f, 2.4f, 0f);
+            Arm(s, -.55f, 2.4f, 0f, 2.4f, .3f, black, wire, wire);
+            s.Part("arm_r", .55f, 2.4f, 0f);
+            Arm(s, .55f, 2.4f, 0f, 2.4f, .3f, black, wire, wire);
+            s.Part("head", 0, 3.0f, .05f);
+            Head(s, 0, 3.0f, .05f, .7f, .6f, .6f, black, face, black);
+            s.Eyes(0, 3.05f, .36f, .16f, .09f, black, eye, black);
             s.Part("body", 0, 0, 0);
-            s.Cracks(wet, 20, 6, 1.0f, 4.2f);
-            s.Light(0, 3.0f, .8f, .75f, .80f, .95f, 10f, 2.2f);
-            var d = s.Finish("The Black Bacteria");
+            s.Light(0, 3.0f, .45f, .62f, .70f, .88f, 4.5f, 1.1f);
+            var d = s.Finish("Entity 23");
             ApplyLight(s, d);
             return d;
         }
 
+        /// <summary>Backrooms swarm rank-and-file: a clean blocky black bacteria figure.</summary>
+        public static SculptData BacteriaMob(int seed)
+        {
+            var s = new Sculptor(.11f, seed);
+            int black = s.Pal("bacteria mass", "wraith-shroud", .05f, .05f, .07f, 0);
+            int wire = s.Pal("wire sinew", "obsidian", .14f, .14f, .18f, 0);
+            int face = s.Pal("lure face", "bone-stalker-hide", .66f, .72f, .84f, .9f);
+            int eye = s.Pal("lure eye", "glow-shroom", .55f, .62f, .80f, 2.0f);
+
+            s.Part("body", 0, 0, 0);
+            s.Box(0, 1.7f, 0f, .4f, 1.0f, .26f, black);
+            s.Box(0, .95f, 0f, .5f, .55f, .32f, black);
+            Leg(s, -.24f, .85f, 0f, .85f, .28f, wire, black, black, wire);
+            Leg(s, .24f, .85f, 0f, .85f, .28f, wire, black, black, wire);
+            s.Part("arm_l", -.48f, 2.1f, 0f);
+            Arm(s, -.48f, 2.1f, 0f, 2.1f, .26f, black, wire, wire);
+            s.Part("arm_r", .48f, 2.1f, 0f);
+            Arm(s, .48f, 2.1f, 0f, 2.1f, .26f, black, wire, wire);
+            s.Part("head", 0, 2.7f, .05f);
+            Head(s, 0, 2.7f, .05f, .62f, .52f, .52f, black, face, black);
+            s.Eyes(0, 2.74f, .30f, .14f, .08f, black, eye, black);
+            s.Part("body", 0, 0, 0);
+            s.Light(0, 2.7f, .4f, .62f, .70f, .88f, 4.0f, 1.0f);
+            var d = s.Finish("Entity 23 swarm");
+            ApplyLight(s, d);
+            return d;
+        }
+
+        // ---------- extras: corrupted AI / void horror ----------
+
         static SculptData CorruptedAI(int seed)
         {
-            var s = new Sculptor(.14f, seed);
-            int chassis = s.Pal("corrupt chassis", "generator-casing", .20f, .14f, .30f, 0);
-            int glitch = s.Pal("glitch plate", "hazard-steel", .55f, .30f, .70f, .5f);
-            int glow = s.Pal("corrupt core", "cherenkov-crystal", .85f, .35f, 1f, 2.0f);
-            int eye = s.Pal("broken optic", "glow-shroom", 1f, .40f, .95f, 2.4f);
-            ArchonRobe(s, chassis, glitch, 4.5f, 1.4f);
-            s.Box(0, 4.3f, 0, .80f, .95f, .55f, chassis);
-            for (int i = 0; i < 5; i++)
-                s.Box((i % 2 == 0 ? .18f : -.18f), 3.7f + i * .32f, .52f, .40f, .06f, .05f, glitch);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.0f, 4.7f, 0);
-                s.Path(new[] { side * 1.0f, 4.7f, 0f, side * 1.5f, 4.0f, .4f, side * 1.3f, 3.3f, .9f }, new[] { .20f, .15f, .11f }, chassis);
-            }
-            s.Part("head", 0, 5.4f, 0);
-            s.Box(0, 5.6f, .05f, .40f, .46f, .38f, chassis);
-            s.Ellipsoid(.10f, 5.68f, .42f, .10f, .06f, .05f, eye);
-            s.Ellipsoid(-.16f, 5.52f, .42f, .06f, .10f, .05f, eye);
-            s.Ring(0, 6.3f, 0, 1.0f, .06f, glow);
+            var s = new Sculptor(.13f, seed);
+            int metal = s.Pal("corrupted hull", "generator-casing", .35f, .38f, .42f, 0);
+            int dark = s.Pal("glitch shadow", "obsidian", .12f, .12f, .16f, 0);
+            int joint = s.Pal("corrupted joint", "generator-casing", .30f, .30f, .34f, 0);
+            int glitch = s.Pal("glitch light", "cherenkov-crystal", .55f, .85f, 1f, 2.4f);
+            int eye = s.Pal("ai eye", "cherenkov-crystal", .60f, .95f, 1f, 2.2f);
+
+            Leg(s, -.48f, 1.8f, 0f, 1.8f, .6f, metal, dark, dark, joint);
+            Leg(s, .48f, 1.8f, 0f, 1.8f, .6f, metal, dark, dark, joint);
             s.Part("body", 0, 0, 0);
-            s.Cracks(glow, 22, 6, 2.0f, 5.2f);
-            s.Light(0, 4.3f, .7f, .85f, .35f, 1f, 12f, 3.0f);
+            Torso(s, 0, 3.0f, 0f, 1.7f, 1.6f, 1.1f, metal, dark);
+            s.Box(0, 3.5f, .3f, .35f, .4f, .25f, glitch);
+            s.Part("arm_l", -.85f, 3.4f, 0f);
+            Arm(s, -.85f, 3.4f, 0f, 1.7f, .48f, metal, dark, joint);
+            s.Part("arm_r", .85f, 3.4f, 0f);
+            Arm(s, .85f, 3.4f, 0f, 1.7f, .48f, metal, dark, joint);
+            s.Part("arm2_l", -.9f, 3.0f, -.05f);
+            Arm(s, -.9f, 3.0f, -.05f, 1.5f, .42f, dark, metal, joint);
+            s.Part("arm2_r", .9f, 3.0f, -.05f);
+            Arm(s, .9f, 3.0f, -.05f, 1.5f, .42f, dark, metal, joint);
+            s.Part("head", 0, 4.4f, 0f);
+            Head(s, 0, 4.4f, 0f, .85f, .66f, .6f, metal, dark, dark);
+            s.Box(0, 4.48f, .34f, .36f, .12f, .06f, eye);
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 18, 6, .5f, 4.2f);
+            s.Light(0, 3.5f, .4f, .55f, .85f, 1f, 3.5f, 2.0f);
             var d = s.Finish("The Corrupted AI");
             ApplyLight(s, d);
             return d;
@@ -1202,74 +1085,39 @@ namespace LestingCraft.Gameplay
 
         static SculptData VoidHorror(int seed)
         {
-            var s = new Sculptor(.15f, seed);
-            int voidm = s.Pal("void flesh", "wraith-shroud", .09f, .08f, .12f, 0);
-            int edge = s.Pal("event edge", "obsidian", .20f, .16f, .24f, .3f);
-            int glow = s.Pal("void maw", "cherenkov-crystal", 1f, .25f, .35f, 1.9f);
-            int eye = s.Pal("starved eye", "glow-shroom", 1f, .55f, .60f, 2.3f);
-            ArchonRobe(s, voidm, edge, 4.6f, 1.6f);
-            s.Ellipsoid(0, 4.4f, 0, .95f, 1.1f, .70f, voidm);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.1f, 4.9f, 0);
-                s.Path(new[] { side * 1.1f, 4.9f, 0f, side * 1.7f, 4.1f, .3f, side * 1.9f, 3.2f, .8f, side * 1.7f, 2.5f, 1.2f },
-                    new[] { .26f, .20f, .14f, .08f }, voidm);
-            }
-            // vertical maw with teeth
-            s.Part("head", 0, 5.5f, .2f);
-            s.Ellipsoid(0, 5.7f, .2f, .50f, .70f, .46f, voidm);
-            s.Ellipsoid(0, 5.7f, .58f, .26f, .46f, .18f, glow);
-            for (int i = -2; i <= 2; i++)
-            {
-                s.Ellipsoid(i * .12f, 6.05f - Math.Abs(i) * .04f, .62f, .05f, .10f, .05f, edge);
-                s.Ellipsoid(i * .12f, 5.35f + Math.Abs(i) * .04f, .62f, .05f, .10f, .05f, edge);
-            }
-            s.Eyes(0, 6.25f, .48f, .22f, .08f, voidm, eye, voidm);
+            var s = new Sculptor(.13f, seed);
+            int void = s.Pal("void flesh", "obsidian", .06f, .05f, .10f, 0);
+            int dark = s.Pal("void shadow", "wraith-shroud", .12f, .10f, .18f, 0);
+            int joint = s.Pal("void joint", "obsidian", .24f, .22f, .30f, 0);
+            int eye = s.Pal("void eye", "cherenkov-crystal", .60f, .95f, 1f, 2.6f);
+            int maw = s.Pal("void maw", "lava", 1f, .20f, .05f, 2f);
+
+            Leg(s, -.5f, 1.8f, 0f, 1.8f, .62f, void, dark, dark, joint);
+            Leg(s, .5f, 1.8f, 0f, 1.8f, .62f, void, dark, dark, joint);
             s.Part("body", 0, 0, 0);
-            s.Cracks(glow, 26, 7, 1.6f, 5.4f);
-            s.Light(0, 5.7f, .8f, 1f, .25f, .35f, 12f, 3.0f);
+            Torso(s, 0, 3.0f, 0f, 1.8f, 1.7f, 1.2f, void, dark);
+            s.Box(0, 3.6f, -.15f, .8f, .4f, .6f, void);
+            s.Part("arm_l", -.9f, 3.4f, 0f);
+            Arm(s, -.9f, 3.4f, 0f, 1.9f, .52f, void, dark, joint);
+            s.Part("arm_r", .9f, 3.4f, 0f);
+            Arm(s, .9f, 3.4f, 0f, 1.9f, .52f, void, dark, joint);
+            s.Part("arm2_l", -.95f, 3.0f, -.05f);
+            Arm(s, -.95f, 3.0f, -.05f, 1.6f, .46f, dark, void, joint);
+            s.Part("arm2_r", .95f, 3.0f, -.05f);
+            Arm(s, .95f, 3.0f, -.05f, 1.6f, .46f, dark, void, joint);
+            s.Part("head", 0, 4.5f, .05f);
+            Head(s, 0, 4.5f, .05f, .9f, .72f, .7f, void, dark, void);
+            s.Box(0, 4.4f, .42f, .45f, .22f, .22f, maw);
+            s.Eyes(0, 4.6f, .42f, .18f, .1f, dark, eye, dark);
+            s.Part("body", 0, 0, 0);
+            s.Cracks(dark, 20, 7, .5f, 4.4f);
+            s.Light(0, 4.4f, .55f, .60f, .95f, 1f, 3.6f, 2.2f);
             var d = s.Finish("The Void Horror");
             ApplyLight(s, d);
             return d;
         }
 
-
-        /// <summary>Small liminal-hall stalker: the wiry black bacteria mob (not the boss).</summary>
-        public static SculptData BacteriaMob(int seed)
-        {
-            var s = new Sculptor(.08f, seed);
-            int black = s.Pal("bacteria mass", "wraith-shroud", .06f, .06f, .08f, 0);
-            int wire = s.Pal("wire sinew", "obsidian", .16f, .16f, .20f, 0);
-            int face = s.Pal("lure face", "bone-stalker-hide", .72f, .78f, .90f, .9f);
-            int eye = s.Pal("lure eye", "glow-shroom", .55f, .62f, .80f, 2.0f);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                s.Part(side < 0 ? "leg_l" : "leg_r", side * .16f, .6f, 0);
-                s.Path(new[] { side * .16f, .62f, 0f, side * .20f, .30f, .04f, side * .22f, .06f, .14f },
-                    new[] { .09f, .07f, .10f }, black);
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * .34f, 1.0f, .05f);
-                s.Path(new[] { side * .34f, 1.0f, .05f, side * .38f, .5f, .10f, side * .36f, .12f, .16f },
-                    new[] { .08f, .06f, .05f }, black);
-                for (int f = -1; f <= 1; f++)
-                    s.Path(new[] { side * .36f, .12f, .16f, side * (.38f + f * .02f), -.06f, .24f + f * .06f },
-                        new[] { .04f, .02f }, wire);
-            }
-            s.Part("body", 0, 0, 0);
-            s.Path(new[] { 0f, .30f, 0f, 0f, .70f, -.02f, 0f, 1.05f, .02f }, new[] { .26f, .22f, .20f }, black);
-            s.Box(0, .55f, 0, .30f, .05f, .20f, wire);
-            s.Box(0, .85f, 0, .28f, .05f, .19f, wire);
-            s.Part("head", 0, 1.25f, .02f);
-            s.Ellipsoid(0, 1.28f, .02f, .30f, .34f, .28f, black);
-            s.Ellipsoid(0, 1.26f, .26f, .18f, .22f, .06f, face);
-            s.Eyes(0, 1.32f, .30f, .09f, .045f, face, eye, face);
-            s.Ellipsoid(0, 1.16f, .30f, .07f, .05f, .04f, eye);
-            s.Light(0, 1.25f, .45f, .62f, .70f, .88f, 5f, 1.1f);
-            var d = s.Finish("Entity 23");
-            ApplyLight(s, d);
-            return d;
-        }
-
-        // ---------- rank-and-file drones: small readable voxel machines ----------
+        // ---------- rank-and-file drones: clean blocky voxel machines ----------
 
         public static SculptData Drone(DroneKind kind)
         {
@@ -1282,83 +1130,89 @@ namespace LestingCraft.Gameplay
             switch (kind)
             {
                 case DroneKind.Scout:
-                    s.Ellipsoid(0, 0, 0, .30f, .22f, .30f, hull);
-                    s.Ellipsoid(0, .02f, .26f, .12f, .10f, .08f, glow);
+                    s.Box(0, 0, 0f, .34f, .2f, .30f, hull);
+                    s.Box(0, .05f, .30f, .16f, .1f, .08f, glow);
                     for (int i = 0; i < 4; i++)
                     {
                         double a = Math.PI / 4 + i * Math.PI / 2;
-                        float x = (float)Math.Cos(a) * .34f, z = (float)Math.Sin(a) * .34f;
-                        s.Part("rotor_" + i, x, .18f, z);
-                        s.Path(new[] { x * .4f, .16f, z * .4f, x, .20f, z }, new[] { .05f, .04f }, dark);
-                        s.Box(x, .23f, z, .16f, .015f, .05f, plate);
+                        float x = (float)Math.Cos(a) * .30f, z = (float)Math.Sin(a) * .30f;
+                        s.Part("rotor_" + i, x, .12f, z);
+                        s.Box(x, .14f, z, .14f, .02f, .05f, plate);
+                        s.Box(x * .5f, .18f, z * .5f, .05f, .04f, .05f, dark);
                     }
                     s.Part("body", 0, 0, 0);
                     break;
                 case DroneKind.Combat:
-                    s.Ellipsoid(0, 0, 0, .34f, .20f, .42f, hull);
-                    s.Ellipsoid(0, .02f, .40f, .10f, .08f, .08f, glow);
+                    s.Box(0, 0, 0f, .36f, .18f, .44f, hull);
+                    s.Box(0, .03f, .42f, .12f, .08f, .08f, glow);
                     for (int side = -1; side <= 1; side += 2)
                     {
-                        s.Part(side < 0 ? "wing_l" : "wing_r", side * .3f, .02f, 0);
-                        s.Path(new[] { side * .3f, .02f, 0f, side * .72f, .10f, -.12f }, new[] { .08f, .16f }, plate);
-                        s.Path(new[] { side * .60f, .04f, .10f, side * .66f, .04f, .42f }, new[] { .04f, .03f }, dark);
+                        s.Part(side < 0 ? "wing_l" : "wing_r", side * .30f, .02f, 0f);
+                        s.Box(side * .30f, .02f, 0f, .42f, .04f, .20f, plate);
+                        s.Box(side * .60f, .02f, .02f, .30f, .03f, .16f, dark);
+                        s.Box(side * .66f, .02f, .30f, .04f, .04f, .10f, dark);
                     }
                     s.Part("body", 0, 0, 0);
-                    s.Ellipsoid(0, -.04f, -.40f, .10f, .08f, .06f, hot);
+                    s.Box(0, -.04f, -.40f, .10f, .08f, .06f, hot);
                     break;
                 case DroneKind.Repair:
-                    s.Ellipsoid(0, .05f, 0, .28f, .24f, .28f, hull);
-                    s.Ellipsoid(0, .06f, .24f, .10f, .09f, .07f, glow);
-                    s.Part("arm_r", .26f, 0, .1f);
-                    s.Path(new[] { .26f, 0, .1f, .42f, -.20f, .3f, .46f, -.40f, .46f }, new[] { .06f, .05f, .04f }, plate);
-                    s.Ellipsoid(.46f, -.44f, .48f, .05f, .05f, .05f, hot);
+                    s.Box(0, .03f, 0f, .30f, .24f, .30f, hull);
+                    s.Box(0, .05f, .26f, .12f, .10f, .08f, glow);
+                    s.Part("arm_r", .26f, 0f, .1f);
+                    s.Box(.26f, 0f, .1f, .18f, .16f, .18f, plate);
+                    s.Box(.44f, -.16f, .26f, .12f, .10f, .12f, plate);
+                    s.Box(.46f, -.22f, .26f, .10f, .08f, .10f, hot);
                     s.Part("body", 0, 0, 0);
-                    s.Ring(0, .32f, 0, .22f, .03f, glow);
+                    s.Ring(0, .34f, 0f, .22f, .04f, glow);
                     break;
                 case DroneKind.Ground:
                     for (int side = -1; side <= 1; side += 2)
                     {
-                        s.Part(side < 0 ? "leg_l" : "leg_r", side * .16f, .6f, 0);
-                        s.Path(new[] { side * .16f, .62f, 0f, side * .22f, .3f, .04f, side * .24f, .06f, .12f }, new[] { .09f, .07f, .10f }, hull);
+                        s.Part(side < 0 ? "leg_l" : "leg_r", side * .16f, .45f, 0f);
+                        s.Box(side * .16f, .35f, 0f, .1f, .35f, .1f, hull);
+                        s.Box(side * .16f, .05f, .05f, .12f, .10f, .16f, plate);
                     }
                     s.Part("body", 0, 0, 0);
-                    s.Box(0, .82f, 0, .26f, .24f, .20f, plate);
-                    s.Part("turret", 0, 1.12f, .02f);
-                    s.Box(0, 1.12f, .02f, .18f, .16f, .16f, hull);
-                    s.Ellipsoid(0, 1.14f, .18f, .08f, .06f, .05f, glow);
+                    s.Box(0, .7f, 0f, .28f, .26f, .22f, plate);
+                    s.Part("turret", 0, 1.0f, .02f);
+                    s.Box(0, 1.0f, .02f, .18f, .16f, .16f, hull);
+                    s.Box(0, 1.02f, .20f, .08f, .06f, .05f, glow);
                     s.Part("body", 0, 0, 0);
                     break;
                 case DroneKind.Heavy:
                     for (int i = 0; i < 4; i++)
                     {
                         double a = Math.PI / 4 + i * Math.PI / 2;
-                        float x = (float)Math.Cos(a), z = (float)Math.Sin(a);
-                        s.Part("leg_" + i, x * .3f, .7f, z * .3f);
-                        s.Path(new[] { x * .28f, .72f, z * .28f, x * .48f, .38f, z * .48f, x * .52f, .08f, z * .52f }, new[] { .11f, .08f, .12f }, hull);
+                        float x = (float)Math.Cos(a) * .3f, z = (float)Math.Sin(a) * .3f;
+                        s.Part("leg_" + i, x, .55f, z);
+                        s.Box(x, .45f, z, .14f, .45f, .14f, hull);
+                        s.Box(x, .08f, z, .18f, .14f, .18f, plate);
                     }
                     s.Part("body", 0, 0, 0);
-                    s.Ellipsoid(0, .95f, 0, .42f, .30f, .36f, plate);
-                    s.Box(0, 1.28f, .10f, .26f, .18f, .22f, hull);
-                    s.Ellipsoid(0, 1.30f, .32f, .10f, .07f, .06f, glow);
+                    s.Box(0, .95f, 0f, .42f, .30f, .36f, plate);
+                    s.Box(0, 1.2f, .1f, .26f, .18f, .22f, hull);
+                    s.Box(0, 1.22f, .32f, .10f, .07f, .06f, glow);
                     for (int side = -1; side <= 1; side += 2)
-                        s.Path(new[] { side * .34f, 1.24f, .18f, side * .40f, 1.22f, .52f }, new[] { .06f, .05f }, dark);
+                        s.Box(side * .34f, 1.18f, .30f, .08f, .08f, .22f, dark);
                     break;
                 case DroneKind.Guard:
-                    s.Ellipsoid(0, 0, 0, .30f, .26f, .26f, hull);
+                    s.Box(0, 0, 0f, .32f, .28f, .28f, hull);
                     s.Part("shield", 0, 0, .3f);
-                    s.Shell(0, 0, .34f, .34f, .40f, .12f, .06f, plate);
+                    s.Box(0, 0, .42f, .34f, .40f, .10f, plate);
                     s.Part("body", 0, 0, 0);
-                    s.Ellipsoid(0, .04f, .26f, .10f, .08f, .06f, glow);
-                    s.Ring(0, .32f, 0, .24f, .03f, glow);
+                    s.Box(0, .04f, .26f, .10f, .08f, .06f, glow);
+                    s.Ring(0, .34f, 0f, .24f, .04f, glow);
                     break;
                 default: // Builder
-                    s.Ellipsoid(0, 0, 0, .30f, .24f, .30f, hull);
-                    s.Ellipsoid(0, .02f, .26f, .11f, .09f, .07f, glow);
-                    s.Part("arm_r", .28f, .06f, 0);
-                    s.Path(new[] { .28f, .06f, 0f, .50f, .26f, .16f, .62f, 0f, .40f }, new[] { .07f, .06f, .05f }, plate);
-                    s.Box(.64f, -.08f, .44f, .08f, .08f, .10f, hot);
-                    s.Part("arm_l", -.28f, .06f, 0);
-                    s.Path(new[] { -.28f, .06f, 0f, -.46f, -.14f, .22f }, new[] { .06f, .05f }, plate);
+                    s.Box(0, 0, 0f, .32f, .26f, .32f, hull);
+                    s.Box(0, .03f, .28f, .12f, .10f, .08f, glow);
+                    s.Part("arm_r", .28f, .06f, 0f);
+                    s.Box(.28f, .06f, 0f, .16f, .14f, .16f, plate);
+                    s.Box(.46f, -.10f, .30f, .12f, .10f, .12f, plate);
+                    s.Box(.48f, -.16f, .30f, .10f, .08f, .10f, hot);
+                    s.Part("arm_l", -.28f, .06f, 0f);
+                    s.Box(-.28f, .06f, 0f, .16f, .14f, .16f, plate);
+                    s.Box(-.42f, -.10f, .22f, .12f, .10f, .12f, plate);
                     s.Part("body", 0, 0, 0);
                     break;
             }
