@@ -46,6 +46,9 @@ float3 LC_SkyRadiance(float3 direction)
     float twilight = (1 - smoothstep(.02, .22, abs(sunElevation + .035))) * atmosphere;
     float band = exp(-pow((ray.y - .09) * 8, 2));
     sky += float3(1.05, .45, .18) * band * twilight * (.45 + .55 * saturate(mu));
+    // Cool violet upper twilight above the warm horizon band.
+    float upperBand = exp(-pow((ray.y - .30) * 4.5, 2));
+    sky += float3(.18, .12, .30) * upperBand * twilight * .55;
     sky *= 1 - float3(.05, .10, .020) * band * twilight;
 
     float sun = saturate(mu);
@@ -57,6 +60,10 @@ float3 LC_SkyRadiance(float3 direction)
     float3 warmGlow = lerp(_EnvironmentSunColor.rgb,
         _EnvironmentSunColor.rgb * float3(1.14, .80, .52), saturate(1 - sunElevation * 2.4));
     sky += warmGlow * (disk * 22 + aureole * atmosphere) * solarVisibility;
+    // Sun pillar: a soft vertical beam rising above a low sun through haze and cloud bases.
+    float pillar = exp(-abs(ray.y - .30f) * 5.5f) * pow(saturate(mu * .5 + .5), 18) *
+        saturate(1 - sunElevation * 3.2) * atmosphere;
+    sky += warmGlow * pillar * .55f * solarVisibility;
     // Broad cream-gold horizon wedge around the low sun (aerial glow over the water plane).
     float horizonGlow = exp(-abs(ray.y - .015) * 5.5) * pow(saturate(mu * .5 + .5), 6);
     sky += warmGlow * horizonGlow * .30 * saturate(1 - sunElevation * 2.6) * daylight * atmosphere;
@@ -79,6 +86,10 @@ float3 LC_SkyRadiance(float3 direction)
     float3 starColor = lerp(float3(.60, .74, 1), float3(1, .78, .55), LC_Hash(float3(cell, 31)));
     float horizonFade = saturate(ray.y * 3);
     sky += star * twinkle * starColor * night * night * horizonFade * 2;
+    // Fainter second star layer for a denser, more natural night sky.
+    float star2 = step(.9986, LC_Hash(float3(cell * 2 + 11, 53))) *
+        exp(-dot(delta * 1.8f, delta * 1.8f) / (radius * radius)) * min(1, .018f / (radius * radius));
+    sky += star2 * twinkle * starColor * night * night * horizonFade * 1.4f;
 
     float galacticPlane = dot(ray, normalize(float3(.35, .78, -.51)));
     float bandShape = exp(-galacticPlane * galacticPlane * 95);

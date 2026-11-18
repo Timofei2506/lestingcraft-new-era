@@ -247,14 +247,19 @@ namespace LestingCraft.Gameplay
             }
         }
 
-        /// <summary>Two symmetric eyes with cornea ring, iris and dark pupil column.</summary>
+        /// <summary>Two symmetric eyes with a deep socket, cornea ring, iris, dark pupil and a glint.</summary>
         public void Eyes(float hx, float hy, float hz, float sep, float r, int sclera, int iris, int pupil)
         {
+            int glint = Pal("eye glint", "glow-shroom", 1f, .97f, .88f, 2.6f);
             for (int side = -1; side <= 1; side += 2)
             {
+                // Deep socket behind the eye: reads as set into the head instead of painted on.
+                Ellipsoid(side * sep, hy, hz - r * .38f, r * 1.12f, r * .82f, r * .52f, pupil);
                 Ellipsoid(side * sep + hx * 0, hy, hz, r, r, r * .7f, sclera);
                 Ellipsoid(side * sep, hy, hz + r * .55f, r * .62f, r * .62f, r * .5f, iris);
                 Ellipsoid(side * sep, hy, hz + r * .95f, r * .28f, r * .28f, r * .3f, pupil);
+                // Specular glint facet above the iris.
+                Ellipsoid(side * sep + r * .30f, hy + r * .32f, hz + r * .70f, r * .15f, r * .15f, r * .11f, glint);
             }
         }
 
@@ -439,6 +444,16 @@ namespace LestingCraft.Gameplay
                 s.Path(new[] { side * .40f, 5.66f, -.10f, side * .52f, 5.92f, .22f }, new[] { .07f, .04f }, bark);
             }
             s.Part("body", 0, 0, 0);
+            // Extra antler branching and mossy bark knots for a denser, more organic silhouette.
+            for (int side = -1; side <= 1; side += 2)
+                s.Path(new[] { side * .18f, 5.24f, 0f, side * .34f, 5.78f, -.14f, side * .44f, 6.20f, -.30f },
+                    new[] { .09f, .06f, .03f }, bark);
+            for (int k = 0; k < 6; k++)
+            {
+                double a = k * Math.PI * 2 / 6 + .5;
+                s.Ellipsoid((float)Math.Cos(a) * .62f, 3.30f + (k % 2) * .22f, (float)Math.Sin(a) * .42f,
+                    .10f, .12f, .10f, k % 2 == 0 ? moss : grain);
+            }
             s.Cracks(charred, 26, 7, .4f, 4.4f);
             s.Cracks(moss, 18, 5, .2f, 3.4f);
             s.Light(0, 3.62f, .60f, 1f, .38f, .055f, 3.5f, 2.7f);
@@ -515,6 +530,12 @@ namespace LestingCraft.Gameplay
             for (int side = -1; side <= 1; side += 2)
                 s.Path(new[] { side * .55f, 7.05f, 0f, side * 1.05f, 7.75f, -.15f, side * 1.35f, 8.45f, -.40f },
                     new[] { .24f, .15f, .07f }, obs);
+            // Forged shoulder spikes rising between the torso and the great arms.
+            for (int side = -1; side <= 1; side += 2)
+                s.Path(new[] { side * 1.30f, 5.50f, .12f, side * 1.70f, 5.92f, .02f, side * 1.95f, 6.40f, -.18f },
+                    new[] { .16f, .11f, .05f }, obs);
+            // Forged chest ridge over the forge heart.
+            s.Path(new[] { 0f, 4.15f, .66f, 0f, 4.85f, .84f, 0f, 5.55f, .74f }, new[] { .15f, .13f, .09f }, dark);
             s.Part("body", 0, 0, 0);
             s.Ellipsoid(0, 4.6f, .78f, .42f, .46f, .30f, core);
             s.Cracks(crack, 40, 9, .6f, 6.2f);
@@ -582,6 +603,9 @@ namespace LestingCraft.Gameplay
                 s.Path(new[] { side * .30f, 1.95f, 2.30f, side * .48f, 1.75f, 2.70f, side * .30f, 1.62f, 3.0f },
                     new[] { .10f, .07f, .04f }, plate);
             s.Part("body", 0, 0, 0);
+            // Spine ridge of cut plates above the low torso.
+            s.Path(new[] { 0f, 2.60f, -1.15f, 0f, 2.96f, -.45f, 0f, 2.99f, .45f, 0f, 2.60f, 1.15f },
+                new[] { .13f, .15f, .15f, .13f }, plate);
             s.Cracks(socket, 22, 6, 1.2f, 3.2f);
             s.Light(0, 3.0f, -.35f, .62f, 1f, .45f, 14f, 3.2f);
             var d = s.Finish("The Storm Herald");
@@ -681,6 +705,10 @@ namespace LestingCraft.Gameplay
             s.Eyes(0, 5.42f, .62f, .26f, .11f, socket, eye, socket);
             for (int side = -1; side <= 1; side += 2)
                 s.Path(new[] { side * .40f, 5.75f, 0f, side * .70f, 6.2f, -.2f }, new[] { .14f, .06f }, ice);
+            // Frost spikes rising from the shoulders between the torso and the arms.
+            for (int side = -1; side <= 1; side += 2)
+                s.Path(new[] { side * 1.12f, 4.60f, 0f, side * 1.48f, 5.05f, -.08f, side * 1.62f, 5.50f, -.22f },
+                    new[] { .15f, .10f, .05f }, ice);
             s.Part("body", 0, 0, 0);
             s.Cracks(glow, 24, 7, 1.0f, 5.0f);
             s.Light(0, 4.1f, 1.0f, .62f, .82f, 1f, 18f, 3.4f);
@@ -719,6 +747,14 @@ namespace LestingCraft.Gameplay
             s.Ellipsoid(0, 4.55f, 1.05f, .55f, .48f, .50f, deep);
             s.Ellipsoid(0, 4.62f, 1.42f, .34f, .30f, .22f, shell);
             s.Eyes(0, 4.66f, 1.46f, .24f, .10f, socket, eye, socket);
+            // Ice shards bursting out of the shield back.
+            for (int side = -1; side <= 1; side += 2)
+                for (int k = 0; k < 2; k++)
+                {
+                    float y = 3.70f + k * .55f;
+                    s.Path(new[] { side * (.70f + k * .18f), y, -1.30f, side * (.86f + k * .22f), y + .45f, -1.48f, side * (.80f + k * .20f), y + .90f, -1.28f },
+                        new[] { .11f, .08f, .04f }, deep);
+                }
             s.Part("body", 0, 0, 0);
             s.Cracks(vein, 46, 10, 1.0f, 5.0f);
             s.Light(0, 3.6f, .9f, .44f, .86f, 1f, 16f, 3.0f);
@@ -782,6 +818,8 @@ namespace LestingCraft.Gameplay
                 s.Path(new[] { x, topY - 2.4f, z, x * 1.15f, topY - 3.1f, z * 1.15f, x * .9f, topY - 3.7f, z * .9f },
                     new[] { .16f, .10f, .05f }, cloth);
             }
+            // Glowing collar ring at the neck of the robe.
+            s.Ring(0, topY + .30f, 0, width * .86f, .055f, trim);
         }
 
         static SculptData RingedLeviathan(int seed)
@@ -867,6 +905,8 @@ namespace LestingCraft.Gameplay
             {
                 s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.3f, 4.4f, 0);
                 s.Path(new[] { side * 1.3f, 4.4f, 0f, side * 1.8f, 3.9f, .4f, side * 1.7f, 3.5f, .9f }, new[] { .28f, .22f, .18f }, robe);
+                // Crystal growths on the shoulders.
+                s.Ellipsoid(side * .85f, 4.80f, .25f, .15f, .22f, .15f, crys);
             }
             // crystal sceptre in the right hand
             s.Part("arm_r", 1.7f, 3.5f, .9f);
@@ -982,7 +1022,7 @@ namespace LestingCraft.Gameplay
             s.Part("body", 0, 3.6f, 0);
             s.Cracks(vein, 40, 8, 2.4f, 4.8f);
             // orbiting shards as separate articulated parts
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 s.Part("shard_" + i, 0, 3.6f + i * .3f, 0);
                 double a = i * 2.1;
@@ -1070,6 +1110,10 @@ namespace LestingCraft.Gameplay
                 s.Path(new[] { side * 1.8f, 5.0f, 0f, side * 2.2f, 4.0f, .2f, side * 2.3f, 3.0f, .5f }, new[] { .44f, .36f, .30f }, slag);
                 s.Box(side * 2.3f, 2.7f, .6f, .40f, .34f, .48f, glass);
             }
+            // Vitrified spikes rising from the top plates between the torso and the arms.
+            for (int side = -1; side <= 1; side += 2)
+                s.Path(new[] { side * 1.00f, 5.45f, .05f, side * 1.35f, 5.95f, -.02f, side * 1.50f, 6.45f, -.16f },
+                    new[] { .13f, .09f, .04f }, glass);
             s.Part("head", 0, 6.1f, 0);
             s.Box(0, 6.3f, .1f, .66f, .58f, .60f, slag);
             s.Eyes(0, 6.42f, .64f, .28f, .12f, socket, eye, socket);
@@ -1094,19 +1138,19 @@ namespace LestingCraft.Gameplay
             s.Ellipsoid(0, 2.6f, 0, 1.5f, 1.7f, 1.2f, mass);
             s.Ellipsoid(.4f, 3.6f, -.3f, .9f, .8f, .8f, mass);
             s.Ellipsoid(-.5f, 3.2f, .3f, .8f, .7f, .7f, mass);
-            for (int k = 0; k < 8; k++)
+            for (int k = 0; k < 12; k++)
             {
-                double a = k * Math.PI * 2 / 8 + .3;
+                double a = k * Math.PI * 2 / 12 + .3;
                 float x = (float)Math.Cos(a), z = (float)Math.Sin(a);
                 s.Path(new[] { x * 1.2f, 1.6f, z * 1.0f, x * 1.9f, .8f, z * 1.6f, x * 2.3f, .25f, z * 2.0f },
-                    new[] { .26f, .16f, .07f }, mass);
+                    new[] { .24f, .14f, .06f }, mass);
             }
             // many eyes scattered over the mass
-            for (int k = 0; k < 12; k++)
+            for (int k = 0; k < 16; k++)
             {
                 double a = k * 2.39996;
                 float x = (float)(Math.Cos(a) * 1.35f), y = 2.4f + (float)Math.Sin(a * 1.7) * 1.1f, z = (float)(Math.Sin(a) * 1.05f);
-                s.Ellipsoid(x, y, z, .10f, .12f, .08f, k % 4 == 0 ? wet : eye);
+                s.Ellipsoid(x, y, z, .09f, .11f, .07f, k % 4 == 0 ? wet : eye);
             }
             for (int side = -1; side <= 1; side += 2)
             {

@@ -11,7 +11,7 @@ namespace LestingCraft.Presentation
     {
         Transform thighL, thighR, shinL, shinR, upperL, upperR, foreL, foreR, headPivot, scarfTail;
         MeshFilter headFilter;
-        Vector3 previous; float phase; Material material, metal; string skinKey = ""; readonly List<GameObject> extras = new List<GameObject>(); string gearKey = "";
+        Vector3 previous; float phase; Material material, metal, shadow, hair; string skinKey = ""; readonly List<GameObject> extras = new List<GameObject>(); string gearKey = "";
         GameObject carried; int carriedId = -1; bool resting; int restingVariant; float smoothSpeed, airWeight;
         float blinkIn = 2.6f, blinkLeft; bool blinking; float lookYaw, lookPitch;
         public void SetRestPose(int variant) { resting = true; restingVariant = variant; ApplyRestPose(); }
@@ -59,27 +59,45 @@ namespace LestingCraft.Presentation
         {
             if (material) return;
             material = BlockGeometry.CharacterMaterial();
+            material.SetFloat("_Smoothness", .22f);
             metal = new Material(material); metal.SetFloat("_Metallic", .65f); metal.SetFloat("_Smoothness", .34f);
-            Part("Block torso", new Vector3(0, 1.04f, 0), new Vector3(.46f, .56f, .27f), 1, transform);
-            Part("Belt", new Vector3(0, .80f, .012f), new Vector3(.48f, .085f, .30f), 6, transform);
+            shadow = new Material(material); shadow.SetColor("_BaseColor", new Color(.11f, .12f, .14f, 1f));
+            hair = new Material(material); hair.SetColor("_BaseColor", new Color(.17f, .12f, .09f, 1f));
+            Part("Block torso", new Vector3(0, 1.06f, 0), new Vector3(.42f, .58f, .26f), 1, transform);
+            Part("Belt", new Vector3(0, .80f, .012f), new Vector3(.45f, .085f, .30f), 6, transform);
             Part("Square buckle", new Vector3(0, .80f, .174f), new Vector3(.095f, .07f, .018f), 5, transform);
-            Part("Backpack", new Vector3(0, 1.04f, -.23f), new Vector3(.36f, .43f, .23f), 6, transform);
-            Part("Backpack flap", new Vector3(0, 1.24f, -.25f), new Vector3(.39f, .10f, .25f), 7, transform);
-            Part("Scarf collar", new Vector3(0, 1.315f, .01f), new Vector3(.38f, .085f, .29f), 1, transform);
-            scarfTail = Pivot("Scarf tail", new Vector3(0, 1.28f, -.19f));
+            Part("Backpack", new Vector3(0, 1.06f, -.23f), new Vector3(.35f, .44f, .23f), 6, transform);
+            Part("Backpack flap", new Vector3(0, 1.26f, -.25f), new Vector3(.38f, .10f, .25f), 7, transform);
+            Part("Scarf collar", new Vector3(0, 1.32f, .01f), new Vector3(.37f, .085f, .29f), 1, transform);
+            BlockGeometry.Part("Collar shadow", transform, new Vector3(0, 1.285f, .01f), new Vector3(.37f, .02f, .28f), shadow, 6);
+            scarfTail = Pivot("Scarf tail", new Vector3(0, 1.29f, -.19f));
             Part("Scarf tail", new Vector3(0, -.16f, -.02f), new Vector3(.15f, .30f, .05f), 1, scarfTail);
             // head on a neck pivot: looks around and blinks
-            headPivot = Pivot("Neck pivot", new Vector3(0, 1.40f, 0));
-            headFilter = Part("Cubical head", new Vector3(0, .13f, 0), Vector3.one * .40f, 0, headPivot, 3).GetComponent<MeshFilter>();
+            headPivot = Pivot("Neck pivot", new Vector3(0, 1.41f, 0));
+            headFilter = Part("Cubical head", new Vector3(0, .135f, 0), new Vector3(.36f, .38f, .36f), 0, headPivot, 3).GetComponent<MeshFilter>();
+            Part("Jaw", new Vector3(0, -.105f, .01f), new Vector3(.30f, .075f, .30f), 3, headPivot);
+            // dark sockets, nose and mouth line give the face real depth instead of flat paint
+            for (int i = -1; i <= 1; i += 2)
+            {
+                Part("Eye socket", new Vector3(i * .085f, .172f, .176f), new Vector3(.055f, .055f, .022f), 6, headPivot);
+                Part("Eye", new Vector3(i * .085f, .172f, .193f), new Vector3(.045f, .045f, .012f), 4, headPivot);
+                Part("Ear", new Vector3(i * .185f, .13f, 0), new Vector3(.04f, .12f, .09f), 3, headPivot);
+            }
+            Part("Nose", new Vector3(0, .105f, .208f), new Vector3(.075f, .075f, .055f), 3, headPivot);
+            Part("Mouth line", new Vector3(0, .045f, .202f), new Vector3(.10f, .018f, .012f), 6, headPivot);
+            // hair cap and side locks use the dedicated hair material so they read as hair, not skin
+            BlockGeometry.Part("Hair cap", headPivot, new Vector3(0, .258f, -.005f), new Vector3(.375f, .095f, .375f), hair, 6);
+            for (int i = -1; i <= 1; i += 2)
+                BlockGeometry.Part("Side lock", headPivot, new Vector3(i * .175f, .115f, -.01f), new Vector3(.045f, .17f, .30f), hair, 6);
             Part("Block hood top", new Vector3(0, .342f, -.015f), new Vector3(.43f, .045f, .43f), 1, headPivot);
             Part("Block hood back", new Vector3(0, .13f, -.21f), new Vector3(.43f, .40f, .04f), 1, headPivot);
             for (int i = -1; i <= 1; i += 2)
             {
-                Part("Pack strap", new Vector3(i * .16f, 1.07f, .145f), new Vector3(.046f, .51f, .022f), 6, transform);
-                Part("Square coat clasp", new Vector3(i * .16f, 1.20f, .164f), new Vector3(.06f, .043f, .018f), 5, transform);
+                Part("Pack strap", new Vector3(i * .16f, 1.08f, .145f), new Vector3(.044f, .52f, .022f), 6, transform);
+                Part("Square coat clasp", new Vector3(i * .16f, 1.21f, .164f), new Vector3(.06f, .043f, .018f), 5, transform);
             }
             thighL = Leg("Left", -.125f); thighR = Leg("Right", .125f);
-            upperL = Arm("Left", -.34f); upperR = Arm("Right", .34f);
+            upperL = Arm("Left", -.33f); upperR = Arm("Right", .33f);
             shinL = thighL.Find("Shin pivot"); shinR = thighR.Find("Shin pivot");
             foreL = upperL.Find("Elbow pivot"); foreR = upperR.Find("Elbow pivot");
             previous = transform.position;
@@ -89,23 +107,24 @@ namespace LestingCraft.Presentation
         Transform Leg(string side, float x)
         {
             var thigh = Pivot(side + " thigh pivot", new Vector3(x, .78f, 0));
-            Part("Cuboid trousers", new Vector3(0, -.17f, 0), new Vector3(.225f, .36f, .25f), 2, thigh);
+            Part("Cuboid trousers", new Vector3(0, -.17f, 0), new Vector3(.21f, .37f, .24f), 2, thigh);
             var shin = Pivot("Shin pivot", new Vector3(0, -.35f, 0));
             shin.SetParent(thigh, false);
-            Part("Cuboid shin", new Vector3(0, -.16f, 0), new Vector3(.21f, .32f, .235f), 2, shin);
-            Part("Cuboid boot", new Vector3(0, -.345f, .018f), new Vector3(.23f, .19f, .29f), 4, shin);
-            Part("Boot sole", new Vector3(0, -.435f, .022f), new Vector3(.237f, .028f, .30f), 7, shin);
+            Part("Cuboid shin", new Vector3(0, -.16f, 0), new Vector3(.20f, .33f, .23f), 2, shin);
+            Part("Cuboid boot", new Vector3(0, -.345f, .018f), new Vector3(.22f, .18f, .30f), 4, shin);
+            Part("Boot heel", new Vector3(0, -.415f, -.12f), new Vector3(.06f, .07f, .09f), 5, shin);
+            Part("Boot sole", new Vector3(0, -.445f, .022f), new Vector3(.235f, .026f, .305f), 7, shin);
             return thigh;
         }
         Transform Arm(string side, float x)
         {
             var upper = Pivot(side + " shoulder pivot", new Vector3(x, 1.30f, 0));
-            Part("Cuboid sleeve", new Vector3(0, -.15f, 0), new Vector3(.20f, .32f, .25f), 1, upper);
+            Part("Cuboid sleeve", new Vector3(0, -.15f, 0), new Vector3(.19f, .33f, .24f), 1, upper);
             var fore = Pivot("Elbow pivot", new Vector3(0, -.30f, 0));
             fore.SetParent(upper, false);
-            Part("Cuboid forearm", new Vector3(0, -.13f, 0), new Vector3(.19f, .26f, .24f), 1, fore);
-            Part("Square cuff", new Vector3(0, -.26f, 0), new Vector3(.212f, .065f, .262f), 6, fore);
-            Part("Block hand", new Vector3(0, -.34f, 0), new Vector3(.195f, .17f, .24f), 0, fore);
+            Part("Cuboid forearm", new Vector3(0, -.13f, 0), new Vector3(.18f, .27f, .23f), 1, fore);
+            Part("Square cuff", new Vector3(0, -.26f, 0), new Vector3(.20f, .06f, .25f), 6, fore);
+            Part("Block hand", new Vector3(0, -.34f, 0), new Vector3(.185f, .16f, .22f), 0, fore);
             return upper;
         }
         Transform Part(string name, Vector3 position, Vector3 scale, int tile, Transform parent, int front = -1)
@@ -179,7 +198,7 @@ namespace LestingCraft.Presentation
                 headPivot.localRotation = Quaternion.Euler(lookPitch, lookYaw, 0);
             }
         }
-        public void Release() { if (metal) { if (Application.isPlaying) Destroy(metal); else DestroyImmediate(metal); metal = null; } if (material) { if (Application.isPlaying) Destroy(material); else DestroyImmediate(material); material = null; } }
+        public void Release() { if (metal) { if (Application.isPlaying) Destroy(metal); else DestroyImmediate(metal); metal = null; } if (shadow) { if (Application.isPlaying) Destroy(shadow); else DestroyImmediate(shadow); shadow = null; } if (hair) { if (Application.isPlaying) Destroy(hair); else DestroyImmediate(hair); hair = null; } if (material) { if (Application.isPlaying) Destroy(material); else DestroyImmediate(material); material = null; } }
         void OnDestroy() { Release(); }
     }
 }

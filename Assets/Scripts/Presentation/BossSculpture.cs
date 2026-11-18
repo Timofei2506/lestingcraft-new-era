@@ -19,6 +19,27 @@ namespace LestingCraft.Presentation
         Light localLight;
         Material shared;
 
+        // Per-face geometry for baked ambient occlusion: outward normal, the two in-plane
+        // axes and the sign of each corner along those axes (matches BlockGeometry.Corners).
+        static readonly Vector3Int[][] FaceAxes =
+        {
+            new[] { new Vector3Int(0, 1, 0), new Vector3Int(0, 0, 1) }, // +X
+            new[] { new Vector3Int(0, 1, 0), new Vector3Int(0, 0, 1) }, // -X
+            new[] { new Vector3Int(1, 0, 0), new Vector3Int(0, 0, 1) }, // +Y
+            new[] { new Vector3Int(1, 0, 0), new Vector3Int(0, 0, 1) }, // -Y
+            new[] { new Vector3Int(1, 0, 0), new Vector3Int(0, 1, 0) }, // +Z
+            new[] { new Vector3Int(1, 0, 0), new Vector3Int(0, 1, 0) }, // -Z
+        };
+        static readonly Vector2Int[][] FaceCornerSigns =
+        {
+            new[] { new Vector2Int(-1, -1), new Vector2Int(1, -1), new Vector2Int(1, 1), new Vector2Int(-1, 1) }, // +X
+            new[] { new Vector2Int(-1, 1), new Vector2Int(1, 1), new Vector2Int(1, -1), new Vector2Int(-1, -1) }, // -X
+            new[] { new Vector2Int(-1, 1), new Vector2Int(1, 1), new Vector2Int(1, -1), new Vector2Int(-1, -1) }, // +Y
+            new[] { new Vector2Int(-1, -1), new Vector2Int(1, -1), new Vector2Int(1, 1), new Vector2Int(-1, 1) }, // -Y
+            new[] { new Vector2Int(1, -1), new Vector2Int(1, 1), new Vector2Int(-1, 1), new Vector2Int(-1, -1) }, // +Z
+            new[] { new Vector2Int(-1, -1), new Vector2Int(-1, 1), new Vector2Int(1, 1), new Vector2Int(1, -1) }, // -Z
+        };
+
         public Transform FindPart(string name)
         {
             Transform t;
@@ -87,11 +108,23 @@ namespace LestingCraft.Presentation
                     var pal = data.Palette[pair.Value];
                     var tint = new Color(Linear(pal.R), Linear(pal.G), Linear(pal.B), pal.Emission);
                     int layer = layerIndex[pal.Name];
+                    // Emissive surfaces keep their full brightness; baked AO only shades opaque material.
+                    float shade = pal.Emission > .02f ? 1f : 0f;
                     for (int f = 0; f < 6; f++)
                     {
                         var dir = BlockGeometry.Directions[f];
                         long nk = ((long)(cx + dir.x + 512) << 40) | ((long)(cy + dir.y + 512) << 20) | (long)(cz + dir.z + 512);
                         if (occupied.ContainsKey(nk)) continue;
+                        var axes = FaceAxes[f];
+                        var signs = FaceCornerSigns[f];
+                        // Three-sample vertex AO around each corner; the diagonal that keeps the
+                        // brighter pair of corners wins so convex silhouettes never self-shadow.
+                        float ao0 = SampleAO(occupied, cx, cy, cz, axes[0], axes[1], signs[0]);
+                        float ao1 = SampleAO(occupied, cx, cy, cz, axes[0], axes[1], signs[1]);
+                        float ao2 = SampleAO(occupied, cx, cy, cz, axes[0], axes[1], signs[2]);
+                        float ao3 = SampleAO(occupied, cx, cy, cz, axes[0], axes[1], signs[3]);
+                        bool flip = ao0 + ao2 < ao1 + ao3;
+                        float[] ao = { ao0, ao1, ao2, ao3 };
                         int start = vertices.Count;
                         var tangent = BlockGeometry.Corners[f][3] - BlockGeometry.Corners[f][0];
                         for (int k = 0; k < 4; k++)
@@ -100,13 +133,22 @@ namespace LestingCraft.Presentation
                                 cy + BlockGeometry.Corners[f][k].y, cz + BlockGeometry.Corners[f][k].z) * unit;
                             vertices.Add(world - new Vector3(part.PX, part.PY, part.PZ));
                             normals.Add(dir);
-                            colors.Add(tint);
+                            float a = shade <= .01f ? ao[k] : 1f;
+                            colors.Add(new Color(tint.r * a, tint.g * a, tint.b * a, tint.a));
                             Vector2 t = f < 2 ? new Vector2(world.z, world.y) : f < 4 ? new Vector2(world.x, world.z) : new Vector2(world.x, world.y);
                             uvs.Add(new Vector3(t.x * .8f, t.y * .8f, layer));
                             tangents.Add(new Vector4(tangent.x, tangent.y, tangent.z, -1));
                         }
-                        triangles.Add(start); triangles.Add(start + 1); triangles.Add(start + 2);
-                        triangles.Add(start); triangles.Add(start + 2); triangles.Add(start + 3);
+                        if (!flip)
+                        {
+                            triangles.Add(start); triangles.Add(start + 1); triangles.Add(start + 2);
+                            triangles.Add(start); triangles.Add(start + 2); triangles.Add(start + 3);
+                        }
+                        else
+                        {
+                            triangles.Add(start); triangles.Add(start + 3); triangles.Add(start + 1);
+                            triangles.Add(start + 3); triangles.Add(start + 2); triangles.Add(start + 1);
+                        }
                     }
                 }
                 if (vertices.Count == 0) continue;
@@ -144,6 +186,27 @@ namespace LestingCraft.Presentation
 
         static float Linear(float v) { return v <= .04045f ? v / 12.92f : (float)Mathf.Pow((v + .055f) / 1.055f, 2.4f); }
 
+        /// <summary>
+        /// Three-sample corner ambient occlusion for a surface-culled voxel face: the source
+        /// cell plus the two side cells and the diagonal around the corner. 1 = fully open.
+        /// </summary>
+        static float SampleAO(Dictionary<long, int> occupied, int cx, int cy, int cz, Vector3Int u, Vector3Int v, Vector2Int sign)
+        {
+            int ax = cx + sign.x * u.x + sign.y * v.x;
+            int ay = cy + sign.x * u.y + sign.y * v.y;
+            int az = cz + sign.x * u.z + sign.y * v.z;
+            int sideU = Occupied(occupied, cx + sign.x * u.x, cy + sign.x * u.y, cz + sign.x * u.z) ? 1 : 0;
+            int sideV = Occupied(occupied, cx + sign.y * v.x, cy + sign.y * v.y, cz + sign.y * v.z) ? 1 : 0;
+            int diag = Occupied(occupied, ax, ay, az) ? 1 : 0;
+            return Mathf.Clamp01(.75f - .25f * (sideU + sideV + diag));
+        }
+
+        static bool Occupied(Dictionary<long, int> occupied, int x, int y, int z)
+        {
+            long key = ((long)(x + 512) << 40) | ((long)(y + 512) << 20) | (long)(z + 512);
+            return occupied.ContainsKey(key);
+        }
+
         /// <summary>Multiplies emissive strength of every palette entry (hit flash, core pulse).</summary>
         public void SetEmissionBoost(float boost)
         {
@@ -156,7 +219,6 @@ namespace LestingCraft.Presentation
                 for (int k = 0; k < cur.Length; k++) cur[k].a = baseCol[k].a * boost;
                 mesh.colors = cur;
             }
-            if (localLight) localLight.intensity = localLight.intensity; // light handled by caller pulse
         }
 
         public float LightIntensity

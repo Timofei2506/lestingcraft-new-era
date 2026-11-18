@@ -29,7 +29,7 @@ namespace LestingCraft.Story
    if(name=="Орен"||name=="Марта")
    {
     var skin=new Material(Deep(root.transform,"Cubical head").GetComponent<MeshRenderer>().sharedMaterial);skin.name=name+" / individual skin";skin.SetColor("_BaseColor",name=="Орен"?new Color(.85f,.74f,.64f):new Color(1,.89f,.83f));costumes.Add(skin);
-    foreach(var r in root.GetComponentsInChildren<MeshRenderer>())if(r.name=="Cubical head"||r.name=="Block hand")r.sharedMaterial=skin;
+    foreach(var r in root.GetComponentsInChildren<MeshRenderer>())if(r.name=="Cubical head"||r.name=="Block hand"||r.name=="Jaw"||r.name=="Nose")r.sharedMaterial=skin;
     var hair=new Material(baseRenderer.sharedMaterial);hair.name=name+" / hair";hair.SetColor("_BaseColor",name=="Орен"?new Color(.37f,.33f,.29f):new Color(.35f,.20f,.13f));costumes.Add(hair);
     if(name=="Орен"){BlockGeometry.Part("Oren short angular beard",root.transform,new Vector3(0,1.39f,.224f),new Vector3(.27f,.15f,.04f),hair,7);BlockGeometry.Part("Oren brow",root.transform,new Vector3(0,1.63f,.215f),new Vector3(.28f,.035f,.025f),hair,7);}
     else {foreach(string part in new[]{"Block hood top","Block hood back","Cloth hood"}){var t=Deep(root.transform,part);if(t)t.gameObject.SetActive(false);}BlockGeometry.Part("Marta hair crown",root.transform,new Vector3(0,1.74f,-.025f),new Vector3(.43f,.10f,.43f),hair,7);for(int side=-1;side<=1;side+=2)BlockGeometry.Part("Marta short hair side",root.transform,new Vector3(side*.207f,1.56f,-.025f),new Vector3(.065f,.30f,.40f),hair,7);BlockGeometry.Part("Marta travel sash",root.transform,new Vector3(0,1.00f,.161f),new Vector3(.50f,.10f,.025f),fabric,6);}

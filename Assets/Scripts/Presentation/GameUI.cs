@@ -150,7 +150,7 @@ namespace LestingCraft.Presentation
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
             Box(content.transform,64,119,96,2,Accent,false);
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            Label(content.transform,Application.version+"  /  графика 08 · лесная экспедиция",64,866,1472,22,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,Application.version+"  /  ранняя версия · экспедиция",64,866,1472,22,12,Muted,false,TextAnchor.MiddleRight);
         }
         public void ShowHome()
         {

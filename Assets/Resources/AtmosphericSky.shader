@@ -86,8 +86,8 @@ Shader "LestingCraft/AtmosphericSky"
                 half3 direct=lerp(half3(.055,.075,.13),
                     lerp(_EnvironmentSunColor.rgb,_EnvironmentSunColor.rgb*half3(1.06,.90,.74),saturate(1-_EnvironmentSunDirection.y*3)),
                     _EnvironmentDaylight);
-                half3 ambient=lerp(_EnvironmentHorizon.rgb,_EnvironmentZenith.rgb,.25)*
-                    lerp(.30,.68,_EnvironmentDaylight);
+                half3 ambient=lerp(_EnvironmentHorizon.rgb,_EnvironmentZenith.rgb,.32)*
+                    lerp(.36,.72,_EnvironmentDaylight);
                 // Dual-lobe Henyey-Greenstein phase, normalized relative to isotropic scattering.
                 float forward=.85*(1-.72*.72)/pow(max(.04,1+.72*.72-2*.72*mu),1.5)
                     +.15*(1-.25*.25)/pow(max(.04,1+.25*.25+2*.25*mu),1.5);
@@ -103,14 +103,17 @@ Shader "LestingCraft/AtmosphericSky"
                     shadowDensity+=Density(p+sunDir*126,false)*.32;
                     // Two-tap self shadow keeps bases heavy while sun-facing billows stay bright.
                     float sunlight=exp(-shadowDensity*3.6);
-                    float powder=1-exp(-d*stepLength*.13);
-                    float alpha=1-exp(-d*stepLength*.085);
-                    // Silver lining: bright rims where thin cloud meets strong forward light.
-                    float silver=forward*(1-d)*sunlight*powder*.42*saturate(mu);
+                    float powder=1-exp(-d*stepLength*.145);
+                    float alpha=1-exp(-d*stepLength*.092);
+                    // Silver lining: bright rims where thin cloud meets strong forward light,
+                    // warming to the sun color near the horizon.
+                    float silver=forward*(1-d)*sunlight*powder*(.42+.60*saturate(mu))*saturate(mu+.15);
                     // Height inside the layer: undersides sink toward their own shadow color.
                     float interior=saturate((p.y-_CloudBase)/38);
                     half3 ambientLayer=ambient*lerp(.55,1.15,interior);
-                    half3 lighting=ambientLayer+direct*(sunlight*.62+min(forward,8)*.045+silver);
+                    half3 warm=lerp(half3(1,1,1),_EnvironmentSunColor.rgb*float3(1.18,.84,.55),
+                        saturate(1-_EnvironmentSunDirection.y*3.2));
+                    half3 lighting=ambientLayer+direct*(sunlight*.62+min(forward,8)*.045)+silver*warm;
                     lighting=lerp(lighting,background,(1-exp(-along*.00016))*.75);
                     clouds+=lighting*alpha*transmittance;
                     transmittance*=1-alpha;
@@ -122,7 +125,7 @@ Shader "LestingCraft/AtmosphericSky"
                 {
                     float band=exp(-pow((ray.y-.09)*7.5,2));
                     float sunSide=saturate(dot(ray,sunDir));
-                    glow=half3(1.05,.62,.28)*band*pow(sunSide,3)*_EnvironmentDaylight*1.4*_HorizonGlow;
+                    glow=half3(1.05,.62,.28)*band*pow(sunSide,2.6)*_EnvironmentDaylight*1.6*_HorizonGlow;
                 }
                 half3 result=lerp(background,clouds+background*transmittance,horizon)+glow;
                 return half4(result,1);

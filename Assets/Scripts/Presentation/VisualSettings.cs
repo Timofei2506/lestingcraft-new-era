@@ -124,10 +124,10 @@ namespace LestingCraft.Presentation
 
         // Single source of truth for the natural-world grade. Editor bake and runtime agree.
         public const float BloomThreshold = .90f;
-        public const float BloomIntensity = .45f;
+        public const float BloomIntensity = .48f;
         public const float BloomScatter = .72f;
-        public const float GradeContrast = 8f;
-        public const float GradeSaturation = 6f;
+        public const float GradeContrast = 10f;
+        public const float GradeSaturation = 8f;
         public const float GradeExposure = .05f;
         public const float GradeVignette = .12f;
 
