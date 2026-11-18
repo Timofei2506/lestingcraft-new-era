@@ -65,50 +65,55 @@ namespace LestingCraft.Gameplay
         {
             public float width, length, height, bodyY, legLen, headY, headW, headH, headZ;
             public int legs, type;
+            public Metrics(float width,float length,float height,float bodyY,float legLen,float headY,float headW,float headH,float headZ,int legs,int type)
+            {
+                this.width=width;this.length=length;this.height=height;this.bodyY=bodyY;this.legLen=legLen;
+                this.headY=headY;this.headW=headW;this.headH=headH;this.headZ=headZ;this.legs=legs;this.type=type;
+            }
         }
 
         static readonly Metrics[] Table =
         {
             // 0 deer       1 hare       2 boar        3 wolf        4 bear         5 fox
-            new Metrics{.5f,1.05f,.55f,.95f,.66f,1.42f,.26f,.30f,.50f,4,Q},
-            new Metrics{.3f,.45f,.30f,.26f,.20f,.40f,.24f,.24f,.24f,4,H},
-            new Metrics{.62f,1.08f,.55f,.54f,.38f,.64f,.42f,.36f,.50f,4,Q},
-            new Metrics{.48f,1.15f,.48f,.72f,.54f,.98f,.32f,.32f,.55f,4,Q},
-            new Metrics{1.12f,1.6f,1.05f,.98f,.60f,1.31f,.62f,.48f,.80f,4,Q},
-            new Metrics{.32f,.83f,.36f,.46f,.34f,.66f,.26f,.26f,.40f,4,Q},
+            new Metrics(.5f,1.05f,.55f,.95f,.66f,1.42f,.26f,.30f,.50f,4,Q),
+            new Metrics(.3f,.45f,.30f,.26f,.20f,.40f,.24f,.24f,.24f,4,H),
+            new Metrics(.62f,1.08f,.55f,.54f,.38f,.64f,.42f,.36f,.50f,4,Q),
+            new Metrics(.48f,1.15f,.48f,.72f,.54f,.98f,.32f,.32f,.55f,4,Q),
+            new Metrics(1.12f,1.6f,1.05f,.98f,.60f,1.31f,.62f,.48f,.80f,4,Q),
+            new Metrics(.32f,.83f,.36f,.46f,.34f,.66f,.26f,.26f,.40f,4,Q),
             // 6 bison      7 goat        8 lynx        9 beaver      10 toad        11 eagle
-            new Metrics{1.2f,1.85f,1.05f,1.08f,.66f,1.17f,.70f,.62f,.90f,4,Q},
-            new Metrics{.43f,.85f,.54f,.78f,.56f,1.12f,.26f,.34f,.42f,4,Q},
-            new Metrics{.47f,.88f,.47f,.62f,.44f,.84f,.38f,.32f,.43f,4,Q},
-            new Metrics{.55f,.80f,.43f,.34f,.20f,.45f,.30f,.26f,.38f,4,Q},
-            new Metrics{.62f,.61f,.25f,.24f,.18f,.30f,.68f,.22f,.30f,4,H},
-            new Metrics{.4f,.65f,.4f,.40f,.20f,.68f,.28f,.26f,.32f,2,F},
+            new Metrics(1.2f,1.85f,1.05f,1.08f,.66f,1.17f,.70f,.62f,.90f,4,Q),
+            new Metrics(.43f,.85f,.54f,.78f,.56f,1.12f,.26f,.34f,.42f,4,Q),
+            new Metrics(.47f,.88f,.47f,.62f,.44f,.84f,.38f,.32f,.43f,4,Q),
+            new Metrics(.55f,.80f,.43f,.34f,.20f,.45f,.30f,.26f,.38f,4,Q),
+            new Metrics(.62f,.61f,.25f,.24f,.18f,.30f,.68f,.22f,.30f,4,H),
+            new Metrics(.4f,.65f,.4f,.40f,.20f,.68f,.28f,.26f,.32f,2,F),
             // 12 owl       13 penguin    14 camel      15 scorpion   16 turtle      17 moose
-            new Metrics{.38f,.46f,.42f,.38f,.18f,.66f,.36f,.32f,.22f,2,F},
-            new Metrics{.42f,.40f,.68f,.48f,.20f,.90f,.30f,.28f,.20f,2,B},
-            new Metrics{.72f,1.55f,.74f,1.18f,.90f,1.90f,.34f,.34f,.76f,4,Q},
-            new Metrics{.52f,.76f,.22f,.24f,.0f,.28f,.34f,.18f,.38f,6,A},
-            new Metrics{.68f,.78f,.38f,.30f,.20f,.40f,.24f,.20f,.38f,4,Q},
-            new Metrics{.92f,1.75f,.88f,1.26f,.90f,1.74f,.44f,.48f,.86f,4,Q},
+            new Metrics(.38f,.46f,.42f,.38f,.18f,.66f,.36f,.32f,.22f,2,F),
+            new Metrics(.42f,.40f,.68f,.48f,.20f,.90f,.30f,.28f,.20f,2,B),
+            new Metrics(.72f,1.55f,.74f,1.18f,.90f,1.90f,.34f,.34f,.76f,4,Q),
+            new Metrics(.52f,.76f,.22f,.24f,.0f,.28f,.34f,.18f,.38f,6,A),
+            new Metrics(.68f,.78f,.38f,.30f,.20f,.40f,.24f,.20f,.38f,4,Q),
+            new Metrics(.92f,1.75f,.88f,1.26f,.90f,1.74f,.44f,.48f,.86f,4,Q),
             // 18 capybara  19 voidray    20 ash hound  21 leech      22 rad scorp  23 mutant boar
-            new Metrics{.54f,.94f,.50f,.44f,.30f,.60f,.34f,.30f,.46f,4,Q},
-            new Metrics{.96f,1.15f,.20f,.34f,.0f,.36f,.52f,.18f,.55f,0,S},
-            new Metrics{.54f,1.32f,.56f,.82f,.62f,1.08f,.36f,.34f,.64f,4,Q},
-            new Metrics{.46f,.92f,.30f,.24f,.0f,.30f,.34f,.22f,.44f,0,S},
-            new Metrics{.66f,.96f,.30f,.30f,.0f,.38f,.38f,.24f,.46f,6,A},
-            new Metrics{.78f,1.38f,.72f,.74f,.54f,.96f,.56f,.46f,.68f,4,Q},
+            new Metrics(.54f,.94f,.50f,.44f,.30f,.60f,.34f,.30f,.46f,4,Q),
+            new Metrics(.96f,1.15f,.20f,.34f,.0f,.36f,.52f,.18f,.55f,0,S),
+            new Metrics(.54f,1.32f,.56f,.82f,.62f,1.08f,.36f,.34f,.64f,4,Q),
+            new Metrics(.46f,.92f,.30f,.24f,.0f,.30f,.34f,.22f,.44f,0,S),
+            new Metrics(.66f,.96f,.30f,.30f,.0f,.38f,.38f,.24f,.46f,6,A),
+            new Metrics(.78f,1.38f,.72f,.74f,.54f,.96f,.56f,.46f,.68f,4,Q),
             // 24 slag crab 25 crow       26 gamma ray  27 bone stalk 28 vitrified  29 wraith
-            new Metrics{.86f,.96f,.46f,.40f,.0f,.52f,.44f,.30f,.48f,6,A},
-            new Metrics{.54f,.72f,.44f,.48f,.22f,.62f,.30f,.30f,.36f,2,F},
-            new Metrics{.44f,.72f,.44f,.44f,.0f,.50f,.32f,.30f,.36f,0,S},
-            new Metrics{.62f,1.25f,.68f,1.24f,.96f,1.68f,.42f,.46f,.62f,2,B},
-            new Metrics{1.28f,1.48f,1.24f,1.32f,.82f,2.02f,.64f,.52f,.74f,2,B},
-            new Metrics{.66f,1.05f,1.00f,1.16f,.86f,1.80f,.44f,.48f,.52f,2,B},
+            new Metrics(.86f,.96f,.46f,.40f,.0f,.52f,.44f,.30f,.48f,6,A),
+            new Metrics(.54f,.72f,.44f,.48f,.22f,.62f,.30f,.30f,.36f,2,F),
+            new Metrics(.44f,.72f,.44f,.44f,.0f,.50f,.32f,.30f,.36f,0,S),
+            new Metrics(.62f,1.25f,.68f,1.24f,.96f,1.68f,.42f,.46f,.62f,2,B),
+            new Metrics(1.28f,1.48f,1.24f,1.32f,.82f,2.02f,.64f,.52f,.74f,2,B),
+            new Metrics(.66f,1.05f,1.00f,1.16f,.86f,1.80f,.44f,.48f,.52f,2,B),
             // 30 frost wolf 31 glass spider 32 beetle  33 sky whale
-            new Metrics{.64f,1.10f,.56f,.74f,.62f,.98f,.40f,.34f,.55f,4,Q},
-            new Metrics{.40f,.58f,.22f,.20f,.0f,.30f,.30f,.20f,.29f,8,A},
-            new Metrics{.40f,.58f,.18f,.18f,.0f,.28f,.42f,.24f,.29f,6,A},
-            new Metrics{1.10f,2.30f,.62f,1.05f,.0f,1.10f,.55f,.34f,1.15f,0,S},
+            new Metrics(.64f,1.10f,.56f,.74f,.62f,.98f,.40f,.34f,.55f,4,Q),
+            new Metrics(.40f,.58f,.22f,.20f,.0f,.30f,.30f,.20f,.29f,8,A),
+            new Metrics(.40f,.58f,.18f,.18f,.0f,.28f,.42f,.24f,.29f,6,A),
+            new Metrics(1.10f,2.30f,.62f,1.05f,.0f,1.10f,.55f,.34f,1.15f,0,S),
         };
 
         public static SculptData For(int kind)
