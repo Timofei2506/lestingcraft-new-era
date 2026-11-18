@@ -839,7 +839,7 @@ namespace LestingCraft.Gameplay
         static SculptData AndromedaLord(int seed)
         {
             var s = new Sculptor(.13f, seed);
-            int void = s.Pal("void robe", "obsidian", .12f, .10f, .18f, 0);
+            int vd = s.Pal("void robe", "obsidian", .12f, .10f, .18f, 0);
             int star = s.Pal("starlight trim", "cherenkov-crystal", .70f, .85f, 1f, 2.2f);
             int crown = s.Pal("cosmic crown", "crystal", .55f, .70f, .95f, 0);
             int eye = s.Pal("cosmic eye", "cherenkov-crystal", .60f, .95f, 1f, 2.4f);
@@ -847,19 +847,19 @@ namespace LestingCraft.Gameplay
 
             s.Part("body", 0, 0, 0);
             // floating robed body
-            s.Box(0, 2.2f, 0f, .75f, .9f, .75f, void);
-            s.Box(0, 1.2f, 0f, .9f, .85f, .9f, void);
-            s.Box(0, .2f, 0f, 1.05f, .7f, 1.05f, void);
+            s.Box(0, 2.2f, 0f, .75f, .9f, .75f, vd);
+            s.Box(0, 1.2f, 0f, .9f, .85f, .9f, vd);
+            s.Box(0, .2f, 0f, 1.05f, .7f, 1.05f, vd);
             s.Ring(0, 2.9f, 0f, .62f, .1f, star);
             s.Box(0, 3.1f, 0f, .5f, .4f, .5f, dark);
             s.Part("arm_l", -.75f, 2.6f, 0f);
-            Arm(s, -.75f, 2.6f, 0f, 1.7f, .42f, void, dark, dark);
+            Arm(s, -.75f, 2.6f, 0f, 1.7f, .42f, vd, dark, dark);
             s.Part("arm_r", .75f, 2.6f, 0f);
-            Arm(s, .75f, 2.6f, 0f, 1.7f, .42f, void, dark, dark);
+            Arm(s, .75f, 2.6f, 0f, 1.7f, .42f, vd, dark, dark);
             s.Part("arm2_l", -.65f, 2.2f, .05f);
-            Arm(s, -.65f, 2.2f, .05f, 1.5f, .38f, void, dark, dark);
+            Arm(s, -.65f, 2.2f, .05f, 1.5f, .38f, vd, dark, dark);
             s.Part("arm2_r", .65f, 2.2f, .05f);
-            Arm(s, .65f, 2.2f, .05f, 1.5f, .38f, void, dark, dark);
+            Arm(s, .65f, 2.2f, .05f, 1.5f, .38f, vd, dark, dark);
             s.Part("head", 0, 3.6f, 0f);
             Head(s, 0, 3.6f, 0f, .9f, .72f, .6f, dark, dark, crown);
             s.Box(0, 3.68f, .34f, .38f, .1f, .06f, eye);
@@ -1086,27 +1086,27 @@ namespace LestingCraft.Gameplay
         static SculptData VoidHorror(int seed)
         {
             var s = new Sculptor(.13f, seed);
-            int void = s.Pal("void flesh", "obsidian", .06f, .05f, .10f, 0);
+            int vd = s.Pal("void flesh", "obsidian", .06f, .05f, .10f, 0);
             int dark = s.Pal("void shadow", "wraith-shroud", .12f, .10f, .18f, 0);
             int joint = s.Pal("void joint", "obsidian", .24f, .22f, .30f, 0);
             int eye = s.Pal("void eye", "cherenkov-crystal", .60f, .95f, 1f, 2.6f);
             int maw = s.Pal("void maw", "lava", 1f, .20f, .05f, 2f);
 
-            Leg(s, -.5f, 1.8f, 0f, 1.8f, .62f, void, dark, dark, joint);
-            Leg(s, .5f, 1.8f, 0f, 1.8f, .62f, void, dark, dark, joint);
+            Leg(s, -.5f, 1.8f, 0f, 1.8f, .62f, vd, dark, dark, joint);
+            Leg(s, .5f, 1.8f, 0f, 1.8f, .62f, vd, dark, dark, joint);
             s.Part("body", 0, 0, 0);
-            Torso(s, 0, 3.0f, 0f, 1.8f, 1.7f, 1.2f, void, dark);
-            s.Box(0, 3.6f, -.15f, .8f, .4f, .6f, void);
+            Torso(s, 0, 3.0f, 0f, 1.8f, 1.7f, 1.2f, vd, dark);
+            s.Box(0, 3.6f, -.15f, .8f, .4f, .6f, vd);
             s.Part("arm_l", -.9f, 3.4f, 0f);
-            Arm(s, -.9f, 3.4f, 0f, 1.9f, .52f, void, dark, joint);
+            Arm(s, -.9f, 3.4f, 0f, 1.9f, .52f, vd, dark, joint);
             s.Part("arm_r", .9f, 3.4f, 0f);
-            Arm(s, .9f, 3.4f, 0f, 1.9f, .52f, void, dark, joint);
+            Arm(s, .9f, 3.4f, 0f, 1.9f, .52f, vd, dark, joint);
             s.Part("arm2_l", -.95f, 3.0f, -.05f);
-            Arm(s, -.95f, 3.0f, -.05f, 1.6f, .46f, dark, void, joint);
+            Arm(s, -.95f, 3.0f, -.05f, 1.6f, .46f, dark, vd, joint);
             s.Part("arm2_r", .95f, 3.0f, -.05f);
-            Arm(s, .95f, 3.0f, -.05f, 1.6f, .46f, dark, void, joint);
+            Arm(s, .95f, 3.0f, -.05f, 1.6f, .46f, dark, vd, joint);
             s.Part("head", 0, 4.5f, .05f);
-            Head(s, 0, 4.5f, .05f, .9f, .72f, .7f, void, dark, void);
+            Head(s, 0, 4.5f, .05f, .9f, .72f, .7f, vd, dark, vd);
             s.Box(0, 4.4f, .42f, .45f, .22f, .22f, maw);
             s.Eyes(0, 4.6f, .42f, .18f, .1f, dark, eye, dark);
             s.Part("body", 0, 0, 0);
