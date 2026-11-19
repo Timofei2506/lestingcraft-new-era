@@ -18,6 +18,10 @@ namespace LestingCraft.Runtime
     /// </summary>
     public sealed class MobBossShowcaseProbe : MonoBehaviour
     {
+        // Dedicated layer for showcase models so the camera can render ONLY the model and
+        // nothing else — the terrain/world stays hidden and the solid-gray clear shows through.
+        const int ShowcaseLayer = 30;
+
         static bool finishing;
         Camera showcaseCam;
         Light sun;
@@ -123,7 +127,6 @@ namespace LestingCraft.Runtime
             int fx = Mathf.Clamp(Mathf.RoundToInt(game.Session.Player.transform.position.x) + 60, -160, 160);
             int fz = Mathf.Clamp(Mathf.RoundToInt(game.Session.Player.transform.position.z) + 60, -160, 160);
             int gy = FindSurfaceY(world, fx, fz);
-            BuildFlatFloor(world, fx, gy, fz, 26);
 
             showcaseCam = CreateShowcaseCamera();
             sun = CreateSun();
@@ -231,6 +234,7 @@ namespace LestingCraft.Runtime
             // Plain neutral-gray backdrop so voxel models read clearly, like a product turnaround.
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(.70f, .71f, .73f, 1f);
+            cam.cullingMask = 1 << ShowcaseLayer;
             cam.enabled = false;
             return cam;
         }
@@ -253,6 +257,11 @@ namespace LestingCraft.Runtime
         {
             Debug.Log("[MobShowcase] START: " + Path.GetFileName(fullPath));
             var model = spawn();
+            // Render the model on the dedicated showcase layer so the camera (cullingMask)
+            // draws ONLY it — terrain/world are excluded and the gray clear shows behind.
+            var trs = model.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < trs.Length; i++)
+                if (trs[i]) trs[i].gameObject.layer = ShowcaseLayer;
             // Let the model's meshes register before measuring.
             for (int i = 0; i < 2; i++) yield return null;
 
