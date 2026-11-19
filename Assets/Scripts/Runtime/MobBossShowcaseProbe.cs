@@ -12,9 +12,9 @@ namespace LestingCraft.Runtime
 {
     /// <summary>
     /// Renders real in-engine screenshots of every wildlife mob and every boss/drone/bacteria
-    /// model standing on a flat voxel floor, framed in an isometric editor-style view.
-    /// Activated strictly when "-lc-mobs" is passed on the command line. Produces
-    /// ShowcaseResults/mobs/*.png and ShowcaseResults/bosses/*.png at 1920x1080.
+    /// model rendered against a plain neutral-gray backdrop, framed in an isometric editor-style
+    /// view so the voxel models read clearly. Activated strictly when "-lc-mobs" is passed on the
+    /// command line. Produces ShowcaseResults/mobs/*.png and ShowcaseResults/bosses/*.png at 1920x1080.
     /// </summary>
     public sealed class MobBossShowcaseProbe : MonoBehaviour
     {
@@ -206,15 +206,14 @@ namespace LestingCraft.Runtime
             return sculpt.gameObject;
         }
 
-        /// <summary>Builds a flat voxel floor plate and clears everything above it for a clean backdrop.</summary>
+        /// <summary>Clears a flat voxel plate area so the showcase renders against a plain gray
+        /// backdrop (no floor or terrain) — the model floats centered on solid gray.</summary>
         static void BuildFlatFloor(VoxelWorld world, int cx, int gy, int cz, int half)
         {
             for (int dx = -half; dx <= half; dx++)
                 for (int dz = -half; dz <= half; dz++)
                 {
-                    for (int y = gy - 2; y <= gy; y++)
-                        world.ShowcaseEditUnbounded(cx + dx, y, cz + dz, (ushort)(y == gy ? 3 : 2));
-                    for (int y = gy + 1; y <= gy + 16; y++)
+                    for (int y = gy - 2; y <= gy + 16; y++)
                         world.ShowcaseEditUnbounded(cx + dx, y, cz + dz, 0);
                 }
         }
@@ -229,6 +228,9 @@ namespace LestingCraft.Runtime
             cam.nearClipPlane = .1f;
             cam.farClipPlane = 400f;
             cam.allowHDR = false;
+            // Plain neutral-gray backdrop so voxel models read clearly, like a product turnaround.
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.background = new Color(.70f, .71f, .73f);
             cam.enabled = false;
             return cam;
         }
