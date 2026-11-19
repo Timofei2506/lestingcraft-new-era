@@ -230,7 +230,7 @@ namespace LestingCraft.Runtime
             cam.allowHDR = false;
             // Plain neutral-gray backdrop so voxel models read clearly, like a product turnaround.
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.background = new Color(.70f, .71f, .73f);
+            cam.backgroundColor = new Color(.70f, .71f, .73f, 1f);
             cam.enabled = false;
             return cam;
         }
