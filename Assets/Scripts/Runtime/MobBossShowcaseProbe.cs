@@ -266,19 +266,23 @@ namespace LestingCraft.Runtime
 
             foreach (var cam in FindObjectsByType<Camera>(FindObjectsSortMode.None))
                 if (cam && cam != showcaseCam) cam.enabled = false;
-            showcaseCam.enabled = true;
-            yield return new WaitForEndOfFrame();
-            yield return new WaitForEndOfFrame();
+            yield return null;
 
-            var snap = ScreenCapture.CaptureScreenshotAsTexture();
-            showcaseCam.enabled = false;
+            var rt = new RenderTexture(1920, 1080, 24, RenderTextureFormat.ARGB32);
+            rt.Create();
+            var prevActive = RenderTexture.active;
+            showcaseCam.targetTexture = rt;
+            showcaseCam.Render();
+            RenderTexture.active = rt;
+            var snap = new Texture2D(1920, 1080, TextureFormat.RGB24, false);
+            snap.ReadPixels(new Rect(0, 0, 1920, 1080), 0, 0);
+            snap.Apply();
+            showcaseCam.targetTexture = null;
+            RenderTexture.active = prevActive;
+            rt.Release();
+            DestroyImmediate(rt);
             if (model) DestroyImmediate(model);
 
-            if (!snap)
-            {
-                Fail("CaptureScreenshotAsTexture returned null: " + fullPath);
-                yield break;
-            }
             byte[] png = ImageConversion.EncodeToPNG(snap);
             DestroyImmediate(snap);
             File.WriteAllBytes(fullPath, png);

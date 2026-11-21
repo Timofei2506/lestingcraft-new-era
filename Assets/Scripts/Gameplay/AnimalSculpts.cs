@@ -117,10 +117,14 @@ namespace LestingCraft.Gameplay
                            kind == 32 ? new Color(.84f, .22f, .18f) :
                            Color.Lerp(c, Color.white, .25f);
 
+            // furLayer in Assets/Art/PBR already carries the authored species coat color (fox orange, bear brown, camel tan, etc.).
+            // Keep FUR near neutral white so vertex color never double-darkens the PBR coat texture!
+            Color furTint = Color.Lerp(Color.white, c, .15f);
+            Color darkTint = kind == 5 ? new Color(.24f, .20f, .18f) : new Color(.64f, .60f, .57f);
             string furLayer = SpeciesFurNames[kind];
-            s.Pal("fur", furLayer, c.r, c.g, c.b, 0f);                                                   // 0 FUR
+            s.Pal("fur", furLayer, furTint.r, furTint.g, furTint.b, 0f);                                 // 0 FUR
             s.Pal("under", "animal-underfur", under.r, under.g, under.b, 0f);                            // 1 UNDER
-            s.Pal("dark", furLayer, dark.r, dark.g, dark.b, 0f);                                         // 2 DARK
+            s.Pal("dark", furLayer, darkTint.r, darkTint.g, darkTint.b, 0f);                             // 2 DARK
             s.Pal("sclera", "animal-underfur", .96f, .96f, .94f, 0f);                                    // 3 SCLERA
             s.Pal("iris", "obsidian", iris.r, iris.g, iris.b, 0f);                                       // 4 IRIS
             s.Pal("glow", emissiveAllowed ? "cherenkov-crystal" : "animal-underfur",
