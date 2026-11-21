@@ -91,10 +91,6 @@ namespace LestingCraft.Gameplay
                           kind == 33 ? new Color(.86f, .89f, .94f) :
                           Color.Lerp(c, new Color(.92f, .88f, .82f), .45f);
 
-            Color dark = kind == 5 ? new Color(.16f, .13f, .12f) :
-                         kind == 6 ? new Color(.17f, .12f, .09f) :
-                         Color.Lerp(c, new Color(.08f, .07f, .07f), .58f);
-
             Color iris = kind == 3 || kind == 8 || kind == 11 || kind == 12 ? new Color(.88f, .64f, .16f) :
                          kind == 10 ? new Color(.84f, .68f, .18f) :
                          kind == 30 || kind == 31 ? new Color(.36f, .78f, .96f) :

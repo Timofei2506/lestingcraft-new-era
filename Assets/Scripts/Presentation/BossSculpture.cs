@@ -113,16 +113,17 @@ namespace LestingCraft.Presentation
                     for (int f = 0; f < 6; f++)
                     {
                         var dir = BlockGeometry.Directions[f];
-                        long nk = ((long)(cx + dir.x + 512) << 40) | ((long)(cy + dir.y + 512) << 20) | (long)(cz + dir.z + 512);
+                        int nx = cx + dir.x, ny = cy + dir.y, nz = cz + dir.z;
+                        long nk = ((long)(nx + 512) << 40) | ((long)(ny + 512) << 20) | (long)(nz + 512);
                         if (occupied.ContainsKey(nk)) continue;
                         var axes = FaceAxes[f];
                         var signs = FaceCornerSigns[f];
-                        // Three-sample vertex AO around each corner; the diagonal that keeps the
-                        // brighter pair of corners wins so convex silhouettes never self-shadow.
-                        float ao0 = SampleAO(occupied, cx, cy, cz, axes[0], axes[1], signs[0]);
-                        float ao1 = SampleAO(occupied, cx, cy, cz, axes[0], axes[1], signs[1]);
-                        float ao2 = SampleAO(occupied, cx, cy, cz, axes[0], axes[1], signs[2]);
-                        float ao3 = SampleAO(occupied, cx, cy, cz, axes[0], axes[1], signs[3]);
+                        // Three-sample vertex AO in the air plane in front of the face (nx, ny, nz);
+                        // flat and convex surfaces stay at 1.0 while concave creases get soft shading.
+                        float ao0 = SampleAO(occupied, nx, ny, nz, axes[0], axes[1], signs[0]);
+                        float ao1 = SampleAO(occupied, nx, ny, nz, axes[0], axes[1], signs[1]);
+                        float ao2 = SampleAO(occupied, nx, ny, nz, axes[0], axes[1], signs[2]);
+                        float ao3 = SampleAO(occupied, nx, ny, nz, axes[0], axes[1], signs[3]);
                         bool flip = ao0 + ao2 < ao1 + ao3;
                         float[] ao = { ao0, ao1, ao2, ao3 };
                         int start = vertices.Count;
@@ -187,18 +188,16 @@ namespace LestingCraft.Presentation
         static float Linear(float v) { return v <= .04045f ? v / 12.92f : (float)Mathf.Pow((v + .055f) / 1.055f, 2.4f); }
 
         /// <summary>
-        /// Three-sample corner ambient occlusion for a surface-culled voxel face: the source
-        /// cell plus the two side cells and the diagonal around the corner. 1 = fully open.
+        /// Three-sample corner ambient occlusion in the air plane in front of a surface-culled
+        /// voxel face: the two side cells and the diagonal around the corner. 1 = fully open.
         /// </summary>
-        static float SampleAO(Dictionary<long, int> occupied, int cx, int cy, int cz, Vector3Int u, Vector3Int v, Vector2Int sign)
+        static float SampleAO(Dictionary<long, int> occupied, int nx, int ny, int nz, Vector3Int u, Vector3Int v, Vector2Int sign)
         {
-            int ax = cx + sign.x * u.x + sign.y * v.x;
-            int ay = cy + sign.x * u.y + sign.y * v.y;
-            int az = cz + sign.x * u.z + sign.y * v.z;
-            int sideU = Occupied(occupied, cx + sign.x * u.x, cy + sign.x * u.y, cz + sign.x * u.z) ? 1 : 0;
-            int sideV = Occupied(occupied, cx + sign.y * v.x, cy + sign.y * v.y, cz + sign.y * v.z) ? 1 : 0;
-            int diag = Occupied(occupied, ax, ay, az) ? 1 : 0;
-            return Mathf.Clamp01(.75f - .25f * (sideU + sideV + diag));
+            int sideU = Occupied(occupied, nx + sign.x * u.x, ny + sign.x * u.y, nz + sign.x * u.z) ? 1 : 0;
+            int sideV = Occupied(occupied, nx + sign.y * v.x, ny + sign.y * v.y, nz + sign.y * v.z) ? 1 : 0;
+            if (sideU == 1 && sideV == 1) return .40f;
+            int diag = Occupied(occupied, nx + sign.x * u.x + sign.y * v.x, ny + sign.x * u.y + sign.y * v.y, nz + sign.x * u.z + sign.y * v.z) ? 1 : 0;
+            return 1f - .20f * (sideU + sideV + diag);
         }
 
         static bool Occupied(Dictionary<long, int> occupied, int x, int y, int z)
