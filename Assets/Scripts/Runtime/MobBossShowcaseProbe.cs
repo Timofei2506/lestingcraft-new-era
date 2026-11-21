@@ -11,21 +11,17 @@ using LestingCraft.Presentation;
 namespace LestingCraft.Runtime
 {
     /// <summary>
-    /// Renders real in-engine screenshots of every wildlife mob and every boss/drone/bacteria
-    /// model rendered against a plain neutral-gray backdrop, framed in an isometric editor-style
-    /// view so the voxel models read clearly. Activated strictly when "-lc-mobs" is passed on the
-    /// command line. Produces ShowcaseResults/mobs/*.png and ShowcaseResults/bosses/*.png at 1920x1080.
+    /// Renders clean studio 1920x1080 screenshots of all 34 wildlife mobs and all 26 boss/drone/bacteria
+    /// voxel sculptures in the real game binary when "-lc-mobs" is passed on the command line.
     /// </summary>
     public sealed class MobBossShowcaseProbe : MonoBehaviour
     {
-        // Dedicated layer for showcase models so the camera can render ONLY the model and
-        // nothing else — the terrain/world stays hidden and the solid-gray clear shows through.
-        const int ShowcaseLayer = 30;
+        // Layer 29 avoids FirstPersonHands.Layer (30) while isolating showcase subjects from terrain.
+        const int ShowcaseLayer = 29;
 
         static bool finishing;
         Camera showcaseCam;
-        Light sun;
-        GameObject floorRoot;
+        Light keyLight, fillLight;
         PrototypeGame game;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -79,8 +75,6 @@ namespace LestingCraft.Runtime
             while ((!ui.IsReady || !SplashScreen.isFinished) && Time.realtimeSinceStartup < deadline)
                 yield return null;
 
-            // Software rasterisation on CI: drop expensive volumetrics so the voxel floor
-            // and models render fast and deterministically.
             if ((SystemInfo.graphicsDeviceName ?? "").IndexOf("llvmpipe", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 VisualSettings.Current.HighDefault();
@@ -116,85 +110,99 @@ namespace LestingCraft.Runtime
                 yield break;
             }
 
-            var world = game.Session.World;
+            // Freeze DynamicWeather and hide UI canvases + world directional lights so studio keyLight is URP MainLight.
+            ui.gameObject.SetActive(false);
+            foreach (var dw in FindObjectsByType<DynamicWeather>(FindObjectsSortMode.None))
+                if (dw) dw.enabled = false;
+            foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                if (canvas) canvas.enabled = false;
+            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+                if (l && l.type == LightType.Directional) l.enabled = false;
+
+            Shader.SetGlobalVector("_EnvironmentZenith", new Vector4(.34f, .42f, .54f, 1f));
+            Shader.SetGlobalVector("_EnvironmentHorizon", new Vector4(.44f, .48f, .54f, 1f));
+            Shader.SetGlobalVector("_EnvironmentSkyTop", new Vector4(.34f, .42f, .54f, 1f));
+            Shader.SetGlobalVector("_EnvironmentSkyHorizon", new Vector4(.44f, .48f, .54f, 1f));
+            Shader.SetGlobalVector("_EnvironmentGroundBounce", new Vector4(.24f, .23f, .22f, 1f));
+            Shader.SetGlobalFloat("_EnvironmentDaylight", .95f);
+
             string outDir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "ShowcaseResults"));
             string mobsDir = Path.Combine(outDir, "mobs");
             string bossesDir = Path.Combine(outDir, "bosses");
             Directory.CreateDirectory(mobsDir);
             Directory.CreateDirectory(bossesDir);
 
-            // ---- Flat voxel floor + showcase camera + sun ----
-            int fx = Mathf.Clamp(Mathf.RoundToInt(game.Session.Player.transform.position.x) + 60, -160, 160);
-            int fz = Mathf.Clamp(Mathf.RoundToInt(game.Session.Player.transform.position.z) + 60, -160, 160);
-            int gy = FindSurfaceY(world, fx, fz);
-
             showcaseCam = CreateShowcaseCamera();
-            sun = CreateSun();
+            keyLight = CreateStudioLight("MobShowcaseKey", new Color(1f, .96f, .90f), 1.65f, Quaternion.Euler(42f, -142f, 0f), LightShadows.Soft);
+            fillLight = CreateStudioLight("MobShowcaseRimFill", new Color(.68f, .80f, .98f), .62f, Quaternion.Euler(24f, 38f, 0f), LightShadows.None);
             yield return new WaitForEndOfFrame();
 
-            // ---- Wildlife mobs ----
-            var mobRoot = new GameObject("MobShowcaseRig");
+            var stageRoot = new GameObject("ShowcaseStageRig");
+            stageRoot.transform.position = new Vector3(0f, 180f, 0f);
+
+            // ---- 34 Wildlife mobs ----
             for (int kind = 0; kind < AnimalVisual.SpeciesNames.Length; kind++)
             {
+                int capturedKind = kind;
                 string file = Path.Combine(mobsDir, Pad(kind) + "-" + Safe(AnimalVisual.SpeciesNames[kind]) + ".png");
-                yield return CaptureModel(mobRoot, file, () =>
+                yield return CaptureModel(file, () =>
                 {
-                    var go = new GameObject("Mob_" + kind);
-                    go.transform.SetParent(mobRoot.transform, false);
-                    go.transform.position = new Vector3(fx, gy + .02f, fz);
+                    var go = new GameObject("Mob_" + capturedKind);
+                    go.transform.SetParent(stageRoot.transform, false);
                     var vis = go.AddComponent<AnimalVisual>();
-                    vis.Build(kind);
+                    vis.Build(capturedKind);
                     return go;
                 });
-                Destroy(mobRoot, 0.01f);
-                mobRoot = new GameObject("MobShowcaseRig");
             }
 
-            // ---- Bosses, drones, bacteria ----
-            var bossRoot = new GameObject("BossShowcaseRig");
+            // ---- 16 Planetary Bosses + 2 Extra Bosses + 7 Drones + BlackBacteria ----
             int bi = 0;
             foreach (var profile in BossCatalog.All())
             {
+                var capturedProfile = profile;
+                int seed = 1000 + bi;
                 string file = Path.Combine(bossesDir, Pad(bi) + "-" + Safe(profile.Title) + ".png");
-                yield return CaptureModel(bossRoot, file, () =>
+                yield return CaptureModel(file, () =>
                 {
-                    var data = BossSculpts.For(profile.Dimension, 1000 + bi);
-                    return BuildSculpt(bossRoot, data, profile.Scale);
+                    var data = BossSculpts.For(capturedProfile.Dimension, seed);
+                    return BuildSculpt(stageRoot, data, capturedProfile.Scale);
                 });
                 bi++;
             }
             foreach (var profile in BossCatalog.ExtraProfiles)
             {
+                var capturedProfile = profile;
+                int seed = 2000 + bi;
                 string file = Path.Combine(bossesDir, Pad(bi) + "-" + Safe(profile.Title) + ".png");
-                yield return CaptureModel(bossRoot, file, () =>
+                yield return CaptureModel(file, () =>
                 {
-                    var data = BossSculpts.Extra(profile.Name, 2000 + bi);
-                    return BuildSculpt(bossRoot, data, profile.Scale);
+                    var data = BossSculpts.Extra(capturedProfile.Name, seed);
+                    return BuildSculpt(stageRoot, data, capturedProfile.Scale);
                 });
                 bi++;
             }
-            int di = 0;
             foreach (var kind in (DroneKind[])Enum.GetValues(typeof(DroneKind)))
             {
+                var capturedKind = kind;
                 var profile = DroneRoster.For(kind);
                 string file = Path.Combine(bossesDir, Pad(bi) + "-" + Safe(profile.Codename) + ".png");
-                yield return CaptureModel(bossRoot, file, () =>
+                yield return CaptureModel(file, () =>
                 {
-                    var data = BossSculpts.Drone(kind);
-                    return BuildSculpt(bossRoot, data, profile.Size);
+                    var data = BossSculpts.Drone(capturedKind);
+                    return BuildSculpt(stageRoot, data, profile.Size);
                 });
-                bi++; di++;
+                bi++;
             }
             {
                 string file = Path.Combine(bossesDir, Pad(bi) + "-BlackBacteria.png");
-                yield return CaptureModel(bossRoot, file, () =>
+                yield return CaptureModel(file, () =>
                 {
                     var data = BossSculpts.BacteriaMob(4242);
-                    return BuildSculpt(bossRoot, data, 1.0f);
+                    return BuildSculpt(stageRoot, data, 1.0f);
                 });
             }
 
-            Destroy(bossRoot, 0.01f);
+            DestroyImmediate(stageRoot);
             Debug.Log("[MobShowcase] PASS: saved mob + boss screenshots to " + outDir);
             finishing = true;
             Application.Quit(0);
@@ -202,77 +210,60 @@ namespace LestingCraft.Runtime
 
         static GameObject BuildSculpt(GameObject parent, SculptData data, float scale)
         {
-            // BossSculpture.Build is static: it creates its own host GameObject parented to
-            // parent.transform, so we just call it and apply the archetype scale afterwards.
             var sculpt = BossSculpture.Build(parent.transform, data, BossSculpture.SharedVoxelMaterial());
             sculpt.transform.localScale = Vector3.one * scale;
             return sculpt.gameObject;
         }
 
-        /// <summary>Clears a flat voxel plate area so the showcase renders against a plain gray
-        /// backdrop (no floor or terrain) — the model floats centered on solid gray.</summary>
-        static void BuildFlatFloor(VoxelWorld world, int cx, int gy, int cz, int half)
-        {
-            for (int dx = -half; dx <= half; dx++)
-                for (int dz = -half; dz <= half; dz++)
-                {
-                    for (int y = gy - 2; y <= gy + 16; y++)
-                        world.ShowcaseEditUnbounded(cx + dx, y, cz + dz, 0);
-                }
-        }
-
         static Camera CreateShowcaseCamera()
         {
             var camObj = new GameObject("MobShowcaseCamera");
-            camObj.transform.position = new Vector3(0, 12, 12);
-            camObj.transform.LookAt(Vector3.zero);
             var cam = camObj.AddComponent<Camera>();
-            cam.fieldOfView = 42f;
-            cam.nearClipPlane = .1f;
+            cam.fieldOfView = 34f;
+            cam.nearClipPlane = .08f;
             cam.farClipPlane = 400f;
             cam.allowHDR = false;
-            // Plain neutral-gray backdrop so voxel models read clearly, like a product turnaround.
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(.70f, .71f, .73f, 1f);
+            cam.backgroundColor = new Color(.22f, .25f, .30f, 1f);
             cam.cullingMask = 1 << ShowcaseLayer;
             cam.enabled = false;
             return cam;
         }
 
-        static Light CreateSun()
+        static Light CreateStudioLight(string name, Color color, float intensity, Quaternion rotation, LightShadows shadows)
         {
-            var go = new GameObject("MobShowcaseSun");
+            var go = new GameObject(name);
             var light = go.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.color = new Color(1f, .96f, .88f);
-            light.intensity = 2.2f;
-            light.shadows = LightShadows.Soft;
-            light.shadowBias = .03f;
-            light.transform.rotation = Quaternion.Euler(52f, -38f, 0f);
+            light.color = color;
+            light.intensity = intensity;
+            light.shadows = shadows;
+            light.shadowBias = .02f;
+            light.cullingMask = 1 << ShowcaseLayer;
+            go.transform.rotation = rotation;
             return light;
         }
 
-        /// <summary>Frames the showcase camera isometrically around a model of given height, then captures.</summary>
-        IEnumerator CaptureModel(GameObject rig, string fullPath, Func<GameObject> spawn)
+        IEnumerator CaptureModel(string fullPath, Func<GameObject> spawn)
         {
             Debug.Log("[MobShowcase] START: " + Path.GetFileName(fullPath));
             var model = spawn();
-            // Render the model on the dedicated showcase layer so the camera (cullingMask)
-            // draws ONLY it — terrain/world are excluded and the gray clear shows behind.
             var trs = model.GetComponentsInChildren<Transform>(true);
             for (int i = 0; i < trs.Length; i++)
                 if (trs[i]) trs[i].gameObject.layer = ShowcaseLayer;
-            // Let the model's meshes register before measuring.
-            for (int i = 0; i < 2; i++) yield return null;
 
-            float height = MeasureHeight(model);
-            float dist = Mathf.Max(2.4f, height * 3.1f);
-            float camY = Mathf.Max(1.6f, height * 1.9f) + .4f;
-            Vector3 look = model.transform.position;
-            showcaseCam.transform.position = new Vector3(look.x + dist * .62f, look.y + camY, look.z + dist * .62f);
-            showcaseCam.transform.LookAt(new Vector3(look.x, look.y + height * .45f, look.z));
+            yield return null;
+            yield return null;
 
-            // Hide everything except the showcase camera + sun + the model rig.
+            Bounds bounds = MeasureBounds(model);
+            float span = Mathf.Max(.45f, Mathf.Max(bounds.size.y, Mathf.Max(bounds.size.x, bounds.size.z) * .82f));
+            float dist = span * 2.15f;
+            // Models face +Z: position camera on +X/+Z front-three-quarter angle looking back at bounds.center.
+            Vector3 target = bounds.center;
+            Vector3 dir = new Vector3(.60f, .42f, .68f).normalized;
+            showcaseCam.transform.position = target + dir * dist;
+            showcaseCam.transform.LookAt(target);
+
             foreach (var cam in FindObjectsByType<Camera>(FindObjectsSortMode.None))
                 if (cam && cam != showcaseCam) cam.enabled = false;
             showcaseCam.enabled = true;
@@ -281,13 +272,15 @@ namespace LestingCraft.Runtime
 
             var snap = ScreenCapture.CaptureScreenshotAsTexture();
             showcaseCam.enabled = false;
+            if (model) DestroyImmediate(model);
+
             if (!snap)
             {
                 Fail("CaptureScreenshotAsTexture returned null: " + fullPath);
                 yield break;
             }
             byte[] png = ImageConversion.EncodeToPNG(snap);
-            Destroy(snap);
+            DestroyImmediate(snap);
             File.WriteAllBytes(fullPath, png);
             if (!ScreenshotReady(fullPath))
             {
@@ -297,30 +290,18 @@ namespace LestingCraft.Runtime
             Debug.Log("[MobShowcase] CAPTURED: " + fullPath);
         }
 
-        static float MeasureHeight(GameObject model)
+        static Bounds MeasureBounds(GameObject model)
         {
             var renderers = model.GetComponentsInChildren<Renderer>(true);
-            float top = -1e9f, bottom = 1e9f;
             bool any = false;
+            Bounds total = new Bounds(model.transform.position + Vector3.up * .8f, Vector3.one);
             for (int i = 0; i < renderers.Length; i++)
             {
                 if (!renderers[i]) continue;
-                any = true;
-                top = Mathf.Max(top, renderers[i].bounds.max.y);
-                bottom = Mathf.Min(bottom, renderers[i].bounds.min.y);
+                if (!any) { total = renderers[i].bounds; any = true; }
+                else total.Encapsulate(renderers[i].bounds);
             }
-            if (!any) return 2f;
-            return Mathf.Max(.6f, top - bottom);
-        }
-
-        static int FindSurfaceY(VoxelWorld world, int x, int z)
-        {
-            for (int y = 118; y > 8; y--)
-            {
-                int b = world.GetBlock(x, y, z);
-                if (b != 0 && b != 7 && b != 6) return y;
-            }
-            return 64;
+            return total;
         }
 
         static string Pad(int n) { return n.ToString("00"); }

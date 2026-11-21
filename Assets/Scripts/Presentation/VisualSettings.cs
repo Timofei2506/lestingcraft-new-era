@@ -154,8 +154,8 @@ namespace LestingCraft.Presentation
             lift.gamma.Override(new Vector4(1, 1, 1, 0));
             lift.gain.Override(new Vector4(1, 1, 1, 0));
             var grain = profile.TryGet(out FilmGrain g) ? g : profile.Add<FilmGrain>(true);
-            grain.type.Override(FilmGrainLookup.Medium1);
-            grain.intensity.Override(.06f);
+            grain.type.Override(FilmGrainLookup.Thin1);
+            grain.intensity.Override(.015f);
             grain.response.Override(.8f);
             var aberration = profile.TryGet(out ChromaticAberration a) ? a : profile.Add<ChromaticAberration>(true);
             aberration.intensity.Override(0f);

@@ -56,8 +56,8 @@ Shader "LestingCraft/VolumetricAtmosphere"
                 half visible=SolarOpen(solar)*.4;
                 visible+=(SolarOpen(solar+float2(3,0)*texel)+SolarOpen(solar-float2(3,0)*texel)+
                     SolarOpen(solar+float2(0,3)*texel)+SolarOpen(solar-float2(0,3)*texel))*.15;
-                float halo=.085*exp(-r2*85)+.22*exp(-r2*1500);
-                float streak=(exp(-abs(delta.y)*1200)+exp(-abs(delta.x)*1800))*.045*exp(-r2*130);
+                float halo=.065*exp(-r2*95)+.18*exp(-r2*1600);
+                float streak=(exp(-abs(delta.y)*1300)+exp(-abs(delta.x)*1900))*.035*exp(-r2*140);
                 return _EnvironmentSunColor.rgb*(halo+streak)*visible*_LCSunGlareWeather*
                     saturate(_EnvironmentSunDirection.y*8);
             }
@@ -65,6 +65,16 @@ Shader "LestingCraft/VolumetricAtmosphere"
             {
                 float2 uv=GetNormalizedScreenSpaceUV(i.p);
                 float raw=SampleSceneDepth(uv);
+                #if UNITY_REVERSED_Z
+                    bool isSkyBg = raw < .00001;
+                #else
+                    bool isSkyBg = raw > .99999;
+                #endif
+                half3 glare=SolarGlare(uv);
+                // Do not raymarch volumetric shadow cascades over open sky pixels — AtmosphericSky already
+                // computes physical sky scattering, and marching cascades at far clip causes concentric ring banding.
+                if(isSkyBg && _Submerged < .5) return half4(glare,0);
+
                 #if !UNITY_REVERSED_Z
                     raw=lerp(UNITY_NEAR_CLIP_VALUE,1,raw);
                 #endif
@@ -72,39 +82,39 @@ Shader "LestingCraft/VolumetricAtmosphere"
                 float3 delta=end-_WorldSpaceCameraPos;
                 float lengthSquared=max(dot(delta,delta),.000001);
                 float3 direction=delta*rsqrt(lengthSquared);
-                float fullDistance=min(sqrt(lengthSquared),160);
-                half3 glare=SolarGlare(uv);
-                float nearClear=lerp(1.5,0,_Submerged);
+                float fullDistance=min(sqrt(lengthSquared),140);
+                float nearClear=lerp(2.0,0,_Submerged);
                 float marchDistance=max(0,fullDistance-nearClear);
                 if(marchDistance<=.01||_Density<=0)return half4(glare,0);
-                // Runtime quality takes precedence over legacy weather materials writing 32/48.
-                int maximum=(int)clamp(_LCVolumetricSteps>0?_LCVolumetricSteps:_Steps,6,12);
-                int count=max(3,(int)ceil(maximum*saturate(marchDistance/48)));
+
+                int maximum=(int)clamp(_LCVolumetricSteps>0?_LCVolumetricSteps:_Steps,8,28);
+                int count=max(4,(int)ceil(maximum*saturate(marchDistance/44)));
                 float stepLength=marchDistance/count;
                 Light sun=GetMainLight();
-                float mu=dot(direction,sun.direction),g=.68;
-                float phase=(1-g*g)/(12.56637*pow(max(.01,1+g*g-2*g*mu),1.5));
-                float jitter=LC_IGN(i.p.xy);
+                float mu=dot(direction,sun.direction),g=.66;
+                float phase=(1-g*g)/(12.56637*pow(max(.015,1+g*g-2*g*mu),1.5));
+                float jitter=.25+.50*LC_IGN(i.p.xy);
                 float transmittance=1;
                 half3 scattering=0;
-                [loop] for(int n=0;n<12;n++)
+                [loop] for(int n=0;n<28;n++)
                 {
                     if(n>=count||transmittance<.015)break;
-                    float3 p=_WorldSpaceCameraPos+direction*(nearClear+(n+jitter)*stepLength);
-                    float heightDensity=lerp(exp(-max(0,p.y-_FogHeight)*.034),1,_Submerged);
+                    float distAlong=nearClear+(n+jitter)*stepLength;
+                    float3 p=_WorldSpaceCameraPos+direction*distAlong;
+                    float heightDensity=lerp(exp(-max(0,p.y-_FogHeight)*.042),1,_Submerged);
                     if(heightDensity<.002)continue;
                     half sky=LC_SkyAt(p,1);
-                    float forestMedium=.006*sky*(1-sky)*(1-_Submerged);
+                    float forestMedium=.0045*sky*(1-sky)*(1-_Submerged);
                     float opticalDepth=(_Density*lerp(sky,1,_Submerged)+forestMedium)*heightDensity*stepLength;
                     if(opticalDepth<.00001)continue;
                     float extinction=1-exp(-opticalDepth);
-                    half shadow=sky>.001?MainLightRealtimeShadow(TransformWorldToShadowCoord(p)):0;
-                    // Low sun warms the veil: forward scattering turns golden toward the sun,
-                    // like the cream haze sitting over the reference sea.
-                    half3 sunVeil=sun.color*lerp(half3(1,1,1),half3(1.18,.86,.58),
+                    // Smoothly blend realtime shadow toward 1 past cascade range so cascade edges never form rings.
+                    float cascadeFade=saturate((distAlong-68.0)/24.0);
+                    half shadow=sky>.001?lerp(MainLightRealtimeShadow(TransformWorldToShadowCoord(p)),1.0,cascadeFade):0;
+                    half3 sunVeil=sun.color*lerp(half3(1,1,1),half3(1.14,.86,.60),
                         saturate(1-_EnvironmentSunDirection.y*2.8)*(1-_Submerged));
-                    half3 light=_FogTint.rgb*.22*LC_SkyEnergy(sky)+
-                        sunVeil*(min(phase,.6)*1.55+.10)*shadow*(1-_Submerged*.9)*step(.001,sky);
+                    half3 light=_FogTint.rgb*.20*LC_SkyEnergy(sky)+
+                        sunVeil*(min(phase,.55)*1.35+.08)*shadow*(1-_Submerged*.9)*step(.001,sky);
                     scattering+=transmittance*extinction*light;
                     transmittance*=1-extinction;
                 }

@@ -196,6 +196,7 @@ namespace LestingCraft.World
         {
             var data = new ChunkMeshData();
             var grassCells = decorate ? new List<Vector3Int>() : null;
+            var cornerShade = new int[4];
             for (int y = 0; y < ChunkData.SizeY; y++)
                 for (int z = 0; z < 16; z++)
                     for (int x = 0; x < 16; x++)
@@ -230,6 +231,7 @@ namespace LestingCraft.World
                                 int corner = Solid(chunk, ox, oz, nx + su.x + sv.x, ny + su.y + sv.y, nz + su.z + sv.z, neighbor);
                                 int ao = a == 1 && b == 1 ? 3 : a + b + corner;
                                 byte shade = (byte)(255 - ao * 30);
+                                cornerShade[c] = shade;
                                 Vector3 position = Corners[face][c];
                                 if (liquid && fluidHeight != null && neighbor(ox + x, y + 1, oz + z) != id)
                                     position.y = other == id && face != 2 && face != 3
@@ -246,7 +248,7 @@ namespace LestingCraft.World
                                 data.UVs.Add(new Vector3(uv.x, uv.y, layer));
                                 data.Tangents.Add(new Vector4(u.x, u.y, u.z, -1));
                             }
-                            AddIndices(data, id, solid, start);
+                            AddIndices(data, id, solid, start, FlipDiagonal(cornerShade[0], cornerShade[1], cornerShade[2], cornerShade[3]));
                             if (decorate && id == BlockRegistry.GrassId && face == 2 && other == 0)
                                 grassCells.Add(new Vector3Int(x, y, z));
                         }
@@ -324,7 +326,8 @@ namespace LestingCraft.World
                                 data.UVs.Add(new Vector3(uv.x, uv.y, tile.Layer));
                                 data.Tangents.Add(new Vector4(u.x, u.y, u.z, -1));
                             }
-                            AddIndices(data, tile.Id, tile.Solid, start);
+                            AddIndices(data, tile.Id, tile.Solid, start,
+                                FlipDiagonal(Byte(tile.AO, 0), Byte(tile.AO, 1), Byte(tile.AO, 2), Byte(tile.AO, 3)));
                             for (int j = 0; j < height; j++)
                                 for (int k = 0; k < width; k++)
                                     mask[a + k + (b + j) * 16] = default(Face);
@@ -407,18 +410,29 @@ namespace LestingCraft.World
                 ? chunk.GetBlock(x, y, z) : neighbor(ox + x, y, oz + z)) ? 1 : 0;
         }
 
-        static void AddIndices(ChunkMeshData data, ushort id, bool solid, int start)
+        static bool FlipDiagonal(int s0, int s1, int s2, int s3)
         {
-            AddFace(data.Triangles, start);
+            return s0 + s2 < s1 + s3;
+        }
+
+        static void AddIndices(ChunkMeshData data, ushort id, bool solid, int start, bool flip = false)
+        {
+            AddFace(data.Triangles, start, flip);
             if (id != 15 && id != BlockRegistry.TorchBlockId && id != BlockRegistry.BedBlockId && id != BlockRegistry.LanternBlockId)
                 AddFace(id == BlockRegistry.GlacialIceId ? data.IceTriangles :
                     id == 44 || id == BlockRegistry.ArmoredGlassId ? data.TransparentTriangles :
-                    id == BlockRegistry.WaterId ? data.WaterTriangles : data.OpaqueTriangles, start);
+                    id == BlockRegistry.WaterId ? data.WaterTriangles : data.OpaqueTriangles, start, flip);
             if (solid) AddFace(data.ColliderTriangles, start);
         }
 
-        static void AddFace(List<int> indices, int start)
+        static void AddFace(List<int> indices, int start, bool flip = false)
         {
+            if (flip)
+            {
+                indices.Add(start); indices.Add(start + 1); indices.Add(start + 3);
+                indices.Add(start + 1); indices.Add(start + 2); indices.Add(start + 3);
+                return;
+            }
             indices.Add(start); indices.Add(start + 1); indices.Add(start + 2);
             indices.Add(start); indices.Add(start + 2); indices.Add(start + 3);
         }

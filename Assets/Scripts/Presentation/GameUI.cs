@@ -14,7 +14,7 @@ namespace LestingCraft.Presentation
     public sealed partial class GameUI : MonoBehaviour
     {
         enum Page{Account,Achievements,Home,World,Rooms,AddServer,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby,Journal,Store,Market,Friends}
-        static readonly Color Ink=new Color(.045f,.070f,.075f), Panel=new Color(.065f,.105f,.115f,.97f), Muted=new Color(.68f,.75f,.74f), White=new Color(.94f,.96f,.93f), Accent=new Color(.90f,.78f,.52f);
+        static readonly Color Ink=new Color(.055f,.075f,.110f), Panel=new Color(.070f,.105f,.155f,.86f), Muted=new Color(.74f,.80f,.86f), White=new Color(.96f,.97f,.99f), Accent=new Color(.96f,.78f,.38f);
         PrototypeGame game;Canvas canvas;RectTransform frame;GameObject content,background;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
         Page page,settingsBack;Text status,loadingHUD;Image[] slots;RectTransform[] slotRects;
@@ -155,55 +155,69 @@ namespace LestingCraft.Presentation
         public void ShowHome()
         {
             Clear(Page.Home);
-            // Keep the landscape visible while reserving a calm, high-contrast reading surface.
+            // Clean full-frame keyart presentation with a translucent glass left expedition card.
             // All action names below are stable: the executable smoke test clicks them by name.
-            Box(content.transform,56,44,1480,1,new Color(.82f,.74f,.54f,.36f),false);
-            Label(content.transform,"L / C",76,66,120,36,27,Accent,true);
-            Label(content.transform,"НОВАЯ ЭРА · ПЕРВАЯ ЭКСПЕДИЦИЯ",207,71,750,28,13,White);
-            var version=Box(content.transform,1190,61,346,39,new Color(.035f,.055f,.065f,.86f));
-            Label(version.transform,(VisualSettings.IsMobile?"ANDROID":"WINDOWS")+"  /  РАННЯЯ ВЕРСИЯ",15,0,316,39,12,White,false,TextAnchor.MiddleCenter);
-            var account=Button("Аккаунт · достижения",1190,114,346,52,ShowAccount);account.name="Home.Account";
-            if(game.Accounts!=null&&game.Accounts.Logged){var walletEntry=Button("Кошелёк и друзья",1190,174,346,48,ShowStore);walletEntry.name="Home.Store";}
-            var panel=Box(content.transform,56,189,710,610,new Color(.023f,.047f,.055f,.87f));
+            var brandPill=Box(content.transform,64,40,428,46,new Color(.045f,.070f,.110f,.72f));
+            brandPill.raycastTarget=false;
+            Box(brandPill.transform,0,9,4,28,Accent,false);
+            Label(brandPill.transform,"L / C",18,0,72,46,20,Accent,true,TextAnchor.MiddleLeft);
+            Label(brandPill.transform,"НОВАЯ ЭРА  ·  ЭКСПЕДИЦИЯ",86,0,326,46,12,White,true,TextAnchor.MiddleLeft);
+
+            var version=Box(content.transform,1208,40,328,44,new Color(.045f,.070f,.110f,.72f));
+            version.raycastTarget=false;
+            Label(version.transform,(VisualSettings.IsMobile?"ANDROID":"DESKTOP")+"  ·  v"+Application.version,14,0,300,44,12,Muted,false,TextAnchor.MiddleCenter);
+            var account=Button("Аккаунт · достижения",1208,96,328,50,ShowAccount);account.name="Home.Account";
+            if(game.Accounts!=null&&game.Accounts.Logged){var walletEntry=Button("Кошелёк и друзья",1208,156,328,48,ShowStore);walletEntry.name="Home.Store";}
+
+            float cardH=game.HasSave?574:492;
+            var panel=Box(content.transform,64,148,568,cardH,new Color(.042f,.068f,.108f,.74f));
             panel.raycastTarget=false;
-            Box(content.transform,56,189,4,610,Accent,false);
-            Label(content.transform,"МИР, КОТОРЫЙ ТЫ СТРОИШЬ САМ",86,214,640,27,13,Accent,true);
-            ShadowLabel(content.transform,"LESTINGCRAFT",82,254,660,73,54,true);
-            Label(content.transform,"LESTINGCRAFT",82,254,660,73,54,White,true);
-            ShadowLabel(content.transform,"N E W   E R A",89,330,588,41,25,true);
-            Label(content.transform,"N E W   E R A",89,330,588,41,25,Accent,true);
-            Box(content.transform,88,393,78,2,Accent,false);
-            ShadowLabel(content.transform,"Исследуй. Строй. Выживай. Вместе.",88,420,632,39,22,true);
-            Label(content.transform,"Исследуй. Строй. Выживай. Вместе.",88,420,632,39,22,White,true);
-            Label(content.transform,"Лестингия ждёт: леса, пещеры, деревни и ваша история.\nВыбери свою экспедицию или позови друга.",88,472,624,54,17,White);
+            var panelBorder=Rect("Hero border",panel.transform,0,0,0,0);Stretch(panelBorder);
+            var pbImg=panelBorder.gameObject.AddComponent<Image>();pbImg.sprite=MenuArtwork.Outline;pbImg.type=Image.Type.Sliced;pbImg.raycastTarget=false;pbImg.color=new Color(Accent.r,Accent.g,Accent.b,.28f);
+            Box(panel.transform,0,22,4,cardH-44,Accent,false);
+
+            Label(content.transform,"ОТКРЫТЫЙ ВОКСЕЛЬНЫЙ МИР",96,178,504,24,12,Accent,true);
+            ShadowLabel(content.transform,"LESTINGCRAFT",94,208,512,66,46,true);
+            Label(content.transform,"LESTINGCRAFT",94,208,512,66,46,White,true);
+            ShadowLabel(content.transform,"N E W   E R A",96,276,480,34,22,true);
+            Label(content.transform,"N E W   E R A",96,276,480,34,22,Accent,true);
+            Box(content.transform,96,322,96,2,Accent,false);
+            Box(content.transform,200,322,400,1,new Color(1f,1f,1f,.12f),false);
+
+            Label(content.transform,"Исследуй. Строй. Выживай. Вместе.",96,342,504,34,20,White,true);
+            Label(content.transform,"Живые биомы Лестингии, уютные поселения, ремёсла и межпланетные полёты — в одиночку или с друзьями.",96,382,504,52,15,Muted);
+
             if(game.HasSave)
             {
-                HomeAction("Продолжить экспедицию","Вернуться к своему сохранённому миру",546,game.ContinueOffline,true,"Home.Continue");
-                HomeAction("Новая экспедиция","Внимание: заменит прежнее локальное сохранение",624,ShowWorld,false,"Home.Play");
-                HomeAction("Мультиплеер","Добавить сервер по IP и порту",702,ShowRooms,false,"Home.Coop");
+                HomeAction("Продолжить экспедицию","Вернуться к сохранённому миру",454,game.ContinueOffline,true,"Home.Continue");
+                HomeAction("Новая экспедиция","Выбрать режим и создать новый мир",536,ShowWorld,false,"Home.Play");
+                HomeAction("Мультиплеер","Подключиться к серверу друзей по IP",618,ShowRooms,false,"Home.Coop");
             }
             else
             {
-                HomeAction("Начать экспедицию","Выбрать режим и создать свой мир",546,ShowWorld,true,"Home.Play");
-                HomeAction("Мультиплеер","Добавить сервер по IP и порту",624,ShowRooms,false,"Home.Coop");
+                HomeAction("Начать экспедицию","Выбрать режим и создать свой мир",458,ShowWorld,true,"Home.Play");
+                HomeAction("Мультиплеер","Подключиться к серверу друзей по IP",542,ShowRooms,false,"Home.Coop");
             }
-            var settings=Button("Настройки",88,821,200,52,()=>ShowSettings(Page.Home));settings.name="Home.Settings";
-            var quit=Button("Выйти",302,821,170,52,()=>Application.Quit());quit.name="Home.Quit";
-            Label(content.transform,"Космические полёты · экспериментально",1057,601,465,32,17,White,true);
-            var card=Box(content.transform,1047,646,474,138,new Color(.021f,.043f,.052f,.88f));
+
+            float bottomY=game.HasSave?742:660;
+            var settings=Button("Настройки",64,bottomY,276,52,()=>ShowSettings(Page.Home));settings.name="Home.Settings";
+            var quit=Button("Выйти",356,bottomY,276,52,()=>Application.Quit());quit.name="Home.Quit";
+
+            var card=Box(content.transform,1124,716,412,120,new Color(.042f,.068f,.108f,.74f));
             card.raycastTarget=false;
-            Box(card.transform,0,0,4,138,Accent,false);
-            Label(card.transform,"01   /   ЛЕСТИНГИЯ",22,18,425,27,13,Accent,true);
-            Label(card.transform,"Приключение начинается здесь",22,53,425,38,21,White,true);
-            Label(card.transform,"Леса, пещеры и деревни — уже в игре. Космос развивается.",22,101,430,25,13,White);
-            Label(content.transform,"Фон — концепт-арт · разработка продолжается",1049,818,472,34,11,White,false,TextAnchor.MiddleRight);
+            var cardBorder=Rect("Chapter border",card.transform,0,0,0,0);Stretch(cardBorder);
+            var cbImg=cardBorder.gameObject.AddComponent<Image>();cbImg.sprite=MenuArtwork.Outline;cbImg.type=Image.Type.Sliced;cbImg.raycastTarget=false;cbImg.color=new Color(Accent.r,Accent.g,Accent.b,.24f);
+            Box(card.transform,0,18,4,84,Accent,false);
+            Label(card.transform,"ГЛАВА I  ·  ЛЕСТИНГИЯ",22,18,368,22,12,Accent,true);
+            Label(card.transform,"Живой мир и далёкие орбиты",22,46,368,30,18,White,true);
+            Label(card.transform,"Леса, пещеры, деревни и 16 миров солнечной системы.",22,80,368,24,13,Muted);
         }
         void HomeAction(string title,string subtitle,float y,Action action,bool primary,string objectName)
         {
-            var button=Button("",88,y,507,70,action,primary);button.name=objectName;
-            Label(button.transform,title,23,12,426,28,19,primary?Ink:White,true);
-            Label(button.transform,subtitle,24,43,425,20,12,primary?new Color(.20f,.23f,.20f):Muted);
-            Label(button.transform,"→",456,0,33,70,23,primary?Ink:Accent,false,TextAnchor.MiddleCenter);
+            var button=Button("",96,y,504,72,action,primary);button.name=objectName;
+            Label(button.transform,title,22,13,424,26,18,primary?Ink:White,true);
+            Label(button.transform,subtitle,22,42,424,20,12,primary?new Color(.16f,.20f,.26f):Muted);
+            Label(button.transform,"→",454,0,34,72,22,primary?Ink:Accent,false,TextAnchor.MiddleCenter);
         }
         public void ShowWorld()
         {

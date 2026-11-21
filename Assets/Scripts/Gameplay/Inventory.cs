@@ -47,18 +47,6 @@ namespace LestingCraft.Gameplay
             all[QuadDrone]=new ItemDefinition(QuadDrone,"Инженерный квадрокоптер",1);
             all[IndustrialRobot]=new ItemDefinition(IndustrialRobot,"Робот-автоматон «Титан-М»",1);
             all[Dosimeter]=new ItemDefinition(Dosimeter,"Дозиметр «Припять»",1);
-            // Alchemy system: reagents, catalysts and the yields they produce (see Alchemy.cs).
-            all[196]=new ItemDefinition(196,"Серная кислота");
-            all[197]=new ItemDefinition(197,"Нитратная соль");
-            all[198]=new ItemDefinition(198,"Порох");
-            all[199]=new ItemDefinition(199,"Лечебная склянка",16);
-            all[200]=new ItemDefinition(200,"Алхимическая соль");
-            all[201]=new ItemDefinition(201,"Философская меркурия");
-            all[202]=new ItemDefinition(202,"Циндарный пепел");
-            all[204]=new ItemDefinition(204,"Стимулятор",16);
-            all[205]=new ItemDefinition(205,"Очищенный кварц");
-            all[206]=new ItemDefinition(206,"Взрывная смазка",16);
-            all[207]=new ItemDefinition(207,"Люминесцентная паста",32);
             // STRICTLY SECRET WARHEAD: never exposed in CatalogIds, CreativeCatalog, recipes, drops or trades — ONLY /give 666!
             all[ThermonukeId]=new ItemDefinition(ThermonukeId,"Объект 666 · Термоядерная боеголовка",1);
         }

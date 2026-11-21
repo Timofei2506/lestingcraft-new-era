@@ -205,14 +205,15 @@ namespace LestingCraft.Runtime
             if(keyboard.spaceKey.wasPressedThisFrame)jumpBufferTimer=JumpBuffer;
             else jumpBufferTimer-=Time.deltaTime;
 
+            float swimBob=0f;
             if(swimming)
             {
                 // Buoyancy: vertical velocity eases toward a neutral band; space rises,
-                // ctrl dives, otherwise settle with a gentle surface bob near the top.
-                float buoyTarget=keyboard.spaceKey.isPressed?2.8f:keyboard.leftCtrlKey.isPressed?-2.8f:0f;
-                vertical=Mathf.MoveTowards(vertical,buoyTarget,Time.deltaTime*7f);
-                // Gentle surface bob while swimming.
-                vertical+=Mathf.Sin(Time.time*2.4f)*.22f;
+                // ctrl dives, otherwise settle with a gentle frame-rate-independent surface bob.
+                float buoyTarget=keyboard.spaceKey.isPressed?2.8f:keyboard.leftCtrlKey.isPressed?-2.8f:-.18f;
+                vertical=Mathf.MoveTowards(vertical,buoyTarget,Time.deltaTime*8f);
+                if(!keyboard.spaceKey.isPressed&&!keyboard.leftCtrlKey.isPressed)
+                    swimBob=Mathf.Sin(Time.time*2.4f)*.18f;
             }
             else
             {
@@ -222,8 +223,8 @@ namespace LestingCraft.Runtime
                     vertical=8f*Mathf.Lerp(1f,1.35f,1f-Mathf.Clamp01(grav))*Game.Session.Vitals.body.Movement;
                     jumpBufferTimer=0;coyoteTimer=0;wasGrounded=false;jumpCutApplied=false;
                 }
-                // Variable jump height: releasing space early cuts the ascent once.
-                if(vertical>0&&!keyboard.spaceKey.isPressed&&!jumpCutApplied){vertical*=.45f;jumpCutApplied=true;}
+                // Variable jump height: releasing space early trims apex while still clearing a 1m voxel block.
+                if(vertical>6.95f&&!keyboard.spaceKey.isPressed&&!jumpCutApplied){vertical=Mathf.Max(6.95f,vertical*.86f);jumpCutApplied=true;}
                 vertical=Mathf.Max(vertical-22f*grav*Time.deltaTime,-40f*grav);
             }
             Vector3 velocity=(transform.right*move.x+transform.forward*move.y)*speed;
@@ -231,7 +232,7 @@ namespace LestingCraft.Runtime
             if(!Game.DockedAtOrbitalStation&&(!World.Loaded(movementTarget)||!World.Contains(Mathf.FloorToInt(movementTarget.x),1,Mathf.FloorToInt(movementTarget.z))))velocity=Vector3.zero;
             float impact=vertical;bool groundedBefore=controller.isGrounded;
             PlayerCapsule.UpdateStep(controller,velocity);
-            controller.Move((velocity+Vector3.up*vertical+impulse)*Time.deltaTime);impulse=Vector3.MoveTowards(impulse,Vector3.zero,Time.deltaTime*15);
+            controller.Move((velocity+Vector3.up*(vertical+swimBob)+impulse)*Time.deltaTime);impulse=Vector3.MoveTowards(impulse,Vector3.zero,Time.deltaTime*15);
             float safeImpact=11f/Mathf.Sqrt(grav);
             if(!groundedBefore&&controller.isGrounded&&impact< -safeImpact&&Game.Session){float hurt=(-impact-safeImpact)*1.5f*grav;Game.Session.DamagePart(hurt,BodyPart.LeftLeg);Game.Session.DamagePart(hurt,BodyPart.RightLeg);}
             if(!Game.DockedAtOrbitalStation&&!Game.InMoonFlight&&(transform.position.y<1||transform.position.y>250)){if(Game.Session)Game.Session.Damage(10000);controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;}

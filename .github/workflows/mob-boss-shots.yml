@@ -51,23 +51,12 @@ jobs:
           username: ${{ secrets.UNITY_USERNAME }}
           password: ${{ secrets.UNITY_PASSWORD }}
 
-      - name: Build StandaloneLinux64 Player (no EditMode tests)
-        # Call the Unity editor binary directly instead of buildalon/unity-action@v3:
-        # that action force-runs EditMode tests after the build, and a flaky llvmpipe
-        # test crashes the whole run even when the build itself is healthy. A direct
-        # -executeMethod build is deterministic and produces the same player binary.
-        run: |
-          set -e
-          UNITY_BIN="${UNITY_EDITOR_PATH:-}"
-          if [ -z "$UNITY_BIN" ] || [ ! -x "$UNITY_BIN" ]; then
-            UNITY_BIN="$(ls -d /home/runner/Unity/Hub/Editor/*/Editor/Unity 2>/dev/null | head -1)"
-          fi
-          test -n "$UNITY_BIN" && test -x "$UNITY_BIN"
-          echo "Unity editor binary: $UNITY_BIN"
-          "$UNITY_BIN" -quit -batchmode -nographics -logFile Builds/Logs/unity-build.log -executeMethod BuildScript.BuildLinux64
-          echo "=== build log tail ==="
-          tail -n 40 Builds/Logs/unity-build.log || true
-          grep -E "BuildScript:|Build failed|Build succeeded" Builds/Logs/unity-build.log || true
+      - name: Build StandaloneLinux64 Player
+        uses: buildalon/unity-action@v3
+        with:
+          log-name: build-StandaloneLinux64
+          build-target: StandaloneLinux64
+          args: -quit -batchmode -nographics -executeMethod BuildScript.BuildLinux64
 
       - name: Save Full IL2CPP Library Cache Always
         if: always()

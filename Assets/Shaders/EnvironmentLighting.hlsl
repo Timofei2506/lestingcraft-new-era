@@ -16,8 +16,7 @@ float LC_IGN(float2 pixel)
     return frac(52.9829189 * frac(dot(pixel, float2(.06711056, .00583715))));
 }
 
-// Analytic single-scattering approximation. This is not a spectral atmosphere
-// solver; realm-specific lighting remains authoritative for airless worlds.
+// Analytic single-scattering sky radiance with clean Rayleigh/Mie balance and crisp horizon.
 float3 LC_SkyRadiance(float3 direction)
 {
     float3 ray = normalize(direction);
@@ -28,50 +27,45 @@ float3 LC_SkyRadiance(float3 direction)
     float daylight = saturate(_EnvironmentDaylight);
     float atmosphere = saturate(max(_EnvironmentHorizon.r,
         max(_EnvironmentHorizon.g, _EnvironmentHorizon.b)) * 12);
-    float3 sky = lerp(_EnvironmentHorizon.rgb, _EnvironmentZenith.rgb, pow(h, .45));
+    float3 sky = lerp(_EnvironmentHorizon.rgb, _EnvironmentZenith.rgb, pow(h, .52));
 
-    float opticalMass = rcp(max(.055, h + .15 * pow(1 - h, 2)));
-    float solarMass = rcp(max(.055, sunElevation + .15 * pow(1 - saturate(sunElevation), 2)));
+    float opticalMass = rcp(max(.08, h + .16 * pow(1 - h, 2)));
+    float solarMass = rcp(max(.07, sunElevation + .16 * pow(1 - saturate(sunElevation), 2)));
     float3 betaRayleigh = float3(.0058, .0135, .0331);
-    float3 transmission = exp(-(betaRayleigh * 6 + .008) * solarMass);
+    float3 transmission = exp(-(betaRayleigh * 5.5 + .007) * solarMass);
     float rayleighPhase = .0596831 * (1 + mu * mu);
     float g = .76;
     float miePhase = .0795775 * (1 - g * g) /
-        pow(max(.025, 1 + g * g - 2 * g * mu), 1.5);
-    float3 scattering = (1 - exp(-betaRayleigh * opticalMass * 3)) *
-        transmission * rayleighPhase * 1.6;
-    scattering += transmission * miePhase * .012 * (1 - exp(-opticalMass * .12));
+        pow(max(.035, 1 + g * g - 2 * g * mu), 1.5);
+    float3 scattering = (1 - exp(-betaRayleigh * opticalMass * 2.6)) *
+        transmission * rayleighPhase * 1.15;
+    scattering += transmission * miePhase * .0075 * (1 - exp(-opticalMass * .10));
     sky += scattering * daylight * atmosphere;
 
     float twilight = (1 - smoothstep(.02, .22, abs(sunElevation + .035))) * atmosphere;
-    float band = exp(-pow((ray.y - .09) * 8, 2));
-    sky += float3(1.05, .45, .18) * band * twilight * (.45 + .55 * saturate(mu));
-    // Cool violet upper twilight above the warm horizon band.
-    float upperBand = exp(-pow((ray.y - .30) * 4.5, 2));
-    sky += float3(.18, .12, .30) * upperBand * twilight * .55;
-    sky *= 1 - float3(.05, .10, .020) * band * twilight;
+    float band = exp(-pow((ray.y - .08) * 8.5, 2));
+    sky += float3(1.02, .44, .18) * band * twilight * (.42 + .58 * saturate(mu));
+    float upperBand = exp(-pow((ray.y - .28) * 4.8, 2));
+    sky += float3(.16, .11, .28) * upperBand * twilight * .48;
+    sky *= 1 - float3(.04, .08, .02) * band * twilight;
 
     float sun = saturate(mu);
     float solarVisibility = smoothstep(-.025, .025, sunElevation);
-    // Photosphere + layered aureole: tight core, broad warm glow and a wide soft haze halo,
-    // so a low sun burns through the cloud deck like the reference seascape, not a small dot.
     float disk = smoothstep(.999984, .999994, sun);
-    float aureole = pow(sun, 64) * .12 + pow(sun, 256) * .10 + pow(sun, 4096) * .45;
+    float aureole = pow(sun, 72) * .085 + pow(sun, 280) * .085 + pow(sun, 4096) * .42;
     float3 warmGlow = lerp(_EnvironmentSunColor.rgb,
         _EnvironmentSunColor.rgb * float3(1.14, .80, .52), saturate(1 - sunElevation * 2.4));
     sky += warmGlow * (disk * 22 + aureole * atmosphere) * solarVisibility;
-    // Sun pillar: a soft vertical beam rising above a low sun through haze and cloud bases.
-    float pillar = exp(-abs(ray.y - .30f) * 5.5f) * pow(saturate(mu * .5 + .5), 18) *
-        saturate(1 - sunElevation * 3.2) * atmosphere;
-    sky += warmGlow * pillar * .55f * solarVisibility;
-    // Broad cream-gold horizon wedge around the low sun (aerial glow over the water plane).
-    float horizonGlow = exp(-abs(ray.y - .015) * 5.5) * pow(saturate(mu * .5 + .5), 6);
-    sky += warmGlow * horizonGlow * .30 * saturate(1 - sunElevation * 2.6) * daylight * atmosphere;
+
+    float lowSun = saturate(1 - sunElevation * 3.0);
+    float pillar = exp(-abs(ray.y - .26f) * 6.0f) * pow(saturate(mu * .5 + .5), 20) * lowSun * atmosphere;
+    sky += warmGlow * pillar * .24f * solarVisibility;
+    float horizonGlow = exp(-abs(ray.y - .015) * 6.5) * pow(saturate(mu * .5 + .5), 7);
+    sky += warmGlow * horizonGlow * .18 * lowSun * daylight * atmosphere;
 
     float moon = saturate(dot(ray, _EnvironmentMoonDirection.xyz));
     float night = 1 - daylight;
-    // Lunar angular diameter is also about 0.5°; surface rendering uses a matching cubic voxel Moon.
-    sky += float3(.44, .57, .80) * smoothstep(.9999845, .999995, moon) * night * 1.2;
+    sky += float3(.46, .59, .82) * smoothstep(.9999845, .999995, moon) * night * 1.25;
 
     float2 angular = float2(atan2(ray.x, ray.z) * .15915494 + .5,
         asin(clamp(ray.y, -1, 1)) * .63661977);
@@ -86,7 +80,6 @@ float3 LC_SkyRadiance(float3 direction)
     float3 starColor = lerp(float3(.60, .74, 1), float3(1, .78, .55), LC_Hash(float3(cell, 31)));
     float horizonFade = saturate(ray.y * 3);
     sky += star * twinkle * starColor * night * night * horizonFade * 2;
-    // Fainter second star layer for a denser, more natural night sky.
     float star2 = step(.9986, LC_Hash(float3(cell * 2 + 11, 53))) *
         exp(-dot(delta * 1.8f, delta * 1.8f) / (radius * radius)) * min(1, .018f / (radius * radius));
     sky += star2 * twinkle * starColor * night * night * horizonFade * 1.4f;

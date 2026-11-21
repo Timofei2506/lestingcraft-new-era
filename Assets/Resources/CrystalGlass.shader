@@ -1,16 +1,16 @@
 Shader "LestingCraft/CrystalGlass"
 {
-    // Transmission shader for the glass block (44), armoured glass (84) and crystal (11/67).
-    // Glass: frosted panes with a readable bevel and depth tint.
+    // Transmission shader for architectural glass (44), armoured glass (84) and crystal (11/67).
+    // Glass: optically clean architectural panes with crisp specular reflections and subtle bevels.
     // Crystal: dispersion, inner facets and view-dependent glints.
     Properties
     {
-        _Tint("Transmission tint", Color) = (0.78, 0.68, 0.98, 1)
-        _Density("Absorption / opacity", Range(0.02, 0.5)) = 0.09
+        _Tint("Transmission tint", Color) = (0.84, 0.94, 0.98, 1)
+        _Density("Absorption / opacity", Range(0.02, 0.5)) = 0.06
         _NormalArray("Microfracture normals", 2DArray) = "" {}
         _Sparkle("View dependent glints", Range(0, 6)) = 3
         _GlassEdge("Readable glass edge", Range(0, 1)) = 0
-        _Frost("Frosted pane", Range(0, 1)) = 0.55
+        _Frost("Frosted pane", Range(0, 1)) = 0.04
     }
     SubShader
     {
@@ -60,19 +60,18 @@ Shader "LestingCraft/CrystalGlass"
             half4 Frag(V i, FRONT_FACE_TYPE face : FRONT_FACE_SEMANTIC) : SV_Target
             {
                 half3 n = normalize(i.normalWS), t = normalize(i.tangentWS.xyz), b = cross(n, t) * i.tangentWS.w;
-                // Glass uses an almost-flat normal; crystal uses its authored microfracture layer.
                 half3 micro = SAMPLE_TEXTURE2D_ARRAY(_NormalArray, sampler_NormalArray, i.uv.xy, i.uv.z).xyz * 2 - 1;
-                micro.xy *= (_Sparkle > 0 ? .16 : .022);
+                micro.xy *= (_Sparkle > 0 ? .15 : .010);
                 micro = normalize(micro);
                 n = normalize(mul(micro, half3x3(t, b, n)));
                 half3 view = GetWorldSpaceNormalizeViewDir(i.positionWS);
                 half nv = saturate(dot(n, view));
-                half f0 = _Sparkle > 0 ? .055 : .045;
+                half f0 = _Sparkle > 0 ? .055 : .040;
                 half fresnel = f0 + (1 - f0) * pow(1 - nv, 5);
 
                 Light sun = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 half3 halfway = SafeNormalize(view + sun.direction);
-                half highlight = pow(saturate(dot(n, halfway)), 220) * sun.shadowAttenuation;
+                half highlight = pow(saturate(dot(n, halfway)), 280) * sun.shadowAttenuation;
                 float3 cell = floor(i.positionWS * 95);
                 float grain = frac(sin(dot(cell, float3(12.9898, 78.233, 37.719))) * 43758.5453);
                 half sparkle = step(.965, grain) * pow(saturate(dot(n, halfway)), 420) * _Sparkle * sun.shadowAttenuation;
@@ -86,46 +85,44 @@ Shader "LestingCraft/CrystalGlass"
                 float sceneDepth = LinearEyeDepth(raw, _ZBufferParams);
                 float thickness = max(0, sceneDepth - eye);
                 float2 viewNormal = TransformWorldToViewDir(n, true).xy;
-                // Thicker stacks of glass bend the image more, like real panes.
-                float bend = (_Sparkle > 0 ? .006 : .0022) * saturate(1 + thickness * .35);
+                float bend = (_Sparkle > 0 ? .006 : .0016) * saturate(1 + min(thickness, 4) * .25);
                 float2 refractedUV = saturate(screen + viewNormal * bend);
                 if (LinearEyeDepth(SampleSceneDepth(refractedUV), _ZBufferParams) < eye + .01) refractedUV = screen;
 
                 half3 transmitted;
                 if (_Sparkle > 0)
                 {
-                    // Chromatic dispersion: each channel bends a little differently.
                     float2 spread = viewNormal * bend * .55;
                     transmitted = half3(
                         SampleSceneColor(saturate(refractedUV + spread)).r,
                         SampleSceneColor(refractedUV).g,
                         SampleSceneColor(saturate(refractedUV - spread)).b);
                 }
-                else
+                else if (_Frost > .02)
                 {
-                    // Frosted pane: four taps emulate a wide, soft blur without a blur pass.
-                    float2 frost = viewNormal * .012 * _Frost + .004;
+                    float2 frost = viewNormal * .004 * _Frost + .0012 * _Frost;
                     half3 a = SampleSceneColor(saturate(refractedUV + float2(frost.x, frost.y)));
                     half3 c = SampleSceneColor(saturate(refractedUV - float2(frost.x, frost.y)));
-                    half3 d = SampleSceneColor(saturate(refractedUV + float2(frost.y, -frost.x)));
-                    half3 e = SampleSceneColor(saturate(refractedUV - float2(frost.y, -frost.x)));
-                    transmitted = lerp(SampleSceneColor(refractedUV), (a + c + d + e) * .25, _Frost);
+                    transmitted = lerp(SampleSceneColor(refractedUV), (a + c) * .5, _Frost * .45);
                 }
-                // Absorption grows with the optical path, so a wall of glass reads cooler than a single pane.
-                half3 absorption = lerp(half3(1, 1, 1), _Tint.rgb, saturate(.22 + thickness * .05));
+                else
+                {
+                    transmitted = SampleSceneColor(refractedUV);
+                }
+
+                half3 absorption = lerp(half3(1, 1, 1), _Tint.rgb, saturate(.12 + min(thickness, 6) * .03));
                 transmitted *= absorption;
 
-                half3 color = transmitted * (1 - fresnel) + reflected * fresnel * sky + sun.color * (highlight * 2.4 + sparkle) * sky;
+                half3 color = transmitted * (1 - fresnel * .85) + reflected * fresnel * (sky * .85 + .15)
+                    + sun.color * (highlight * 2.2 + sparkle) * sky;
 
-                // Thin frosted bevels make a transparent block identifiable even against a bright sky.
                 float2 faceUV = frac(i.uv.xy);
                 float borderDistance = min(min(faceUV.x, 1 - faceUV.x), min(faceUV.y, 1 - faceUV.y));
-                half edge = (1 - smoothstep(.012, .045, borderDistance)) * _GlassEdge;
-                color = lerp(color, half3(.62, .82, .86) * (sky * .7 + .3), edge * .7);
+                half edge = (1 - smoothstep(.008, .028, borderDistance)) * _GlassEdge;
+                color = lerp(color, half3(.82, .93, .98) * (sky * .75 + .25), edge * .45);
 
-                half alpha = saturate(_Density + fresnel * .62 + highlight * .38 + sparkle * .12 + edge + thickness * .006);
-                // Back faces are dimmer: looking through two panes should not turn opaque.
-                alpha *= IS_FRONT_VFACE(face, 1, .62);
+                half alpha = saturate(_Density + fresnel * .55 + highlight * .40 + sparkle * .12 + edge * .55);
+                alpha *= IS_FRONT_VFACE(face, 1, .45);
                 return half4(MixFog(color, i.fog), alpha);
             }
             ENDHLSL

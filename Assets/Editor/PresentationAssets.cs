@@ -73,12 +73,11 @@ public static class PresentationAssets
                 AssetDatabase.CreateAsset(clear, Folder + "/" + clearName + ".mat");
             }
             clear.SetTexture("_NormalArray", normal);
-            clear.SetColor("_Tint", clearName == "Crystal" ? new Color(.78f, .68f, .98f, 1) : new Color(.76f, .90f, .95f, 1));
-            clear.SetFloat("_Density", clearName == "Crystal" ? .09f : .16f);
+            clear.SetColor("_Tint", clearName == "Crystal" ? new Color(.78f, .68f, .98f, 1) : new Color(.84f, .94f, .98f, 1));
+            clear.SetFloat("_Density", clearName == "Crystal" ? .09f : .06f);
             clear.SetFloat("_Sparkle", clearName == "Crystal" ? 3 : 0);
-            clear.SetFloat("_GlassEdge", clearName == "Glass" ? .42f : 0);
-            // Frosted panes for the glass block; crystal stays optically clear with dispersion.
-            if (clear.HasProperty("_Frost")) clear.SetFloat("_Frost", clearName == "Glass" ? .62f : 0f);
+            clear.SetFloat("_GlassEdge", clearName == "Glass" ? .28f : 0);
+            if (clear.HasProperty("_Frost")) clear.SetFloat("_Frost", clearName == "Glass" ? .04f : 0f);
             EditorUtility.SetDirty(clear);
         }
         Material water = AssetDatabase.LoadAssetAtPath<Material>(Folder + "/Water.mat");

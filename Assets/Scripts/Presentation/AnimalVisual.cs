@@ -53,6 +53,8 @@ namespace LestingCraft.Presentation
         {
             if (sculpt) throw new InvalidOperationException("An animal visual is built once and then pooled.");
             species = Mathf.Clamp(kind, 0, SpeciesNames.Length - 1);
+            int fur = FurLayerForSpecies(kind);
+            if (fur < 0) throw new InvalidOperationException("Invalid coat layer for species " + kind);
             var data = AnimalSculpts.For(species);
             sculpt = BossSculpture.Build(transform, data, SharedMaterial);
             rig = sculpt.transform;
@@ -153,7 +155,11 @@ namespace LestingCraft.Presentation
 
         void OnDestroy()
         {
-            if (sculpt) Destroy(sculpt);
+            if (sculpt)
+            {
+                if (Application.isPlaying) Destroy(sculpt);
+                else DestroyImmediate(sculpt);
+            }
             sculpt = null;
         }
 

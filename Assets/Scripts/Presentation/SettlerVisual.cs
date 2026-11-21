@@ -29,10 +29,11 @@ namespace LestingCraft.Presentation
     var look = SettlerAppearance.For(actorId, job);
     villager = gameObject.AddComponent<CharacterVisual>();
     villager.Build();
+    villager.SetFaceTiles(14, 15);
     Color[] skins =
     {
-     new Color(1f,.86f,.72f), new Color(.95f,.72f,.52f), new Color(.76f,.51f,.34f), new Color(.57f,.36f,.25f),
-     new Color(.91f,.66f,.50f), new Color(.98f,.80f,.66f), new Color(.68f,.44f,.30f), new Color(.44f,.28f,.19f)
+     new Color(1f,.88f,.78f), new Color(.96f,.77f,.60f), new Color(.80f,.58f,.41f), new Color(.62f,.42f,.30f),
+     new Color(.93f,.72f,.57f), new Color(.99f,.84f,.72f), new Color(.72f,.49f,.35f), new Color(.50f,.34f,.24f)
     };
     Color[] coats =
     {
@@ -42,14 +43,33 @@ namespace LestingCraft.Presentation
     };
     Color[] hair =
     {
-     new Color(.27f,.19f,.14f), new Color(.68f,.42f,.20f), new Color(.13f,.15f,.18f), new Color(.75f,.68f,.46f),
-     new Color(.45f,.26f,.19f), new Color(.82f,.82f,.85f), new Color(.56f,.24f,.15f), new Color(.20f,.16f,.22f)
+     new Color(.34f,.23f,.16f), new Color(.72f,.45f,.22f), new Color(.18f,.20f,.24f), new Color(.82f,.74f,.50f),
+     new Color(.50f,.29f,.20f), new Color(.86f,.86f,.89f), new Color(.62f,.28f,.17f), new Color(.25f,.20f,.28f)
     };
     workMaterial = BlockGeometry.CharacterMaterial();
     skinMaterial = new Material(workMaterial); skinMaterial.SetColor("_BaseColor", skins[look.Skin % skins.Length]);
     hairMaterial = new Material(workMaterial); hairMaterial.SetColor("_BaseColor", hair[look.Hair % hair.Length]);
     coatMaterial = new Material(workMaterial); coatMaterial.SetColor("_BaseColor", coats[look.Coat % coats.Length]);
     accentMaterial = new Material(workMaterial); accentMaterial.SetColor("_BaseColor", new Color(.96f, .82f, .32f));
+
+    foreach (var r in GetComponentsInChildren<MeshRenderer>(true))
+    {
+     string nm = r.name;
+     if (nm == "Cubical head" || nm == "Neck column" || nm == "Nose" || nm == "Ear" || nm == "Block hand")
+      r.sharedMaterial = skinMaterial;
+     else if (nm == "Block torso" || nm == "Tunic hem" || nm == "Cuboid sleeve" || nm == "Cuboid forearm" || nm == "Scarf collar" || nm == "Scarf tail")
+      r.sharedMaterial = coatMaterial;
+     else if (nm == "Hair cap" || nm == "Hair back" || nm == "Side lock")
+      r.sharedMaterial = hairMaterial;
+    }
+
+    Transform headPivot = transform.Find("Neck pivot");
+    if (!headPivot) headPivot = transform;
+    foreach (string hide in new[] { "Block hood top", "Block hood back" })
+    {
+     var hPart = headPivot.Find(hide);
+     if (hPart) hPart.gameObject.SetActive(false);
+    }
 
     int toolId =
      job == 1 ? 160 : // Blacksmith hammer
@@ -66,75 +86,68 @@ namespace LestingCraft.Presentation
     workArm = transform.Find("Right shoulder pivot"); if (!workArm) workArm = transform;
     workTool = new GameObject("Village work tool", typeof(MeshFilter), typeof(MeshRenderer));
     workTool.transform.SetParent(workArm, false);
-    workTool.transform.localPosition = new Vector3(0, -.62f, .17f);
+    workTool.transform.localPosition = new Vector3(0, -.60f, .17f);
     workTool.transform.localScale = Vector3.one * (job == 1 || job == 7 ? .42f : .28f);
     workTool.GetComponent<MeshFilter>().sharedMesh = VoxelItemModels.MeshFor(toolId);
     workTool.GetComponent<MeshRenderer>().sharedMaterial = Resources.Load<Material>("Generated/VoxelObjects");
     workTool.SetActive(false);
 
-    BlockGeometry.Part("Individual face", transform, new Vector3(0, 1.53f, .205f), new Vector3(.395f, .395f, .018f), skinMaterial, 0);
-    for (int side = -1; side <= 1; side += 2)
-    {
-     BlockGeometry.Part("Eye", transform, new Vector3(side * .095f, 1.57f, .219f), new Vector3(.045f, .045f, .014f), workMaterial, 4);
-     BlockGeometry.Part("Ear", transform, new Vector3(side * .22f, 1.51f, 0), new Vector3(.045f, .12f, .095f), skinMaterial, 0);
-    }
-    BlockGeometry.Part("Individual nose", transform, new Vector3(0, 1.49f, .244f), new Vector3(.09f, .09f, .085f), skinMaterial, 0);
-    BlockGeometry.Part("Coloured work coat", transform, new Vector3(0, 1.06f, .154f), new Vector3(.44f, .48f, .038f), coatMaterial, 1);
-    BlockGeometry.Part("Coat hem", transform, new Vector3(0, .80f, .03f), new Vector3(.49f, .11f, .30f), coatMaterial, 1);
+    BlockGeometry.Part("Coloured work coat", transform, new Vector3(0, 1.04f, .142f), new Vector3(.45f, .46f, .026f), coatMaterial, 13);
+    BlockGeometry.Part("Coat hem", transform, new Vector3(0, .77f, .01f), new Vector3(.48f, .10f, .29f), coatMaterial, 1);
 
-    // Individual facial & clothing accessories (beards, aprons, scarves, spectacles, satchels)
-    if (look.Detail == 0) BlockGeometry.Part("Short beard", transform, new Vector3(0, 1.355f, .216f), new Vector3(.19f, .065f, .03f), hairMaterial, 6);
-    else if (look.Detail == 1) BlockGeometry.Part("Apron pocket", transform, new Vector3(.1f, .90f, .178f), new Vector3(.15f, .11f, .025f), workMaterial, 6);
-    else if (look.Detail == 2) BlockGeometry.Part("Neck scarf", transform, new Vector3(0, 1.32f, .12f), new Vector3(.50f, .09f, .30f), accentMaterial, 1);
+    // Individual facial & clothing accessories parented cleanly so head details move with headPivot!
+    if (look.Detail == 0) BlockGeometry.Part("Short beard", headPivot, new Vector3(0, .035f, .195f), new Vector3(.22f, .075f, .032f), hairMaterial, 10);
+    else if (look.Detail == 1) BlockGeometry.Part("Apron pocket", transform, new Vector3(.09f, .90f, .162f), new Vector3(.15f, .11f, .022f), workMaterial, 6);
+    else if (look.Detail == 2) BlockGeometry.Part("Neck scarf", transform, new Vector3(0, 1.35f, .01f), new Vector3(.48f, .085f, .31f), accentMaterial, 1);
     else if (look.Detail == 3 || job == 8)
     {
-     BlockGeometry.Part("Scholar spectacles bridge", transform, new Vector3(0, 1.58f, .232f), new Vector3(.28f, .022f, .018f), accentMaterial, 4);
+     BlockGeometry.Part("Scholar spectacles bridge", headPivot, new Vector3(0, .208f, .202f), new Vector3(.27f, .022f, .018f), accentMaterial, 5);
     }
     else if (look.Detail == 4 || job == 2 || job == 4)
     {
-     BlockGeometry.Part("Travel backpack", transform, new Vector3(0, 1.08f, -.21f), new Vector3(.34f, .38f, .14f), hairMaterial, 6);
+     BlockGeometry.Part("Travel backpack", transform, new Vector3(0, 1.08f, -.21f), new Vector3(.35f, .40f, .15f), workMaterial, 6);
     }
     else
     {
-     BlockGeometry.Part("Braided beard", transform, new Vector3(0, 1.31f, .222f), new Vector3(.13f, .15f, .04f), hairMaterial, 6);
+     BlockGeometry.Part("Braided beard", headPivot, new Vector3(0, -.01f, .198f), new Vector3(.14f, .15f, .04f), hairMaterial, 10);
     }
 
-    // Distinct profession & individual headwear (8 styles)
+    // Distinct profession & individual headwear parented to headPivot (local head center = y:.185, top = y:.375)
     switch (look.Headwear)
     {
      case 0:
-      BlockGeometry.Part("Wide hat brim", transform, new Vector3(0, 1.78f, 0), new Vector3(.62f, .06f, .60f), coatMaterial, job == 0 ? 5 : 6);
-      BlockGeometry.Part("Hat crown", transform, new Vector3(0, 1.86f, -.02f), new Vector3(.39f, .13f, .39f), coatMaterial, job == 0 ? 5 : 6);
+      BlockGeometry.Part("Wide hat brim", headPivot, new Vector3(0, .385f, 0), new Vector3(.60f, .048f, .58f), coatMaterial, job == 0 ? 5 : 6);
+      BlockGeometry.Part("Hat crown", headPivot, new Vector3(0, .455f, -.015f), new Vector3(.39f, .12f, .39f), coatMaterial, job == 0 ? 5 : 6);
       break;
      case 1:
-      BlockGeometry.Part("Short cap", transform, new Vector3(0, 1.78f, 0), new Vector3(.44f, .09f, .44f), coatMaterial, 1);
-      BlockGeometry.Part("Cap peak", transform, new Vector3(0, 1.76f, .23f), new Vector3(.35f, .035f, .16f), coatMaterial, 1);
+      BlockGeometry.Part("Short cap", headPivot, new Vector3(0, .395f, 0), new Vector3(.42f, .08f, .42f), coatMaterial, 1);
+      BlockGeometry.Part("Cap peak", headPivot, new Vector3(0, .372f, .225f), new Vector3(.34f, .032f, .14f), coatMaterial, 1);
       break;
      case 2:
-      BlockGeometry.Part("Side-parted hair", transform, new Vector3(-.04f, 1.758f, 0), new Vector3(.36f, .07f, .42f), hairMaterial, 6);
-      BlockGeometry.Part("Side locks", transform, new Vector3(-.19f, 1.60f, -.06f), new Vector3(.055f, .26f, .32f), hairMaterial, 6);
+      BlockGeometry.Part("Side-parted hair", headPivot, new Vector3(-.03f, .392f, .01f), new Vector3(.38f, .065f, .41f), hairMaterial, 10);
+      BlockGeometry.Part("Side locks", headPivot, new Vector3(-.198f, .22f, -.03f), new Vector3(.048f, .25f, .33f), hairMaterial, 10);
       break;
      case 4: // Astronomer pointed star hat
-      BlockGeometry.Part("Astronomer brim", transform, new Vector3(0, 1.77f, 0), new Vector3(.66f, .05f, .66f), coatMaterial, 1);
-      BlockGeometry.Part("Astronomer cone", transform, new Vector3(0, 1.90f, -.02f), new Vector3(.34f, .22f, .34f), coatMaterial, 1);
-      BlockGeometry.Part("Astronomer spire", transform, new Vector3(0, 2.06f, -.04f), new Vector3(.18f, .16f, .18f), accentMaterial, 4);
+      BlockGeometry.Part("Astronomer brim", headPivot, new Vector3(0, .382f, 0), new Vector3(.64f, .045f, .64f), coatMaterial, 1);
+      BlockGeometry.Part("Astronomer cone", headPivot, new Vector3(0, .495f, -.015f), new Vector3(.34f, .20f, .34f), coatMaterial, 1);
+      BlockGeometry.Part("Astronomer spire", headPivot, new Vector3(0, .645f, -.03f), new Vector3(.17f, .15f, .17f), accentMaterial, 5);
       break;
-     case 5: // Miner hard-hat + glowing headlamp
-      BlockGeometry.Part("Miner hard hat", transform, new Vector3(0, 1.79f, 0), new Vector3(.46f, .12f, .48f), accentMaterial, 1);
-      BlockGeometry.Part("Miner headlamp", transform, new Vector3(0, 1.81f, .25f), new Vector3(.11f, .09f, .05f), workMaterial, 4);
+     case 5: // Miner hard-hat + headlamp
+      BlockGeometry.Part("Miner hard hat", headPivot, new Vector3(0, .40f, 0), new Vector3(.44f, .11f, .46f), accentMaterial, 8);
+      BlockGeometry.Part("Miner headlamp", headPivot, new Vector3(0, .415f, .238f), new Vector3(.10f, .08f, .045f), workMaterial, 5);
       break;
      case 6: // Guard iron helm + crest
-      BlockGeometry.Part("Guard iron helm", transform, new Vector3(0, 1.79f, 0), new Vector3(.46f, .14f, .46f), workMaterial, 4);
-      BlockGeometry.Part("Guard plume", transform, new Vector3(0, 1.91f, -.02f), new Vector3(.09f, .14f, .38f), coatMaterial, 1);
+      BlockGeometry.Part("Guard iron helm", headPivot, new Vector3(0, .405f, 0), new Vector3(.44f, .13f, .44f), workMaterial, 8);
+      BlockGeometry.Part("Guard plume", headPivot, new Vector3(0, .515f, -.02f), new Vector3(.085f, .13f, .36f), coatMaterial, 1);
       break;
      case 7: // Cosmodrome flight comms headset
-      BlockGeometry.Part("Comms headband", transform, new Vector3(0, 1.77f, 0), new Vector3(.46f, .05f, .10f), workMaterial, 4);
-      BlockGeometry.Part("Comms earcup L", transform, new Vector3(-.24f, 1.54f, 0), new Vector3(.06f, .14f, .14f), accentMaterial, 4);
-      BlockGeometry.Part("Comms earcup R", transform, new Vector3(.24f, 1.54f, 0), new Vector3(.06f, .14f, .14f), accentMaterial, 4);
+      BlockGeometry.Part("Comms headband", headPivot, new Vector3(0, .392f, 0), new Vector3(.44f, .045f, .10f), workMaterial, 8);
+      BlockGeometry.Part("Comms earcup L", headPivot, new Vector3(-.225f, .18f, 0), new Vector3(.055f, .13f, .13f), accentMaterial, 8);
+      BlockGeometry.Part("Comms earcup R", headPivot, new Vector3(.225f, .18f, 0), new Vector3(.055f, .13f, .13f), accentMaterial, 8);
       break;
      default:
-      BlockGeometry.Part("Long hair back", transform, new Vector3(0, 1.50f, -.235f), new Vector3(.40f, .49f, .055f), hairMaterial, 6);
-      BlockGeometry.Part("Fringe", transform, new Vector3(0, 1.745f, .12f), new Vector3(.41f, .07f, .21f), hairMaterial, 6);
+      BlockGeometry.Part("Long hair back", headPivot, new Vector3(0, .12f, -.212f), new Vector3(.40f, .46f, .048f), hairMaterial, 10);
+      BlockGeometry.Part("Fringe", headPivot, new Vector3(0, .365f, .115f), new Vector3(.395f, .058f, .19f), hairMaterial, 10);
       break;
     }
     return;
@@ -142,33 +155,33 @@ namespace LestingCraft.Presentation
 
    int fur = System.Array.IndexOf(SurfaceLayers.Names, "cat-fur"), pale = 55;
    var body = new AnimalVisual.Part();
-   body.Box(new Vector3(0, .32f, 0), new Vector3(.28f, .3f, .58f), Color.white, fur);
+   body.Box(new Vector3(0, .31f, 0), new Vector3(.27f, .28f, .56f), Color.white, fur);
    body.Box(new Vector3(0, .20f, .08f), new Vector3(.19f, .08f, .38f), Color.white, pale);
    body.Build("Tabby fur and chest", transform, Vector3.zero);
    var h = new AnimalVisual.Part();
-   h.Box(Vector3.zero, new Vector3(.29f, .25f, .25f), Color.white, fur);
-   h.Box(new Vector3(0, -.07f, .15f), new Vector3(.20f, .10f, .1f), Color.white, pale);
-   h.Box(new Vector3(0, -.025f, .211f), new Vector3(.045f, .025f, .015f), new Color(.7f, .42f, .4f), pale);
+   h.Box(Vector3.zero, new Vector3(.28f, .24f, .25f), Color.white, fur);
+   h.Box(new Vector3(0, -.065f, .145f), new Vector3(.19f, .095f, .095f), Color.white, pale);
+   h.Box(new Vector3(0, -.022f, .202f), new Vector3(.044f, .026f, .016f), new Color(.78f, .46f, .44f), pale);
    for (int side = -1; side <= 1; side += 2)
    {
-    h.Box(new Vector3(side * .105f, .16f, 0), new Vector3(.075f, .15f, .09f), Color.white, fur);
-    h.Box(new Vector3(side * .105f, .17f, .048f), new Vector3(.04f, .095f, .012f), new Color(.85f, .6f, .59f), pale);
-    h.Box(new Vector3(side * .077f, .025f, .13f), new Vector3(.065f, .049f, .018f), new Color(.54f, .68f, .26f), pale);
-    h.Box(new Vector3(side * .077f, .025f, .142f), new Vector3(.015f, .039f, .012f), Color.black, pale);
+    h.Box(new Vector3(side * .10f, .155f, 0), new Vector3(.075f, .14f, .085f), Color.white, fur);
+    h.Box(new Vector3(side * .10f, .16f, .044f), new Vector3(.04f, .09f, .012f), new Color(.86f, .62f, .60f), pale);
+    h.Box(new Vector3(side * .076f, .025f, .128f), new Vector3(.062f, .048f, .016f), new Color(.48f, .74f, .30f), pale);
+    h.Box(new Vector3(side * .076f, .025f, .139f), new Vector3(.016f, .038f, .012f), Color.black, pale);
     for (int i = 0; i < 3; i++)
-     h.Box(new Vector3(side * .16f, -.046f - i * .017f, .17f), new Vector3(.17f, .006f, .006f), new Color(.8f, .8f, .77f), pale);
+     h.Box(new Vector3(side * .155f, -.044f - i * .016f, .165f), new Vector3(.16f, .006f, .006f), new Color(.84f, .84f, .80f), pale);
    }
-   head = h.Build("Square head, ears, whiskers and eyes", transform, new Vector3(0, .48f, .29f)).transform;
+   head = h.Build("Square head, ears, whiskers and eyes", transform, new Vector3(0, .47f, .29f)).transform;
    for (int i = 0; i < 4; i++)
    {
     var p = new AnimalVisual.Part();
-    p.Box(new Vector3(0, -.10f, 0), new Vector3(.085f, .21f, .095f), Color.white, fur);
-    p.Box(new Vector3(0, -.19f, .025f), new Vector3(.09f, .06f, .14f), Color.white, pale);
-    legs.Add(p.Build("Cat paw " + i, transform, new Vector3(i % 2 == 0 ? -.10f : .10f, .24f, i < 2 ? -.20f : .20f)).transform);
+    p.Box(new Vector3(0, -.10f, 0), new Vector3(.082f, .21f, .092f), Color.white, fur);
+    p.Box(new Vector3(0, -.19f, .024f), new Vector3(.088f, .058f, .135f), Color.white, pale);
+    legs.Add(p.Build("Cat paw " + i, transform, new Vector3(i % 2 == 0 ? -.098f : .098f, .24f, i < 2 ? -.195f : .195f)).transform);
    }
    tail = new GameObject("Articulated voxel tail").transform;
    tail.SetParent(transform, false);
-   tail.localPosition = new Vector3(0, .41f, -.27f);
+   tail.localPosition = new Vector3(0, .40f, -.27f);
    Transform joint = tail;
    for (int i = 0; i < 5; i++)
    {

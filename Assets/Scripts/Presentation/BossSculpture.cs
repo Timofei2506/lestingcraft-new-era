@@ -146,8 +146,8 @@ namespace LestingCraft.Presentation
                         }
                         else
                         {
-                            triangles.Add(start); triangles.Add(start + 3); triangles.Add(start + 1);
-                            triangles.Add(start + 3); triangles.Add(start + 2); triangles.Add(start + 1);
+                            triangles.Add(start); triangles.Add(start + 1); triangles.Add(start + 3);
+                            triangles.Add(start + 1); triangles.Add(start + 2); triangles.Add(start + 3);
                         }
                     }
                 }
