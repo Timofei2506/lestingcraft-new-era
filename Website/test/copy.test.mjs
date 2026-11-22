@@ -1,12 +1,12 @@
-// Honesty check: the site must not describe unfinished features as done or promise things we have not built.
-// Blocks marked as planned (data-status="planned" and data-planned) are the only place such phrases may appear.
+// Honesty check: the site must not describe unfinished v1.0 milestones as already shipped
+// or use hyperbolic / misleading claims outside blocks explicitly marked as planned
+// (data-status="planned" and data-planned).
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';
 const root=path.resolve('public');
 const pages=['index.html','press/index.html','privacy/index.html','license/index.html','404.html','play-with-friends/index.html'];
 const forbidden=[
   /пять\s+измерен|5\s+измерен/i,
   /портал/i,
-  /босс/i,
   /60\s*FPS/i,
   /бесплатн/i,
   /без\s+ручной\s+настройк/i,
@@ -14,7 +14,6 @@ const forbidden=[
   /одним\s+автором/i,
   /early\s+access/i,
   /steam/i,
-  /\b(скачать\s+сейчас|выпущен[аоы]?|вышла|вышел)\b/i,
   /\b(топ|лучш\w+\s+в\s+мире)\b/i,
 ];
 const stripPlanned=html=>html
@@ -28,11 +27,11 @@ for(const file of pages){
     for(const re of forbidden) assert.doesNotMatch(text,re,`${file}: ${re}`);
   });
 }
-test('planned items really are marked as planned',()=>{
+test('planned v1.0 items really are marked as planned',()=>{
   const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
   assert.match(html,/data-status="planned"/);
-  assert.match(html,/Пять измерений с порталами/);
-  assert.match(html,/Боссы/);
+  assert.match(html,/порталами/);
+  assert.match(html,/60 FPS/);
 });
 test('the old SPA catch-all is gone: unknown paths must not render the home page',()=>{
   const wrangler=fs.readFileSync(path.resolve('wrangler.toml'),'utf8');

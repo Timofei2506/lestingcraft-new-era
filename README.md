@@ -1,106 +1,96 @@
 # LestingCraft: New Era
 
-Воксельная песочница на **Unity 6** для Windows и Android. Собственный мир, свой крафт,
-свой кооператив — без аккаунтов с почтой и без лаунчера.
+**First-Person Open-World Voxel Survival & Space Exploration Sandbox on Unity 6 (URP)**  
+*Воксельная песочница нового поколения: от каменного топора и живых поселений Лестингии — до собственного космодрома, 3D-кабины шаттла, 26 воксельных боссов и полётов к 16 мирам Солнечной системы в одиночку или в кооперативе до 8 игроков.*
 
-**[Скачать игру](https://lestingcraft.kroterallitir.workers.dev/#download)** ·
-[Последний релиз](https://github.com/Timofei2506/lestingcraft-new-era/releases/latest) ·
-[Сайт](https://lestingcraft.kroterallitir.workers.dev)
+<p align="center">
+  <img src="https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.7.1/gameplay.gif" alt="LestingCraft: New Era — Unity 6 URP Gameplay" width="800">
+</p>
 
-| Платформа | Файл | Как запустить |
+<p align="center">
+  <a href="https://lestingcraft.kroterallitir.workers.dev/#download"><b>Скачать сборку v0.7.1 (Windows &amp; Android)</b></a> ·
+  <a href="https://lestingcraft.kroterallitir.workers.dev/press/"><b>Press &amp; Publisher Kit (RU / EN)</b></a> ·
+  <a href="https://drive.google.com/file/d/160lqiAUg5538eTwFhv-TALU2-XVMvDdh/view?usp=sharing"><b>Pitch Deck (PDF)</b></a> ·
+  <a href="https://github.com/Timofei2506/lestingcraft-new-era/releases/latest"><b>GitHub Releases</b></a>
+</p>
+
+---
+
+## English Summary (For Publishers & Technical Reviewers)
+
+**LestingCraft: New Era** (`v0.7.1`, Unity `6000.0.32f1` URP) is an original first-person voxel survival, engineering, and spaceflight sandbox for **PC (Windows x64)** and **Android ARM64**, playable solo or in **online co-op up to 8 players**.
+
+### Key Playable Pillars in Build `v0.7.1`
+- **Greedy-Meshed Streaming Voxel Worlds**: Multi-biome terrain generation (forests, cherry groves, dunes, caves, villages, keeps), authored multi-storey architecture with verified capsule-clear topology, and local + server delta persistence.
+- **Deep Survival, Crafting & Power Grids**: 156 3D voxel items/blocks, 2×2 inventory & 3×3 workbench crafting with searchable recipe book, smelting, body-part health, hunger, thirst, stamina, thermal insulation, off-world O₂ suit life support, electrical generation/storage (`kW` / `kWh`), rocket fuel synthesis, and radiation dosimetry in the Cherenkov anomaly zone.
+- **Living Ecosystem & 26 Boss Encounters**: 34 wildlife & mutated species with custom PBR fur/plumage/chitin array coats, village settler professions & trading, and 26 multi-part voxel boss sculpts across planetary and expedition arenas.
+- **Walkable Cosmodrome, 3D Shuttle Flight Deck & 16 Worlds**: Deploy a full launch pad complex with elevator tower, board a walkable shuttle interior with interactive 3D flight controls & live telemetry, dock with orbital stations featuring zero-gravity (`0g`) EVA and astronaut trading, and travel across 16 Solar System destinations (Moon, Mars, Venus, Mercury, Saturn, Titan, etc.).
+- **Unity 6 URP Visual Stack**: Custom procedural volumetric sky & silver-lined cloud shaders, refractive crystal glass, array-backed PBR surface materials, SSAO, ACES tonemapping, and 5 quality presets (`Mobile` to `Cinematic`).
+- **One-Click Co-op & Cloud Services**: Host any world directly from the pause menu (`Esc → Create Server`) over HTTPS (`443`) with server-authoritative block deltas; optional email-free account system (`Supabase`) with recovery codes, 200 achievements, `@nickname` friends list, and escrow skin marketplace.
+
+---
+
+## Быстрый старт (RU)
+
+| Платформа | Пакет релиза | Запуск |
 |---|---|---|
-| Windows x64 | `build-StandaloneWindows64.zip` | распаковать папку целиком и открыть `LestingCraft.exe` |
-| Android ARM64 | `LestingCraft-Android-arm64.apk` | подтвердить установку из браузера |
+| **Windows x64** | `build-StandaloneWindows64.zip` | Распаковать архив целиком в отдельную папку и запустить `LestingCraft.exe` |
+| **Android ARM64** | `LestingCraft-Android-arm64.apk` | Установить APK на устройство с Android 8.0+ |
 
-Аккаунт создаётся в игре по имени и паролю — нужен только для кошелька, друзей и скинов.
-Сама игра, создание мира и сеть ничего не стоят: платить можно только за косметику.
+Игроку не требуются Unity Hub, .NET или обязательная регистрация: одиночные экспедиции и прямое подключение к кооперативным серверам работают сразу после запуска.
 
-## Что уже работает
+---
 
-- Блочный мир с генерацией, стримингом чанков и сохранением изменений.
-- Добыча блоков, инвентарь, хотбар, крафт 2×2 и верстак 3×3 с книгой рецептов.
-- Печь, сундуки, ящики, инструменты и прочность.
-- Кооператив до 8 игроков: хост открывает мир из меню **Esc → «Создать сервер»**,
-  игроки добавляют адрес в разделе «Мультиплеер», кнопка «Скопировать приглашение»
-  выдаёт готовый текст со ссылкой на скачивание и адресом мира.
-- Аккаунт, кошелёк, магазин скинов и список друзей на Supabase.
+## Что реализовано в текущей сборке (`v0.7.1`)
 
-## Что в работе
+- **Мир и архитектура:** процедурные биомы Лестингии, пещеры, рудные жилы, деревни поселенцев, двухэтажные крепости, аномальное измерение Черенковского затона и планеты Солнечной системы; оптимизированный greedy-мешинг чанков и небесное освещение (`VoxelSkylight`).
+- **Выживание, ремёсла и инженерия:** сетки крафта 2×2 и 3×3, интерактивная книга рецептов, плавильная печь, износ и утепление экипировки, температура тела, жажда, кислород скафандра, промышленная энергосеть и цепочка синтеза ракетного топлива.
+- **Фауна и боссы:** 34 вида наземных, пернатых и аномальных существ с индивидуальными PBR-текстурами, мирные жители с профессиями и торговлей, а также **26 воксельных боссов** с расчётом затенения граней (AO) и эмиссией.
+- **Космонавтика:** полноразмерный стартовый комплекс с подъёмным лифтом, многоуровневый интерьер шаттла, интерактивная 3D-приборная панель с живым навигатором, орбитальные станции с режимом невесомости (`0g`) и посадка на 16 небесных тел.
+- **Графика и интерфейс (Unity 6 URP):** атмосферное небо с объёмными облаками, преломляющее стекло, PBR-массивы поверхностей, нативный масштабируемый интерфейс uGUI (`Unbounded` + `Manrope`), сюжетный бортовой журнал (3 главы) и 5 пресетов графики.
+- **Кооператив и экосистема:** совместная игра до 8 человек с созданием сервера из меню паузы и приглашением в один клик, адресная книга серверов, система из 200 достижений, друзья по `@нику` и торговая площадка косметики с эскроу.
 
-- Генерация мира v2: континенты, биомы, деревья.
-- Мобы, структуры и боссы — сейчас в разработке, не в сборке.
-- Графика и планеты: переработка визуала идёт после экономики.
+---
 
-Честный статус с разделением «готово / в работе / в планах» — на
-[сайте](https://lestingcraft.kroterallitir.workers.dev/#progress).
+## Архитектура репозитория
 
-## Платформы: Windows x64 и Android ARM64
-
-Браузерная версия **отложена**. Сборки выполняются в облаке; игроку не нужны Unity Editor/Hub.
-
-1. Секреты `UNITY_USERNAME` / `UNITY_PASSWORD` хранятся только в Actions secrets.
-2. Запустить **Actions → Build Windows and Android → Run workflow**.
-3. Скачать артефакты Windows ZIP и Android APK. Windows ZIP нужно распаковать полностью, затем запустить `LestingCraft.exe`.
-4. Первая Android APK использует временную debug-подпись; при несовпадении подписи перед обновлением может понадобиться удалить старую версию и установить новую.
-
-Ручной workflow создаёт артефакты, но не публикует GitHub Release. Сайт показывает прямые ссылки только после публикации релиза с обоими файлами. Инструкция: [Сборка в облаке](Docs/Сборка-в-облаке.md).
-
-Прежняя Windows-тестовая версия **запускалась у автора и была играбельной**; основным замечанием была графика. Это не заменяет runtime-проверку текущей графики, а успешная компиляция APK — ручной тест Android на устройстве.
-
-## Структура репозитория
-
-```
-Assets/Scripts/       # Core, World (чанки/блоки), Entities, Player, Dimensions, UI
-Assets/Editor/        # BuildScript — точки сборки для облака
-Assets/Tests/         # EditMode-тесты ядра мира
-Docs/                 # План, архитектура, инструкция облачной сборки
-.github/workflows/    # CI (тесты), Windows x64 + Android ARM64 release builds
+```text
+Assets/
+  Art/PBR/              # PBR-массивы поверхностей и текстуры фауны
+  Editor/               # Точки облачной сборки и генерации ресурсов (BuildScript)
+  Resources/            # Шейдеры URP, воксельные каталоги (.bytes), шрифты и иконки (384×384)
+  Scripts/
+    Gameplay/           # Выживание, крафт, энергетика, фауна (34), боссы (26), орбитальная механика
+    Networking/         # Сетевой клиент комнат и адресная книга серверов
+    Presentation/       # Шейдерные контроллеры атмосферы, риги моделей и масштабируемый uGUI
+    Runtime/            # Игровой цикл, контроллер от первого лица, шаттл, станции и смоук-пробы
+    Story/              # Сюжетные главы, акторы и скульптура Стража
+    World/              # Генерация биомов, планет, структур, greedy-мешинг и свет
+  Tests/EditMode/       # Автоматические NUnit EditMode-тесты ядра, графики, космоса и UI
+Server/                 # Кооперативный сервер (Cloudflare Workers / Durable Objects и standalone Node)
+Supabase/               # SQL-схемы профиля, достижений, друзей и эскроу-маркетплейса
+Launcher/               # Опциональный десктопный лаунчер с проверкой SHA-256 и безопасным откатом
+Website/                # Официальный сайт, пресс-кит и API релизов (Workers Static Assets + Playwright)
+Tools/                  # Генераторы ассетов и кросс-проверки C# / JS / Python без запуска редактора
+Docs/                   # Проектная и техническая документация по подсистемам
+.github/workflows/      # Полный конвейер CI/CD: EditMode-тесты, сборки Windows/Android, витрина кадров и деплой
 ```
 
-## Дорожная карта
+---
 
-Полный план: **[Docs/План.md](Docs/План.md)**. Кратко: M0 фундамент → M1 ядро мира → M2 выживание →
-M3 жизнь мира → M4 измерения → M5 боссы → M6 полировка и релиз v1.0.
+## Автоматическая проверка качества (CI)
 
-## Правовой момент
+Репозиторий поддерживает многоуровневую верификацию каждого изменения:
+1. **Детерминированные проверки без редактора (`Tools/check_*.py` + Mono C#):** сверяют целостность каталога из 156 моделей и прозрачных иконок, 30+ PBR-покрытий фауны, проходимость дверей и лестниц в архитектуре (паритет `C#` ↔ `JS`), орбитальную навигацию, топливную цепочку и скульпты всех 26 боссов.
+2. **Тесты сайта (`Website/`):** модульные проверки API/честности текстов (`npm test`) и браузерные сквозные тесты на Chromium (`Playwright`) для десктопной и мобильной вёрстки.
+3. **Облачные тесты и сборки Unity 6 (`.github/workflows/`):** прогон NUnit `EditMode`-тестов, автоматический захват эталонных внутриигровых сцен (`showcase.yml`, `mob-boss-shots.yml`) и сборка релизов `Windows x64` + `Android ARM64`.
 
-Проект использует **только собственные** текстуры, модели, звуки и код.
-Ассеты и данные Minecraft/Mojang не используются и не будут использоваться — только жанровые механики.
+---
 
-## Лицензия
+## Интеллектуальная собственность и лицензия
 
-Исходный код доступен для просмотра по ограничительной source-available лицензии; копирование и повторное использование без письменного разрешения запрещено. Правообладатель — `EHOT_EHOTbI4.music`. Полный текст: [LICENSE](LICENSE). Это не OSI open-source лицензия. Сторонние материалы сохраняют собственные лицензии.
+- **100% Original IP:** весь исходный код, игровые системы, шейдеры, текстуры и воксельные модели разработаны специально для **LestingCraft: New Era** (автор и правообладатель: **Timofei · `EHOT_EHOTbI4.music`**). Никакие материалы сторонних коммерческих игр не используются.
+- Сторонние шрифты и библиотеки сопровождаются открытыми лицензиями в каталоге [`Docs/ThirdParty`](Docs/ThirdParty).
+- Код репозитория открыт для публичного просмотра и технического ревью на условиях ограничительной source-available лицензии — подробности в файле [`LICENSE`](LICENSE).
 
-
-## WORLD LAB / Co-op — первый игровой срез
-
-- Seed-генерация пяти ландшафтов: поверхность с деревьями/пещерами/рудой, огненный, парящие острова, кристаллический и хаотический. Это ещё не полноценные измерения с порталами/боссами.
-- Колонки 16×256×16, Burst/Jobs-генерация, стриминг по дистанции, меши только видимых граней и отдельные коллизии твёрдых блоков. Мешинг пока CPU/main-thread, **не greedy**.
-- Первый персонаж: WASD/мышь/Space/Shift, установка/удаление блоков, выбор материалов 1–9, меню Esc.
-- Комнаты для 2–8 игроков: общий seed, отображение игроков, подтверждённые сервером изменения блоков, сохранение дельты и snapshot при входе.
-- В кооперативе мир 128×128×256, до 4096 изменённых ячеек. Офлайн координаты ограничены ±32000; в M2 добавлены локальные сохранения с ограничением 8192 edits.
-
-**Сервер:** https://lestingcraft-coop.kroterallitir.workers.dev (`/health` — API, не игра). URL уже задан в клиенте. Для игры нужен Windows-билд из Actions; отсутствие Unity на компьютере не мешает.
-
-**Документация для будущих владельцев серверов:** [кооператив, Cloudflare, Node, Docker и протокол](Docs/Мультиплеер-и-хостинг.md). Standalone backend не требует Cloudflare/R2/Neon.
-
-Это технический срез, а не завершённый M1 или релиз игры: 60 FPS и визуальный двухклиентный тест ещё не подтверждены; инвентарь/крафт добавлены в M2; боевые мобы, авторитетная физика и античит ещё не готовы.
-
-
-## Официальный сайт
-
-**https://lestingcraft.kroterallitir.workers.dev** — 20 адаптивных страниц: вселенная, игра, журнал, дорожная карта, загрузки, кооператив, самостоятельный хостинг, FAQ и медиа. Исходники: `Website/`.
-
-Страница загрузок показывает прямые ссылки на опубликованные GitHub Releases, когда доступны оба файла: **Windows ZIP и Android ARM64 APK** (включая предварительные сборки). При ограничении публичного GitHub API используется проверенный публичный индекс, обновляемый Actions после событий релиза и каждые 30 минут. Никаких GitHub/Cloudflare токенов в клиенте сайта; UI статуса кооператива не возвращает хост или геолокацию.
-
-Предрелиз `v0.1.0-world-lab` и тег удалены по решению автора; связанная сборка отменена. Новый релиз — только после готовности и проверки игровых сборок.
-
-## Графическая итерация 02
-
-В игре заменены плоские цвета и IMGUI: реалистичные PBR-поверхности, URP/тени/небо/постэффекты и нативный uGUI/HUD. Высокий пресет по умолчанию, настройки вручную. [Реализация, происхождение карт и ограничения](Docs/Графика-и-интерфейс.md). Это разработческая итерация, не публичный релиз и не заявление о готовности к Steam.
-
-Дальше графика шагнула к **итерации 07 «золотой час»**: фотореалистичный океанский горизонт с солнечной дорожкой на воде, тёплой дымкой, серебряной каймой облаков и кинематографичным грейдом (split toning + плёночное зерно), панель задач и полоски HP/O₂ в HUD. Подробности — в [Docs/Графика-и-интерфейс.md](Docs/Графика-и-интерфейс.md).
-
-## Выживание и кампания (M2, в разработке)
-
-Добавлена основа четырёх режимов, инвентаря/крафта, погоды/температуры, сохранений и командного хардкора. Старт всегда в Лестингии, выбор измерения удалён. [Реализованное, план пяти глав и текущие блокеры](Docs/Выживание-и-кампания.md). Полная кампания/боссы/порталы ещё не готовы; новая сборка отменена по запросу пользователя.
+**Контакты для прессы и издателей:** `ehotehotich.music@gmail.com` · [Пресс-кит на сайте](https://lestingcraft.kroterallitir.workers.dev/press/)

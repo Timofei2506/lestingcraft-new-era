@@ -92,7 +92,7 @@ test('gallery opens a lightbox and closes it with Escape',async({page})=>{
   await shot.click();
   const dialog=page.locator('#lightbox');
   await expect(dialog).toHaveJSProperty('open',true);
-  await expect(page.locator('#lb-img')).toHaveAttribute('src',/\/media\/world-hud\.webp$/);
+  await expect(page.locator('#lb-img')).toHaveAttribute('src',/\/media\/showcase-cosmodrome\.webp$/);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveJSProperty('open',false);
 });

@@ -150,7 +150,7 @@ namespace LestingCraft.Presentation
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
             Box(content.transform,64,119,96,2,Accent,false);
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            Label(content.transform,Application.version+"  /  ранняя версия · экспедиция",64,866,1472,22,12,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"v"+Application.version+"  ·  LestingCraft: New Era",64,866,1472,22,12,Muted,false,TextAnchor.MiddleRight);
         }
         public void ShowHome()
         {
@@ -223,7 +223,7 @@ namespace LestingCraft.Presentation
         {
             Clear(Page.World);Header("Режим новой экспедиции");
             Label(content.transform,"КАК НАЧНЁТСЯ ТВОЯ ЭРА?",64,171,1400,67,36,White,true);
-            Label(content.transform,"Все начинают в Лестингии. Космос и планеты доступны как экспериментальные механики; основной путь — наземная экспедиция.",66,247,1440,42,19,Muted);
+            Label(content.transform,"Старт экспедиции — на живой планете Лестингия: от первых ремёсел и поселений до космодрома и полётов к другим мирам.",66,247,1440,42,19,Muted);
             for(int i=0;i<4;i++)
             {
                 int mode=i;bool chosen=game.SelectedMode==i;var button=Button("",64+i*368,331,352,254,()=>{game.SelectedMode=mode;ShowWorld();},chosen);
@@ -236,7 +236,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,"Локальная экспедиция",542,626,640,34,20,White);
             Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nНовый мир заменяет предыдущее локальное сохранение.",542,675,650,72,16,Muted);
             Button("Начать  →",1227,668,309,64,game.PlayOffline,true);
-            status=Label(content.transform,"Сюжет: глава I в Лестингии. Остальные главы ещё разрабатываются.",542,784,940,66,14,Muted);
+            status=Label(content.transform,"Бортовой архив экспедиции (3 главы), 26 боссов миров и межпланетные полёты доступны во всех режимах.",542,784,940,66,14,Muted);
         }
         int lobbyRevision=-1;
         public void ShowLobby()
