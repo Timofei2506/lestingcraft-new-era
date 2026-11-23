@@ -85,32 +85,32 @@ namespace LestingCraft.Story
                 top = (baseY * (6 - blend) + natural * blend) / 6;
             }
             if (y < top - 3 && y <= natural) return false;
+            bool v11 = contentVersion >= 11;
+            var activeBoxes = v11 ? StoryPlanV11.Boxes : StoryPlan.Boxes;
             if (y <= top)
             {
                 block = y == top ? (road ? (ushort)32 : dist <= 0 ? (ushort)3 : (ushort)2) : y < top - 2 ? (ushort)1 : (ushort)2;
                 if (y == baseY && dist <= 0)
                 {
-                    var plan = StoryPlan.Boxes;
-                    for (int i = 0; i < plan.Length; i += 7)
-                        if (x >= plan[i] && x <= plan[i + 1] && plan[i + 2] <= 0 && plan[i + 3] >= 0 && z >= plan[i + 4] && z <= plan[i + 5])
-                            block = (ushort)plan[i + 6];
+                    for (int i = 0; i < activeBoxes.Length; i += 7)
+                        if (x >= activeBoxes[i] && x <= activeBoxes[i + 1] && activeBoxes[i + 2] <= 0 && activeBoxes[i + 3] >= 0 && z >= activeBoxes[i + 4] && z <= activeBoxes[i + 5])
+                            block = (ushort)activeBoxes[i + 6];
                 }
                 return true;
             }
-            if (y > baseY + 18) return true;
+            if (y > baseY + (v11 ? 24 : 18)) return true;
             if (dist > 0)
             {
-                if (contentVersion >= 8 && dist <= 2)
+                if (!v11 && contentVersion >= 8 && dist <= 2)
                     block = (ushort)ApplyV8StoryUpgrades(x, y - baseY, z, 0);
                 return true;
             }
             int ry = y - baseY;
-            var boxes = StoryPlan.Boxes;
             int id = 0;
-            for (int i = 0; i < boxes.Length; i += 7)
-                if (x >= boxes[i] && x <= boxes[i + 1] && ry >= boxes[i + 2] && ry <= boxes[i + 3] && z >= boxes[i + 4] && z <= boxes[i + 5])
-                    id = boxes[i + 6];
-            if (contentVersion >= 8)
+            for (int i = 0; i < activeBoxes.Length; i += 7)
+                if (x >= activeBoxes[i] && x <= activeBoxes[i + 1] && ry >= activeBoxes[i + 2] && ry <= activeBoxes[i + 3] && z >= activeBoxes[i + 4] && z <= activeBoxes[i + 5])
+                    id = activeBoxes[i + 6];
+            if (!v11 && contentVersion >= 8)
                 id = ApplyV8StoryUpgrades(x, ry, z, id);
             block = (ushort)id;
             return true;

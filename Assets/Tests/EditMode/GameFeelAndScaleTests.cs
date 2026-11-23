@@ -199,5 +199,87 @@ namespace LestingCraft.Tests
             Assert.IsFalse(helm.InHyperjump);
             Assert.IsTrue(helm.InLandingRange, "Hyperjump must place ship inside procedural exoplanet landing orbit");
         }
+
+        [Test]
+        public void AllWorldKingdomQuietfordAndPlanetaryStructuresAreRebuiltAndWalkable()
+        {
+            // 1. All 10 rebuilt world structures (ArchitecturePlan 0..9) have 3D vertical relief and walkable portals
+            Assert.AreEqual(10, LestingCraft.World.ArchitecturePlan.Radius.Length);
+            for (int kind = 0; kind < 10; kind++)
+            {
+                int r = LestingCraft.World.ArchitecturePlan.Radius[kind];
+                int solidAboveGround = 0;
+                int maxH = 0;
+                for (int x = -r; x <= r; x++)
+                    for (int z = -r; z <= r; z++)
+                        for (int y = 1; y <= 26; y++)
+                        {
+                            ushort b = LestingCraft.World.ArchitecturePlan.Apply(kind, x, y, z);
+                            if (b != 0)
+                            {
+                                solidAboveGround++;
+                                if (y > maxH) maxH = y;
+                            }
+                        }
+                Assert.Greater(solidAboveGround, 250, "Structure plan " + kind + " must have substantial 3D volume");
+                Assert.GreaterOrEqual(maxH, 8, "Structure plan " + kind + " must have tall 3D silhouette");
+            }
+
+            // 2. Imperial Capital (KingdomPlan at 420, -340) samples local (dx, dz) accurately up to 45m spire
+            int kBase = LestingCraft.World.KingdomPlan.BaseY(2506);
+            Assert.IsTrue(LestingCraft.World.KingdomPlan.TrySample(LestingCraft.World.KingdomPlan.CenterX, kBase, LestingCraft.World.KingdomPlan.CenterZ, 2506, out ushort kFloor));
+            Assert.AreNotEqual(0, kFloor);
+            Assert.IsTrue(LestingCraft.World.KingdomPlan.TrySample(LestingCraft.World.KingdomPlan.CenterX, kBase + 24, LestingCraft.World.KingdomPlan.CenterZ + 9, 2506, out ushort kDrum));
+            Assert.AreEqual(30, kDrum, "Golden drum of Imperial Cathedral-Palace");
+            Assert.IsTrue(LestingCraft.World.KingdomPlan.TrySample(LestingCraft.World.KingdomPlan.CenterX, kBase + 45, LestingCraft.World.KingdomPlan.CenterZ - 1, 2506, out ushort kSpire));
+            Assert.AreEqual(11, kSpire, "45m crystal finial atop central dome");
+
+            int[] kx = { 0, 79, -70, 0, -24, 22, 52, -52, 74, -74, 96, -96, 16, -16 };
+            int[] kz = { 38, -2, 54, -74, -18, -18, 0, 0, -40, -40, -20, -20, 72, 72 };
+            for (int i = 0; i < kx.Length; i++)
+            {
+                int wx = LestingCraft.World.KingdomPlan.CenterX + kx[i];
+                int wz = LestingCraft.World.KingdomPlan.CenterZ + kz[i];
+                Assert.IsTrue(LestingCraft.World.KingdomPlan.TrySample(wx, kBase + 1, wz, 2506, out ushort c1));
+                Assert.IsTrue(LestingCraft.World.KingdomPlan.TrySample(wx, kBase + 2, wz, 2506, out ushort c2));
+                Assert.AreEqual(0, c1, "Kingdom citizen feet clear at index " + i);
+                Assert.AreEqual(0, c2, "Kingdom citizen head clear at index " + i);
+            }
+
+            // 3. Rebuilt Chapter One / Quietford (contentVersion >= 11) + frozen <= 10 compatibility
+            int sBase = LestingCraft.Story.StoryWorld.Floor(2506);
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(88, sBase + 5, 48, 2506, out ushort v8Lamp, 8));
+            Assert.AreEqual(LestingCraft.World.BlockRegistry.LanternBlockId, v8Lamp, "v8 StoryWorld frozen");
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(91, sBase + 20, 69, 2506, out ushort v11Belfry, 11));
+            Assert.AreNotEqual(0, v11Belfry, "Quietford v11 Town Hall clocktower rises above plaza");
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(48, sBase + 3, -87, 2506, out ushort v11Rune, 11));
+            Assert.AreEqual(11, v11Rune, "Watermill rune crystal preserved at exact quest target");
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(176, sBase + 1, -112, 2506, out ushort v11Altar, 11));
+            Assert.AreNotEqual(0, v11Altar, "Sanctuary boss altar dais intact");
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(176, sBase + 2, -112, 2506, out ushort v11AltarAir, 11));
+            Assert.AreEqual(0, v11AltarAir, "Sanctuary boss arena clear above altar");
+
+            // 4. New 3D Planetary & Alien Structures across Moon, Mars, Europa & AndromedaPrime
+            foreach (var body in new[] { LestingCraft.World.PlanetBody.Moon, LestingCraft.World.PlanetBody.Mars, LestingCraft.World.PlanetBody.Europa, LestingCraft.World.PlanetBody.AndromedaPrime })
+            {
+                // Central landing / boss arena (|x| < 40, |z| < 40) stays 100% clear of planetary structures
+                for (int tx = -36; tx <= 36; tx += 12)
+                    for (int tz = -36; tz <= 36; tz += 12)
+                        Assert.IsFalse(LestingCraft.World.PlanetTerrain.TrySamplePlanetaryStructure(tx, 50, tz, 2506, body, out _));
+
+                bool foundStructure = false;
+                for (int cx = -2; cx <= 2 && !foundStructure; cx++)
+                    for (int cz = -2; cz <= 2 && !foundStructure; cz++)
+                        for (int sx = cx * 128 + 36; sx < cx * 128 + 92 && !foundStructure; sx += 2)
+                            for (int sz = cz * 128 + 36; sz < cz * 128 + 92 && !foundStructure; sz += 2)
+                            {
+                                if (Mathf.Abs(sx) < 56 && Mathf.Abs(sz) < 56) continue;
+                                int h = LestingCraft.World.PlanetTerrain.Column(sx, sz, 2506, body).Height;
+                                if (LestingCraft.World.PlanetTerrain.TrySamplePlanetaryStructure(sx, h + 6, sz, 2506, body, out ushort sb) && sb != 0)
+                                    foundStructure = true;
+                            }
+                Assert.IsTrue(foundStructure, "Expected deterministic 3D planetary structure on " + body);
+            }
+        }
     }
 }

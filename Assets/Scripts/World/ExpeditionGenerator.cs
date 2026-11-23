@@ -51,9 +51,20 @@ namespace LestingCraft.World
                     {
                         if(contentVersion>=11)
                         {
-                            if(dy==0)return (ushort)(dz>=3?36:18);
-                            if(dy==5)return 1;
-                            if(dy==1 && dz==0 && dx<=30)return 85;
+                            bool hub=dx<=5&&dz<=5;
+                            if(dy==0)return (ushort)(hub?40:dz>=3?36:18);
+                            if(dy==5)return (ushort)(hub?37:1);
+                            if(hub)
+                            {
+                                if(dx==4&&dz==4&&dy>=1&&dy<=4)return 58;
+                                if(dx==0&&dz==0&&dy==4)return 56;
+                                if(dy==1&&MX==-4&&MZ==-3)return 17;
+                                if(dy==1&&MX==4&&MZ==-3)return 74;
+                                if(dy==1&&MX==4&&MZ==3)return 73;
+                                if(dy==1&&MX==-4&&MZ==3)return 77;
+                            }
+                            if(dy==1&&dz==0&&dx<=30)return (ushort)(dx>0&&dx%12==0?86:85);
+                            if(dy==1&&dx==0&&dz>=1&&dz<=22)return (ushort)(dz%10==0?86:85);
                             if(alcove && dz==5 && dy==1 && dx%12==6)return 16;
                             if(alcove && dz==5 && dy==2 && dx%12==6)return 56;
                         }

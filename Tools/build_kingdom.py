@@ -1,286 +1,489 @@
 #!/usr/bin/env python3
-"""Author the Tsardom landmark: a grand castle with a ring settlement and a great
-road to Quietford. Emits Assets/Scripts/World/KingdomPlan.cs with bucketed voxel
-boxes (16x16 cells, sorted keys) and road capsules sampled at terrain height.
-
-Re-run after editing the layout below. Pure integer boxes; no renders.
+"""Completely rebuilt Tsardom / Imperial Capital landmark authored from scratch.
+Emits Assets/Scripts/World/KingdomPlan.cs with bucketed voxel boxes (16x16 local cells)
+and fixes the local (dx, dz) coordinate lookup in KingdomPlan.TrySample.
 """
 from pathlib import Path
 import math
 
 r = Path(__file__).resolve().parents[1]
-CX, CZ = 420, -340          # world center of the castle keep
+CX, CZ = 420, -340          # world center of the Imperial Citadel
 CORE = 122                  # flat core radius; blend 122..150
 REGION = 150
 
-boxes = []                  # [x0,x1,y0,y1,z0,z1,id]
-roads = []                  # (ax,az,bx,bz,radius)
+boxes = []                  # [x0, x1, y0, y1, z0, z1, bid] in LOCAL [-CORE..CORE] coords
+roads = []                  # (ax, az, bx, bz, radius) in WORLD coords
+
+# Block IDs
+AIR = 0
+DIRT = 2
+GRASS = 3
+OAK_LOG = 4
+LEAVES = 5
+WATER = 7
+CRYSTAL = 11
+CAMPFIRE = 15
+WORKBENCH = 16
+FURNACE = 17
+PLANK = 18
+GOLD_ORE = 22
+GRANITE = 27
+LIMESTONE = 28
+SLATE = 29
+MARBLE = 30
+GRAVEL = 32
+MOSSY = 35
+COBBLE = 36
+BRICK = 37
+CLAY_BRICK = 39
+POLISHED_STONE = 40
+POLISHED_GRANITE = 41
+POLISHED_MARBLE = 42
+SANDSTONE = 43
+GLASS = 44
+COAL_BLOCK = 45
+COPPER_BLOCK = 46
+TORCH = 54
+BED = 55
+LANTERN = 56
+BOOKSHELF = 57
+CARVED_OAK = 58
+SHINGLES = 59
+SAKURA = 60
+TERRACOTTA = 62
+GENERATOR = 74
 
 
-def box(x, y, z, w, h, d, bid):
-    boxes.append([x, x + w - 1, y, y + h - 1, z, z + d - 1, bid])
+def b(x0, x1, y0, y1, z0, z1, bid):
+    x0, x1 = int(x0), int(x1)
+    y0, y1 = int(y0), int(y1)
+    z0, z1 = int(z0), int(z1)
+    if x0 > x1 or y0 > y1 or z0 > z1:
+        return
+    boxes.append([x0, x1, y0, y1, z0, z1, int(bid)])
+
+
+def ring(x0, x1, z0, z1, y0, y1, bid):
+    b(x0, x1, y0, y1, z0, z0, bid)
+    b(x0, x1, y0, y1, z1, z1, bid)
+    b(x0, x0, y0, y1, z0 + 1, z1 - 1, bid)
+    b(x1, x1, y0, y1, z0 + 1, z1 - 1, bid)
+
+
+def disc(cx, cz, rad, y0, y1, bid):
+    ri = int(rad)
+    for z in range(cz - ri, cz + ri + 1):
+        span = int((rad * rad - (z - cz) ** 2) ** 0.5) if abs(z - cz) <= rad else -1
+        if span >= 0:
+            b(cx - span, cx + span, y0, y1, z, z, bid)
+
+
+def cyl_shell(cx, cz, r_out, r_in, y0, y1, bid):
+    disc(cx, cz, r_out, y0, y1, bid)
+    if r_in > 0:
+        disc(cx, cz, r_in, y0, y1, AIR)
 
 
 def road(ax, az, bx, bz, rad=3):
-    roads.append((ax, az, bx, bz, rad))
+    roads.append((int(ax), int(az), int(bx), int(bz), int(rad)))
 
 
-# ---------------------------------------------------------------- castle ----
-def crenellate(x0, x1, z0, z1, y, bid=37, step=4):
-    for x in range(x0, x1 + 1, step):
-        box(x, y, z0, 2, 2, 1, bid)
-        box(x, y, z1, 2, 2, 1, bid)
-    for z in range(z0 + step, z1, step):
-        box(x0, y, z, 1, 2, 2, bid)
-        box(x1, y, z, 1, 2, 2, bid)
+def lantern_post(x, z, y=1):
+    b(x, x, y, y, z, z, POLISHED_STONE)
+    b(x, x, y + 1, y + 3, z, z, OAK_LOG)
+    b(x - 1, x + 1, y + 4, y + 4, z, z, CARVED_OAK)
+    b(x, x, y + 5, y + 5, z, z, LANTERN)
 
 
-def wall_ring(cx, cz, half, thick, y, h, bid=37):
-    box(cx - half, y, cz - half, 2 * half + 1, h, thick, bid)          # north
-    box(cx - half, y, cz + half - thick + 1, 2 * half + 1, h, thick, bid)  # south
-    box(cx - half, y, cz - half, thick, h, 2 * half + 1, bid)          # west
-    box(cx + half - thick + 1, y, cz - half, thick, h, 2 * half + 1, bid)  # east
+def tree(x, z, h=5, leaf=LEAVES):
+    b(x, x, 1, h, z, z, OAK_LOG)
+    disc(x, z, 2.5, h, h + 1, leaf)
+    disc(x, z, 1.5, h + 2, h + 3, leaf)
 
 
-def tower(cx, cz, half, y, h, bid=37, roof=59, windows=True):
-    box(cx - half, y, cz - half, 2 * half + 1, h, 2 * half + 1, bid)
-    # decorative band + crown
-    box(cx - half - 1, y + h - 3, cz - half - 1, 2 * half + 3, 1, 2 * half + 3, 40)
-    box(cx - half - 1, y + h, cz - half - 1, 2 * half + 3, 1, 2 * half + 3, roof)
-    for level in range(1, 4):
-        s = half + 1 - level * 2
-        if s < 1:
+def bastion_tower(cx, cz, rad=5.2, h=22, spire_mat=SHINGLES):
+    cyl_shell(cx, cz, rad, rad - 1.8, 1, h, BRICK)
+    disc(cx, cz, rad + 0.5, h - 2, h - 2, POLISHED_STONE)
+    disc(cx, cz, rad + 0.6, h, h, POLISHED_MARBLE)
+    for fy in (1, 7, 13, h - 1):
+        disc(cx, cz, rad - 1.6, fy, fy, PLANK)
+    for wy in (4, 9, 15):
+        if wy + 2 < h - 2:
+            b(cx, cx, wy, wy + 1, int(cz - rad), int(cz + rad), GLASS)
+            b(int(cx - rad), int(cx + rad), wy, wy + 1, cz, cz, GLASS)
+    steps = int(rad) + 2
+    for k in range(steps):
+        disc(cx, cz, max(0.8, rad + 0.5 - k * 0.85), h + 1 + k, h + 1 + k, spire_mat)
+    top_y = h + 1 + steps
+    b(cx, cx, top_y, min(45, top_y + 3), cz, cz, OAK_LOG)
+    b(cx + 1, cx + 2, min(45, top_y + 2), min(45, top_y + 3), cz, cz, TERRACOTTA)
+
+
+def town_house(cx, cz, hw=5, hd=4, stories=1, roof_id=SHINGLES, wall_id=LIMESTONE, face_z=1):
+    """Multi-style town architecture: 1-storey artisan cottage or 2-storey jettied merchant townhouse."""
+    wall_h = 4 if stories == 1 else 9
+    b(cx - hw, cx + hw, 0, 0, cz - hd, cz + hd, COBBLE)
+    b(cx - hw + 1, cx + hw - 1, 0, 0, cz - hd + 1, cz + hd - 1, PLANK)
+    ring(cx - hw, cx + hw, cz - hd, cz + hd, 1, 1, BRICK)
+    ring(cx - hw, cx + hw, cz - hd, cz + hd, 2, 4, wall_id)
+    b(cx - hw + 1, cx + hw - 1, 1, wall_h, cz - hd + 1, cz + hd - 1, AIR)
+    for px in (cx - hw, cx, cx + hw):
+        for pz in (cz - hd, cz + hd):
+            b(px, px, 1, 4, pz, pz, OAK_LOG)
+    if stories >= 2:
+        # Jettied timber-framed second floor overhanging by 1 block on front & back
+        ring(cx - hw, cx + hw, cz - hd - 1, cz + hd + 1, 5, 5, CARVED_OAK)
+        b(cx - hw + 1, cx + hw - 1, 5, 5, cz - hd, cz + hd, PLANK)
+        ring(cx - hw, cx + hw, cz - hd - 1, cz + hd + 1, 6, 9, PLANK if wall_id == LIMESTONE else LIMESTONE)
+        b(cx - hw + 1, cx + hw - 1, 6, 9, cz - hd, cz + hd, AIR)
+        for px in (cx - hw, cx, cx + hw):
+            for pz in (cz - hd - 1, cz + hd + 1):
+                b(px, px, 5, 9, pz, pz, OAK_LOG)
+        # Interior stair along side wall (leaving center cx,cz clear!)
+        for s in range(5):
+            b(cx - hw + 1, cx - hw + 1, 1 + s, 1 + s, cz - hd + 1 + min(hd * 2 - 2, s), cz - hd + 1 + min(hd * 2 - 2, s), PLANK)
+            if s < 4:
+                b(cx - hw + 1, cx - hw + 1, 5, 5, cz - hd + 1 + s, cz - hd + 1 + s, AIR)
+        for wx in (cx - hw + 2, cx + hw - 2):
+            b(wx, wx, 7, 8, cz - hd - 1, cz - hd - 1, GLASS)
+            b(wx, wx, 7, 8, cz + hd + 1, cz + hd + 1, GLASS)
+    for wx in (cx - hw + 2, cx + hw - 2):
+        b(wx, wx, 2, 3, cz - hd, cz - hd, GLASS)
+        b(wx, wx, 2, 3, cz + hd, cz + hd, GLASS)
+    # Pitched gable roof along X
+    rz_ext = hd + (2 if stories >= 2 else 1)
+    for k in range(hw + 2):
+        x0, x1 = cx - hw - 1 + k, cx + hw + 1 - k
+        yy = wall_h + 1 + k
+        if x0 > x1:
             break
-        box(cx - s, y + h + level, cz - s, 2 * s + 1, 1, 2 * s + 1, roof)
-    box(cx, y + h + 4, cz, 1, 3, 1, 4)
-    box(cx + 1, y + h + 5, cz, 1, 2, 1, 62)  # banner
-    if windows:
-        for wy in (y + 6, y + 11, y + 16):
-            if wy + 1 < y + h - 3:
-                box(cx - half - 1, wy, cz - 1, 1, 2, 2, 44)
-                box(cx + half + 1, wy, cz - 1, 1, 2, 2, 44)
-                box(cx - 1, wy, cz - half - 1, 2, 2, 1, 44)
-                box(cx - 1, wy, cz + half + 1, 2, 2, 1, 44)
+        b(x0, x1, yy, yy, cz - rz_ext, cz + rz_ext, roof_id)
+        if x0 + 1 <= x1 - 1 and k < hw + 1:
+            b(x0 + 1, x1 - 1, yy, yy, cz - rz_ext + 1, cz - rz_ext + 1, PLANK)
+            b(x0 + 1, x1 - 1, yy, yy, cz + rz_ext - 1, cz + rz_ext - 1, PLANK)
+    b(cx, cx, wall_h + hw + 2, wall_h + hw + 2, cz - rz_ext, cz + rz_ext, CARVED_OAK)
+    # Brick chimney on rear corner
+    back_z = cz - hd if face_z > 0 else cz + hd
+    door_wall_z = cz + hd if face_z > 0 else cz - hd
+    b(cx + hw - 1, cx + hw, 1, wall_h + hw + 3, back_z, back_z, CLAY_BRICK)
+    # Furnishings tucked into back corners (center cx,cz stays 100% open!)
+    iz = back_z + (1 if face_z > 0 else -1)
+    b(cx - hw + 2, cx - hw + 2, 1, 1, iz, iz, BED)
+    b(cx + hw - 2, cx + hw - 2, 1, 1, iz, iz, FURNACE if (cx + cz) % 2 == 0 else WORKBENCH)
+    b(cx, cx, 4, 4, cz, cz, LANTERN)
+    # 2x3 Doorway + porch step
+    b(cx - 1, cx, 1, 3, door_wall_z, door_wall_z, AIR)
+    b(cx - 1, cx + 1, 0, 0, door_wall_z + face_z, door_wall_z + face_z, POLISHED_STONE)
+    b(cx + 1, cx + 1, 3, 3, door_wall_z + face_z, door_wall_z + face_z, TORCH)
 
 
-def keep():
-    # courtyard pavement with brick borders
-    box(-34, 0, -34, 69, 1, 69, 40)
-    box(-34, 0, -34, 69, 1, 3, 37)
-    box(-34, 0, 32, 69, 1, 3, 37)
-    box(-34, 0, -34, 3, 1, 69, 37)
-    box(32, 0, -34, 3, 1, 69, 37)
-    # curtain wall (gate gap on the south side)
-    wall_ring(0, 0, 36, 3, 1, 14)
-    crenellate(-36, 36, -36, 36, 15)
-    box(-5, 1, 34, 11, 13, 5, 0)  # gate opening
-    box(-6, 14, 33, 13, 2, 6, 37)
-    # gatehouse turrets
-    tower(-9, 33, 3, 1, 18, windows=True)
-    tower(9, 33, 3, 1, 18, windows=True)
-    box(-4, 1, 36, 2, 6, 1, 54)
-    box(3, 1, 36, 2, 6, 1, 54)
-    # corner towers
-    for tx, tz in ((-34, -34), (34, -34), (-34, 34), (34, 34)):
-        tower(tx, tz, 5, 1, 21)
-    # ---- central palace ----
-    box(-13, 1, -13, 27, 20, 27, 37)              # main body
-    box(-13, 1, -13, 27, 1, 27, 40)               # polished plinth
-    box(-12, 21, -12, 25, 6, 25, 42)              # marble stage
-    box(-8, 27, -8, 17, 5, 17, 30)                # upper marble
-    box(-5, 32, -5, 11, 3, 11, 42)
-    for lv in range(4):                           # roof pyramid
-        s = 6 - lv * 2
-        box(-s, 35 + lv, -s, 2 * s + 1, 1, 2 * s + 1, 59)
-    box(0, 39, 0, 1, 5, 1, 4)
-    box(1, 41, 0, 1, 3, 1, 62)
-    # windows: tall slots on each face
-    for wy in (4, 9, 14):
-        for wx in (-9, -4, 4, 9):
-            box(wx, wy, -14, 2, 3, 1, 44)
-            box(wx, wy, 14, 2, 3, 1, 44)
-            box(-14, wy, wx, 1, 3, 2, 44)
-            box(14, wy, wx, 1, 3, 2, 44)
-    for wy in (22, 28):
-        for wx in (-6, 0, 6):
-            box(wx, wy, -13, 2, 3, 1, 44)
-            box(wx, wy, 13, 2, 3, 1, 44)
-            box(-13, wy, wx, 1, 3, 2, 44)
-            box(13, wy, wx, 1, 3, 2, 44)
-    # entrance: steps + door + pillars + balcony
-    for i in range(4):
-        box(-3 - i, 1, 16 + i, 7 + 2 * i, 1, 2, 40)
-    box(-2, 1, 13, 5, 6, 1, 0)
-    box(-3, 7, 13, 7, 1, 2, 58)
-    box(-13, 20, 12, 27, 1, 4, 58)                # balcony ring (south)
-    box(-13, 20, -15, 27, 1, 4, 58)
-    box(-15, 20, -13, 4, 1, 27, 58)
-    box(12, 20, -13, 4, 1, 27, 58)
-    # interior floors with lantern halls
-    for fy in (7, 13, 19):
-        box(-12, fy, -12, 25, 1, 25, 18)
-        box(-10, fy + 1, -10, 1, 4, 1, 57)
-        box(10, fy + 1, -10, 1, 4, 1, 57)
-        box(-10, fy + 1, 10, 1, 4, 1, 57)
-        box(10, fy + 1, 10, 1, 4, 1, 57)
-        box(-1, fy + 4, -1, 2, 1, 2, 56)
-    # throne backdrop
-    box(0, 20, -11, 5, 5, 1, 62)
-    box(0, 20, -10, 3, 1, 3, 42)
-    # ---- courtyard buildings ----
-    house(-24, -18, 12, 8, True)   # barracks (west)
-    house(22, -18, 12, 8, True)    # stable (east)
-    box(22, 1, -14, 12, 1, 1, 0)   # stable open front
-    # well
-    box(-2, 1, 20, 5, 1, 5, 36)
-    box(-1, 1, 21, 3, 1, 3, 7)
-    for wx, wz in ((-2, 20), (2, 20), (-2, 24), (2, 24)):
-        box(wx, 2, wz, 1, 3, 1, 4)
-    box(-3, 5, 19, 7, 1, 7, 59)
-    box(0, 6, 22, 1, 1, 1, 56)
-    # chapel (north-east corner)
-    house(16, -28, 10, 10)
-    tower(20, -24, 2, 1, 14, windows=True)
-    # lamp posts around the yard
-    for lx, lz in ((-18, 0), (18, 0), (0, -22), (0, 28), (-12, 26), (12, 26)):
-        box(lx, 1, lz, 1, 4, 1, 4)
-        box(lx, 5, lz, 1, 1, 1, 56)
+# ==============================================================================
+# 1. IMPERIAL CITADEL & CATHEDRAL-PALACE (local -38..38)
+# ==============================================================================
+def build_imperial_keep():
+    # Base lawn across the entire flat core so roads/gardens blend naturally
+    b(-CORE, CORE, 0, 0, -CORE, CORE, GRASS)
+    # Concentric ring cobblestone boulevards (drawn outer-to-inner with grass parks between!)
+    disc(0, 0, 92, 0, 0, COBBLE)
+    disc(0, 0, 88, 0, 0, GRASS)
+    disc(0, 0, 68, 0, 0, COBBLE)
+    disc(0, 0, 64, 0, 0, GRASS)
+    disc(0, 0, 46, 0, 0, COBBLE)
+    disc(0, 0, 41, 0, 0, GRASS)
+    # Grand radial cardinal boulevards crossing all 3 ring avenues
+    b(-4, 4, 0, 0, -112, 118, COBBLE)
+    b(-112, 112, 0, 0, -4, 4, COBBLE)
+    b(-2, 2, 0, 0, -110, 118, POLISHED_STONE)
+    b(-110, 110, 0, 0, -2, 2, POLISHED_STONE)
+
+    # Citadel Inner Courtyard Pavement (-35..35)
+    b(-35, 35, 0, 0, -35, 35, POLISHED_STONE)
+    ring(-35, 35, -35, 35, 0, 0, POLISHED_GRANITE)
+    b(-4, 4, 0, 0, -12, 38, POLISHED_MARBLE)
+
+    # Double-faced Machicolated Curtain Walls (x/z = ±36, height = 14)
+    for w in (-36, -35, 35, 36):
+        b(-36, 36, 1, 14, w, w, BRICK)
+        b(w, w, 1, 14, -36, 36, BRICK)
+    for k in range(-30, 31, 6):
+        b(k, k + 1, 1, 13, -37, -37, POLISHED_STONE)
+        b(k, k + 1, 1, 13, 37, 37, POLISHED_STONE)
+        b(-37, -37, 1, 13, k, k + 1, POLISHED_STONE)
+        b(37, 37, 1, 13, k, k + 1, POLISHED_STONE)
+    ring(-37, 37, -37, 37, 14, 14, POLISHED_MARBLE)
+    for k in range(-36, 37, 3):
+        b(k, min(37, k + 1), 15, 16, -37, -37, BRICK)
+        b(k, min(37, k + 1), 15, 16, 37, 37, BRICK)
+        b(-37, -37, 15, 16, k, min(37, k + 1), BRICK)
+        b(37, 37, 15, 16, k, min(37, k + 1), BRICK)
+
+    # 4 Grand Corner Bastion Towers
+    for tx, tz in ((-35, -35), (35, -35), (-35, 35), (35, 35)):
+        bastion_tower(tx, tz, rad=5.5, h=22, spire_mat=SHINGLES)
+
+    # Southern Twin-Turret Barbican Gatehouse (z = 33..39; keeping (0, 38) clear for guard spawn!)
+    bastion_tower(-9, 36, rad=4.0, h=19, spire_mat=TERRACOTTA)
+    bastion_tower(9, 36, rad=4.0, h=19, spire_mat=TERRACOTTA)
+    b(-5, 5, 8, 15, 34, 38, BRICK)
+    b(-5, 5, 15, 16, 33, 39, POLISHED_MARBLE)
+    b(-4, 4, 1, 7, 33, 40, AIR)
+    for px in (-3, -1, 1, 3):
+        b(px, px, 7, 7, 36, 36, OAK_LOG)
+    lantern_post(-5, 41, 1)
+    lantern_post(5, 41, 1)
+
+    # ---- 45-METER IMPERIAL CATHEDRAL-PALACE (-15..15, z = -16..14) ----
+    b(-15, 15, 1, 1, -16, 14, POLISHED_GRANITE)
+    b(-14, 14, 2, 20, -15, 13, BRICK)
+    b(-13, 13, 2, 19, -14, 12, AIR)
+    # Marble corner & bay buttress pilasters
+    for bx in (-14, -8, -3, 3, 8, 14):
+        b(bx, bx, 2, 21, -15, -15, POLISHED_MARBLE)
+        b(bx, bx, 2, 21, 13, 13, POLISHED_MARBLE)
+    for bz in (-15, -9, -3, 3, 8, 13):
+        b(-14, -14, 2, 21, bz, bz, POLISHED_MARBLE)
+        b(14, 14, 2, 21, bz, bz, POLISHED_MARBLE)
+    ring(-15, 15, -16, 14, 8, 8, POLISHED_MARBLE)
+    ring(-15, 15, -16, 14, 14, 14, POLISHED_MARBLE)
+    ring(-15, 15, -16, 14, 20, 20, POLISHED_MARBLE)
+
+    # Stained-crystal lancet windows + circular rose window above south portico
+    for wy in (4, 10, 16):
+        for wx in (-11, -6, 5, 10):
+            b(wx, wx + 1, wy, wy + 2, -15, -15, GLASS)
+            b(wx, wx + 1, wy, wy + 2, 13, 13, GLASS)
+        for wz in (-12, -6, 0, 5, 10):
+            b(-14, -14, wy, wy + 2, wz, wz + 1, GLASS)
+            b(14, 14, wy, wy + 2, wz, wz + 1, GLASS)
+    b(-2, 2, 10, 13, 13, 13, GLASS)
+
+    # Grand South Palace Portico & Steps (z = 13..18)
+    for s in range(2):
+        b(-5 + s, 5 - s, 1 + s, 1 + s, 17 - s * 2, 18 - s * 2, POLISHED_MARBLE)
+    for col_x in (-5, -3, 3, 5):
+        b(col_x, col_x, 2, 8, 14, 14, POLISHED_MARBLE)
+    b(-6, 6, 9, 9, 13, 15, POLISHED_GRANITE)
+    b(-2, 2, 2, 7, 12, 15, AIR)
+
+    # Interior Throne Room, Red Carpet, Galleries & Grand Staircases
+    b(-13, 13, 1, 1, -14, 12, POLISHED_MARBLE)
+    b(-2, 2, 1, 1, -11, 12, TERRACOTTA)
+    # Imperial Throne Dais at north end
+    b(-4, 4, 2, 2, -13, -9, POLISHED_GRANITE)
+    b(-2, 2, 3, 3, -13, -11, POLISHED_MARBLE)
+    b(-1, 1, 4, 7, -13, -13, COPPER_BLOCK)
+    b(0, 0, 8, 8, -13, -13, CRYSTAL)
+    for col_z in (-8, -3, 2, 7):
+        b(-6, -6, 2, 13, col_z, col_z, POLISHED_MARBLE)
+        b(6, 6, 2, 13, col_z, col_z, POLISHED_MARBLE)
+    # Second & Third Choir/Library Galleries with open central atrium & twin staircases
+    for fy in (8, 14):
+        b(-13, 13, fy, fy, -14, 12, PLANK)
+        b(-5, 5, fy, fy, -7, 6, AIR)
+        ring(-5, 5, -7, 6, fy + 1, fy + 1, CARVED_OAK)
+        for sx in (-12, 11):
+            b(sx, sx + 1, fy + 1, fy + 3, -12, 8, BOOKSHELF)
+    for i in range(7):
+        b(-11, -9, 2 + i, 2 + i, -4 + i, -4 + i, POLISHED_MARBLE)
+        b(-11, -9, 3 + i, 6 + i, -4 + i, -4 + i, AIR)
+        b(9, 11, 8 + i, 8 + i, -4 + i, -4 + i, POLISHED_MARBLE)
+        b(9, 11, 9 + i, 12 + i, -4 + i, -4 + i, AIR)
+    for ly in (6, 12, 18):
+        b(0, 0, ly, ly, -1, -1, LANTERN)
+
+    # Upper Cathedral Drum (y=21..33) + 4 Corner Turrets + Central Golden-Copper Spire (y=34..45)
+    b(-10, 10, 21, 27, -11, 9, MARBLE)
+    b(-9, 9, 21, 26, -10, 8, AIR)
+    ring(-11, 11, -12, 10, 27, 27, POLISHED_GRANITE)
+    for tx, tz in ((-11, -12), (11, -12), (-11, 10), (11, 10)):
+        cyl_shell(tx, tz, 2.6, 1.2, 21, 29, POLISHED_MARBLE)
+        disc(tx, tz, 2.8, 30, 31, COPPER_BLOCK)
+        disc(tx, tz, 1.6, 32, 33, COPPER_BLOCK)
+        b(tx, tx, 34, 35, tz, tz, CRYSTAL)
+    cyl_shell(0, -1, 6.5, 4.5, 28, 34, POLISHED_MARBLE)
+    for k in range(7):
+        disc(0, -1, max(1.0, 6.8 - k * 0.9), 35 + k, 35 + k, COPPER_BLOCK if k % 2 == 0 else SHINGLES)
+    b(0, 0, 42, 45, -1, -1, COPPER_BLOCK)
+    b(0, 0, 45, 45, -1, -1, CRYSTAL)
+
+    # Courtyard Guard Barracks (-25, -18) & Royal Stables (23, -18) — keeping (-24,-18) & (22,-18) open at y=1..3!
+    town_house(-24, -18, hw=6, hd=5, stories=1, roof_id=SLATE, wall_id=BRICK, face_z=1)
+    town_house(22, -18, hw=6, hd=5, stories=1, roof_id=TERRACOTTA, wall_id=PLANK, face_z=1)
+    b(18, 26, 1, 3, -13, -13, AIR)  # Open arched stable bays
+
+    # Courtyard Marble Fountain Plaza at (0, 24)
+    disc(0, 24, 4.2, 1, 1, POLISHED_MARBLE)
+    disc(0, 24, 3.0, 1, 1, WATER)
+    b(0, 0, 1, 4, 24, 24, POLISHED_MARBLE)
+    b(0, 0, 5, 5, 24, 24, CRYSTAL)
 
 
-def house(cx, cz, w=9, d=9, flat=False):
-    x = cx - w // 2
-    z = cz - d // 2
-    box(x, 0, z, w, 1, d, 36)
-    box(x + 1, 1, z + 1, w - 2, 4, d - 2, 0)
-    box(x, 1, z, w, 4, 1, 18)
-    box(x, 1, z + d - 1, w, 4, 1, 18)
-    box(x, 1, z, 1, 4, d, 18)
-    box(x + w - 1, 1, z, 1, 4, d, 18)
-    for ax in (x, x + w - 1):
-        for az in (z, z + d - 1):
-            box(ax, 1, az, 1, 5, 1, 4)
-    for az in (z, z + d - 1):
-        for ax in (x + 2, x + w - 3):
-            box(ax, 2, az, 2, 2, 1, 44)
-    box(cx, 1, z + d - 1, 2, 3, 1, 0)      # doorway
-    box(cx, 0, z + d, 2, 1, 2, 36)
-    box(cx - 1, 4, z + d - 1, 4, 1, 1, 58)  # door lintel
-    box(x + w - 3, 1, z + 1, 1, 4, 1, 39)  # chimney
-    box(x + w - 3, 5, z + 1, 1, 2, 1, 39)
-    if flat:
-        for level in range(w // 2 + 1):
-            box(x - 1 + level, 5 + level, z - 1, w + 2 - 2 * level, 1, d + 2, 29)
-    else:
-        for level in range(min(w, d) // 2 + 1):
-            box(x - 1 + level, 5 + level, z - 1, w + 2 - 2 * level, 1, d + 2, 59)
-    box(x + 1, 1, z + 1, 2, 1, 3, 18)
-    box(x + w - 3, 1, z + 1, 2, 1, 2, 15)
+# ==============================================================================
+# 2. OUTER RING CITY / POSAD (local radius 46..118)
+# Citizen spawns: (0,38), (79,-2), (-70,54), (0,-74), (-24,-18), (22,-18),
+#                 (52,0), (-52,0), (74,-40), (-74,-40), (96,-20), (-96,-20), (16,72), (-16,72)
+# ==============================================================================
+def build_ring_city():
+    # Carefully placed varied houses along the 3 concentric avenues (avoiding citizen promenade tiles!)
+    house_sites = [
+        # Inner ring (~r=54)
+        (38, 38, 5, 4, 2, SHINGLES, LIMESTONE, -1),
+        (-38, 38, 5, 4, 2, SLATE, LIMESTONE, -1),
+        (38, -38, 5, 4, 2, TERRACOTTA, LIMESTONE, 1),
+        (-38, -38, 5, 4, 2, SHINGLES, LIMESTONE, 1),
+        (54, 22, 5, 4, 1, SHINGLES, PLANK, -1),
+        (-54, 22, 5, 4, 1, TERRACOTTA, PLANK, -1),
+        (54, -22, 5, 4, 2, SLATE, LIMESTONE, 1),
+        (-54, -22, 5, 4, 2, SHINGLES, LIMESTONE, 1),
+        (24, -54, 5, 4, 1, TERRACOTTA, LIMESTONE, 1),
+        (-24, -54, 5, 4, 1, SHINGLES, LIMESTONE, 1),
+        # Middle ring (~r=78)
+        (56, 56, 6, 4, 2, SHINGLES, LIMESTONE, -1),
+        (-56, -56, 6, 4, 2, SLATE, LIMESTONE, 1),
+        (56, -56, 5, 4, 1, TERRACOTTA, PLANK, 1),
+        (32, 76, 5, 4, 2, SLATE, LIMESTONE, -1),
+        (-32, 76, 5, 4, 2, SHINGLES, LIMESTONE, -1),
+        (32, -78, 5, 4, 1, SHINGLES, PLANK, 1),
+        (-32, -78, 5, 4, 1, TERRACOTTA, PLANK, 1),
+        (-78, -18, 5, 4, 2, SHINGLES, LIMESTONE, 1),
+        (-78, 18, 5, 4, 1, SLATE, LIMESTONE, -1),
+        # Outer ring (~r=100)
+        (72, 68, 5, 4, 1, SHINGLES, PLANK, -1),
+        (-72, 68, 5, 4, 1, TERRACOTTA, PLANK, -1),
+        (72, -68, 5, 4, 2, SLATE, LIMESTONE, 1),
+        (-72, -68, 5, 4, 2, SHINGLES, LIMESTONE, 1),
+        (98, 22, 5, 4, 1, TERRACOTTA, LIMESTONE, -1),
+        (44, 96, 5, 4, 1, SHINGLES, PLANK, -1),
+        (-44, 96, 5, 4, 1, SLATE, PLANK, -1),
+        (20, 98, 5, 4, 2, TERRACOTTA, LIMESTONE, -1),
+        (-20, 98, 5, 4, 2, SHINGLES, LIMESTONE, -1),
+    ]
+    for cx, cz, hw, hd, st, rf, wl, fz in house_sites:
+        town_house(cx, cz, hw, hd, st, rf, wl, fz)
 
+    # ---- EASTERN GRAND COVERED BAZAAR (x = 68..92, z = -16..16; (79,-2) is open market promenade!) ----
+    b(68, 92, 0, 0, -16, 16, SANDSTONE)
+    ring(68, 92, -16, 16, 0, 0, POLISHED_GRANITE)
+    # Ornate Bazaar Fountain at (86, 0)
+    ring(84, 88, -2, 2, 1, 1, POLISHED_MARBLE)
+    b(85, 87, 1, 1, -1, 1, WATER)
+    b(86, 86, 2, 4, 0, 0, POLISHED_MARBLE)
+    b(86, 86, 5, 5, 0, 0, LANTERN)
+    # 6 Covered Market Pavilions on North & South flanks (z = -14..-9 and z = 8..13)
+    for sx, canopy in ((70, TERRACOTTA), (78, SHINGLES), (86, TERRACOTTA)):
+        for sz, c_dir in ((-13, 1), (9, -1)):
+            for px in (sx, sx + 4):
+                for pz in (sz, sz + 3):
+                    b(px, px, 1, 3, pz, pz, OAK_LOG)
+            b(sx - 1, sx + 5, 4, 4, sz - 1, sz + 4, canopy)
+            b(sx + 1, sx + 3, 1, 1, sz + (3 if c_dir > 0 else 0), sz + (3 if c_dir > 0 else 0), PLANK)
+            b(sx + 2, sx + 2, 1, 1, sz + 1, sz + 1, WORKBENCH)
+            b(sx + 2, sx + 2, 3, 3, sz + 2, sz + 2, LANTERN)
 
-def stall(x, z):
-    for px, pz in ((x, z), (x + 3, z), (x, z + 2), (x + 3, z + 2)):
-        box(px, 1, pz, 1, 3, 1, 4)
-    box(x - 1, 4, z - 1, 6, 1, 5, 18)
-    box(x, 3, z, 4, 1, 1, 36)
-    box(x, 1, z, 1, 1, 1, 45)
-    box(x + 3, 1, z + 1, 1, 1, 1, 45)
+    # ---- SOUTH-WEST IMPERIAL FOUNDRY & BLACKSMITH (x = -80..-60, z = 46..62; (-70, 54) open hall!) ----
+    b(-80, -60, 0, 0, 46, 62, COBBLE)
+    ring(-80, -60, 46, 62, 1, 5, BRICK)
+    b(-79, -61, 1, 5, 47, 61, AIR)
+    b(-74, -66, 1, 4, 46, 46, AIR)  # Wide open forge archway facing north!
+    for k in range(7):
+        b(-81 + k, -59 - k, 6 + k, 6 + k, 45, 63, SLATE)
+    b(-78, -76, 1, 16, 58, 60, CLAY_BRICK)  # Tall brick foundry smokestack
+    b(-78, -76, 1, 2, 57, 57, FURNACE)
+    b(-64, -63, 1, 1, 59, 59, GENERATOR)
+    b(-63, -63, 1, 1, 50, 51, WATER)
+    b(-77, -77, 1, 1, 50, 50, WORKBENCH)
+    b(-70, -70, 5, 5, 54, 54, LANTERN)
 
+    # ---- NORTHERN SANCTUARY CATHEDRAL-CHAPEL (x = -9..9, z = -96..-70; (0, -74) open nave!) ----
+    b(-9, 9, 0, 0, -96, -70, POLISHED_MARBLE)
+    ring(-9, 9, -96, -70, 1, 8, BRICK)
+    b(-8, 8, 1, 8, -95, -71, AIR)
+    for pz in range(-94, -71, 6):
+        b(-9, -9, 1, 9, pz, pz, POLISHED_STONE)
+        b(9, 9, 1, 9, pz, pz, POLISHED_STONE)
+        b(-9, -9, 3, 6, pz + 2, pz + 3, GLASS)
+        b(9, 9, 3, 6, pz + 2, pz + 3, GLASS)
+    for k in range(10):
+        if -10 + k <= 10 - k:
+            b(-10 + k, 10 - k, 9 + k, 9 + k, -97, -69, SHINGLES)
+    # Tall Southern Belfry Spire at (0, -68) with arched portal underneath into nave!
+    bastion_tower(0, -68, rad=3.6, h=22, spire_mat=COPPER_BLOCK)
+    b(-2, 2, 1, 5, -73, -63, AIR)
+    b(-2, 2, 1, 2, -93, -91, POLISHED_GRANITE)
+    b(0, 0, 3, 4, -92, -92, CRYSTAL)
+    b(0, 0, 7, 7, -82, -82, LANTERN)
 
-def tree(x, z, h=5):
-    box(x, 1, z, 1, h, 1, 4)
-    box(x - 2, h, z - 2, 5, 3, 5, 5)
-    box(x - 1, h + 3, z - 1, 3, 2, 3, 5)
+    # ---- WESTERN HILLTOP WINDMILL (x = -104..-92, z = 34..46) ----
+    cyl_shell(-98, 40, 5.2, 3.4, 1, 16, LIMESTONE)
+    disc(-98, 40, 5.0, 0, 0, COBBLE)
+    for k in range(6):
+        disc(-98, 40, max(1.0, 5.6 - k * 0.9), 17 + k, 17 + k, SHINGLES)
+    b(-99, -97, 1, 3, 34, 36, AIR)
+    # 4 Grand Diagonal Windmill Sails on South Face (z = 33)
+    b(-98, -98, 13, 13, 32, 35, OAK_LOG)
+    for d in range(1, 9):
+        for sx, sy in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+            wx, wy = -98 + sx * d, 13 + sy * d
+            if 2 <= wy <= 24:
+                b(wx, wx, wy, wy, 32, 32, OAK_LOG)
+                b(wx + (0 if sy > 0 else -1), wx + (1 if sy > 0 else 0), wy, wy, 33, 33, PLANK)
 
+    # ---- IRRIGATED TERRACED FARMS (Keeping (96,-20) & (-96,-20) clear!) ----
+    for fx, fz in ((98, -54), (-102, -46)):
+        ring(fx - 9, fx + 9, fz - 8, fz + 8, 1, 1, OAK_LOG)
+        b(fx - 1, fx + 1, 1, 1, fz + 8, fz + 8, AIR)
+        for rz in range(fz - 7, fz + 8):
+            b(fx - 8, fx + 8, 0, 0, rz, rz, WATER if (rz - fz) % 3 == 0 else DIRT)
 
-# ------------------------------------------------------------ settlement ----
-def settlement():
-    # 24 houses on three arcs facing the keep
-    arc_specs = [(52, 11, 0), (74, 15, 12), (96, 19, 25)]
-    count = 0
-    for radius, n, offset in arc_specs:
-        for i in range(n):
-            ang = math.radians(offset + i * 360.0 / n)
-            hx = int(round(math.sin(ang) * radius))
-            hz = int(round(math.cos(ang) * radius))
-            if abs(hx) < 30 and hz > 40:      # keep the great-road corridor open
-                continue
-            w = 9 if count % 3 else 11
-            d = 11 if count % 3 == 1 else 9
-            house(hx, hz, w, d)
-            count += 1
-    # market square (east)
-    box(70, 0, -14, 22, 1, 28, 43)
-    box(78, 1, -2, 6, 1, 6, 36)
-    box(79, 1, -1, 4, 1, 4, 7)
-    for px, pz in ((79, -2), (82, -2), (79, 1), (82, 1)):
-        box(px, 2, pz, 1, 3, 1, 4)
-    box(78, 5, -3, 6, 1, 6, 59)
-    box(80, 6, -1, 1, 1, 1, 56)
-    for i, sx in enumerate((71, 77, 83)):
-        stall(sx, -10)
-        stall(sx, 4)
-    # blacksmith (south-west)
-    box(-78, 0, 48, 20, 1, 16, 36)
-    for px, pz in ((-78, 48), (-60, 48), (-78, 62), (-60, 62)):
-        box(px, 1, pz, 1, 5, 1, 4)
-    box(-79, 6, 47, 22, 1, 18, 59)
-    box(-72, 1, 52, 1, 1, 1, 17)
-    box(-68, 1, 52, 1, 1, 1, 17)
-    box(-70, 2, 52, 3, 1, 1, 27)
-    box(-66, 1, 50, 2, 7, 2, 39)  # chimney
-    box(-66, 8, 50, 2, 3, 2, 39)
-    # chapel (north)
-    house(0, -84, 12, 18)
-    tower(0, -70, 3, 1, 22)
-    box(0, 1, -80, 4, 1, 6, 0)
-    box(-1, 1, -88, 3, 1, 4, 55)
-    box(2, 1, -88, 3, 1, 4, 55)
-    # farms (two plots)
-    for fx, fz in ((96, -60), (-96, -20)):
-        for row in range(4):
-            box(fx - 8, 1, fz + row * 3, 16, 1, 2, 2)
-            box(fx - 8, 1, fz + row * 3 + 2, 16, 1, 1, 7)
-        for px in range(fx - 9, fx + 10, 3):
-            box(px, 1, fz - 2, 1, 2, 1, 4)
-            box(px, 1, fz + 13, 1, 2, 1, 4)
-    # trees & lamps along the ring
-    for i in range(16):
-        ang = math.radians(i * 22.5 + 7)
-        tx = int(round(math.sin(ang) * 112))
-        tz = int(round(math.cos(ang) * 112))
-        tree(tx, tz, 4 + (i % 3))
-    for i in range(12):
-        ang = math.radians(i * 30 + 15)
-        lx = int(round(math.sin(ang) * 44))
-        lz = int(round(math.cos(ang) * 44))
-        if lz > 30 and abs(lx) < 12:
+    # ---- SAKURA & OAK BOULEVARD TREES + WROUGHT STREET LANTERNS ----
+    for i in range(20):
+        ang = math.radians(i * 18 + 9)
+        tx, tz = int(round(math.sin(ang) * 112)), int(round(math.cos(ang) * 112))
+        if abs(tx) < 10 or abs(tz) < 10:
             continue
-        box(lx, 1, lz, 1, 4, 1, 4)
-        box(lx, 5, lz, 1, 1, 1, 56)
-    # road sign near the great road
-    box(-10, 1, 52, 1, 3, 1, 4)
-    box(-11, 3, 52, 3, 2, 1, 58)
+        tree(tx, tz, 5 + (i % 2), SAKURA if i % 2 == 0 else LEAVES)
+    for lx, lz in ((-44, -8), (44, -8), (-44, 8), (44, 8), (-8, -44), (8, -44), (-8, 46), (8, 46),
+                   (-66, -8), (66, -8), (-8, 66), (8, 66), (76, -20), (-76, -20)):
+        lantern_post(lx, lz, 1)
 
 
-keep()
-settlement()
+build_imperial_keep()
+build_ring_city()
 
-# great road: castle gate -> Quietford well, plus avenues and a ring
+# Verify ALL 14 LivingSimulation citizen/cat spawn coordinates have solid floor (ry=0) and clear headroom (ry=1..2)!
+kx_list = [0, 79, -70, 0, -24, 22, 52, -52, 74, -74, 96, -96, 16, -16]
+kz_list = [38, -2, 54, -74, -18, -18, 0, 0, -40, -40, -20, -20, 72, 72]
+
+
+def sample_local(x, ry, z):
+    val = 0
+    for x0, x1, y0, y1, z0, z1, bid in boxes:
+        if x0 <= x <= x1 and y0 <= ry <= y1 and z0 <= z <= z1:
+            val = bid
+    return val
+
+
+for idx, (kx, kz) in enumerate(zip(kx_list, kz_list)):
+    for dy in (1, 2):
+        blk = sample_local(kx, dy, kz)
+        assert blk == 0, f"Kingdom citizen #{idx} obstructed at local ({kx}, {dy}, {kz}) by block {blk}!"
+
+# Great road: castle gate -> Quietford well, plus avenues and boulevard ring
 road(CX, CZ + 40, 96, 48, 4)
 road(CX - 30, CZ, CX + 30, CZ, 3)
 road(CX, CZ - 30, CX, CZ + 30, 3)
-ring = []
+ring_pts = []
 for i in range(8):
     a = math.radians(i * 45)
-    ring.append((int(CX + math.sin(a) * 44), int(CZ + math.cos(a) * 44)))
+    ring_pts.append((int(CX + math.sin(a) * 44), int(CZ + math.cos(a) * 44)))
 for i in range(8):
-    road(ring[i][0], ring[i][1], ring[(i + 1) % 8][0], ring[(i + 1) % 8][1], 3)
+    road(ring_pts[i][0], ring_pts[i][1], ring_pts[(i + 1) % 8][0], ring_pts[(i + 1) % 8][1], 3)
 
 # ------------------------------------------------------------------ emit ----
 cells = {}
-for idx, b in enumerate(boxes):
-    for cx in range(b[0] >> 4, (b[1] >> 4) + 1):
-        for cz in range(b[4] >> 4, (b[5] >> 4) + 1):
+for idx, bx in enumerate(boxes):
+    for cx in range(bx[0] >> 4, (bx[1] >> 4) + 1):
+        for cz in range(bx[4] >> 4, (bx[5] >> 4) + 1):
             key = (cx + 2048) * 4096 + (cz + 2048)
             cells.setdefault(key, []).append(idx)
 keys = sorted(cells)
@@ -292,19 +495,20 @@ for key in keys:
 cell_start.append(len(flat))
 
 flat_boxes = []
-for b in boxes:
-    flat_boxes.extend(b)
+for bx in boxes:
+    flat_boxes.extend(bx)
 
 lines = []
 lines.append("using Unity.Mathematics;")
 lines.append("namespace LestingCraft.World")
 lines.append("{")
-lines.append("    /// <summary>The Tsardom: a grand castle keep with a ring settlement and the")
-lines.append("    /// great road to Quietford. Authored by Tools/build_kingdom.py (bucketed boxes).</summary>")
+lines.append("    /// <summary>The Tsardom: Imperial Cathedral-Keep with a fortified ring city and")
+lines.append("    /// the great road to Quietford. Authored by Tools/build_kingdom.py (bucketed local boxes).</summary>")
 lines.append("    public static class KingdomPlan")
 lines.append("    {")
 lines.append(f"        public const int CenterX={CX},CenterZ={CZ},Core={CORE},Region={REGION};")
 lines.append("        public static bool Inside(int x,int z)=>math.abs(x-CenterX)<=Region&&math.abs(z-CenterZ)<=Region;")
+lines.append("        public static int BaseY(int seed)=>math.max(44,TerrainGenerator.Height(CenterX,CenterZ,seed,Dimension.Lestingia));")
 lines.append("        static readonly int[] RoadSegments={%s};" % ",".join(str(v) for seg in roads for v in seg))
 lines.append("        static readonly int[] CellKeys={%s};" % ",".join(str(k) for k in cell_keys))
 lines.append("        static readonly int[] CellStart={%s};" % ",".join(str(v) for v in cell_start))
@@ -324,13 +528,13 @@ lines.append("""
             return false;
         }
 
-        static int GroundAt(int x,int ry,int z)
+        static int GroundAt(int lx,int ry,int lz)
         {
-            int key=((x>>4)+2048)*4096+((z>>4)+2048);
+            int key=((lx>>4)+2048)*4096+((lz>>4)+2048);
             int lo=0,hi=CellKeys.Length-1;
             while(lo<=hi){int mid=(lo+hi)/2;int c=CellKeys[mid];if(c<key)lo=mid+1;else if(c>key)hi=mid-1;else{
                 int id=0;for(int i=CellStart[mid];i<CellStart[mid+1];i++){int b=BoxIndex[i]*7;
-                    if(x>=Boxes[b]&&x<=Boxes[b+1]&&ry>=Boxes[b+2]&&ry<=Boxes[b+3]&&z>=Boxes[b+4]&&z<=Boxes[b+5])id=Boxes[b+6];}
+                    if(lx>=Boxes[b]&&lx<=Boxes[b+1]&&ry>=Boxes[b+2]&&ry<=Boxes[b+3]&&lz>=Boxes[b+4]&&lz<=Boxes[b+5])id=Boxes[b+6];}
                 return id;}}
             return 0;
         }
@@ -350,20 +554,20 @@ lines.append("""
                 if(y<=natural){block=y==natural?(ushort)32:y<natural-2?(ushort)1:(ushort)2;return true;}
                 return true;
             }
-            int baseY=math.max(44,TerrainGenerator.Height(CenterX,CenterZ,seed,Dimension.Lestingia));
+            int baseY=BaseY(seed);
             int natural2=TerrainGenerator.Height(x,z,seed,Dimension.Lestingia),top=baseY;
             if(dist>0){int blend=math.min(6,dist);top=(baseY*(6-blend)+natural2*blend)/6;}
             if(y<top-3&&y<=natural2)return false;
             if(y<=top)
             {
                 block=y==top?(dist<=0?(ushort)40:(ushort)2):y<top-2?(ushort)1:(ushort)2;
-                if(y==top&&dist<=0){int g=GroundAt(x,0,z);if(g!=0)block=(ushort)g;}
+                if(y==top&&dist<=0){int g=GroundAt(dx,0,dz);if(g!=0)block=(ushort)g;}
                 return true;
             }
             if(y>baseY+46)return true;
             if(dist>0)return true;
             int ry=y-baseY;
-            block=(ushort)GroundAt(x,ry,z);
+            block=(ushort)GroundAt(dx,ry,dz);
             return true;
         }
     }
@@ -371,4 +575,4 @@ lines.append("""
 """)
 out = r / "Assets/Scripts/World/KingdomPlan.cs"
 out.write_text("\n".join(lines), encoding="utf-8")
-print(f"KingdomPlan.cs: {len(boxes)} boxes, {len(flat)} bucket entries, {len(roads)} road segments, {len(out.read_text(encoding='utf-8'))} bytes")
+print(f"KingdomPlan.cs rebuilt: {len(boxes)} boxes, {len(flat)} bucket entries, {len(roads)} road segments, {len(out.read_text(encoding='utf-8'))} bytes")
