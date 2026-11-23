@@ -6,30 +6,93 @@ using LestingCraft.Gameplay;
 
 namespace LestingCraft.Presentation
 {
+    [Serializable]
+    public sealed class MobOverrideEntry
+    {
+        public int species;
+        public float overallScale = 1f;
+        public float yOffset;
+        public Vector3 headScale = Vector3.one;
+        public Vector3 bodyScale = Vector3.one;
+        public Vector3 legScale = Vector3.one;
+        public Vector3 tailScale = Vector3.one;
+        public Vector3 headOffset = Vector3.zero;
+        public Vector3 bodyOffset = Vector3.zero;
+    }
+
+    [Serializable]
+    public sealed class MobOverrideCatalog
+    {
+        public List<MobOverrideEntry> entries = new List<MobOverrideEntry>();
+    }
+
     // Wildlife are real surface-culled voxel sculptures: each species is authored through
     // <see cref="AnimalSculpts"/> (the same Sculptor engine as planetary bosses) and built by
     // <see cref="BossSculpture"/>, so animals read as rounded voxel models instead of flat
-    // box drawings. Articulated parts ("body", "head", "leg0..N", "tail", "wingL/R", "earL/R")
-    // are the pivots this class animates; rotation belongs to transforms, never to mesh vertices.
+    // box drawings. Custom prefabs in Resources/CustomMobs/mob_XX or scale tweaks in
+    // Resources/CustomMobs/MobOverrides are automatically picked up when present.
     public sealed class AnimalVisual : MonoBehaviour
     {
         public readonly List<Transform> Legs = new List<Transform>();
         public readonly List<Transform> Wings = new List<Transform>();
         public Transform Head;
         public int Species { get { return species; } }
+        public Transform RigRoot { get { return rig; } }
 
         public static readonly string[] SpeciesFurNames = AnimalSculpts.SpeciesFurNames;
         public static readonly string[] SpeciesNames = AnimalSculpts.SpeciesNames;
 
         BossSculpture sculpt;
+        GameObject customInstance;
         Transform rig, body, tail;
         readonly List<Transform> ears = new List<Transform>();
         int species;
         Vector3 last;
+        Vector3 baseRigPos = Vector3.zero;
+        Vector3 baseRigScale = Vector3.one;
+        Vector3 baseBodyScale = Vector3.one;
         float elapsed, filteredSpeed, animationClock;
+
+        static Dictionary<int, MobOverrideEntry> cachedOverrides;
+        static bool overridesLoaded;
 
         /// <summary>Canonical coat tint per species, exposed for callers that need it.</summary>
         public Color CoatTint => AnimalSculpts.CoatTints[species];
+
+        public static string CustomResourceKey(int kind)
+        {
+            return string.Format("CustomMobs/mob_{0:00}", Mathf.Clamp(kind, 0, SpeciesNames.Length - 1));
+        }
+
+        public static void ReloadOverridesCache()
+        {
+            overridesLoaded = false;
+            cachedOverrides = null;
+        }
+
+        public static MobOverrideEntry GetOverride(int kind)
+        {
+            if (!overridesLoaded)
+            {
+                overridesLoaded = true;
+                cachedOverrides = new Dictionary<int, MobOverrideEntry>();
+                var asset = Resources.Load<TextAsset>("CustomMobs/MobOverrides");
+                if (asset && !string.IsNullOrEmpty(asset.text))
+                {
+                    var cat = JsonUtility.FromJson<MobOverrideCatalog>(asset.text);
+                    if (cat != null && cat.entries != null)
+                    {
+                        for (int i = 0; i < cat.entries.Count; i++)
+                        {
+                            var e = cat.entries[i];
+                            if (e != null) cachedOverrides[e.species] = e;
+                        }
+                    }
+                }
+            }
+            MobOverrideEntry found;
+            return cachedOverrides != null && cachedOverrides.TryGetValue(kind, out found) ? found : null;
+        }
 
         static Material SharedMaterial
         {
@@ -49,34 +112,110 @@ namespace LestingCraft.Presentation
             return Surface(SpeciesFurNames[kind]);
         }
 
+        static Transform FindChildIgnoreCase(Transform root, string targetName)
+        {
+            if (!root) return null;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var ch = root.GetChild(i);
+                if (string.Equals(ch.name, targetName, StringComparison.OrdinalIgnoreCase))
+                    return ch;
+                var nested = FindChildIgnoreCase(ch, targetName);
+                if (nested) return nested;
+            }
+            return null;
+        }
+
         public void Build(int kind)
         {
-            if (sculpt) throw new InvalidOperationException("An animal visual is built once and then pooled.");
+            Build(kind, true);
+        }
+
+        public void Build(int kind, bool allowCustomPrefab)
+        {
+            if (sculpt || customInstance) throw new InvalidOperationException("An animal visual is built once and then pooled.");
             species = Mathf.Clamp(kind, 0, SpeciesNames.Length - 1);
             int fur = FurLayerForSpecies(kind);
             if (fur < 0) throw new InvalidOperationException("Invalid coat layer for species " + kind);
-            var data = AnimalSculpts.For(species);
-            sculpt = BossSculpture.Build(transform, data, SharedMaterial);
-            rig = sculpt.transform;
 
-            // Map the sculpture's named parts onto the animation rig. Missing parts (e.g. a
-            // swimmer without legs) simply leave the corresponding list empty.
-            Head = sculpt.FindPart("head");
-            body = sculpt.FindPart("body");
-            tail = sculpt.FindPart("tail");
-            for (int i = 0; i < 16; i++)
+            GameObject customPrefab = allowCustomPrefab ? Resources.Load<GameObject>(CustomResourceKey(species)) : null;
+            if (customPrefab)
             {
-                Transform leg = sculpt.FindPart("leg" + i);
-                if (leg) Legs.Add(leg); else break;
+                customInstance = Instantiate(customPrefab, transform, false);
+                customInstance.name = "CustomMob_" + species.ToString("00");
+                rig = customInstance.transform;
+                Head = FindChildIgnoreCase(rig, "head");
+                body = FindChildIgnoreCase(rig, "body");
+                tail = FindChildIgnoreCase(rig, "tail");
+                for (int i = 0; i < 16; i++)
+                {
+                    Transform leg = FindChildIgnoreCase(rig, "leg" + i);
+                    if (leg) Legs.Add(leg); else break;
+                }
+                Transform wl = FindChildIgnoreCase(rig, "wingL"), wr = FindChildIgnoreCase(rig, "wingR");
+                if (wl) Wings.Add(wl);
+                if (wr) Wings.Add(wr);
+                Transform el = FindChildIgnoreCase(rig, "earL"), er = FindChildIgnoreCase(rig, "earR");
+                if (el) ears.Add(el);
+                if (er) ears.Add(er);
             }
-            Transform wl = sculpt.FindPart("wingL"), wr = sculpt.FindPart("wingR");
-            if (wl) Wings.Add(wl);
-            if (wr) Wings.Add(wr);
-            Transform el = sculpt.FindPart("earL"), er = sculpt.FindPart("earR");
-            if (el) ears.Add(el);
-            if (er) ears.Add(er);
+            else
+            {
+                var data = AnimalSculpts.For(species);
+                sculpt = BossSculpture.Build(transform, data, SharedMaterial);
+                rig = sculpt.transform;
+                Head = sculpt.FindPart("head");
+                body = sculpt.FindPart("body");
+                tail = sculpt.FindPart("tail");
+                for (int i = 0; i < 16; i++)
+                {
+                    Transform leg = sculpt.FindPart("leg" + i);
+                    if (leg) Legs.Add(leg); else break;
+                }
+                Transform wl = sculpt.FindPart("wingL"), wr = sculpt.FindPart("wingR");
+                if (wl) Wings.Add(wl);
+                if (wr) Wings.Add(wr);
+                Transform el = sculpt.FindPart("earL"), er = sculpt.FindPart("earR");
+                if (el) ears.Add(el);
+                if (er) ears.Add(er);
+            }
+
+            baseRigPos = rig ? rig.localPosition : Vector3.zero;
+            baseRigScale = rig ? rig.localScale : Vector3.one;
+            baseBodyScale = body ? body.localScale : Vector3.one;
+
+            var ov = GetOverride(species);
+            if (ov != null) ApplyOverride(ov);
 
             ResetMotion();
+        }
+
+        public void ApplyOverride(MobOverrideEntry ov)
+        {
+            if (ov == null || !rig) return;
+            float s = Mathf.Max(0.05f, ov.overallScale);
+            baseRigScale = Vector3.one * s;
+            baseRigPos = new Vector3(0f, ov.yOffset, 0f);
+            rig.localScale = baseRigScale;
+            rig.localPosition = baseRigPos;
+            if (Head)
+            {
+                Head.localScale = ov.headScale == Vector3.zero ? Vector3.one : ov.headScale;
+                Head.localPosition += ov.headOffset;
+            }
+            if (body)
+            {
+                baseBodyScale = ov.bodyScale == Vector3.zero ? Vector3.one : ov.bodyScale;
+                body.localScale = baseBodyScale;
+                body.localPosition += ov.bodyOffset;
+            }
+            if (tail && ov.tailScale != Vector3.zero)
+                tail.localScale = ov.tailScale;
+            if (ov.legScale != Vector3.zero)
+            {
+                for (int i = 0; i < Legs.Count; i++)
+                    if (Legs[i]) Legs[i].localScale = ov.legScale;
+            }
         }
 
         public void ResetMotion()
@@ -84,21 +223,27 @@ namespace LestingCraft.Presentation
             last = transform.position;
             filteredSpeed = 0;
             animationClock = 0;
-            if (rig) { rig.localPosition = Vector3.zero; rig.localRotation = Quaternion.identity; rig.localScale = Vector3.one; }
+            if (rig)
+            {
+                rig.localPosition = baseRigPos;
+                rig.localRotation = Quaternion.identity;
+                rig.localScale = baseRigScale;
+            }
+            if (body) body.localScale = baseBodyScale;
         }
 
         public void SetViewDistance(float distance)
         {
             if (!rig) return;
             float scale = 1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(48, 56, distance));
-            rig.localScale = Vector3.one * scale;
+            rig.localScale = baseRigScale * scale;
         }
 
         public void Animate(float dt) { Animate(dt, 0); }
 
         public void Animate(float dt, float distance)
         {
-            if (dt <= 0 || !rig || !Head) return;
+            if (dt <= 0 || !rig) return;
             float speed = new Vector2(transform.position.x - last.x, transform.position.z - last.z).magnitude / Mathf.Max(.001f, dt);
             last = transform.position;
             filteredSpeed = Mathf.Lerp(filteredSpeed, Mathf.Min(speed, 8), 1 - Mathf.Exp(-dt * 12));
@@ -114,7 +259,7 @@ namespace LestingCraft.Presentation
             bool hopper = species == 1 || species == 10 || species == 21;
             bool flyer = species == 11 || species == 12 || species == 19 || species == 25 || species == 26 || species == 33;
             float hop = hopper ? Mathf.Max(0, Mathf.Sin(g)) * (species == 10 ? .2f : .13f) * Mathf.Clamp01(filteredSpeed) : 0;
-            rig.localPosition = new Vector3(0, hop, 0);
+            rig.localPosition = baseRigPos + new Vector3(0, hop, 0);
             for (int i = 0; i < Legs.Count; i++)
             {
                 float phase = hopper ? (i < 2 ? 0 : .65f) : i % 2 == 0 ? 0 : Mathf.PI;
@@ -127,10 +272,13 @@ namespace LestingCraft.Presentation
             if (body)
             {
                 float breath = 1f + Mathf.Sin(elapsed * 1.9f) * .018f;
-                body.localScale = new Vector3(1f, breath, 1f);
+                body.localScale = new Vector3(baseBodyScale.x, baseBodyScale.y * breath, baseBodyScale.z);
             }
-            Head.localRotation = Quaternion.Euler(Mathf.Sin(elapsed * .7f) * 3,
-                Mathf.Sin(elapsed * .4f) * (species == 12 ? 22f : 7f), 0);
+            if (Head)
+            {
+                Head.localRotation = Quaternion.Euler(Mathf.Sin(elapsed * .7f) * 3,
+                    Mathf.Sin(elapsed * .4f) * (species == 12 ? 22f : 7f), 0);
+            }
             // Ears twitch independently of the head, a cheap but convincing life cue.
             float twitch = Mathf.Sin(elapsed * 3.7f) * 6f + Mathf.Sin(elapsed * 1.3f) * 3f;
             for (int i = 0; i < ears.Count; i++)
@@ -159,8 +307,14 @@ namespace LestingCraft.Presentation
             {
                 if (Application.isPlaying) Destroy(sculpt);
                 else DestroyImmediate(sculpt);
+                sculpt = null;
             }
-            sculpt = null;
+            if (customInstance)
+            {
+                if (Application.isPlaying) Destroy(customInstance);
+                else DestroyImmediate(customInstance);
+                customInstance = null;
+            }
         }
 
         // ---- Flat-box part builder kept for settler / NPC rigs (SettlerVisual reuses it). ----
