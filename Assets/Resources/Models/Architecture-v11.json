@@ -1,11 +1,11 @@
 {
   "contentVersion": 11,
-  "authoringSHA256": "2c0949a4fdb6c462d3b79900f76cdaf2883db426edff40a5c695c44e3d1fb754",
+  "authoringSHA256": "9d0a95affaae77742bdb4535273eeee48d93685da5141b22cbe732e01800c40f",
   "plans": [
     {
       "name": "Деревня с колодцем",
       "radius": 27,
-      "boxes": 533,
+      "boxes": 530,
       "entrances": [
         [
           -16,
@@ -37,7 +37,7 @@
     {
       "name": "Пограничный замок",
       "radius": 26,
-      "boxes": 623,
+      "boxes": 637,
       "entrances": [
         [
           -2,
@@ -63,7 +63,7 @@
     {
       "name": "Разрушенная усадьба",
       "radius": 17,
-      "boxes": 176,
+      "boxes": 174,
       "entrances": [
         [
           -2,
@@ -89,7 +89,7 @@
     {
       "name": "Сломанная дозорная башня",
       "radius": 14,
-      "boxes": 234,
+      "boxes": 223,
       "entrances": [
         [
           -1,
@@ -103,7 +103,7 @@
     {
       "name": "Заброшенный лагерь",
       "radius": 13,
-      "boxes": 289,
+      "boxes": 294,
       "entrances": [
         [
           -2,
@@ -131,7 +131,7 @@
     {
       "name": "Шахтёрский лагерь",
       "radius": 15,
-      "boxes": 168,
+      "boxes": 167,
       "entrances": [
         [
           -9,
@@ -165,7 +165,7 @@
     {
       "name": "Руины библиотеки",
       "radius": 18,
-      "boxes": 451,
+      "boxes": 374,
       "entrances": [
         [
           -2,
@@ -179,7 +179,7 @@
     {
       "name": "Караванный пост",
       "radius": 17,
-      "boxes": 264,
+      "boxes": 192,
       "entrances": [
         [
           -2,
@@ -200,10 +200,10 @@
           2
         ]
       ],
-      "top": 27
+      "top": 19
     }
   ],
-  "uniqueColumnPatterns": 857,
+  "uniqueColumnPatterns": 817,
   "columns": 15298,
-  "verticalRuns": 3302
+  "verticalRuns": 3168
 }

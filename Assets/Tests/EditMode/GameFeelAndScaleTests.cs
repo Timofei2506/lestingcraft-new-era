@@ -258,6 +258,15 @@ namespace LestingCraft.Tests
             Assert.AreNotEqual(0, v11Altar, "Sanctuary boss altar dais intact");
             Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(176, sBase + 2, -112, 2506, out ushort v11AltarAir, 11));
             Assert.AreEqual(0, v11AltarAir, "Sanctuary boss arena clear above altar");
+            // Bridge v11 river channel + open stone arch + slender 1x1 streetlamps (no T-hammer crossbars)
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(-3, sBase - 4, 9, 2506, out ushort v11River, 11));
+            Assert.AreEqual(7, v11River, "Bridge v11 river water flows beneath stone arch");
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(-3, sBase - 1, 9, 2506, out ushort v11ArchAir, 11));
+            Assert.AreEqual(0, v11ArchAir, "Bridge v11 vaulted arch span is open above water");
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(88, sBase + 4, 48, 2506, out ushort v11Bollard, 11));
+            Assert.AreEqual(LestingCraft.World.BlockRegistry.LanternBlockId, v11Bollard, "Slender 1x1 Quietford v11 streetlamp bollard");
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(87, sBase + 4, 48, 2506, out ushort v11NoHammer, 11));
+            Assert.AreEqual(0, v11NoHammer, "No T-hammer crossbar on v11 streetlamps");
 
             // 4. New 3D Planetary & Alien Structures across Moon, Mars, Europa & AndromedaPrime
             foreach (var body in new[] { LestingCraft.World.PlanetBody.Moon, LestingCraft.World.PlanetBody.Mars, LestingCraft.World.PlanetBody.Europa, LestingCraft.World.PlanetBody.AndromedaPrime })

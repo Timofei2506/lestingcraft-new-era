@@ -344,145 +344,266 @@ namespace LestingCraft.World
             if (ry < -8 || ry > 24) return false;
             int adx = Math.Abs(rx), adz = Math.Abs(rz);
 
-            // 1. Airless Worlds (Moon, Mercury): Geodesic Titanium Biodome + Solar Wing & Comms Mast
+            // 1. Airless Worlds (Moon, Mercury): Octagonal Ribbed Geodesic Biodome + Twin Solar Wings & Comms Mast
             if (body == PlanetBody.Moon || body == PlanetBody.Mercury)
             {
-                float d2 = rx * rx + rz * rz;
-                // Subsurface white-truss & concrete leveling pad (ry = -8..0) + Solar Wing at rx = 8..12
-                if (d2 <= 68f)
+                if (adx <= 12 && adz <= 10)
                 {
-                    if (ry < 0) { placed = (adx % 3 == 0 || adz % 3 == 0) ? (ushort)82 : (ushort)79; return true; }
-                    if (ry == 0) { placed = d2 <= 38f ? (ushort)40 : (ushort)80; return true; }
-                }
-                // South Pressurized Airlock Corridor (rz = -9..-6, adx <= 2)
-                if (rz >= -9 && rz <= -6 && adx <= 2 && ry >= 0 && ry <= 4)
-                {
-                    if (ry == 0) { placed = 80; return true; }
-                    if (adx <= 1 && ry >= 1 && ry <= 3) { placed = 0; return true; }
-                    placed = ry == 4 ? (ushort)66 : (ushort)82;
-                    return true;
-                }
-                // Hemispherical Geodesic Biodome (r <= 7.2, ry = 1..7)
-                if (ry >= 1 && ry <= 7 && d2 <= 54f)
-                {
-                    float sphereR = (float)Math.Sqrt(rx * rx + rz * rz + (ry - 0.5f) * (ry - 0.5f));
-                    if (sphereR <= 7.3f && sphereR >= 6.0f)
+                    int oct = adx + adz;
+                    int boxR = Math.Max(adx, adz);
+                    bool mainPad = boxR <= 7 && oct <= 11;
+                    bool airlockPad = rz >= -10 && rz <= -6 && adx <= 2;
+                    bool solarWing = adx >= 8 && adx <= 12 && adz <= 3;
+
+                    if (ry < 0)
                     {
-                        if (rz < -4 && adx <= 1 && ry <= 3) { placed = 0; return true; }
-                        bool rib = adx <= 1 || adz <= 1 || ry == 1 || ry == 4;
-                        placed = rib ? (ushort)66 : (ushort)84;
+                        if (mainPad || airlockPad)
+                        {
+                            placed = (adx % 3 == 0 || adz % 3 == 0) ? (ushort)82 : (ushort)79;
+                            return true;
+                        }
+                        if (solarWing && (adx == 8 || adx == 12) && (adz == 0 || adz == 3))
+                        {
+                            placed = 82;
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    if (ry == 0)
+                    {
+                        if (mainPad) { placed = (boxR == 7 || oct >= 10) ? (ushort)80 : (ushort)66; return true; }
+                        if (airlockPad) { placed = adx == 2 ? (ushort)80 : (ushort)66; return true; }
+                        if (solarWing) { placed = adz <= 2 ? (ushort)82 : (ushort)0; return true; }
+                        placed = 0;
                         return true;
                     }
-                    if (sphereR < 6.0f)
+
+                    // Symmetrical East & West Solar Tracking Wings (adx = 8..12, adz <= 2, ry = 1)
+                    if (solarWing && ry == 1)
                     {
+                        if (adx == 8 && rz == 0) { placed = 72; return true; }
+                        if (adx >= 9 && adz <= 2) { placed = 75; return true; }
+                        placed = 0;
+                        return true;
+                    }
+
+                    // South Pressurized Airlock Tunnel (rz = -10..-6, adx <= 2, ry = 1..4)
+                    if (airlockPad && ry <= 4)
+                    {
+                        if (adx <= 1 && ry <= 3) { placed = 0; return true; }
+                        placed = ry == 4 ? (ushort)66 : (rz == -10 ? (ushort)80 : (ushort)82);
+                        return true;
+                    }
+
+                    // Octagonal Habitat Wall (ry = 1..4): 2-block-thick structural ring so 100% 6-face-connected!
+                    if (ry >= 1 && ry <= 4 && boxR <= 6 && oct <= 9)
+                    {
+                        if (rz <= -5 && adx <= 1 && ry <= 3) { placed = 0; return true; }
+                        bool inner = boxR <= 4 && oct <= 6;
+                        if (!inner)
+                        {
+                            bool rib = adx == 0 || adz == 0 || adx == adz || ry == 1 || ry == 4;
+                            placed = rib ? (ushort)66 : (ushort)84;
+                            return true;
+                        }
+                        // Grounded interior hydroponics & control stations
                         if (ry == 1 && rx == 0 && rz == 3) { placed = 89; return true; }
                         if (ry == 1 && rx == -3 && rz == 2) { placed = 16; return true; }
                         if (ry == 1 && rx == 3 && rz == 2) { placed = 73; return true; }
                         if (ry == 1 && rx == -3 && rz == -1) { placed = 55; return true; }
-                        if (ry == 5 && rx == 0 && rz == 0) { placed = 77; return true; }
+                        if (ry == 1 && rx == 3 && rz == -1) { placed = 74; return true; }
                         placed = 0;
                         return true;
                     }
-                }
-                // Comms Antenna Spire atop dome (rx=0, rz=0, ry=8..14)
-                if (rx == 0 && rz == 0 && ry >= 8 && ry <= 14)
-                {
-                    placed = ry == 14 ? (ushort)77 : (ushort)82;
-                    return true;
-                }
-                // East Solar Power Array Wing (rx = 8..12, adz <= 3)
-                if (rx >= 8 && rx <= 12 && adz <= 3 && ry >= -6 && ry <= 2)
-                {
-                    if (ry < 0) { placed = (rx == 8 || rx == 12) && adz == 3 ? (ushort)82 : (ushort)0; return placed != 0; }
-                    if (ry == 0) { placed = 82; return true; }
-                    if (ry == 1) { placed = rx == 8 && rz == 0 ? (ushort)72 : (adz <= 2 && rx >= 9 ? (ushort)75 : (ushort)0); return true; }
+
+                    // Stepped Overlapping Geodesic Dome Courses (ry = 5..7 — every course overlaps >= 1 block!)
+                    if (ry == 5 && boxR <= 5 && oct <= 8)
+                    {
+                        bool inner5 = boxR <= 3 && oct <= 4;
+                        placed = inner5 ? (ushort)0 : ((adx <= 1 || adz <= 1) ? (ushort)66 : (ushort)84);
+                        return true;
+                    }
+                    if (ry == 6 && boxR <= 4 && oct <= 6)
+                    {
+                        bool inner6 = boxR <= 1 && oct <= 1;
+                        placed = inner6 ? (ushort)0 : ((adx <= 1 || adz <= 1) ? (ushort)66 : (ushort)84);
+                        return true;
+                    }
+                    if (ry == 7 && boxR <= 2 && oct <= 3)
+                    {
+                        placed = (adx == 0 && adz == 0) ? (ushort)66 : (ushort)84;
+                        return true;
+                    }
+
+                    // Deep-Space Comms Mast & Cross-Dipole Antenna atop cupola (ry = 8..14)
+                    if (ry >= 8 && ry <= 13 && rx == 0 && rz == 0) { placed = 82; return true; }
+                    if (ry == 11 && rz == 0 && adx <= 2) { placed = 82; return true; }
+                    if (ry == 14 && rx == 0 && rz == 0) { placed = 77; return true; }
+
                     placed = 0;
                     return true;
                 }
                 return false;
             }
 
-            // 2. Harsh Atmospheric Colonies (Mars, Venus, Titan): Habitation Pod + 18m Lattice Drilling Derrick
+            // 2. Harsh Atmospheric Colonies (Mars, Venus, Titan): Vaulted Colony Hab + Skybridge + 20m Gantry Derrick
             if (body == PlanetBody.Mars || body == PlanetBody.Venus || body == PlanetBody.Titan)
             {
-                if (adx <= 11 && adz <= 9)
+                if (adx <= 12 && adz <= 8)
                 {
                     if (ry < 0) { placed = 79; return true; }
-                    if (ry == 0) { placed = (adx == 11 || adz == 9) ? (ushort)80 : (ushort)66; return true; }
-                    // West Habitation Module (rx = -10..-1, adz <= 6, ry = 1..6)
-                    if (rx >= -10 && rx <= -1 && adz <= 6 && ry <= 6)
+                    if (ry == 0) { placed = (adx == 12 || adz == 8) ? (ushort)80 : (ushort)66; return true; }
+
+                    // West Vaulted Pressurized Colony Habitat (rx = -11..-2, adz <= 5, ry = 1..7)
+                    if (rx >= -11 && rx <= -2 && adz <= 5 && ry <= 7)
                     {
-                        bool wall = rx == -10 || rx == -1 || adz == 6;
-                        if (rz == -6 && rx >= -6 && rx <= -5 && ry <= 3) { placed = 0; return true; }
-                        if (ry == 6) { placed = (rx == -10 || rx == -1 || adz == 6) ? (ushort)80 : (ushort)66; return true; }
-                        if (wall)
+                        // South airlock door & East skybridge doorway
+                        if (rz == -5 && rx >= -7 && rx <= -6 && ry <= 3) { placed = 0; return true; }
+                        if (rx == -2 && adz <= 1 && ry <= 3) { placed = 0; return true; }
+                        if (ry <= 4)
                         {
-                            bool win = (ry == 2 || ry == 3) && (rx == -8 || rx == -3 || adz == 3);
-                            placed = win ? (ushort)84 : (ry == 1 ? (ushort)80 : (ushort)66);
+                            bool wall = rx == -11 || rx == -2 || adz == 5;
+                            if (wall)
+                            {
+                                bool win = (ry == 2 || ry == 3) && (rx == -9 || rx == -4 || adz == 2);
+                                placed = win ? (ushort)84 : (ry == 1 ? (ushort)80 : (ushort)66);
+                                return true;
+                            }
+                            if (ry == 1 && rx == -10 && rz == 3) { placed = 74; return true; }
+                            if (ry == 1 && rx == -8 && rz == 3) { placed = 73; return true; }
+                            if (ry == 1 && rx == -4 && rz == 3) { placed = 17; return true; }
+                            if (ry == 1 && rx == -10 && rz == -3) { placed = 55; return true; }
+                            if (ry == 1 && rx == -4 && rz == -3) { placed = 16; return true; }
+                            if (ry == 1 && rx == -6 && rz == 3) { placed = 66; return true; }
+                            if (ry == 2 && rx == -6 && rz == 3) { placed = 77; return true; }
+                            placed = 0;
                             return true;
                         }
-                        if (ry == 1 && rx == -9 && rz == 4) { placed = 74; return true; }
-                        if (ry == 1 && rx == -7 && rz == 4) { placed = 73; return true; }
-                        if (ry == 1 && rx == -3 && rz == 4) { placed = 17; return true; }
-                        if (ry == 1 && rx == -9 && rz == -4) { placed = 55; return true; }
-                        if (ry == 1 && rx == -3 && rz == -4) { placed = 16; return true; }
-                        if (ry == 5 && rx == -5 && rz == 0) { placed = 77; return true; }
-                        placed = 0;
+                        if (ry == 5) { placed = (rx == -11 || rx == -2 || adz == 5) ? (ushort)80 : (ushort)66; return true; }
+                        if (ry == 6) { placed = (rx >= -10 && rx <= -3 && adz <= 4) ? (ushort)66 : (ushort)0; return true; }
+                        if (ry == 7) { placed = (rx >= -9 && rx <= -4 && adz <= 2) ? (ushort)46 : (ushort)0; return true; }
+                    }
+
+                    // Enclosed Pressurized Glass-and-Titanium Skybridge (rx = -1..3, adz <= 2, ry = 1..4)
+                    if (rx >= -1 && rx <= 3 && adz <= 2 && ry <= 4)
+                    {
+                        if (adz <= 1 && ry <= 3) { placed = 0; return true; }
+                        placed = ry == 4 ? (ushort)66 : (ry == 1 ? (ushort)80 : (ushort)84);
                         return true;
                     }
-                    // Cable bridge at rz = 0 (rx = 0..2, ry = 1)
-                    if (rx >= 0 && rx <= 2 && rz == 0 && ry == 1) { placed = 72; return true; }
-                    // East 18m Lattice Drilling Derrick (rx = 3..9, adz <= 3, ry = 1..18)
-                    if (rx >= 3 && rx <= 9 && adz <= 3 && ry <= 18)
+
+                    // East 22m Tapered Lattice Drilling Derrick with Full Collar Decks & Pinnacle Mast (rx = 4..10, adz <= 3)
+                    if (rx >= 4 && rx <= 10 && adz <= 3 && ry <= 22)
                     {
-                        int drx = Math.Abs(rx - 6);
-                        if (drx == 0 && adz == 0 && ry <= 15) { placed = ry == 1 ? (ushort)50 : (ushort)49; return true; }
-                        int span = ry < 8 ? 3 : ry < 14 ? 2 : 1;
-                        if ((drx == span && adz == span) || (ry % 5 == 0 && (drx == span || adz == span) && drx <= span && adz <= span))
+                        int drx = Math.Abs(rx - 7);
+                        int mSpan = Math.Max(drx, adz);
+                        // Central heavy copper borehole drill string running down from crown!
+                        if (drx == 0 && adz == 0 && ry <= 18)
+                        {
+                            placed = ry <= 2 ? (ushort)50 : (ushort)46;
+                            return true;
+                        }
+                        // Collar Deck 1 at ry=7 (bridges span 3 -> span 2 face-to-face!)
+                        if (ry == 7 && mSpan >= 2 && mSpan <= 3) { placed = mSpan == 3 ? (ushort)80 : (ushort)66; return true; }
+                        // Collar Deck 2 at ry=13 (bridges span 2 -> span 1 face-to-face!)
+                        if (ry == 13 && mSpan >= 1 && mSpan <= 2) { placed = mSpan == 2 ? (ushort)80 : (ushort)66; return true; }
+                        // Tapered Crown Cap at ry=18 + Slender Antenna Mast ry=19..21 + Beacon at ry=22!
+                        if (ry == 18 && mSpan <= 1) { placed = (drx == 0 && adz == 0) ? (ushort)46 : (ushort)66; return true; }
+                        if (ry >= 19 && ry <= 21 && drx == 0 && adz == 0) { placed = 82; return true; }
+                        if (ry == 22 && drx == 0 && adz == 0) { placed = 77; return true; }
+
+                        int span = ry <= 7 ? 3 : ry <= 13 ? 2 : 1;
+                        bool cornerLeg = drx == span && adz == span && ry <= 17;
+                        bool girder = (ry == 4 || ry == 10 || ry == 16) && mSpan == span;
+                        if (cornerLeg || girder)
                         {
                             placed = 82;
                             return true;
                         }
-                        if (ry == 18 && drx == 0 && adz == 0) { placed = 77; return true; }
                         placed = 0;
                         return true;
                     }
-                    if (ry <= 6) { placed = 0; return true; }
+
+                    placed = 0;
+                    return true;
                 }
                 return false;
             }
 
-            // 3. Cryo Worlds (Europa, Pluto): Glacial Cherenkov Research Spire
+            // 3. Cryo Worlds (Europa, Pluto): 4-Finned Cryo-Reactor & Cherenkov Observatory Spire
             if (body == PlanetBody.Europa || body == PlanetBody.Pluto)
             {
-                float d = (float)Math.Sqrt(rx * rx + rz * rz);
-                if (d <= 8.5f)
+                if (adx <= 10 && adz <= 10)
                 {
-                    if (ry < 0) { placed = 63; return true; }
-                    if (ry == 0) { placed = d <= 6.5f ? (ushort)66 : (ushort)80; return true; }
-                    if (ry <= 5 && d <= 7.2f)
+                    int oct = adx + adz;
+                    int boxR = Math.Max(adx, adz);
+                    bool pad = boxR <= 8 && oct <= 12;
+                    if (ry < 0)
                     {
-                        if (rz < -4 && adx <= 1 && ry <= 3) { placed = 0; return true; }
-                        if (d >= 5.8f) { placed = (ry == 2 || ry == 3) ? (ushort)84 : (ushort)66; return true; }
-                        if (d <= 1.3f) { placed = 78; return true; }
+                        if (pad) { placed = 63; return true; }
+                        return false;
+                    }
+                    if (ry == 0)
+                    {
+                        placed = pad ? (boxR == 8 || oct >= 11 ? (ushort)80 : (ushort)66) : (ushort)0;
+                        return true;
+                    }
+
+                    // Octagonal Pressurized Cryo-Lab Base (ry = 1..5)
+                    if (ry <= 5 && boxR <= 6 && oct <= 9)
+                    {
+                        if (rz <= -5 && adx <= 1 && ry <= 3) { placed = 0; return true; }
+                        if (ry == 5) { placed = 66; return true; }
+                        // Central glowing Cherenkov plasma column inside lab
+                        if (adx <= 1 && adz <= 1) { placed = 78; return true; }
+                        bool innerLab = boxR <= 4 && oct <= 6;
+                        if (!innerLab)
+                        {
+                            bool frame = adx == 0 || adz == 0 || ry == 1 || ry == 4;
+                            placed = frame ? (ushort)66 : (ushort)84;
+                            return true;
+                        }
                         if (ry == 1 && rx == -3 && rz == 2) { placed = 52; return true; }
                         if (ry == 1 && rx == 3 && rz == 2) { placed = 89; return true; }
                         placed = 0;
                         return true;
                     }
-                    float spireR = 5.5f - (ry - 5) * 0.26f;
-                    if (ry >= 6 && ry <= 20 && spireR > 0.6f && d <= spireR)
+
+                    // Exposed Glowing Cyan Cherenkov Core + 4 Swept Titanium/Ice Buttress Fins (ry = 6..21)
+                    if (ry >= 6 && ry <= 20)
                     {
-                        placed = d <= 1.1f ? (ushort)78 : (ry % 4 == 0 ? (ushort)66 : (ushort)63);
-                        return true;
+                        if (ry <= 19 && adx <= 1 && adz <= 1 && (adx + adz <= 1 || ry <= 14))
+                        {
+                            placed = 78;
+                            return true;
+                        }
+                        if (ry == 20 && rx == 0 && rz == 0) { placed = 66; return true; }
+                        int finSpan = 6 - (ry - 6) / 3; // 6 -> 5 -> 4 -> 3 -> 2 across ry = 6..20
+                        if (ry <= 19 && ((adx == 0 && adz <= finSpan) || (adz == 0 && adx <= finSpan)))
+                        {
+                            int dAxis = Math.Max(adx, adz);
+                            placed = (dAxis == finSpan || ry % 4 == 0) ? (ushort)66 : (ushort)63;
+                            return true;
+                        }
+                        // Horizontal containment rings at ry = 9, 13, 17 locking fins & core together
+                        if ((ry == 9 && boxR <= 4 && oct <= 6) || (ry == 13 && boxR <= 3 && oct <= 4) || (ry == 17 && boxR <= 2 && oct <= 3))
+                        {
+                            placed = 66;
+                            return true;
+                        }
                     }
                     if (ry == 21 && rx == 0 && rz == 0) { placed = 77; return true; }
+
+                    placed = 0;
+                    return true;
                 }
                 return false;
             }
 
-            // 4. Exoplanets & Surreal Realms (ProximaB, Trappist1e, Kepler452b, AndromedaPrime, Somnia, Dream)
-            if (adx <= 10 && adz <= 10)
+            // 4. Exoplanets & Surreal Realms (ProximaB, Trappist1e, Kepler452b, AndromedaPrime, Somnia, Dream):
+            //    Stepped Ziggurat Courtyard + 4 Corner Obelisk Pylons + Walkable Glowing Precursor Stargate Arch!
+            if (adx <= 11 && adz <= 11)
             {
                 ushort stoneA = body == PlanetBody.ProximaB ? (ushort)64 :
                                 body == PlanetBody.AndromedaPrime ? (ushort)42 :
@@ -491,16 +612,20 @@ namespace LestingCraft.World
                 ushort accent = body == PlanetBody.AndromedaPrime ? (ushort)67 :
                                 body == PlanetBody.Somnia ? (ushort)31 :
                                 body == PlanetBody.Dream ? (ushort)42 : (ushort)30;
-                ushort coreGlow = body == PlanetBody.Somnia ? (ushort)78 :
-                                  body == PlanetBody.Dream ? (ushort)56 : (ushort)67;
+                ushort portalGlow = body == PlanetBody.Somnia ? (ushort)78 : (ushort)67; // Always solid full-cube emissive block!
 
-                if (ry < 0) { placed = stoneA; return true; }
-                // 3-stepped Ziggurat Terrace (ry = 0..2) with cardinal stairs
+                if (ry < 0)
+                {
+                    if (adx <= 10 && adz <= 10) { placed = stoneA; return true; }
+                    return false;
+                }
+
+                // 3-Stepped Ziggurat Terrace (ry = 0..2) with wide cardinal staircases
                 int tier = ry == 0 ? 10 : ry == 1 ? 8 : ry == 2 ? 6 : -1;
                 if (tier >= 0)
                 {
-                    bool stair = (adx <= 1 && adz <= 10 - ry) || (adz <= 1 && adx <= 10 - ry);
-                    if (adx <= tier && adz <= tier || stair)
+                    bool stair = (adx <= 2 && adz <= 10 - ry) || (adz <= 2 && adx <= 10 - ry);
+                    if ((adx <= tier && adz <= tier) || stair)
                     {
                         placed = (adx == tier || adz == tier) ? accent : stoneA;
                         return true;
@@ -508,28 +633,58 @@ namespace LestingCraft.World
                     placed = 0;
                     return true;
                 }
-                // 4 Corner Monolith Columns + Overhead Entablature Ring (ry = 3..11) + Soaring Central Spire/Arch
-                if (adx == 5 && adz == 5 && ry >= 3 && ry <= 11)
+
+                // 4 Sturdy 2x2 Corner Obelisk Pylons (adx = 5..6, adz = 5..6, ry = 3..11) + Crystal Finial
+                if (adx >= 5 && adx <= 6 && adz >= 5 && adz <= 6 && ry >= 3 && ry <= 11)
                 {
-                    placed = ry == 11 ? (ushort)11 : accent;
+                    if (ry == 11)
+                    {
+                        placed = (adx == 5 && adz == 5) ? (ushort)11 : stoneA;
+                        return true;
+                    }
+                    placed = ry == 10 ? stoneA : accent;
                     return true;
                 }
-                if ((adx == 5 && adz <= 5 || adz == 5 && adx <= 5) && (ry == 9 || ry == 10))
+
+                // Monumental Central Precursor Stargate Arch (adx <= 4, adz <= 1, ry = 3..18)
+                if (ry == 3 && adx <= 4 && adz <= 2)
                 {
-                    placed = stoneA;
+                    placed = adz == 2 ? accent : stoneA;
                     return true;
                 }
-                // Twin central Precursor Portal Arches & Levitating Resonance Crystal
-                if (ry >= 3 && ry <= 15 && adx == 2 && adz == 0) { placed = accent; return true; }
-                if (ry >= 14 && ry <= 16 && adx <= 2 && adz <= 1) { placed = stoneA; return true; }
-                if (rx == 0 && rz == 0 && ry >= 6 && ry <= 11) { placed = coreGlow; return true; }
-                if (rx == 0 && rz == 0 && ry == 17) { placed = 11; return true; }
-                if (ry == 3 && adx == 3 && adz == 3 && (body == PlanetBody.Trappist1e || body == PlanetBody.Kepler452b))
+                if (ry >= 4 && ry <= 13 && adx <= 4 && adz <= 1)
+                {
+                    // Heavy portal jambs at adx = 3..4
+                    if (adx >= 3)
+                    {
+                        placed = (adx == 4 || ry == 4 || ry == 13) ? stoneA : accent;
+                        return true;
+                    }
+                    // Glowing solid Precursor energy frame lining the inner 3x8 walkable portal opening!
+                    if (adz == 0 && (adx == 2 || ry == 4 || ry == 13))
+                    {
+                        placed = portalGlow;
+                        return true;
+                    }
+                    placed = 0;
+                    return true;
+                }
+                // Stepped Vaulted Stargate Crown & Resonance Spire (ry = 14..18)
+                if (ry == 14 && adx <= 4 && adz <= 1) { placed = stoneA; return true; }
+                if (ry == 15 && adx <= 3 && adz <= 1) { placed = accent; return true; }
+                if (ry == 16 && adx <= 2 && adz == 0) { placed = stoneA; return true; }
+                if (ry == 17 && adx <= 1 && adz == 0) { placed = accent; return true; }
+                if (ry == 18 && rx == 0 && rz == 0) { placed = 11; return true; }
+
+                // Optional bioluminescent corner flora on lush exoplanets
+                if (ry == 3 && adx == 4 && adz == 4 && (body == PlanetBody.Trappist1e || body == PlanetBody.Kepler452b))
                 {
                     placed = 61;
                     return true;
                 }
-                if (ry <= 12) { placed = 0; return true; }
+
+                placed = 0;
+                return true;
             }
             return false;
         }
@@ -597,7 +752,7 @@ namespace LestingCraft.World
                 case PlanetSurface.Crater: return 29;
                 case PlanetSurface.EuropaIcePlain:
                 case PlanetSurface.PlutoGlacialRidge: return 63;
-                case PlanetSurface.EuropaChaosLineae: return 11;
+                case PlanetSurface.EuropaChaosLineae: return y == column.Height ? (ushort)11 : (ushort)63;
                 case PlanetSurface.TitanHydroDune: return 43;
                 case PlanetSurface.TitanMethaneSea: return 10;
                 case PlanetSurface.PlutoHeartIce: return y == column.Height ? (ushort)14 : (ushort)63;

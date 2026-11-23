@@ -89,10 +89,10 @@ def road(ax, az, bx, bz, rad=3):
 
 
 def lantern_post(x, z, y=1):
+    """Slender 1x1 wrought-stone and carved-oak street bollard (no T-hammer crossbar)."""
     b(x, x, y, y, z, z, POLISHED_STONE)
-    b(x, x, y + 1, y + 3, z, z, OAK_LOG)
-    b(x - 1, x + 1, y + 4, y + 4, z, z, CARVED_OAK)
-    b(x, x, y + 5, y + 5, z, z, LANTERN)
+    b(x, x, y + 1, y + 2, z, z, CARVED_OAK)
+    b(x, x, y + 3, y + 3, z, z, LANTERN)
 
 
 def tree(x, z, h=5, leaf=LEAVES):
@@ -113,10 +113,12 @@ def bastion_tower(cx, cz, rad=5.2, h=22, spire_mat=SHINGLES):
             b(int(cx - rad), int(cx + rad), wy, wy + 1, cz, cz, GLASS)
     steps = int(rad) + 2
     for k in range(steps):
-        disc(cx, cz, max(0.8, rad + 0.5 - k * 0.85), h + 1 + k, h + 1 + k, spire_mat)
+        disc(cx, cz, max(0.8, rad + 0.4 - k * 0.8), h + 1 + k, h + 1 + k, spire_mat)
     top_y = h + 1 + steps
-    b(cx, cx, top_y, min(45, top_y + 3), cz, cz, OAK_LOG)
-    b(cx + 1, cx + 2, min(45, top_y + 2), min(45, top_y + 3), cz, cz, TERRACOTTA)
+    mast_top = min(45, top_y + 3)
+    b(cx, cx, top_y, mast_top, cz, cz, OAK_LOG)
+    b(cx + 1, cx + 2, mast_top, mast_top, cz, cz, CARVED_OAK)
+    b(cx + 1, cx + 2, max(top_y, mast_top - 2), max(top_y, mast_top - 1), cz, cz, TERRACOTTA)
 
 
 def town_house(cx, cz, hw=5, hd=4, stories=1, roof_id=SHINGLES, wall_id=LIMESTONE, face_z=1):
@@ -139,9 +141,10 @@ def town_house(cx, cz, hw=5, hd=4, stories=1, roof_id=SHINGLES, wall_id=LIMESTON
         for px in (cx - hw, cx, cx + hw):
             for pz in (cz - hd - 1, cz + hd + 1):
                 b(px, px, 5, 9, pz, pz, OAK_LOG)
-        # Interior stair along side wall (leaving center cx,cz clear!)
+        # Interior stair along side wall (6-connected stringer, leaving center cx,cz clear!)
         for s in range(5):
-            b(cx - hw + 1, cx - hw + 1, 1 + s, 1 + s, cz - hd + 1 + min(hd * 2 - 2, s), cz - hd + 1 + min(hd * 2 - 2, s), PLANK)
+            sz_step = cz - hd + 1 + min(hd * 2 - 2, s)
+            b(cx - hw + 1, cx - hw + 1, max(1, s), 1 + s, sz_step, sz_step, PLANK)
             if s < 4:
                 b(cx - hw + 1, cx - hw + 1, 5, 5, cz - hd + 1 + s, cz - hd + 1 + s, AIR)
         for wx in (cx - hw + 2, cx + hw - 2):
@@ -166,15 +169,18 @@ def town_house(cx, cz, hw=5, hd=4, stories=1, roof_id=SHINGLES, wall_id=LIMESTON
     back_z = cz - hd if face_z > 0 else cz + hd
     door_wall_z = cz + hd if face_z > 0 else cz - hd
     b(cx + hw - 1, cx + hw, 1, wall_h + hw + 3, back_z, back_z, CLAY_BRICK)
-    # Furnishings tucked into back corners (center cx,cz stays 100% open!)
+    # Furnishings & grounded lamps tucked into corners (center cx,cz stays 100% open!)
     iz = back_z + (1 if face_z > 0 else -1)
+    iz2 = iz + (1 if face_z > 0 else -1)
     b(cx - hw + 2, cx - hw + 2, 1, 1, iz, iz, BED)
     b(cx + hw - 2, cx + hw - 2, 1, 1, iz, iz, FURNACE if (cx + cz) % 2 == 0 else WORKBENCH)
-    b(cx, cx, 4, 4, cz, cz, LANTERN)
-    # 2x3 Doorway + porch step
+    b(cx + hw - 2, cx + hw - 2, 1, 1, iz2, iz2, CARVED_OAK)
+    b(cx + hw - 2, cx + hw - 2, 2, 2, iz2, iz2, LANTERN)
+    # 2x3 Doorway + porch step + grounded porch bollard
     b(cx - 1, cx, 1, 3, door_wall_z, door_wall_z, AIR)
-    b(cx - 1, cx + 1, 0, 0, door_wall_z + face_z, door_wall_z + face_z, POLISHED_STONE)
-    b(cx + 1, cx + 1, 3, 3, door_wall_z + face_z, door_wall_z + face_z, TORCH)
+    b(cx - 1, cx + 2, 0, 0, door_wall_z + face_z, door_wall_z + face_z, POLISHED_STONE)
+    b(cx + 2, cx + 2, 1, 1, door_wall_z + face_z, door_wall_z + face_z, CARVED_OAK)
+    b(cx + 2, cx + 2, 2, 2, door_wall_z + face_z, door_wall_z + face_z, LANTERN)
 
 
 # ==============================================================================
@@ -259,7 +265,7 @@ def build_imperial_keep():
 
     # Grand South Palace Portico & Steps (z = 13..18)
     for s in range(2):
-        b(-5 + s, 5 - s, 1 + s, 1 + s, 17 - s * 2, 18 - s * 2, POLISHED_MARBLE)
+        b(-5 + s, 5 - s, 1, 1 + s, 17 - s * 2, 18 - s * 2, POLISHED_MARBLE)
     for col_x in (-5, -3, 3, 5):
         b(col_x, col_x, 2, 8, 14, 14, POLISHED_MARBLE)
     b(-6, 6, 9, 9, 13, 15, POLISHED_GRANITE)
@@ -276,20 +282,24 @@ def build_imperial_keep():
     for col_z in (-8, -3, 2, 7):
         b(-6, -6, 2, 13, col_z, col_z, POLISHED_MARBLE)
         b(6, 6, 2, 13, col_z, col_z, POLISHED_MARBLE)
-    # Second & Third Choir/Library Galleries with open central atrium & twin staircases
+    # Second & Third Choir/Library Galleries with open central atrium & twin 6-connected staircases
     for fy in (8, 14):
         b(-13, 13, fy, fy, -14, 12, PLANK)
-        b(-5, 5, fy, fy, -7, 6, AIR)
+        b(-4, 4, fy, fy, -6, 5, AIR)
         ring(-5, 5, -7, 6, fy + 1, fy + 1, CARVED_OAK)
         for sx in (-12, 11):
             b(sx, sx + 1, fy + 1, fy + 3, -12, 8, BOOKSHELF)
     for i in range(7):
-        b(-11, -9, 2 + i, 2 + i, -4 + i, -4 + i, POLISHED_MARBLE)
+        b(-11, -9, max(2, 1 + i), 2 + i, -4 + i, -4 + i, POLISHED_MARBLE)
         b(-11, -9, 3 + i, 6 + i, -4 + i, -4 + i, AIR)
-        b(9, 11, 8 + i, 8 + i, -4 + i, -4 + i, POLISHED_MARBLE)
+        b(9, 11, max(8, 7 + i), 8 + i, -4 + i, -4 + i, POLISHED_MARBLE)
         b(9, 11, 9 + i, 12 + i, -4 + i, -4 + i, AIR)
-    for ly in (6, 12, 18):
-        b(0, 0, ly, ly, -1, -1, LANTERN)
+    for cx_lamp in (-4, 4):
+        b(cx_lamp, cx_lamp, 2, 3, 8, 8, POLISHED_MARBLE)
+        b(cx_lamp, cx_lamp, 4, 4, 8, 8, LANTERN)
+        for fy in (8, 14):
+            b(cx_lamp, cx_lamp, fy + 1, fy + 2, 8, 8, POLISHED_MARBLE)
+            b(cx_lamp, cx_lamp, fy + 3, fy + 3, 8, 8, LANTERN)
 
     # Upper Cathedral Drum (y=21..33) + 4 Corner Turrets + Central Golden-Copper Spire (y=34..45)
     b(-10, 10, 21, 27, -11, 9, MARBLE)
@@ -299,11 +309,11 @@ def build_imperial_keep():
         cyl_shell(tx, tz, 2.6, 1.2, 21, 29, POLISHED_MARBLE)
         disc(tx, tz, 2.8, 30, 31, COPPER_BLOCK)
         disc(tx, tz, 1.6, 32, 33, COPPER_BLOCK)
-        b(tx, tx, 34, 35, tz, tz, CRYSTAL)
-    cyl_shell(0, -1, 6.5, 4.5, 28, 34, POLISHED_MARBLE)
+        b(tx, tx, 34, 34, tz, tz, CRYSTAL)
+    cyl_shell(0, -1, 6.5, 4.2, 28, 34, POLISHED_MARBLE)
     for k in range(7):
-        disc(0, -1, max(1.0, 6.8 - k * 0.9), 35 + k, 35 + k, COPPER_BLOCK if k % 2 == 0 else SHINGLES)
-    b(0, 0, 42, 45, -1, -1, COPPER_BLOCK)
+        disc(0, -1, max(1.0, 6.6 - k * 0.85), 35 + k, 35 + k, COPPER_BLOCK if k % 2 == 0 else SHINGLES)
+    b(0, 0, 42, 44, -1, -1, COPPER_BLOCK)
     b(0, 0, 45, 45, -1, -1, CRYSTAL)
 
     # Courtyard Guard Barracks (-25, -18) & Royal Stables (23, -18) — keeping (-24,-18) & (22,-18) open at y=1..3!
@@ -367,7 +377,7 @@ def build_ring_city():
     # Ornate Bazaar Fountain at (86, 0)
     ring(84, 88, -2, 2, 1, 1, POLISHED_MARBLE)
     b(85, 87, 1, 1, -1, 1, WATER)
-    b(86, 86, 2, 4, 0, 0, POLISHED_MARBLE)
+    b(86, 86, 1, 4, 0, 0, POLISHED_MARBLE)
     b(86, 86, 5, 5, 0, 0, LANTERN)
     # 6 Covered Market Pavilions on North & South flanks (z = -14..-9 and z = 8..13)
     for sx, canopy in ((70, TERRACOTTA), (78, SHINGLES), (86, TERRACOTTA)):
@@ -376,9 +386,10 @@ def build_ring_city():
                 for pz in (sz, sz + 3):
                     b(px, px, 1, 3, pz, pz, OAK_LOG)
             b(sx - 1, sx + 5, 4, 4, sz - 1, sz + 4, canopy)
-            b(sx + 1, sx + 3, 1, 1, sz + (3 if c_dir > 0 else 0), sz + (3 if c_dir > 0 else 0), PLANK)
+            cz_cnt = sz + (3 if c_dir > 0 else 0)
+            b(sx + 1, sx + 3, 1, 1, cz_cnt, cz_cnt, PLANK)
             b(sx + 2, sx + 2, 1, 1, sz + 1, sz + 1, WORKBENCH)
-            b(sx + 2, sx + 2, 3, 3, sz + 2, sz + 2, LANTERN)
+            b(sx + 1, sx + 1, 2, 2, cz_cnt, cz_cnt, LANTERN)
 
     # ---- SOUTH-WEST IMPERIAL FOUNDRY & BLACKSMITH (x = -80..-60, z = 46..62; (-70, 54) open hall!) ----
     b(-80, -60, 0, 0, 46, 62, COBBLE)
@@ -392,7 +403,8 @@ def build_ring_city():
     b(-64, -63, 1, 1, 59, 59, GENERATOR)
     b(-63, -63, 1, 1, 50, 51, WATER)
     b(-77, -77, 1, 1, 50, 50, WORKBENCH)
-    b(-70, -70, 5, 5, 54, 54, LANTERN)
+    b(-77, -77, 1, 1, 52, 52, CARVED_OAK)
+    b(-77, -77, 2, 2, 52, 52, LANTERN)
 
     # ---- NORTHERN SANCTUARY CATHEDRAL-CHAPEL (x = -9..9, z = -96..-70; (0, -74) open nave!) ----
     b(-9, 9, 0, 0, -96, -70, POLISHED_MARBLE)
@@ -410,23 +422,26 @@ def build_ring_city():
     bastion_tower(0, -68, rad=3.6, h=22, spire_mat=COPPER_BLOCK)
     b(-2, 2, 1, 5, -73, -63, AIR)
     b(-2, 2, 1, 2, -93, -91, POLISHED_GRANITE)
-    b(0, 0, 3, 4, -92, -92, CRYSTAL)
-    b(0, 0, 7, 7, -82, -82, LANTERN)
+    b(0, 0, 3, 3, -92, -92, POLISHED_MARBLE)
+    b(0, 0, 4, 4, -92, -92, CRYSTAL)
+    for cx_ch in (-5, 5):
+        b(cx_ch, cx_ch, 1, 2, -82, -82, POLISHED_MARBLE)
+        b(cx_ch, cx_ch, 3, 3, -82, -82, LANTERN)
 
-    # ---- WESTERN HILLTOP WINDMILL (x = -104..-92, z = 34..46) ----
-    cyl_shell(-98, 40, 5.2, 3.4, 1, 16, LIMESTONE)
-    disc(-98, 40, 5.0, 0, 0, COBBLE)
+    # ---- WESTERN HILLTOP WINDMILL (x = -106..-90, z = 32..46) ----
+    cyl_shell(-98, 40, 5.2, 3.2, 1, 16, LIMESTONE)
+    disc(-98, 40, 5.2, 0, 0, COBBLE)
     for k in range(6):
-        disc(-98, 40, max(1.0, 5.6 - k * 0.9), 17 + k, 17 + k, SHINGLES)
-    b(-99, -97, 1, 3, 34, 36, AIR)
-    # 4 Grand Diagonal Windmill Sails on South Face (z = 33)
-    b(-98, -98, 13, 13, 32, 35, OAK_LOG)
-    for d in range(1, 9):
-        for sx, sy in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
-            wx, wy = -98 + sx * d, 13 + sy * d
-            if 2 <= wy <= 24:
-                b(wx, wx, wy, wy, 32, 32, OAK_LOG)
-                b(wx + (0 if sy > 0 else -1), wx + (1 if sy > 0 else 0), wy, wy, 33, 33, PLANK)
+        disc(-98, 40, max(1.0, 5.5 - k * 0.85), 17 + k, 17 + k, SHINGLES)
+    b(-99, -97, 1, 3, 34, 37, AIR)
+    # 4 Grand Orthogonal Pinwheel Windmill Sails on South Face (z = 32..36 — 100% 6-face-connected!)
+    b(-98, -98, 13, 13, 32, 36, OAK_LOG)
+    b(-106, -90, 13, 13, 32, 32, OAK_LOG)
+    b(-98, -98, 5, 21, 32, 32, OAK_LOG)
+    b(-106, -100, 14, 15, 32, 32, PLANK)
+    b(-96, -90, 11, 12, 32, 32, PLANK)
+    b(-97, -96, 15, 21, 32, 32, PLANK)
+    b(-100, -99, 5, 11, 32, 32, PLANK)
 
     # ---- IRRIGATED TERRACED FARMS (Keeping (96,-20) & (-96,-20) clear!) ----
     for fx, fz in ((98, -54), (-102, -46)):
@@ -467,6 +482,39 @@ for idx, (kx, kz) in enumerate(zip(kx_list, kz_list)):
     for dy in (1, 2):
         blk = sample_local(kx, dy, kz)
         assert blk == 0, f"Kingdom citizen #{idx} obstructed at local ({kx}, {dy}, {kz}) by block {blk}!"
+
+# Strict 6-face voxel connectivity & placed-model grounding check across the entire 244x244 capital!
+from collections import deque as _deque
+_NON_SUPPORT = {11, 15, 16, 52, 54, 55, 56, 61, 72, 73, 74, 75, 77, 85, 86, 87, 89}
+_kvox = {}
+for x0, x1, y0, y1, z0, z1, bid in boxes:
+    for _y in range(y0, y1 + 1):
+        for _z in range(z0, z1 + 1):
+            for _x in range(x0, x1 + 1):
+                if bid == 0:
+                    _kvox.pop((_x, _y, _z), None)
+                else:
+                    _kvox[(_x, _y, _z)] = bid
+_vis = set()
+_q = _deque()
+for (_x, _y, _z), _b in _kvox.items():
+    assert _b != CAMPFIRE, f"CAMPFIRE forbidden in KingdomPlan at ({_x}, {_y}, {_z})"
+    if _y <= 0 and _b not in _NON_SUPPORT:
+        _vis.add((_x, _y, _z))
+        _q.append((_x, _y, _z))
+while _q:
+    _x, _y, _z = _q.popleft()
+    if _kvox[(_x, _y, _z)] in _NON_SUPPORT:
+        continue
+    for _dx, _dy, _dz in ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)):
+        _nb = (_x + _dx, _y + _dy, _z + _dz)
+        if _nb in _kvox and _nb not in _vis:
+            if _kvox[_nb] in _NON_SUPPORT and _dy != 1:
+                continue
+            _vis.add(_nb)
+            _q.append(_nb)
+_bad = [(_pos, _kvox[_pos]) for _pos in sorted(_kvox) if _pos not in _vis]
+assert not _bad, f"KingdomPlan has {len(_bad)} disconnected/unsupported voxels: {_bad[:12]}"
 
 # Great road: castle gate -> Quietford well, plus avenues and boulevard ring
 road(CX, CZ + 40, 96, 48, 4)

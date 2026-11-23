@@ -84,16 +84,18 @@ namespace LestingCraft.Story
                 int blend = math.min(6, dist);
                 top = (baseY * (6 - blend) + natural * blend) / 6;
             }
-            if (y < top - 3 && y <= natural) return false;
             bool v11 = contentVersion >= 11;
+            int minCut = v11 && dist <= 0 ? baseY - 6 : top - 3;
+            if (y < minCut && y <= natural) return false;
             var activeBoxes = v11 ? StoryPlanV11.Boxes : StoryPlan.Boxes;
             if (y <= top)
             {
                 block = y == top ? (road ? (ushort)32 : dist <= 0 ? (ushort)3 : (ushort)2) : y < top - 2 ? (ushort)1 : (ushort)2;
-                if (y == baseY && dist <= 0)
+                if (dist <= 0 && (y == baseY || (v11 && y >= baseY - 6)))
                 {
+                    int rySub = y - baseY;
                     for (int i = 0; i < activeBoxes.Length; i += 7)
-                        if (x >= activeBoxes[i] && x <= activeBoxes[i + 1] && activeBoxes[i + 2] <= 0 && activeBoxes[i + 3] >= 0 && z >= activeBoxes[i + 4] && z <= activeBoxes[i + 5])
+                        if (x >= activeBoxes[i] && x <= activeBoxes[i + 1] && rySub >= activeBoxes[i + 2] && rySub <= activeBoxes[i + 3] && z >= activeBoxes[i + 4] && z <= activeBoxes[i + 5])
                             block = (ushort)activeBoxes[i + 6];
                 }
                 return true;

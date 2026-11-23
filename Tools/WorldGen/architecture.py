@@ -120,7 +120,7 @@ class Plan:
         self.entrances.append([int(x), int(z), int(y), int(width)])
 
     def gable_x(self, cx, cz, half_w, half_d, y_base, roof_id=SHINGLES, trim_id=CARVED_OAK, ridge_id=POLISHED_GRANITE):
-        """Stepped gable roof pitching along X with carved eaves, gable infill, and ridge crest."""
+        """Stepped gable roof pitching along X with 2-voxel overlapping rafters (100% 6-face connected)."""
         for k in range(half_w + 2):
             x0, x1 = cx - half_w - 1 + k, cx + half_w + 1 - k
             yy = y_base + k
@@ -134,19 +134,18 @@ class Plan:
             if x0 + 1 <= x1 - 1 and k < half_w + 1:
                 self.b(x0 + 1, x1 - 1, yy, yy, cz - half_d, cz - half_d, PLANK)
                 self.b(x0 + 1, x1 - 1, yy, yy, cz + half_d, cz + half_d, PLANK)
-                if x0 + 1 <= x1 - 1 and cz - half_d + 1 <= cz + half_d - 1:
-                    self.b(x0 + 1, x1 - 1, yy, yy, cz - half_d + 1, cz + half_d - 1, AIR)
+                if x0 + 2 <= x1 - 2 and cz - half_d + 1 <= cz + half_d - 1:
+                    self.b(x0 + 2, x1 - 2, yy, yy, cz - half_d + 1, cz + half_d - 1, AIR)
         top_y = y_base + half_w + 1
         self.b(cx, cx, top_y, top_y + 1, cz - half_d - 1, cz + half_d + 1, ridge_id)
         self.b(cx, cx, top_y + 2, top_y + 2, cz - half_d - 1, cz - half_d - 1, trim_id)
         self.b(cx, cx, top_y + 2, top_y + 2, cz + half_d + 1, cz + half_d + 1, trim_id)
 
     def lantern_post(self, x, z, y=1, stone_base=POLISHED_STONE):
+        """Slender 1x1 wrought-stone and carved-oak street bollard (no T-hammer crossbar)."""
         self.b(x, x, y, y, z, z, stone_base)
-        self.b(x, x, y + 1, y + 3, z, z, OAK_LOG)
-        self.b(x - 1, x + 1, y + 4, y + 4, z, z, CARVED_OAK)
-        self.b(x, x, y + 4, y + 4, z - 1, z + 1, CARVED_OAK)
-        self.b(x, x, y + 5, y + 5, z, z, LANTERN)
+        self.b(x, x, y + 1, y + 2, z, z, CARVED_OAK)
+        self.b(x, x, y + 3, y + 3, z, z, LANTERN)
 
     def tree_sakura(self, x, z, y=1, h=5, leaf=SAKURA):
         self.b(x, x, y, y + h - 1, z, z, OAK_LOG)
@@ -181,9 +180,10 @@ def build_village():
             p.b(sx, sx, 2, 6, sz, sz, CARVED_OAK)
     p.ring(-3, 3, -3, 3, 6, 6, CARVED_OAK)
     for k in range(4):
-        p.b(-4 + k, 4 - k, 7 + k, 7 + k, -4 + k, 4 - k, SHINGLES)
+        p.b(-3 + k, 3 - k, 7 + k, 7 + k, -3 + k, 3 - k, SHINGLES)
     p.b(0, 0, 11, 12, 0, 0, COPPER_BLOCK)
-    p.b(0, 0, 5, 5, 0, 0, LANTERN)
+    p.b(2, 2, 2, 2, 0, 0, POLISHED_STONE)
+    p.b(2, 2, 3, 3, 0, 0, LANTERN)
 
     # Helper for bespoke half-timbered artisan cottages facing the central crossroad
     def artisan_cottage(cx, cz, face_south, roof_block, role):
@@ -206,7 +206,7 @@ def build_village():
         for wz in (cz - 2, cz + 2):
             for wx in (cx - hw, cx + hw):
                 p.b(wx, wx, 2, 3, wz, wz, GLASS)
-        # Steep shingled gable roof with side dormer window
+        # Steep shingled gable roof with 2-voxel overlapping rafters
         p.gable_x(cx, cz, hw, hd, 6, roof_id=roof_block, trim_id=CARVED_OAK, ridge_id=CLAY_BRICK)
         # Stepped brick chimney on rear outer corner
         back_z = cz - hd if face_south else cz + hd
@@ -223,12 +223,15 @@ def build_village():
             p.b(px, px, 1, 3, porch_z, porch_z, OAK_LOG)
         z_a, z_b = min(front_z + step_z, porch_z), max(front_z + step_z, porch_z)
         p.b(cx - 2, cx + 2, 4, 4, z_a, z_b, roof_block)
-        p.b(cx + 2, cx + 2, 3, 3, porch_z, porch_z, TORCH)
+        p.b(cx + 3, cx + 3, 1, 1, front_z + step_z, front_z + step_z, CARVED_OAK)
+        p.b(cx + 3, cx + 3, 2, 2, front_z + step_z, front_z + step_z, LANTERN)
         p.door_z(cx - 1, front_z, 1, 2)
         # Role-specific interior craft stations tucked against inner corners (center cx,cz stays 100% open!)
         iz = back_z + (1 if face_south else -1)
+        iz_lamp = iz + (1 if face_south else -1)
         p.b(cx - hw + 1, cx - hw + 1, 1, 1, iz, iz, BED)
-        p.b(cx, cx, 4, 4, cz, cz, LANTERN)
+        p.b(cx - hw + 1, cx - hw + 1, 1, 1, iz_lamp, iz_lamp, CARVED_OAK)
+        p.b(cx - hw + 1, cx - hw + 1, 2, 2, iz_lamp, iz_lamp, LANTERN)
         if role == 'smith':
             p.b(cx + hw - 2, cx + hw - 1, 1, 1, iz, iz, FURNACE)
             p.b(cx - hw + 2, cx - hw + 2, 1, 1, iz, iz, WORKBENCH)
@@ -303,11 +306,12 @@ def build_castle():
         for wy in (3, 7, 12):
             p.b(tx, tx, wy, wy + 1, tz - 4, tz + 4, AIR)
             p.b(tx - 4, tx + 4, wy, wy + 1, tz, tz, AIR)
-        # Conical shingled spire
+        # Conical shingled spire + braced royal banner
         for rk in range(6):
-            p.disc(tx, tz, max(0.8, 4.6 - rk * 0.8), 16 + rk, 16 + rk, SHINGLES)
+            p.disc(tx, tz, max(0.8, 4.4 - rk * 0.75), 16 + rk, 16 + rk, SHINGLES)
         p.b(tx, tx, 22, 25, tz, tz, OAK_LOG)
-        p.b(tx + 1, tx + 2, 24, 25, tz, tz, TERRACOTTA)
+        p.b(tx + 1, tx + 2, 25, 25, tz, tz, CARVED_OAK)
+        p.b(tx + 1, tx + 2, 23, 24, tz, tz, TERRACOTTA)
         # Courtyard door into each tower
         iz = tz + 3 if tz < 0 else tz - 3
         p.b(tx - 1, tx, 1, 3, min(tz, iz), max(tz, iz), AIR)
@@ -328,18 +332,24 @@ def build_castle():
     p.lantern_post(-6, -16, 1)
     p.lantern_post(6, -16, 1)
 
-    # Courtyard rampart stairs on west & east walls + training rack & courtyard brazier fountain
+    # Courtyard rampart stairs on west & east walls (2-thick stringers so every step is 6-connected!)
     for i in range(8):
-        p.b(-19, -18, 1 + i, 1 + i, -12 + i, -12 + i, POLISHED_STONE)
-        p.b(18, 19, 1 + i, 1 + i, -12 + i, -12 + i, POLISHED_STONE)
+        p.b(-19, -18, max(1, i), 1 + i, -12 + i, -12 + i, POLISHED_STONE)
+        p.b(18, 19, max(1, i), 1 + i, -12 + i, -12 + i, POLISHED_STONE)
+    p.b(-19, -18, 8, 8, -4, -4, POLISHED_STONE)
+    p.b(18, 19, 8, 8, -4, -4, POLISHED_STONE)
+    p.b(-20, -20, 8, 8, -4, -4, POLISHED_STONE)
+    p.b(20, 20, 8, 8, -4, -4, POLISHED_STONE)
     p.b(-14, -9, 1, 1, -14, -10, COBBLE)
     p.b(-13, -10, 1, 4, -14, -14, OAK_LOG)
+    p.b(-13, -13, 1, 3, -10, -10, OAK_LOG)
+    p.b(-10, -10, 1, 3, -10, -10, OAK_LOG)
     p.b(-14, -9, 4, 4, -14, -10, SHINGLES)
-    p.b(-13, -12, 1, 1, -13, -13, FURNACE)
-    p.b(-10, -10, 1, 1, -13, -13, WORKBENCH)
+    p.b(-13, -12, 2, 2, -13, -13, FURNACE)
+    p.b(-10, -10, 2, 2, -13, -13, WORKBENCH)
     p.b(10, 14, 1, 1, -13, -9, BRICK)
     p.b(11, 13, 1, 1, -12, -10, WATER)
-    p.b(12, 12, 2, 4, -11, -11, POLISHED_MARBLE)
+    p.b(12, 12, 1, 4, -11, -11, POLISHED_MARBLE)
     p.b(12, 12, 5, 5, -11, -11, LANTERN)
 
     # ---- GRAND TWO-STOREY CITADEL KEEP (x = -11..11, z = 2..16, height up to y=26) ----
@@ -371,8 +381,7 @@ def build_castle():
     p.b(-3, 3, 5, 5, 3, 5, AIR)
     p.b(-8, -6, 5, 8, 4, 9, AIR)  # Generous 3-wide stairwell cutout with >=3 headroom!
     for i in range(5):
-        # Step i=0 at z=4 (y=1), i=1 at z=5 (y=2), ..., i=4 at z=8 (y=5), stepping onto y=5 gallery at z=9!
-        p.b(-8, -6, 1 + i, 1 + i, 4 + i, 4 + i, POLISHED_MARBLE)
+        p.b(-8, -6, max(1, i), 1 + i, 4 + i, 4 + i, POLISHED_MARBLE)
         p.b(-8, -6, 2 + i, 5 + i, 4 + i, 4 + i, AIR)
 
     # Keep south entrance at z=2 (connecting (-1, 1, 0) straight into (-1, 1, 3) -> (-7, 1, 3) -> stair -> (0, 6, 7)!)
@@ -382,7 +391,7 @@ def build_castle():
     p.ring(-3, 3, 0, 1, 6, 6, CARVED_OAK)
     p.door_z(-1, 2, 6, 2, depth_clear=0)
 
-    # Interior throne dais, bookshelves, chandeliers, beds & hearth (keeping (0, 6, 7) completely clear!)
+    # Interior throne dais, bookshelves, standing marble candelabras, beds & hearth (keeping (0, 6, 7) clear!)
     p.b(-2, 2, 1, 1, 12, 14, POLISHED_GRANITE)
     p.b(-1, 1, 2, 4, 14, 14, TERRACOTTA)
     p.b(-9, -9, 1, 2, 12, 14, BOOKSHELF)
@@ -391,16 +400,22 @@ def build_castle():
     p.b(-9, -8, 6, 8, 14, 14, BOOKSHELF)
     p.b(8, 9, 6, 8, 14, 14, BOOKSHELF)
     p.b(9, 10, 6, 6, 5, 6, BED)
-    p.b(0, 0, 4, 4, 10, 10, LANTERN)
-    p.b(0, 0, 10, 10, 10, 10, LANTERN)
+    for cx_lamp in (-4, 4):
+        p.b(cx_lamp, cx_lamp, 1, 2, 13, 13, POLISHED_MARBLE)
+        p.b(cx_lamp, cx_lamp, 3, 3, 13, 13, LANTERN)
+        p.b(cx_lamp, cx_lamp, 6, 7, 13, 13, POLISHED_MARBLE)
+        p.b(cx_lamp, cx_lamp, 8, 8, 13, 13, LANTERN)
 
     # High pitched slate-and-shingle keep roof + central lantern cupola spire
     p.gable_x(0, 9, 11, 7, 12, roof_id=SLATE, trim_id=POLISHED_STONE, ridge_id=POLISHED_MARBLE)
     p.b(-2, 2, 20, 24, 7, 11, BRICK)
+    p.b(-3, 3, 24, 24, 6, 12, POLISHED_STONE)
     p.b(-3, 3, 25, 25, 6, 12, SHINGLES)
-    p.b(-1, 1, 26, 27, 8, 10, SHINGLES)
+    p.b(-2, 2, 26, 26, 7, 11, SHINGLES)
+    p.b(-1, 1, 27, 27, 8, 10, SHINGLES)
     p.b(0, 0, 28, 31, 9, 9, OAK_LOG)
-    p.b(1, 2, 30, 31, 9, 9, TERRACOTTA)
+    p.b(1, 2, 31, 31, 9, 9, CARVED_OAK)
+    p.b(1, 2, 29, 30, 9, 9, TERRACOTTA)
 
 
 # ==============================================================================
@@ -426,7 +441,8 @@ def build_ruined_manor():
     p.b(-8, 2, -5, -1, -2, 6, AIR)
     p.b(-7, -7, -5, -5, 4, 5, GLOW_SHROOM)
     p.b(1, 1, -5, -4, 4, 5, BOOKSHELF)
-    p.b(-3, -3, -2, -2, 2, 2, LANTERN)
+    p.b(-6, -6, -5, -5, 2, 2, CARVED_OAK)
+    p.b(-6, -6, -4, -4, 2, 2, LANTERN)
 
     # Two-storey Gothic Manor House (x = -11..5, z = -5..9), northeast upper wing dramatically collapsed!
     p.b(-11, 5, 0, 0, -5, 9, POLISHED_STONE)
@@ -437,14 +453,14 @@ def build_ruined_manor():
         for cz in (-5, 9):
             p.b(cx, cx, 1, 10, cz, cz, POLISHED_GRANITE)
     p.ring(-11, 5, -5, 9, 5, 5, CARVED_OAK)
-    # Second floor gallery (west half intact, east half collapsed)
+    # Second floor gallery (west half intact, east half collapsed) + 6-connected stair stringers
     p.b(-10, -2, 5, 5, -4, 8, PLANK)
     for i in range(5):
-        p.b(-9, -8, 1 + i, 1 + i, -2 + i, -2 + i, PLANK)
+        p.b(-9, -8, max(1, i), 1 + i, -2 + i, -2 + i, PLANK)
     # Cellar stairwell opening in east parlor
     p.b(0, 1, -5, 0, -2, 3, AIR)
     for i in range(6):
-        p.b(0, 1, -i, -i, -2 + i, -2 + i, BRICK)
+        p.b(0, 1, max(-6, -i - 1), -i, -2 + i, -2 + i, BRICK)
 
     # Tall lancet windows
     for wy in (2, 7):
@@ -460,8 +476,8 @@ def build_ruined_manor():
 
     # Pitched slate roof — dramatic breach carved out of the east side!
     p.gable_x(-3, 2, 8, 7, 10, roof_id=SLATE, trim_id=CARVED_OAK, ridge_id=POLISHED_STONE)
-    p.b(-1, 6, 5, 20, 1, 10, AIR)
-    p.b(2, 6, 3, 10, -2, 6, AIR)
+    p.b(-1, 6, 6, 20, 1, 10, AIR)
+    p.b(2, 6, 4, 10, -2, 6, AIR)
     # Fallen rubble & mossy rafters scattered outside the collapsed wing + glass conservatory ruin
     for rx, rz, rh in ((6, 4, 2), (7, 6, 1), (4, 8, 2), (8, 2, 1)):
         p.b(rx, rx + 1, 1, rh, rz, rz + 1, CRACKED)
@@ -488,15 +504,15 @@ def build_watchtower():
     p.b(-2, 2, 0, 1, -13, -6, COBBLE)
     p.b(-2, 2, 1, 1, -13, -10, GRAVEL)
 
-    # Octagonal buttressed beacon tower (r_out = 6.2, r_in = 4.0, height = 24)
-    p.cyl_shell(0, 0, 6.2, 4.0, 1, 23, BRICK)
+    # Octagonal buttressed beacon tower (r_out = 6.2, r_in = 3.8, height = 23 — thick 2.4-voxel masonry!)
+    p.cyl_shell(0, 0, 6.2, 3.8, 1, 23, BRICK)
     # 4 heavy cardinal stone buttresses
     for bx, bz in ((-7, 0), (7, 0), (0, -7), (0, 7)):
         p.b(bx - (0 if bx else 1), bx + (0 if bx else 1), 1, 12, bz - (0 if bz else 1), bz + (0 if bz else 1), POLISHED_GRANITE)
     for band_y in (6, 12, 18):
-        p.cyl_shell(0, 0, 6.6, 4.0, band_y, band_y, POLISHED_STONE)
+        p.cyl_shell(0, 0, 6.6, 3.8, band_y, band_y, POLISHED_STONE)
 
-    # Spiral stone staircase hugging the inner wall up to the signal deck (y = 1..20)
+    # Central stone newel column + 6-connected spiral staircase hugging the inner wall up to y = 20
     ring_pts = [
         (-2, -3), (-1, -3), (0, -3), (1, -3), (2, -3),
         (3, -2), (3, -1), (3, 0), (3, 1), (3, 2),
@@ -504,38 +520,39 @@ def build_watchtower():
         (-3, 2), (-3, 1), (-3, 0), (-3, -1), (-3, -2),
     ]
     p.disc(0, 0, 4.0, 1, 1, POLISHED_STONE)
+    p.b(0, 0, 1, 20, 0, 0, POLISHED_STONE)
     for step in range(1, 20):
         sx, sz = ring_pts[step % len(ring_pts)]
         p.b(sx - 1 if abs(sz) == 3 else sx, sx + 1 if abs(sz) == 3 else sx,
-            1 + step, 1 + step,
+            max(2, step), 1 + step,
             sz - 1 if abs(sx) == 3 else sz, sz + 1 if abs(sx) == 3 else sz, PLANK)
-    # Central chandelier chain & armory supplies on ground floor
-    p.b(0, 0, 10, 18, 0, 0, OAK_LOG)
-    p.b(0, 0, 9, 9, 0, 0, LANTERN)
+    # Armory supplies & grounded lantern on ground floor
     p.b(-2, -2, 2, 2, 2, 2, WORKBENCH)
     p.b(2, 2, 2, 3, 2, 2, BOOKSHELF)
+    p.b(2, 2, 2, 2, -2, -2, CARVED_OAK)
+    p.b(2, 2, 3, 3, -2, -2, LANTERN)
 
     # Tall arched arrow-slit windows
     for wy in (4, 10, 15):
-        p.b(0, 0, wy, wy + 2, -6, -5, AIR)
-        p.b(0, 0, wy, wy + 2, 5, 6, AIR)
-        p.b(-6, -5, wy, wy + 2, 0, 0, AIR)
-        p.b(5, 6, wy, wy + 2, 0, 0, AIR)
+        p.b(0, 0, wy, wy + 2, -6, -4, AIR)
+        p.b(0, 0, wy, wy + 2, 4, 6, AIR)
+        p.b(-6, -4, wy, wy + 2, 0, 0, AIR)
+        p.b(4, 6, wy, wy + 2, 0, 0, AIR)
 
-    # Signal brazier platform at y=20 with crenellations — northeast quadrant dramatically shattered!
-    p.disc(0, 0, 5.5, 20, 20, POLISHED_STONE)
-    p.cyl_shell(0, 0, 6.5, 5.2, 21, 23, BRICK)
-    p.b(-1, 1, 21, 22, -1, 1, POLISHED_GRANITE)
-    p.b(0, 0, 23, 23, 0, 0, CAMPFIRE)
-    # Carve dramatic diagonal collapse on +X/+Z crown & scatter fallen masonry below
+    # Signal beacon deck at y=20 with masonry lantern turret (NO campfire on tower!) — NE quadrant shattered!
+    p.disc(0, 0, 5.8, 20, 20, POLISHED_STONE)
+    p.cyl_shell(0, 0, 6.5, 4.8, 21, 23, BRICK)
+    p.b(-2, 0, 21, 22, -2, 0, POLISHED_GRANITE)
+    p.b(-1, -1, 23, 23, -1, -1, LANTERN)
+    # Carve dramatic collapse on +X/+Z crown & scatter fallen masonry below
     p.b(1, 7, 17, 25, 1, 7, AIR)
     p.b(3, 7, 13, 17, 2, 7, AIR)
     for rx, rz, rh in ((7, 5, 3), (9, 7, 2), (6, 9, 2), (-9, 6, 1)):
         p.b(rx, rx + 2, 1, rh, rz, rz + 2, CRACKED)
 
-    # Grand south doorway at z = -6 (y=2 on raised plinth, with exterior stairs at z=-9..-7)
+    # Grand south doorway at z = -6 (y=2 on raised plinth, with 6-connected exterior stairs at z=-9..-8)
     for s in range(2):
-        p.b(-2, 2, 1 + s, 1 + s, -9 + s, -9 + s, POLISHED_STONE)
+        p.b(-2, 2, 1, 1 + s, -9 + s, -9 + s, POLISHED_STONE)
     p.b(-1, 1, 2, 5, -7, -4, AIR)
     p.entrances.append([-1, -6, 2, 3])
     p.lantern_post(-5, -9, 1)
@@ -561,41 +578,44 @@ def build_camp():
     p.b(-2, 2, 0, 0, -12, 12, GRAVEL)
     p.b(-2, 2, 1, 4, -12, -9, AIR)
     p.entrances.append([-2, -11, 1, 5])
-    # Timber gate arch on south entrance
+    # Timber gate arch on south entrance with solid gate buttress posts under torches
     p.b(-3, -3, 1, 5, -11, -11, OAK_LOG)
     p.b(3, 3, 1, 5, -11, -11, OAK_LOG)
     p.b(-3, 3, 5, 5, -11, -11, CARVED_OAK)
+    p.b(-3, -3, 1, 3, -12, -12, OAK_LOG)
+    p.b(3, 3, 1, 3, -12, -12, OAK_LOG)
     p.b(-3, -3, 4, 4, -12, -12, TORCH)
     p.b(3, 3, 4, 4, -12, -12, TORCH)
 
-    # Two pitched A-frame expedition tents (west & east)
+    # Two pitched A-frame expedition tents (west & east — 2-voxel overlapping slopes so 100% 6-connected!)
     for side, canopy in ((-1, TERRACOTTA), (1, SHINGLES)):
         cx = side * 6
         p.b(cx - 3, cx + 3, 0, 0, -4, 4, PLANK)
         for z in range(-4, 5):
             for k in range(4):
-                p.b(cx - 3 + k, cx - 3 + k, 1 + k, 1 + k, z, z, canopy)
-                p.b(cx + 3 - k, cx + 3 - k, 1 + k, 1 + k, z, z, canopy)
-        p.b(cx - 2, cx + 2, 1, 3, -3, 3, AIR)
+                p.b(cx - 3 + k, cx - 3 + k, max(1, k), 1 + k, z, z, canopy)
+                p.b(cx + 3 - k, cx + 3 - k, max(1, k), 1 + k, z, z, canopy)
+        p.b(cx - 1, cx + 1, 1, 2, -3, 3, AIR)
         p.b(cx, cx, 1, 4, -4, -4, OAK_LOG)
         p.b(cx, cx, 1, 4, 4, 4, OAK_LOG)
         p.b(cx, cx, 4, 4, -4, 4, CARVED_OAK)
         # Open entrance facing central firepit
         inner_x = cx - side * 3
-        p.b(inner_x, inner_x + side, 1, 3, -1, 1, AIR)
+        p.b(min(inner_x, inner_x + side * 2), max(inner_x, inner_x + side * 2), 1, 2, -1, 1, AIR)
         p.b(cx + side, cx + side, 1, 1, -2, -1, BED)
         p.b(cx + side, cx + side, 1, 1, 2, 2, WORKBENCH if side < 0 else FURNACE)
-        p.b(cx, cx, 3, 3, 0, 0, LANTERN)
+        p.b(cx + side, cx + side, 1, 1, 0, 0, CARVED_OAK)
+        p.b(cx + side, cx + side, 2, 2, 0, 0, LANTERN)
 
-    # Wooden watchtower platform on northwest rim (x=-6, z=7)
+    # Wooden watchtower platform on northwest rim (x=-8..-4, z=5..9)
     for tx in (-8, -4):
         for tz in (5, 9):
             p.b(tx, tx, 1, 6, tz, tz, OAK_LOG)
     p.b(-8, -4, 6, 6, 5, 9, PLANK)
     p.ring(-8, -4, 5, 9, 7, 7, CARVED_OAK)
-    p.b(-6, -6, 8, 8, 7, 7, LANTERN)
+    p.b(-8, -8, 8, 8, 5, 5, LANTERN)
 
-    # Central sunken stone firepit with cooking spit & log benches
+    # Central sunken stone firepit with ground campfire & log benches
     p.ring(-2, 2, -2, 2, 0, 0, COBBLE)
     p.b(-1, 1, 0, 0, -1, 1, MAGMA_BASALT)
     p.b(0, 0, 1, 1, 0, 0, CAMPFIRE)
@@ -635,13 +655,13 @@ def build_obelisk():
     p.b(-2, 2, 2, 6, -20, -17, AIR)
     p.entrances.append([-2, -19, 2, 5])
 
-    # Four corner sentinel pylons with levitating crystal crowns
+    # Four corner sentinel pylons with crystal finials resting solidly on marble caps
     for sx in (-15, 15):
         for sz in (-15, 15):
             p.b(sx - 2, sx + 2, 2, 3, sz - 2, sz + 2, POLISHED_GRANITE)
             p.b(sx - 1, sx + 1, 4, 12, sz - 1, sz + 1, OBSIDIAN)
             p.b(sx - 2, sx + 2, 13, 13, sz - 2, sz + 2, POLISHED_MARBLE)
-            p.b(sx, sx, 14, 15, sz, sz, CRYSTAL)
+            p.b(sx, sx, 14, 14, sz, sz, CRYSTAL)
             p.b(sx, sx, 6, 11, sz - (2 if sz > 0 else -2) + (1 if sz > 0 else -1), sz - (2 if sz > 0 else -2) + (1 if sz > 0 else -1), CHERENKOV)
 
     # Colossal 34-meter tapered Obsidian & Gold-Vein Guardian Obelisk in the center!
@@ -651,10 +671,10 @@ def build_obelisk():
     p.b(-2, 2, 16, 25, -2, 2, OBSIDIAN)
     p.b(-1, 1, 26, 32, -1, 1, POLISHED_MARBLE)
     p.b(0, 0, 33, 36, 0, 0, DIAMOND_BLOCK)
-    # Glowing vertical energy channels up all four faces of the obelisk
+    # Glowing vertical energy channels up all four faces of the obelisk (solid full-cube blocks!)
     for face_coord in (-3, 3):
-        p.b(0, 0, 7, 14, face_coord, face_coord, CRYSTAL)
-        p.b(face_coord, face_coord, 7, 14, 0, 0, CRYSTAL)
+        p.b(0, 0, 7, 14, face_coord, face_coord, ANDROMEDA_CRYSTAL)
+        p.b(face_coord, face_coord, 7, 14, 0, 0, ANDROMEDA_CRYSTAL)
     for face_coord in (-2, 2):
         p.b(0, 0, 17, 24, face_coord, face_coord, CHERENKOV)
         p.b(face_coord, face_coord, 17, 24, 0, 0, CHERENKOV)
@@ -684,7 +704,8 @@ def build_mining_camp():
     p.b(-12, -12, 1, 1, 8, 9, BED)
     p.b(-6, -5, 1, 2, 9, 9, BOOKSHELF)
     p.b(-5, -5, 1, 1, 3, 3, WORKBENCH)
-    p.b(-8, -8, 4, 4, 6, 6, LANTERN)
+    p.b(-6, -6, 1, 1, 3, 3, CARVED_OAK)
+    p.b(-6, -6, 2, 2, 3, 3, LANTERN)
     p.door_z(-9, 1, 1, 2)
 
     # Covered Smelting & Power Shed on southwest (x = -13..-4, z = -11..-3)
@@ -697,11 +718,11 @@ def build_mining_camp():
     p.b(-9, -9, 1, 1, -10, -10, GENERATOR)
     p.b(-7, -7, 1, 1, -10, -10, BATTERY)
     p.b(-8, -8, 1, 1, -10, -10, CABLE)
-    p.b(-4, -4, 4, 4, -3, -3, FLOODLIGHT)
+    p.b(-4, -4, 6, 6, -3, -3, FLOODLIGHT)
 
     # Tall Steel-and-Timber Mine Headframe Tower (Копёр) + Sloping Adit Rail Portal on east side (x = 3..12)
     p.b(3, 12, 0, 0, -12, 12, CONCRETE)
-    # 18-meter A-frame winding headframe over vertical ore shaft (x = 5..11, z = 4..10)
+    # 19-meter timber-and-titanium winding headframe over vertical ore shaft (x = 5..11, z = 4..10)
     p.b(6, 10, -7, 0, 5, 9, BRICK)
     p.b(7, 9, -7, 1, 6, 8, AIR)
     p.ring(6, 10, 5, 9, 1, 1, HAZARD)
@@ -709,11 +730,13 @@ def build_mining_camp():
     for leg_x in (5, 11):
         for leg_z in (4, 10):
             p.b(leg_x, leg_x, 1, 15, leg_z, leg_z, OAK_LOG)
-    for brace_y in (5, 10, 15):
+    for brace_y in (5, 10):
         p.ring(5, 11, 4, 10, brace_y, brace_y, CARVED_OAK)
-    # Winding wheel house at top (y = 16..19)
+    # Full solid timber collar deck at y=15 (with 3x3 shaft opening) supporting the top winding house face-to-face!
+    p.b(5, 11, 15, 15, 4, 10, CARVED_OAK)
+    p.b(7, 9, 15, 15, 6, 8, AIR)
     p.b(6, 10, 16, 18, 5, 9, TITANIUM)
-    p.b(8, 8, 13, 17, 7, 7, COPPER_BLOCK)
+    p.b(8, 8, 15, 18, 7, 7, COPPER_BLOCK)
     p.b(8, 8, 19, 19, 7, 7, FLOODLIGHT)
 
     # Walkable Timber-Braced Sloping Adit Tunnel with Minecart Rails descending to Ore Seam (z = -12..2 -> y = -6)
@@ -727,7 +750,7 @@ def build_mining_camp():
     for step in range(7):
         sz = -4 + step
         sy = -step
-        p.b(6, 10, sy - 1, sy - 1, sz, sz, PLANK)
+        p.b(6, 10, max(-8, sy - 2), sy - 1, sz, sz, PLANK)
         p.b(6, 10, sy, sy + 3, sz, sz, AIR)
         p.b(8, 8, sy, sy, sz, sz, RAIL)
         if step % 2 == 0:
@@ -739,7 +762,8 @@ def build_mining_camp():
     p.b(6, 10, -6, -3, 2, 4, AIR)
     p.b(6, 7, -6, -4, 4, 4, GOLD_ORE)
     p.b(9, 10, -6, -4, 4, 4, QUARTZ_ORE)
-    p.b(8, 8, -3, -3, 3, 3, LANTERN)
+    p.b(8, 8, -6, -6, 3, 3, POLISHED_STONE)
+    p.b(8, 8, -5, -5, 3, 3, LANTERN)
 
 
 # ==============================================================================
@@ -763,10 +787,10 @@ def build_stone_circle():
     p.entrances.append([-1, -13, 1, 3])
 
     # Outer Sarsen Trilithon Ring: 12 towering megaliths + continuous carved stone lintel ring at y=8..9!
-    p.cyl_shell(0, 0, 12.4, 10.6, 8, 9, POLISHED_STONE)
+    p.cyl_shell(0, 0, 12.4, 10.4, 8, 9, POLISHED_STONE)
     for i in range(12):
         ang = i * pi / 6.0
-        mx, mz = round(cos(ang) * 11.5), round(sin(ang) * 11.5)
+        mx, mz = round(cos(ang) * 11.4), round(sin(ang) * 11.4)
         if abs(mx) <= 2 and mz <= -10:
             continue
         p.b(mx - 1, mx + 1, 1, 1, mz - 1, mz + 1, POLISHED_GRANITE)
@@ -781,11 +805,11 @@ def build_stone_circle():
         p.b(tx - 2, tx + 2, 12, 13, tz - 1, tz + 1, POLISHED_MARBLE)
         p.b(tx, tx, 1, 1, tz + (1 if tz < 0 else -1), tz + (1 if tz < 0 else -1), GLOW_SHROOM)
 
-    # Central Astral Altar & Floating Crystal Orrery
+    # Central Astral Altar & Connected Obsidian-Crystal Spire (0 floating voxels!)
     p.disc(0, 0, 3.2, 1, 1, POLISHED_GRANITE)
     p.ring(-2, 2, -2, 2, 1, 1, WATER)
     p.b(-1, 1, 1, 2, -1, 1, POLISHED_MARBLE)
-    p.b(0, 0, 3, 3, 0, 0, OBSIDIAN)
+    p.b(0, 0, 3, 4, 0, 0, OBSIDIAN)
     p.b(0, 0, 5, 7, 0, 0, ANDROMEDA_CRYSTAL)
     p.b(0, 0, 8, 8, 0, 0, CRYSTAL)
 
@@ -802,7 +826,7 @@ def build_library_ruins():
 
     # Classical South Marble Portico & Pediment (z = -15..-12)
     for step in range(2):
-        p.b(-5, 5, step, step, -16 + step, -16 + step, POLISHED_MARBLE)
+        p.b(-5, 5, 0, step, -16 + step, -16 + step, POLISHED_MARBLE)
     for col_x in (-10, -6, -3, 3, 6, 10):
         p.b(col_x, col_x, 2, 10, -14, -14, POLISHED_MARBLE)
     p.b(-11, 11, 11, 11, -15, -12, POLISHED_STONE)
@@ -826,12 +850,12 @@ def build_library_ruins():
         p.b(-13, -13, 4, 9, wz, wz + 1, GLASS)
         p.b(13, 13, 4, 9, wz, wz + 1, GLASS)
 
-    # Mezzanine Reading Balcony at y = 7 around central rotunda atrium + twin west/east stairs
+    # Mezzanine Reading Balcony at y = 7 around central rotunda atrium + 6-connected stair stringers
     p.b(-12, 12, 7, 7, -11, 12, CARVED_OAK)
-    p.b(-6, 6, 7, 7, -5, 6, AIR)
+    p.b(-5, 5, 7, 7, -4, 5, AIR)
     p.ring(-6, 6, -5, 6, 8, 8, CARVED_OAK)
     for s in range(6):
-        p.b(-11, -10, 2 + s, 2 + s, -8 + s, -8 + s, POLISHED_MARBLE)
+        p.b(-11, -10, max(2, 1 + s), 2 + s, -8 + s, -8 + s, POLISHED_MARBLE)
         p.b(-11, -10, 3 + s, 7 + s, -8 + s, -8 + s, AIR)
 
     # Multi-tier Bookshelf Stacks, Reading Desks, Lanterns & Secret Underground Scriptorium (y=-5..0)
@@ -847,18 +871,21 @@ def build_library_ruins():
     p.b(-5, 5, -5, 0, 6, 11, BRICK)
     p.b(-4, 4, -4, 0, 7, 10, AIR)
     p.b(-4, 4, -4, -3, 10, 10, BOOKSHELF)
-    p.b(0, 0, -2, -2, 8, 8, LANTERN)
+    p.b(3, 3, -4, -4, 9, 9, POLISHED_MARBLE)
+    p.b(3, 3, -3, -3, 9, 9, LANTERN)
     p.b(-1, 1, -4, 1, 5, 8, AIR)
     for s in range(5):
-        p.b(-1, 1, 1 - s, 1 - s, 5 + s, 5 + s, POLISHED_STONE)
+        p.b(-1, 1, max(-5, -s), 1 - s, 5 + s, 5 + s, POLISHED_STONE)
 
-    # Hemispherical Stepped Copper/Slate Dome with Central Oculus (y = 12..21) — fractured on SE side!
-    p.ring(-14, 14, -13, 14, 12, 12, POLISHED_STONE)
-    for dy in range(8):
-        r_d = (12.5 ** 2 - (dy * 1.45) ** 2) ** 0.5 if dy * 1.45 < 12.5 else 2.5
-        p.cyl_shell(0, 0, r_d, max(2.2, r_d - 1.6), 13 + dy, 13 + dy, COPPER_BLOCK if dy % 2 == 0 else SLATE)
+    # Hemispherical Stepped Copper/Slate Dome with Central Oculus (y = 12..19) — thick overlapping courses!
+    p.b(-14, 14, 12, 12, -13, 14, POLISHED_STONE)
+    p.disc(0, 0, 10.6, 12, 12, AIR)
+    dome_r = [12.6, 11.7, 10.7, 9.6, 8.4, 7.0, 5.5]
+    for dy, r_out in enumerate(dome_r):
+        r_in = max(2.6, r_out - 2.6)
+        p.cyl_shell(0, 0, r_out, r_in, 13 + dy, 13 + dy, COPPER_BLOCK if dy % 2 == 0 else SLATE)
     # Dramatic ruin breach in southeast dome & wall, with sakura tree growing inside the sunlit breach!
-    p.b(5, 15, 6, 22, 4, 15, AIR)
+    p.b(6, 15, 6, 22, 5, 15, AIR)
     p.tree_sakura(9, 9, 2, 5, SAKURA)
     for rx, rz in ((14, 10), (12, 15), (15, 7)):
         p.b(rx, rx + 1, 1, 2, rz, rz + 1, CRACKED)
@@ -894,45 +921,63 @@ def build_caravanserai():
     p.b(-4, 4, 8, 9, -15, -13, TERRACOTTA)
     p.b(-2, 2, 1, 5, -16, -12, AIR)
     p.entrances.append([-2, -14, 1, 5])
-    # Corner Minaret Watchtower with Lantern Balcony (height 18)
+    # Corner Minaret Watchtower with Lantern Balcony (height 19)
     p.b(-15, -11, 1, 14, -14, -10, SANDSTONE)
     p.b(-14, -12, 1, 13, -13, -11, AIR)
-    p.ring(-16, -10, -15, -9, 14, 14, POLISHED_STONE)
+    p.b(-16, -10, 14, 14, -15, -9, POLISHED_STONE)
     p.b(-14, -12, 15, 17, -13, -11, TERRACOTTA)
     p.b(-13, -13, 18, 19, -12, -12, COPPER_BLOCK)
-    p.b(-13, -13, 14, 14, -9, -9, LANTERN)
+    p.b(-15, -15, 15, 15, -9, -9, LANTERN)
 
-    # Two-Storey Merchant Inn & Tavern along the North Wing (x = -14..14, z = 6..14)
+    # Two-Storey Merchant Inn & Domed Silk-Road Khan along the North Wing (x = -14..14, z = 6..14)
     p.b(-14, 14, 0, 0, 6, 14, POLISHED_GRANITE)
     p.b(-13, 13, 0, 0, 7, 13, PLANK)
     p.b(-14, 14, 1, 9, 6, 14, LIMESTONE)
     p.b(-13, 13, 1, 9, 7, 13, AIR)
     p.ring(-14, 14, 6, 14, 5, 5, CARVED_OAK)
     p.b(-13, 13, 5, 5, 7, 13, PLANK)
-    # Overhanging carved wooden veranda along courtyard face (z = 4..5) + exterior stair
+    # Overhanging carved wooden veranda along courtyard face (z = 4..5) + 6-connected exterior stair
     p.b(-12, 12, 5, 5, 4, 5, PLANK)
     p.ring(-12, 12, 4, 5, 6, 6, CARVED_OAK)
     for col_x in (-12, -6, 0, 6, 12):
         p.b(col_x, col_x, 1, 8, 4, 4, OAK_LOG)
     p.b(-12, 12, 9, 9, 4, 5, SHINGLES)
     for s in range(5):
-        p.b(-11, -10, 1 + s, 1 + s, 0 + s, 0 + s, PLANK)
+        p.b(-11, -10, max(1, s), 1 + s, 0 + s, 0 + s, PLANK)
     for wx in (-9, -4, 4, 9):
         p.b(wx, wx + 1, 2, 3, 6, 6, GLASS)
         p.b(wx, wx + 1, 7, 8, 6, 6, GLASS)
         p.b(wx, wx + 1, 7, 8, 14, 14, GLASS)
-    p.gable_x(0, 10, 14, 4, 10, roof_id=SHINGLES, trim_id=CARVED_OAK, ridge_id=TERRACOTTA)
+
+    # Authentic Silk-Road Roof Terrace, Crenellated Parapet, Persian Turquoise Dome & Windcatcher Towers!
+    p.b(-14, 14, 10, 10, 6, 14, SANDSTONE)
+    p.ring(-14, 14, 6, 14, 11, 11, TERRACOTTA)
+    for mx in range(-14, 15, 3):
+        p.b(mx, min(14, mx + 1), 12, 12, 6, 6, SANDSTONE)
+        p.b(mx, min(14, mx + 1), 12, 12, 14, 14, SANDSTONE)
+    p.disc(0, 10, 4.2, 11, 11, SANDSTONE)
+    p.disc(0, 10, 3.8, 12, 13, COPPER_BLOCK)
+    p.disc(0, 10, 2.8, 14, 14, COPPER_BLOCK)
+    p.disc(0, 10, 1.6, 15, 15, TERRACOTTA)
+    p.b(0, 0, 16, 17, 10, 10, COPPER_BLOCK)
+    for wcx in (-11, 11):
+        p.b(wcx - 1, wcx + 1, 11, 14, 9, 11, SANDSTONE)
+        p.b(wcx, wcx, 12, 13, 9, 11, AIR)
+        p.b(wcx - 1, wcx + 1, 15, 15, 9, 11, TERRACOTTA)
+
     p.door_z(-1, 6, 1, 3)
     p.door_z(-1, 6, 6, 2)
-    # Tavern hearth, beds, bookshelves & workbenches inside
+    # Tavern hearth, beds, bookshelves, workbenches & grounded table lanterns inside
     p.b(11, 12, 1, 13, 12, 13, BRICK)
     p.b(10, 10, 1, 1, 12, 12, FURNACE)
     p.b(-11, -11, 1, 1, 11, 12, WORKBENCH)
     p.b(-11, -10, 6, 6, 11, 12, BED)
     p.b(10, 11, 6, 6, 9, 10, BED)
     p.b(-5, -3, 6, 7, 13, 13, BOOKSHELF)
-    p.b(0, 0, 4, 4, 10, 10, LANTERN)
-    p.b(0, 0, 9, 9, 10, 10, LANTERN)
+    p.b(3, 3, 1, 1, 10, 10, CARVED_OAK)
+    p.b(3, 3, 2, 2, 10, 10, LANTERN)
+    p.b(3, 3, 6, 6, 10, 10, CARVED_OAK)
+    p.b(3, 3, 7, 7, 10, 10, LANTERN)
 
     # Covered Bazaar Stalls (West Arcade) & Caravan Stables with Watering Trough (East Arcade)
     p.b(-14, -9, 4, 4, -9, 2, TERRACOTTA)
@@ -941,19 +986,20 @@ def build_caravanserai():
     p.b(-13, -10, 1, 1, -8, -6, PLANK)
     p.b(-12, -12, 2, 2, -7, -7, WORKBENCH)
     p.b(-13, -10, 1, 1, -3, -1, PLANK)
-    p.b(-11, -11, 3, 3, -4, -4, LANTERN)
+    p.b(-11, -11, 2, 2, -3, -3, LANTERN)
 
     p.b(9, 14, 4, 4, -11, 2, SHINGLES)
     for sz in (-11, -7, -3, 2):
         p.b(9, 9, 1, 3, sz, sz, OAK_LOG)
     p.b(12, 13, 1, 1, -9, -6, WATER)
     p.ring(11, 14, -10, -5, 1, 1, BRICK)
-    p.b(11, 11, 3, 3, -3, -3, LANTERN)
+    p.b(11, 11, 1, 1, -3, -3, CARVED_OAK)
+    p.b(11, 11, 2, 2, -3, -3, LANTERN)
 
     # Central Courtyard Oasis Fountain
     p.ring(-2, 2, -5, -1, 1, 1, POLISHED_MARBLE)
     p.b(-1, 1, 1, 1, -4, -2, WATER)
-    p.b(0, 0, 2, 3, -3, -3, POLISHED_MARBLE)
+    p.b(0, 0, 1, 3, -3, -3, POLISHED_MARBLE)
     p.b(0, 0, 4, 4, -3, -3, LANTERN)
 
 
@@ -969,8 +1015,46 @@ build_stone_circle()
 build_library_ruins()
 build_caravanserai()
 
-for p in PLANS:
+from collections import deque as _deque
+_NON_SUPPORT = {11, 15, 16, 52, 54, 55, 56, 61, 72, 73, 74, 75, 77, 85, 86, 87, 89}
+
+for _idx, p in enumerate(PLANS):
     assert len(p.boxes) >= 80, (p.name, 'expected rich multi-part authoring, got', len(p.boxes))
+    _vox = {}
     for x0, x1, y0, y1, z0, z1, bid in p.boxes:
         assert max(abs(x0), abs(x1), abs(z0), abs(z1)) <= p.radius, (p.name, 'outside radius')
         assert -8 <= y0 <= y1 <= 48 and 0 <= bid <= 89, (p.name, 'invalid bounds/material', y0, y1, bid)
+        for _y in range(y0, y1 + 1):
+            for _z in range(z0, z1 + 1):
+                for _x in range(x0, x1 + 1):
+                    if bid == 0:
+                        _vox.pop((_x, _y, _z), None)
+                    else:
+                        _vox[(_x, _y, _z)] = bid
+    # Strict 6-face connectivity & grounded placed-model validation
+    _vis = set()
+    _q = _deque()
+    for (_x, _y, _z), _b in _vox.items():
+        if _b == CAMPFIRE:
+            assert _y <= 1, (p.name, 'CAMPFIRE forbidden above ground firepit', (_x, _y, _z))
+        if _y <= 0 and _b not in _NON_SUPPORT:
+            _vis.add((_x, _y, _z))
+            _q.append((_x, _y, _z))
+    while _q:
+        _x, _y, _z = _q.popleft()
+        if _vox[(_x, _y, _z)] in _NON_SUPPORT:
+            continue
+        for _dx, _dy, _dz in ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)):
+            _nb = (_x + _dx, _y + _dy, _z + _dz)
+            if _nb in _vox and _nb not in _vis:
+                if _vox[_nb] in _NON_SUPPORT and _dy != 1:
+                    continue
+                _vis.add(_nb)
+                _q.append(_nb)
+    _bad = [(_pos, _vox[_pos]) for _pos in sorted(_vox) if _pos not in _vis]
+    assert not _bad, (p.name, f'{len(_bad)} disconnected/unsupported voxels', _bad[:8])
+    if _idx == 0:
+        for _vx, _vz in ((-15, -15), (14, -15), (-15, 14), (14, 14), (6, -5), (-6, 5), (0, -10), (0, 10)):
+            assert _vox.get((_vx, 0, _vz), 3) != 0 and (_vx, 1, _vz) not in _vox and (_vx, 2, _vz) not in _vox, (
+                'Village spawn blocked', (_vx, _vz))
+
