@@ -82,9 +82,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-tests-v2-${{ hashFiles('Packages/manifest.json', 'Assets/Editor/**', 'Assets/Scripts/**', 'Assets/Art/PBR/**') }}
+          key: Library-tests-v3-6000.3-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Assets/Editor/**', 'Assets/Scripts/**', 'Assets/Art/PBR/**') }}
           restore-keys: |
-            Library-tests-v2-
+            Library-tests-v3-6000.3-
 
       - name: Drop stale Bee build graph
         run: rm -rf Library/Bee

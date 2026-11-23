@@ -18,7 +18,7 @@
 
 ## English Summary (For Publishers & Technical Reviewers)
 
-**LestingCraft: New Era** (`v0.7.1`, Unity `6000.0.32f1` URP) is an original first-person voxel survival, engineering, and spaceflight sandbox for **PC (Windows x64)** and **Android ARM64**, playable solo or in **online co-op up to 8 players**.
+**LestingCraft: New Era** (`v0.7.1`, Unity `6000.3.29f1` URP) is an original first-person voxel survival, engineering, and spaceflight sandbox for **PC (Windows x64)** and **Android ARM64**, playable solo or in **online co-op up to 8 players**.
 
 ### Key Playable Pillars in Build `v0.7.1`
 - **Greedy-Meshed Streaming Voxel Worlds**: Multi-biome terrain generation (forests, cherry groves, dunes, caves, villages, keeps), authored multi-storey architecture with verified capsule-clear topology, and local + server delta persistence.
