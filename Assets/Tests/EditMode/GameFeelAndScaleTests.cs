@@ -250,8 +250,8 @@ namespace LestingCraft.Tests
             int sBase = LestingCraft.Story.StoryWorld.Floor(2506);
             Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(88, sBase + 5, 48, 2506, out ushort v8Lamp, 8));
             Assert.AreEqual(LestingCraft.World.BlockRegistry.LanternBlockId, v8Lamp, "v8 StoryWorld frozen");
-            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(91, sBase + 20, 69, 2506, out ushort v11Belfry, 11));
-            Assert.AreNotEqual(0, v11Belfry, "Quietford v11 Town Hall clocktower rises above plaza");
+            Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(96, sBase + 20, 69, 2506, out ushort v11Belfry, 11));
+            Assert.AreEqual(46, v11Belfry, "Quietford v11 Town Hall copper clocktower rises above plaza");
             Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(48, sBase + 3, -87, 2506, out ushort v11Rune, 11));
             Assert.AreEqual(11, v11Rune, "Watermill rune crystal preserved at exact quest target");
             Assert.IsTrue(LestingCraft.Story.StoryWorld.TrySample(176, sBase + 1, -112, 2506, out ushort v11Altar, 11));

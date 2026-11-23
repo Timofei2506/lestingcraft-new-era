@@ -175,6 +175,18 @@ def build_quietford_village():
     village_cottage(110, 62, 5, 4, SHINGLES, BRICK, -1)
     b(107, 111, 1, 3, 58, 58, AIR)
     village_cottage(96, 67, 4, 3, TERRACOTTA, LIMESTONE, -1)
+    # Quietford Town Hall Clocktower Belfry rising above the north gable (x=94..98, z=67..71, ry=9..23, all z<=72!)
+    ring(94, 98, 67, 71, 9, 15, BRICK)
+    b(95, 97, 9, 15, 68, 70, AIR)
+    b(96, 96, 12, 13, 67, 67, MARBLE)  # Gold clock face overlooking Quietford plaza!
+    for px in (94, 98):
+        for pz in (67, 71):
+            b(px, px, 16, 18, pz, pz, OAK_LOG)
+    b(96, 96, 17, 17, 69, 69, LANTERN)
+    b(93, 99, 19, 19, 66, 72, COPPER_BLOCK)
+    b(94, 98, 20, 20, 67, 71, COPPER_BLOCK)
+    b(95, 97, 21, 21, 68, 70, COPPER_BLOCK)
+    b(96, 96, 22, 23, 69, 69, COPPER_BLOCK)
 
     # Ornate Shingled Village Well at (96, 46) (keeping Vera (96,50), Mira (94,52), checkpoint (96,53) 100% clear!)
     ring(94, 98, 44, 48, 1, 1, POLISHED_GRANITE)
