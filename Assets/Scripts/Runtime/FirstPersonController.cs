@@ -379,7 +379,8 @@ namespace LestingCraft.Runtime
                 vfx.ActiveDimension=World.Dimension;
                 vfx.DayClock01=Game.Session.Data!=null?(float)(Game.Session.Data.clock%1.0):0.5f;
                 int actIt=Game.Session.Inventory.Active.count>0?Game.Session.Inventory.Active.item:0;
-                vfx.HoldingTorch=Game.Session.Inventory.OffhandTorch||actIt==Items.Torch||actIt==BlockRegistry.TorchBlockId;
+                bool hasOffhand=Game.Session.Inventory.offhand!=null&&Game.Session.Inventory.offhand.count>0;
+                vfx.HoldingTorch=hasOffhand||actIt==Items.Torch||actIt==BlockRegistry.TorchBlockId;
             }
         }
     }
