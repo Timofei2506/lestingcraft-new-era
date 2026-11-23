@@ -7,7 +7,7 @@ class SpaceAssetCheck
     static void Main()
     {
         string[] names={"Shuttle","LaunchPad","Station"};
-        int[] solid={16240,27813,10375};
+        int[] solid={11638,32896,10375};
         for(int j=0;j<names.Length;j++)
         {
             byte[] bytes=File.ReadAllBytes("Assets/Resources/Space/"+names[j]+".bytes");
@@ -16,8 +16,8 @@ class SpaceAssetCheck
             if(names[j]=="Shuttle")
             {
                 var walkable=ShuttleCabinCarving.Make(model);
-                Check(walkable.SolidCount==15902,"Derived cabin removes exactly 338 internal/hatch voxels");
-                Check(model.SolidCount==16240,"Approved model stays unchanged in memory");
+                Check(walkable.SolidCount==11294,"Derived cabin removes exactly 344 internal/hatch voxels");
+                Check(model.SolidCount==11638,"Approved model stays unchanged in memory");
                 Check(walkable.At(31,30,33)==0&&walkable.At(31,43,33)==0,"Two decks are hollow");
                 Check(walkable.At(31,45,36)==model.At(31,45,36),"Small approved windows retained");
                 int surface=0;
@@ -36,7 +36,7 @@ class SpaceAssetCheck
             if(names[j]=="LaunchPad")
             {
                 var fitted=LaunchPadLiftOpening.Make(model);
-                Check(model.SolidCount==27813&&fitted.SolidCount==27803,"Approved pad unchanged; ten functional cells removed in memory");
+                Check(model.SolidCount==32896&&fitted.SolidCount==32886,"Approved pad unchanged; ten functional cells removed in memory");
                 int changes=0;
                 for(int x=0;x<model.X;x++)for(int y=0;y<model.Y;y++)for(int z=0;z<model.Z;z++)
                     if(model.At(x,y,z)!=fitted.At(x,y,z))

@@ -19,7 +19,10 @@ namespace LestingCraft.Runtime
         {
             public GameObject Root;
             public GameObject Star;
+            public GameObject BinaryCompanion;
+            public float StarBaseHalf;
             public readonly List<GameObject> Worlds = new List<GameObject>();
+            public readonly List<List<GameObject>> WorldMoons = new List<List<GameObject>>();
             public readonly List<GameObject> Features = new List<GameObject>();
             public Transform Accretion;
             public bool Built;
@@ -71,13 +74,19 @@ namespace LestingCraft.Runtime
 
             BuildGalaxies(invShipRot);
 
-            var nearest = ProceduralUniverse.Nearest(ship, 18, 4);
+            var nearest = ProceduralUniverse.Nearest(ship, 35, 14);
+            var currentCell = ProceduralUniverse.SystemAt(ship);
+            // Always include the star system of the ship's own 5-ly sector first!
+            var activeSystems = new List<UniverseSystem>(nearest.Length + 1) { currentCell };
+            for (int n = 0; n < nearest.Length; n++)
+                if (!nearest[n].Key.Equals(currentCell.Key)) activeSystems.Add(nearest[n]);
+
             var live = new HashSet<UniverseKey>();
             string line = "";
             string nearestName = "";
-            for (int i = 0; i < nearest.Length; i++)
+            for (int i = 0; i < activeSystems.Count; i++)
             {
-                var system = nearest[i];
+                var system = activeSystems[i];
                 live.Add(system.Key);
                 if (!views.TryGetValue(system.Key, out var view))
                 {
@@ -87,19 +96,37 @@ namespace LestingCraft.Runtime
                 if (!view.Built) BuildSystem(system, view);
                 if (!view.Root) continue;
                 view.Root.SetActive(true);
+                // Keep system root at skyRoot origin so Star, Worlds & Features use un-doubled ship-relative dome coords!
+                view.Root.transform.localPosition = Vector3.zero;
 
                 SpaceVector delta = system.AnchorKm - ship;
                 double distanceKm = System.Math.Max(system.StarRadiusKm * 1.4, delta.Magnitude);
                 float renderDistance = RenderDistance(distanceKm);
                 Vector3 dir = invShipRot * ToVector(delta.Normalized);
-                view.Root.transform.localPosition = dir * renderDistance;
 
-                // Star: angular size, but never smaller than a visible point.
+                // Star: angular size, normalized against StarBaseHalf so close stars fill the sky without overshoot.
                 double starAngle = System.Math.Min(0.94, System.Math.Max(1e-7, system.StarRadiusKm / distanceKm));
                 float starHalf = Mathf.Max(renderDistance * MinStarHalfAngle, renderDistance * Mathf.Tan((float)System.Math.Asin(starAngle)));
-                if (view.Star) view.Star.transform.localScale = Vector3.one * starHalf;
+                float baseDiv = Mathf.Max(0.5f, view.StarBaseHalf);
+                if (view.Star)
+                {
+                    view.Star.transform.localPosition = dir * renderDistance;
+                    view.Star.transform.localScale = Vector3.one * (starHalf / baseDiv);
+                }
+                if (view.BinaryCompanion)
+                {
+                    double binAngle = helm.OrbitTimeDays * 0.35 + (system.Key.X * 1.7 + system.Key.Z * 0.9);
+                    SpaceVector binPos = system.AnchorKm + new SpaceVector(
+                        System.Math.Cos(binAngle) * system.StarRadiusKm * 7.5,
+                        system.StarRadiusKm * 0.8,
+                        System.Math.Sin(binAngle) * system.StarRadiusKm * 7.5);
+                    SpaceVector dBin = binPos - ship;
+                    float binRender = RenderDistance(System.Math.Max(system.StarRadiusKm, dBin.Magnitude));
+                    view.BinaryCompanion.transform.localPosition = (invShipRot * ToVector(dBin.Normalized)) * binRender;
+                    view.BinaryCompanion.transform.localScale = Vector3.one * Mathf.Max(0.55f * (starHalf / baseDiv), binRender * MinStarHalfAngle / baseDiv);
+                }
 
-                // Worlds share the same monotonic depth ordering, so nothing pops through the hull.
+                // Worlds use ProceduralUniverse.PlanetPositionKm so hyperjump/landing & dome rendering match to the km!
                 var planets = ProceduralUniverse.Planets(system);
                 double phaseDays = helm.OrbitTimeDays;
                 for (int p = 0; p < planets.Length && p < view.Worlds.Count; p++)
@@ -107,11 +134,8 @@ namespace LestingCraft.Runtime
                     var world = planets[p];
                     var body = view.Worlds[p];
                     if (!body) continue;
-                    double angle = world.OrbitPhaseRad + phaseDays / System.Math.Max(0.25, world.OrbitDays) * System.Math.PI * 2.0;
-                    double au = world.OrbitAu;
-                    var orbitKm = new SpaceVector(System.Math.Cos(angle) * au * 149597870.7,
-                        System.Math.Sin(angle * 0.5) * au * 149597870.7 * 0.18, System.Math.Sin(angle) * au * 149597870.7);
-                    SpaceVector deltaWorld = system.AnchorKm + orbitKm - ship;
+                    SpaceVector worldAbsKm = ProceduralUniverse.PlanetPositionKm(system, world, phaseDays);
+                    SpaceVector deltaWorld = worldAbsKm - ship;
                     double worldDistance = System.Math.Max(world.RadiusKm * 1.05, deltaWorld.Magnitude);
                     float worldRender = RenderDistance(worldDistance);
                     body.transform.localPosition = invShipRot * ToVector(deltaWorld.Normalized) * worldRender;
@@ -120,18 +144,34 @@ namespace LestingCraft.Runtime
                     float baseHalf = world.HasRings ? 7.8f : Mathf.Clamp((float)System.Math.Log10(System.Math.Max(200.0, world.RadiusKm)) * 1.55f, 2.2f, 8.2f);
                     body.transform.localScale = Vector3.one * (worldHalf / Mathf.Max(0.1f, baseHalf));
 
+                    // Animate orbiting 3D natural moons when within system range
+                    if (p < view.WorldMoons.Count && view.WorldMoons[p] != null && worldDistance < 8.0e9)
+                    {
+                        var moons = ProceduralUniverse.Moons(world);
+                        var moonNodes = view.WorldMoons[p];
+                        for (int mIdx = 0; mIdx < moons.Length && mIdx < moonNodes.Count; mIdx++)
+                        {
+                            var mNode = moonNodes[mIdx];
+                            if (!mNode) continue;
+                            mNode.SetActive(true);
+                            double mAng = moons[mIdx].PhaseRad + (phaseDays * 24.0 / System.Math.Max(1.0, moons[mIdx].OrbitHours)) * System.Math.PI * 2.0;
+                            float mOrbitLocal = baseHalf * (float)(moons[mIdx].OrbitRadiusKm / System.Math.Max(200.0, world.RadiusKm)) * 0.52f;
+                            mNode.transform.localPosition = new Vector3(Mathf.Cos((float)mAng) * mOrbitLocal, Mathf.Sin((float)mAng * 0.5f) * mOrbitLocal * 0.08f, Mathf.Sin((float)mAng) * mOrbitLocal);
+                        }
+                    }
+
                     // Sun direction for this world, in dome space: from the world to its star.
-                    SpaceVector toStar = system.AnchorKm - (system.AnchorKm + orbitKm);
+                    SpaceVector toStar = system.AnchorKm - worldAbsKm;
                     Vector3 sunDir = invShipRot * ToVector(toStar.Normalized);
                     if (sunDir.sqrMagnitude < 0.001f) sunDir = Vector3.up;
-                    float flux = system.Star == StarKind.BlackHole ? 0.02f
-                        : Mathf.Clamp(1.05f / Mathf.Pow(Mathf.Max(0.18f, (float)au), 0.55f), 0.16f, 2.4f);
+                    float flux = system.Star == StarKind.BlackHole ? 0.04f
+                        : Mathf.Clamp((float)System.Math.Pow(System.Math.Max(0.01, system.LuminositySolar / System.Math.Max(0.02, world.OrbitAu * world.OrbitAu)), 0.25), 0.16f, 2.4f);
                     PaintWorld(body, sunDir.normalized, flux, world);
 
                     if (p == 0 && i == 0)
                     {
                         nearestName = system.Name;
-                        line = system.Name + " · " + StarClassRu[(int)system.Star] + " · " + world.Name + " · " + ProceduralUniverse.Describe(world);
+                        line = system.Name + " (" + system.SpectralCode + ") · " + StarClassRu[(int)system.Star] + " · " + world.Name + " · " + ProceduralUniverse.Describe(world);
                     }
                 }
 
@@ -152,6 +192,8 @@ namespace LestingCraft.Runtime
 
                 if (view.Accretion)
                 {
+                    view.Accretion.localPosition = dir * renderDistance;
+                    view.Accretion.localScale = Vector3.one * (starHalf / baseDiv);
                     view.Accretion.Rotate(Vector3.up, 42f * Time.deltaTime, Space.Self);
                     var material = view.Accretion.GetComponentInChildren<MeshRenderer>();
                     if (material && material.sharedMaterial && material.sharedMaterial.HasProperty("_Pulse"))
@@ -191,6 +233,7 @@ namespace LestingCraft.Runtime
 
             // Star (or black hole) at the local origin.
             float starBase = system.Star == StarKind.BlackHole ? 3.4f : system.Star == StarKind.BlueGiant || system.Star == StarKind.RedGiant ? 9.6f : 6.4f;
+            view.StarBaseHalf = starBase;
             var star = NewCube("Star_" + system.Name, root.transform, starBase);
             view.Star = star;
             if (system.Star == StarKind.BlackHole)
@@ -212,6 +255,13 @@ namespace LestingCraft.Runtime
                 Color tint = new Color(system.StarR, system.StarG, system.StarB);
                 var material = Lit("StarSurface", tint, tint * 2.6f, 0.05f, 0.4f);
                 star.GetComponent<MeshRenderer>().sharedMaterial = material;
+                if (system.Binary)
+                {
+                    var comp = NewCube("BinaryCompanion_" + system.Name, root.transform, starBase * 0.62f);
+                    Color compTint = new Color(Mathf.Clamp01(system.StarR * 0.85f + 0.15f), Mathf.Clamp01(system.StarG * 0.78f + 0.12f), Mathf.Clamp01(system.StarB * 1.12f));
+                    comp.GetComponent<MeshRenderer>().sharedMaterial = Lit("BinaryCompanionSurface", compTint, compTint * 2.2f, 0.05f, 0.4f);
+                    view.BinaryCompanion = comp;
+                }
             }
 
             for (int i = 0; i < planets.Length; i++)
@@ -249,6 +299,20 @@ namespace LestingCraft.Runtime
                 }
 
                 view.Worlds.Add(node);
+                var moonNodes = new List<GameObject>();
+                var moons = ProceduralUniverse.Moons(world);
+                for (int mIdx = 0; mIdx < moons.Length; mIdx++)
+                {
+                    float mHalf = Mathf.Clamp(half * (float)(moons[mIdx].RadiusKm / System.Math.Max(400.0, world.RadiusKm)), 0.18f, 1.35f);
+                    var mCube = NewCube("Moon_" + moons[mIdx].Name, node.transform, mHalf);
+                    var mRen = mCube.GetComponent<MeshRenderer>();
+                    Color mCol = new Color(moons[mIdx].R, moons[mIdx].G, moons[mIdx].B);
+                    mRen.sharedMaterial = Lit("MoonMat_" + moons[mIdx].Name, mCol, moons[mIdx].Volcanic ? new Color(0.55f, 0.22f, 0.05f) : Color.black, 0.05f, 0.2f);
+                    mRen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    mRen.receiveShadows = false;
+                    moonNodes.Add(mCube);
+                }
+                view.WorldMoons.Add(moonNodes);
                 _ = texture;
             }
 

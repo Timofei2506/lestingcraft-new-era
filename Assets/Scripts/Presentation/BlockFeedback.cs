@@ -127,7 +127,7 @@ namespace LestingCraft.Presentation
         }
         public void SetShape(ushort id)
         {
-            bool authored=id==11||id==15;var mesh=authored?VoxelItemModels.MeshFor(id):BlockGeometry.Box(0);
+            bool authored=LestingCraft.World.BlockRegistry.IsCustomPlacedModel(id);var mesh=authored?VoxelItemModels.MeshFor(id):BlockGeometry.Box(0);
             surface.GetComponent<MeshFilter>().sharedMesh=mesh;
             surface.transform.localPosition=authored?PlacedVoxelModel.Offset(id)-Vector3.one*.5f:Vector3.zero;
             surface.transform.localScale=Vector3.one*(authored?PlacedVoxelModel.Scale*1.004f:1.004f);

@@ -82,13 +82,18 @@ namespace LestingCraft.World
         public static bool IsSolid(ushort id) => id < Definitions.Length && Definitions[id].Solid;
         public static bool IsRail(ushort id) => id == SteelRailId || id == PoweredRailId;
         public static bool IsCustomPlacedModel(ushort id) =>
-            id == CampfireId || id == CrystalId || id == TorchBlockId || id == BedBlockId || id == LanternBlockId ||
-            id == CopperCableId || id == SolarArrayId || id == NuclearReactorId || id == SteelRailId ||
-            id == PoweredRailId || id == C4ChargeId;
+            id == CampfireId || id == CrystalId || id == WorkbenchId || id == FurnaceId ||
+            id == TorchBlockId || id == BedBlockId || id == LanternBlockId || id == GlowShroomId ||
+            id == CopperCableId || id == BatteryBankId || id == FuelGeneratorId ||
+            id == SolarArrayId || id == NuclearReactorId || id == ElectricFloodlightId ||
+            id == SteelRailId || id == PoweredRailId || id == C4ChargeId || id == RadiaTerminalId;
+        public static float ColliderHeight(ushort id) =>
+            IsRail(id) ? .24f :
+            id == CampfireId ? .34f :
+            id == C4ChargeId ? .48f :
+            id == BedBlockId ? .58f :
+            id == SolarArrayId ? .78f : 1f;
         public static bool Occludes(ushort id) =>
-            IsSolid(id) && id != CampfireId && id != CrystalId && id != 44 && id != ArmoredGlassId &&
-            id != TorchBlockId && id != BedBlockId && id != LanternBlockId &&
-            id != CopperCableId && id != SolarArrayId && id != NuclearReactorId &&
-            id != SteelRailId && id != PoweredRailId && id != C4ChargeId;
+            IsSolid(id) && id != 44 && id != ArmoredGlassId && !IsCustomPlacedModel(id);
     }
 }

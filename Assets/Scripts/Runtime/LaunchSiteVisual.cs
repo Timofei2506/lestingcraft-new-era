@@ -117,6 +117,21 @@ namespace LestingCraft.Runtime
             var rampMaterial=new Material(shader){name="Approach ramp · steel",color=new Color(.38f,.47f,.52f)};
             var supportMaterial=new Material(shader){name="Foundation supports · steel",color=new Color(.25f,.33f,.39f)};
             materials.Add(rampMaterial);materials.Add(supportMaterial);
+
+            // High-mast xenon floodlights on Baikonur-Nova cosmodrome corners + gantry deck lamp
+            Vector3[] mastOffsets={new Vector3(-30f,30f,-28f),new Vector3(-30f,30f,28f),new Vector3(30f,30f,-28f),new Vector3(30f,30f,28f),new Vector3(-13f,32f,3f)};
+            for(int li=0;li<mastOffsets.Length;li++)
+            {
+                var lg=new GameObject("CosmodromeFloodlight_"+li);
+                lg.transform.SetParent(transform,false);
+                lg.transform.localPosition=mastOffsets[li];
+                var lt=lg.AddComponent<Light>();
+                lt.type=LightType.Point;
+                lt.color=li==4?new Color(1f,.78f,.52f):new Color(.88f,.94f,1f);
+                lt.intensity=li==4?2.2f:3.4f;
+                lt.range=li==4?18f:48f;
+                lt.shadows=LightShadows.None;
+            }
             int count=rampEndZ-rampStartZ;
             var top=new float[count+1];
             float start=0;

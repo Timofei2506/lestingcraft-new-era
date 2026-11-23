@@ -130,5 +130,74 @@ namespace LestingCraft.Tests
             Assert.AreEqual(0f, clamped.x, 1e-4f, "X motion over abyss must be clamped while crouching");
             Assert.AreEqual(0.10f, clamped.z, 1e-4f, "Z motion parallel to ledge should slide smoothly");
         }
+
+        [Test]
+        public void UpgradedThreeDimensionalWorldObjectsMeshWithoutOpaqueCubeLeak()
+        {
+            ushort[] sculptedBlocks = { 15, 16, 17, 54, 55, 56, 61, 72, 73, 74, 75, 76, 77, 85, 86, 87, 89 };
+            foreach (ushort id in sculptedBlocks)
+            {
+                Assert.IsTrue(LestingCraft.World.BlockRegistry.IsCustomPlacedModel(id), "Should use 3D model: " + id);
+                Assert.IsFalse(LestingCraft.World.BlockRegistry.Occludes(id), "3D object should not occlude neighbors: " + id);
+                var mesh = VoxelItemModels.MeshFor(id);
+                Assert.IsNotNull(mesh, "Missing 3D mesh for block " + id);
+                Assert.Greater(mesh.vertexCount, 120, "Sparse 3D mesh for block " + id);
+
+                var c = new LestingCraft.World.ChunkData();
+                c.SetBlock(4, 4, 4, id);
+                var built = LestingCraft.World.ChunkMesher.Build(c, 0, 0, (x, y, z) => 0);
+                Assert.AreEqual(0, built.OpaqueTriangles.Count, "Custom 3D block must not emit opaque 1x1x1 cube faces: " + id);
+            }
+            Assert.AreEqual(0.24f, LestingCraft.World.BlockRegistry.ColliderHeight(LestingCraft.World.BlockRegistry.SteelRailId), 0.001f);
+        }
+
+        [Test]
+        public void WorldVisualEffectsBuildsSlashAndSparksOutsideCameraHierarchy()
+        {
+            var host = new GameObject("VfxHost");
+            try
+            {
+                var vfx = WorldVisualEffects.Ensure(host.transform);
+                Assert.AreEqual(4, vfx.ActiveParticleSystemCount);
+                vfx.StartSlash(new Vector3(0f, 1.8f, 0f), Quaternion.identity, 172);
+                vfx.BurstSparks(new Vector3(1f, 2f, 3f), Vector3.up, Color.yellow, 10);
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
+        public void InfiniteAstrophysicalUniverseScalesHabitableZoneAndHyperjumpsAcrossLightYears()
+        {
+            // Verify star-flux physics across distant sectors (including >100,000 ly away!)
+            for (long sx = 12000; sx <= 12015; sx++)
+            {
+                var sys = ProceduralUniverse.System(sx, -4500, 890);
+                Assert.Greater(sys.MassSolar, 0.01);
+                Assert.Greater(sys.LuminositySolar, 0.0);
+                var planets = ProceduralUniverse.Planets(sys);
+                double starRadiusAu = sys.StarRadiusKm / 149597870.7;
+                foreach (var p in planets)
+                {
+                    Assert.Greater(p.OrbitAu, starRadiusAu * 3.0, "Planet must never orbit inside stellar photosphere");
+                    var moons = ProceduralUniverse.Moons(p);
+                    Assert.AreEqual(Mathf.Min(6, p.MoonCount), moons.Length);
+                    for (int m = 0; m < moons.Length; m++)
+                        Assert.Greater(moons[m].OrbitRadiusKm, p.RadiusKm * 3.0, "Moon must orbit outside Roche limit");
+                }
+            }
+
+            // Verify OpenSpaceHelm infinite procedural scanning & hyperjump into landing orbit!
+            var helm = new OpenSpaceHelm { Active = true, PositionKm = new SpaceVector(8.5e18, -3.2e18, 1.1e18) };
+            Assert.IsTrue(helm.CycleProceduralWorld(1));
+            Assert.IsTrue(helm.DeepSpaceProceduralMode);
+            Assert.IsTrue(helm.StartProceduralHyperjump());
+            for (int step = 0; step < 30 && helm.InHyperjump; step++)
+                helm.Step(0.08f, 0f, 0f, 0f);
+            Assert.IsFalse(helm.InHyperjump);
+            Assert.IsTrue(helm.InLandingRange, "Hyperjump must place ship inside procedural exoplanet landing orbit");
+        }
     }
 }

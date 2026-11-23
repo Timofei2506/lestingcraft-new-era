@@ -333,7 +333,7 @@ namespace LestingCraft.Runtime
                 SpaceHelm.StartHyperjump(SpaceHelm.TargetBody);
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
             spaceVisuals.SetOpenSpaceFlightActive(SpaceHelm,launchVisual.ShuttleRoot,player.transform);
-            Session.Notice="РУЧНОЙ ШТУРВАЛ ОТКРЫТОГО КОСМОСА АКТИВЕН! Вся Солнечная система, 7 звёздных систем и Галактика Андромеды M31 перед вами!";
+            Session.Notice="ОТКРЫТЫЙ БЕСКОНЕЧНЫЙ КОСМОС: [N] сканер процедурных звёзд/планет · [G] известные миры · [J] гиперпрыжок · [L] посадка!";
         }
 
         public void SetOuterSpaceSurfaceHidden(bool hidden)
@@ -377,8 +377,53 @@ namespace LestingCraft.Runtime
             EvaluateStoryRadio();
         }
 
+        public string ActiveProceduralPlanetTitle { get; private set; } = "";
+
+        static Dimension MapProceduralPlanetBiome(UniversePlanet p)
+        {
+            bool alt = (p.Seed & 1) != 0;
+            switch (p.Class)
+            {
+                case WorldClass.Ocean: return alt ? Dimension.Kepler452b : Dimension.Trappist1e;
+                case WorldClass.Lava: return alt ? Dimension.Mercury : Dimension.Venus;
+                case WorldClass.Toxic: return p.TemperatureC < -20 ? Dimension.Titan : Dimension.Venus;
+                case WorldClass.Desert: return alt ? Dimension.ProximaB : Dimension.Mars;
+                case WorldClass.Ice: return alt ? Dimension.Pluto : Dimension.Europa;
+                case WorldClass.Barren: return Dimension.Moon;
+                case WorldClass.Rogue: return alt ? Dimension.Somnia : Dimension.Pluto;
+                default:
+                    if (p.HasLife) return alt ? Dimension.Trappist1e : Dimension.Kepler452b;
+                    return (p.Seed % 3 == 0) ? Dimension.AndromedaPrime : (alt ? Dimension.Mars : Dimension.Moon);
+            }
+        }
+
         void TryLandFromOpenSpace()
         {
+            // Auto-engage procedural landing if deep in procedural space (> 0.25 ly from Sol) or locked via [N]!
+            if (!SpaceHelm.DeepSpaceProceduralMode && SpaceHelm.PositionKm.Magnitude > ProceduralUniverse.LightYearKm * 0.25)
+                SpaceHelm.CycleProceduralWorld(0);
+
+            if (SpaceHelm.DeepSpaceProceduralMode && !string.IsNullOrEmpty(SpaceHelm.ProceduralPlanet.Name))
+            {
+                var p = SpaceHelm.ProceduralPlanet;
+                var sys = SpaceHelm.ProceduralSystem;
+                if (!SpaceHelm.InLandingRange)
+                {
+                    if (SpaceHelm.StartProceduralHyperjump())
+                        Session.Notice = "Гиперпрыжок к экзопланете «" + p.Name + "» (" + sys.Name + ", сектор " + sys.Key + ")!";
+                    return;
+                }
+                if (!ProceduralUniverse.IsLandable(p.Class))
+                {
+                    Session.Notice = "Газовый/ледяной гигант «" + p.Name + "» не имеет твёрдой коры — нажмите [N] для выбора каменистой планеты!";
+                    return;
+                }
+                SpaceHelm.Disengage();
+                SetOuterSpaceSurfaceHidden(false);
+                CompleteProceduralPlanetLanding(sys, p);
+                return;
+            }
+
             var body=CelestialAtlas.GetBody(SpaceHelm.TargetBody);
             if(!SpaceHelm.InLandingRange)
             {
@@ -411,13 +456,22 @@ namespace LestingCraft.Runtime
             {
                 if(SpaceHelm.Active)
                 {
-                    Session.Notice="Открытый космос активен: нажмите [J] для гиперпрыжка к цели и [L] для посадки/стыковки!";
+                    Session.Notice="Открытый космос: [N] процедурные миры бесконечной Вселенной · [J] гиперпрыжок · [L] посадка!";
                 }
                 else EnterOpenSpaceFlight(false);
                 return;
             }
             if(SpaceHelm.Active)
             {
+                if(keyboard.nKey.wasPressedThisFrame)
+                {
+                    if(SpaceHelm.CycleProceduralWorld(1))
+                    {
+                        var sp=SpaceHelm.ProceduralPlanet;
+                        var ss=SpaceHelm.ProceduralSystem;
+                        Session.Notice="Сектор "+ss.Key+" · "+ss.Name+" ("+ss.SpectralCode+") → «"+sp.Name+"»: "+ProceduralUniverse.Describe(sp)+" · [J] прыжок · [L] посадка";
+                    }
+                }
                 if(keyboard.gKey.wasPressedThisFrame)
                 {
                     var b=SpaceHelm.CycleTarget(1);
@@ -426,7 +480,12 @@ namespace LestingCraft.Runtime
                 }
                 if(keyboard.jKey.wasPressedThisFrame)
                 {
-                    if(SpaceHelm.StartHyperjump(SpaceHelm.TargetBody))
+                    if(SpaceHelm.DeepSpaceProceduralMode && !string.IsNullOrEmpty(SpaceHelm.ProceduralPlanet.Name))
+                    {
+                        if(SpaceHelm.StartProceduralHyperjump())
+                            Session.Notice="ГИПЕРПРЫЖОК В СЕКТОР "+SpaceHelm.ProceduralSystem.Key+" → «"+SpaceHelm.ProceduralPlanet.Name+"» ("+SpaceHelm.ProceduralSystem.Name+")!";
+                    }
+                    else if(SpaceHelm.StartHyperjump(SpaceHelm.TargetBody))
                         Session.Notice="ГИПЕРПРЫЖОК → "+CelestialAtlas.GetBody(SpaceHelm.TargetBody).NameRu+"!";
                 }
                 if(keyboard.vKey.wasPressedThisFrame)
@@ -650,9 +709,77 @@ namespace LestingCraft.Runtime
             spaceVisuals.ApplyPlanetAtmosphereAndGravity(targetDim,player,Camera.main);
             SpawnBossIfApplicable(targetDim);
 
+            ActiveProceduralPlanetTitle = "";
             Session.Checkpoint();
             EvaluateStoryRadio();
             Session.Notice="Посадка на «"+dimensions[(int)targetDim]+"» успешна! Нажмите [E], чтобы встать с кресла и выйти через шлюз!";
+        }
+
+        void CompleteProceduralPlanetLanding(UniverseSystem sys, UniversePlanet planet)
+        {
+            if (!world || !player || !Session) return;
+            Dimension targetDim = MapProceduralPlanetBiome(planet);
+            int exoSeed = (Session.Data != null ? Session.Data.seed : 2026) ^ planet.Seed;
+            int exoRealmId = 100000 + (planet.Seed & 0x3fffffff);
+
+            player.transform.SetParent(null, true);
+            offlineFlightActive = false;
+            SpaceHelm.Disengage();
+            CockpitMouseMode = false;
+            offlineNav = null;
+            offlineRetroBurning = false;
+            dockedAtStation = false;
+            player.ZeroGActive = false;
+
+            if (activePlanetBoss) { Destroy(activePlanetBoss.gameObject); activePlanetBoss = null; }
+            if (spaceVisuals) spaceVisuals.DespawnOrbitalStationInterior();
+
+            Session.Data.blocks = world.ExportAllMergedEdits(Session.Data.blocks);
+            Session.Data.activeDimension = (int)targetDim;
+            Session.Data.dockedAtStation = false;
+            dimension = (int)targetDim;
+
+            if (launchVisual) { Destroy(launchVisual.gameObject); launchVisual = null; }
+            world.SwitchPlanet(targetDim, Session.Data.blocks, exoSeed, exoRealmId);
+
+            Vector3Int landingSite = LaunchSiteVisual.OfflineSite(world.Seed, 0, 0, targetDim);
+            sharedLaunchSite = landingSite;
+            launchVisual = LaunchSiteVisual.Create(world.transform, landingSite, world.Seed, targetDim);
+            launchVisual.Cabin.SyncHatch(true);
+            launchVisual.Cabin.BindHelm(SpaceHelm);
+            hatchOpen = true;
+
+            double sx, sy, sz;
+            VerticalShuttleWalk.Seat(0, out sx, out sy, out sz);
+            Vector3 cockpitWorld = launchVisual.Cabin.transform.TransformPoint(new Vector3((float)sx, (float)sy + 0.25f, (float)sz - 0.46f));
+            player.TeleportTo(cockpitWorld, true);
+            offlineShuttleSeat = true;
+            SetCursor(true);
+
+            spaceVisuals = SpaceFlightVisuals.Ensure(null);
+            spaceVisuals.SetSpaceFlightActive(false, SpaceTargetKind.Mars, targetDim, FlightStage.Landed, 1.0, 0.0, 0.0, false, launchVisual.ShuttleRoot, player.transform);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(targetDim, player, Camera.main);
+
+            // Apply exact astrophysical exoplanet gravity & atmospheric hue!
+            player.GravityScale = Mathf.Clamp(planet.GravityG, 0.08f, 3.5f);
+            if (planet.AtmosphereDensity > 0.04f)
+            {
+                Color atmoCol = new Color(planet.AtmoR, planet.AtmoG, planet.AtmoB);
+                RenderSettings.fog = true;
+                RenderSettings.fogColor = Color.Lerp(atmoCol * 0.65f, atmoCol, Mathf.Clamp01(planet.AtmosphereDensity));
+                if (Camera.main) Camera.main.backgroundColor = RenderSettings.fogColor * 0.72f;
+            }
+            else
+            {
+                RenderSettings.fog = false;
+                if (Camera.main) Camera.main.backgroundColor = new Color(0.01f, 0.012f, 0.022f);
+            }
+
+            SpawnBossIfApplicable(targetDim);
+            ActiveProceduralPlanetTitle = planet.Name + " (" + sys.Name + " · сектор " + sys.Key + ")";
+            Session.Checkpoint();
+            Session.Notice = "Посадка на экзопланету «" + planet.Name + "» (" + sys.Name + ", сектор " + sys.Key + ") · "
+                + planet.GravityG.ToString("0.00") + "g · " + (int)planet.TemperatureC + "°C! Нажмите [E] для выхода!";
         }
 
         void CompleteOfflineStationDocking()
@@ -769,7 +896,9 @@ namespace LestingCraft.Runtime
                 if(Tech.Sim.TryHitBoss(aimRay,radiaDmg,out string bossMsg))
                 {
                     GameAudio.PlayMobHit(false);
-                    CombatFeedbackOverlay.NotifyHit(aimRay.origin+aimRay.direction*Mathf.Min(maxRange,4.5f),radiaDmg,false);
+                    Vector3 hp=aimRay.origin+aimRay.direction*Mathf.Min(maxRange,4.5f);
+                    CombatFeedbackOverlay.NotifyHit(hp,radiaDmg,false);
+                    LestingCraft.Presentation.WorldVisualEffects.EmitImpactSparks(hp,-aimRay.direction,new Color(.35f,.92f,1f),16);
                     Session.Notice=bossMsg;
                     return true;
                 }

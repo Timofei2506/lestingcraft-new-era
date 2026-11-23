@@ -236,8 +236,8 @@ namespace LestingCraft.World
                                 if (liquid && fluidHeight != null && neighbor(ox + x, y + 1, oz + z) != id)
                                     position.y = other == id && face != 2 && face != 3
                                         ? Mathf.Lerp(adjacentHeight, ownHeight, position.y) : position.y * ownHeight;
-                                if (id == 15) position.y *= .34f;
-                                else if (id == BlockRegistry.BedBlockId) position.y *= .58f;
+                                float colH = BlockRegistry.ColliderHeight(id);
+                                if (colH < .999f) position.y *= colH;
                                 Vector3 vertex = new Vector3(x, y, z) + position;
                                 data.Vertices.Add(vertex);
                                 data.Normals.Add(dir);
@@ -376,7 +376,7 @@ namespace LestingCraft.World
                 (!liquid || face == 2 || face == 3 || own <= adjacent))) return default(Face);
             Face result = new Face
             {
-                Id = id, Solid = solid, Top = id == 15 ? .34f : id == BlockRegistry.BedBlockId ? .58f : 1,
+                Id = id, Solid = solid, Top = BlockRegistry.ColliderHeight(id),
                 Layer = SurfaceLayers.ForCellFace(id, face, ox + p.x, p.y, oz + p.z, seed)
             };
             if (liquid && fluidHeight != null && cache.Block(p.x, p.y + 1, p.z) != id)
@@ -418,11 +418,11 @@ namespace LestingCraft.World
         static void AddIndices(ChunkMeshData data, ushort id, bool solid, int start, bool flip = false)
         {
             AddFace(data.Triangles, start, flip);
-            if (id != 15 && id != BlockRegistry.TorchBlockId && id != BlockRegistry.BedBlockId && id != BlockRegistry.LanternBlockId)
+            if (!BlockRegistry.IsCustomPlacedModel(id))
                 AddFace(id == BlockRegistry.GlacialIceId ? data.IceTriangles :
                     id == 44 || id == BlockRegistry.ArmoredGlassId ? data.TransparentTriangles :
                     id == BlockRegistry.WaterId ? data.WaterTriangles : data.OpaqueTriangles, start, flip);
-            if (solid) AddFace(data.ColliderTriangles, start);
+            if (solid && id != BlockRegistry.TorchBlockId) AddFace(data.ColliderTriangles, start);
         }
 
         static void AddFace(List<int> indices, int start, bool flip = false)

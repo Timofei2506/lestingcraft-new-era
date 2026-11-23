@@ -357,7 +357,15 @@ namespace LestingCraft.Gameplay
         public float HyperjumpProgress;
         public double OrbitTimeDays = 12.0;
 
+        // Infinite Procedural Universe Navigation & Exoplanet Landing Lock
+        public bool DeepSpaceProceduralMode;
+        public UniverseSystem ProceduralSystem;
+        public UniversePlanet ProceduralPlanet;
+        public int ProceduralPlanetIndex;
+
         int timeWarpIndex;
+        int proceduralSystemCursor;
+        bool hyperjumpToProcedural;
         CelestialBodyId hyperjumpTarget;
 
         public int TimeWarpIndex => timeWarpIndex;
@@ -369,6 +377,11 @@ namespace LestingCraft.Gameplay
 
         public double DistanceToTargetKm()
         {
+            if (DeepSpaceProceduralMode && !string.IsNullOrEmpty(ProceduralPlanet.Name))
+            {
+                double rawProc = SpaceVector.Distance(PositionKm, ProceduralUniverse.PlanetPositionKm(ProceduralSystem, ProceduralPlanet, OrbitTimeDays));
+                return Math.Max(0.0, rawProc - ProceduralPlanet.RadiusKm);
+            }
             var def = CelestialAtlas.GetBody(TargetBody);
             if (def.System != CurrentSystem)
                 return CelestialAtlas.DistanceBetweenSystemsKm(CurrentSystem, def.System);
@@ -424,6 +437,11 @@ namespace LestingCraft.Gameplay
             get
             {
                 if (!Active || InHyperjump) return false;
+                if (DeepSpaceProceduralMode && !string.IsNullOrEmpty(ProceduralPlanet.Name))
+                {
+                    double procLimit = Math.Max(6500.0, ProceduralPlanet.RadiusKm * 3.8);
+                    return DistanceToTargetKm() <= procLimit;
+                }
                 var b = CelestialAtlas.GetBody(TargetBody);
                 if (b.System != CurrentSystem) return false;
                 double limitKm = b.IsDockableStation ? 3500.0 : Math.Max(6500.0, b.RadiusKm * 3.8);
@@ -472,21 +490,83 @@ namespace LestingCraft.Gameplay
             Velocity = Vector3.zero;
         }
 
-        public void SelectTarget(CelestialBodyId id) => TargetBody = id;
+        public void SelectTarget(CelestialBodyId id) { DeepSpaceProceduralMode = false; TargetBody = id; }
         public void SetManualControl(bool manual) => ManualControl = manual;
         public void SetThrottle(float t) => Throttle = Mathf.Clamp01(t);
 
         public CelestialBodyDef CycleTarget(int delta)
         {
+            DeepSpaceProceduralMode = false;
             int n = CelestialAtlas.Bodies.Length;
             int idx = (((int)TargetBody + delta) % n + n) % n;
             TargetBody = (CelestialBodyId)idx;
             return CelestialAtlas.Bodies[idx];
         }
 
+        /// <summary>
+        /// Scans & cycles through infinite procedural star systems & worlds around the ship's current sector.
+        /// Every jump shifts PositionKm to a new 5-ly sector, unlocking an endless frontier of new stars!
+        /// </summary>
+        public bool CycleProceduralWorld(int delta = 1)
+        {
+            var nearby = ProceduralUniverse.Nearest(PositionKm, 35.0, 16);
+            if (nearby.Length == 0)
+            {
+                var here = ProceduralUniverse.SystemAt(PositionKm);
+                nearby = new[] { here };
+            }
+
+            if (DeepSpaceProceduralMode && !string.IsNullOrEmpty(ProceduralSystem.Name))
+            {
+                var currentPlanets = ProceduralUniverse.Planets(ProceduralSystem);
+                int nextP = ProceduralPlanetIndex + delta;
+                if (nextP >= 0 && nextP < currentPlanets.Length)
+                {
+                    ProceduralPlanetIndex = nextP;
+                    ProceduralPlanet = currentPlanets[nextP];
+                    return true;
+                }
+                proceduralSystemCursor = (proceduralSystemCursor + 1) % nearby.Length;
+            }
+
+            for (int attempt = 0; attempt < nearby.Length; attempt++)
+            {
+                int idx = ((proceduralSystemCursor + attempt) % nearby.Length + nearby.Length) % nearby.Length;
+                var sys = nearby[idx];
+                var planets = ProceduralUniverse.Planets(sys);
+                if (planets.Length == 0) continue;
+                proceduralSystemCursor = idx;
+                ProceduralSystem = sys;
+                ProceduralPlanetIndex = 0;
+                // Prefer a solid landable world first if available on initial lock, else index 0
+                for (int k = 0; k < planets.Length; k++)
+                    if (ProceduralUniverse.IsLandable(planets[k].Class)) { ProceduralPlanetIndex = k; break; }
+                ProceduralPlanet = planets[ProceduralPlanetIndex];
+                DeepSpaceProceduralMode = true;
+                return true;
+            }
+            return false;
+        }
+
+        public bool StartProceduralHyperjump()
+        {
+            if (!DeepSpaceProceduralMode || string.IsNullOrEmpty(ProceduralPlanet.Name))
+            {
+                if (!CycleProceduralWorld(1)) return false;
+            }
+            if (!Active) Active = true;
+            hyperjumpToProcedural = true;
+            timeWarpIndex = 0;
+            InHyperjump = true;
+            HyperjumpProgress = 0f;
+            return true;
+        }
+
         public bool StartHyperjump(CelestialBodyId destination)
         {
             if (!Active) Active = true;
+            DeepSpaceProceduralMode = false;
+            hyperjumpToProcedural = false;
             TargetBody = destination;
             hyperjumpTarget = destination;
             timeWarpIndex = 0;
@@ -526,6 +606,21 @@ namespace LestingCraft.Gameplay
                     Boost = false;
                     Throttle = 0.0f;
                     timeWarpIndex = 0;
+                    if (hyperjumpToProcedural && DeepSpaceProceduralMode && !string.IsNullOrEmpty(ProceduralPlanet.Name))
+                    {
+                        hyperjumpToProcedural = false;
+                        double pRadius = Math.Max(400.0, ProceduralPlanet.RadiusKm);
+                        double parkProc = ProceduralPlanet.HasRings
+                            ? pRadius * (ProceduralPlanet.RingOuterScale + 0.65)
+                            : Math.Max(1400.0, pRadius * 2.2);
+                        SpaceVector procWorld = ProceduralUniverse.PlanetPositionKm(ProceduralSystem, ProceduralPlanet, OrbitTimeDays);
+                        PositionKm = procWorld + new SpaceVector(0.0, pRadius * 0.16, -parkProc);
+                        double vProc = Math.Max(1.4, 7.905 * Math.Sqrt(Math.Max(0.05, ProceduralPlanet.GravityG) * Math.Max(0.1, pRadius / 6371.0)));
+                        VelocityKmPerSec = new SpaceVector(0.0, 0.0, vProc);
+                        Velocity = Vector3.forward * (float)(vProc * 1000.0);
+                        Rotation = Quaternion.identity;
+                        return;
+                    }
                     var dest = CelestialAtlas.GetBody(hyperjumpTarget);
                     CurrentSystem = dest.System;
                     CurrentGalaxy = CelestialAtlas.GetSystem(CurrentSystem).Galaxy;
@@ -548,6 +643,13 @@ namespace LestingCraft.Gameplay
             {
                 Quaternion deltaRot = Quaternion.Euler(-pitchInput * 58f * dt, yawInput * 58f * dt, -rollInput * 68f * dt);
                 Rotation = (Rotation * deltaRot).normalized;
+            }
+            else if (DeepSpaceProceduralMode && !string.IsNullOrEmpty(ProceduralPlanet.Name))
+            {
+                SpaceVector toProc = ProceduralUniverse.PlanetPositionKm(ProceduralSystem, ProceduralPlanet, OrbitTimeDays) - PositionKm;
+                Vector3 dir = new Vector3((float)toProc.Normalized.X, (float)toProc.Normalized.Y, (float)toProc.Normalized.Z);
+                if (dir.sqrMagnitude > 0.001f)
+                    Rotation = Quaternion.Slerp(Rotation, Quaternion.LookRotation(dir, Vector3.up), 1f - Mathf.Exp(-dt * 2.8f));
             }
             else if (TargetBodyDef.System == CurrentSystem)
             {

@@ -48,7 +48,8 @@ namespace LestingCraft.Runtime
 
         GameObject plumeRoot;
         Mesh plumeMesh;
-        Transform mainFlame, leftPlume, rightPlume, plasmaShield;
+        Transform mainFlame, leftPlume, rightPlume, boosterPlume3, boosterPlume4, plasmaShield;
+        ParticleSystem warpStreaks, padSteamBillow;
         Light engineLight;
 
         GameObject stationRoot;
@@ -1017,23 +1018,72 @@ namespace LestingCraft.Runtime
             if (!plumeRoot)
             {
                 plumeRoot = new GameObject("ShuttleEnginePlumes");
-                var flameMat = MakeLitMaterial("RocketPlumeFlame", new Color(1f, 0.65f, 0.22f), new Color(3.2f, 1.6f, 0.45f), 0f, 0.2f);
-                var plasmaMat = MakeLitMaterial("ReentryPlasma", new Color(1f, 0.42f, 0.16f), new Color(2.5f, 0.85f, 0.25f), 0f, 0.15f);
+                var flameMat = MakeLitMaterial("RocketPlumeFlame", new Color(1f, 0.62f, 0.18f), new Color(3.8f, 1.85f, 0.48f), 0f, 0.2f);
+                var plasmaMat = MakeLitMaterial("ReentryPlasma", new Color(0.55f, 0.80f, 1f), new Color(2.4f, 3.2f, 4.8f), 0f, 0.15f);
+                var coreMat = MakeLitMaterial("RocketPlumeCore", new Color(1f, 0.96f, 0.86f), new Color(6.4f, 5.4f, 3.8f), 0f, 0.1f);
+                var diamondMat = MakeLitMaterial("MachShockDiamonds", new Color(0.78f, 0.92f, 1f), new Color(5.2f, 6.0f, 7.2f), 0f, 0.1f);
 
-                var coreMat = MakeLitMaterial("RocketPlumeCore", new Color(1f, 0.95f, 0.8f), new Color(5.5f, 4.6f, 3.2f), 0f, 0.1f);
-                mainFlame = MakeTaperedPlume("MainEnginePlume", plumeRoot.transform, new Vector3(0.5f, -5.5f, 3.2f), new Vector3(2.4f, 9.5f, 2.4f), flameMat, coreMat);
-                leftPlume = MakeTaperedPlume("BoosterPlumePort", plumeRoot.transform, new Vector3(-2.1f, -4.2f, 3.2f), new Vector3(1.4f, 6.8f, 1.4f), flameMat, coreMat);
-                rightPlume = MakeTaperedPlume("BoosterPlumeStarboard", plumeRoot.transform, new Vector3(3.1f, -4.2f, 3.2f), new Vector3(1.4f, 6.8f, 1.4f), flameMat, coreMat);
-                plasmaShield = MakePlumeCone("AtmosphericPlasmaEnvelope", plumeRoot.transform, new Vector3(0.5f, 47f, 4.2f), new Vector3(7.4f, 5.2f, 7.4f), plasmaMat);
+                // Centered 9-bell Vulkan-Heavy core plume + Mach shock diamonds + 4 diagonal strap-on liquid booster plumes!
+                mainFlame = MakeTaperedPlume("MainEnginePlume", plumeRoot.transform, new Vector3(0f, -6.2f, 0f), new Vector3(4.8f, 12.5f, 4.8f), flameMat, coreMat);
+                for (int d = 0; d < 4; d++)
+                {
+                    float s = 0.36f - d * 0.055f;
+                    MakePlumeCone("ShockDiamond_" + d, mainFlame, new Vector3(0f, 0.28f - d * 0.19f, 0f), new Vector3(s, 0.07f, s), diamondMat);
+                }
+                leftPlume = MakeTaperedPlume("BoosterPlumeNW", plumeRoot.transform, new Vector3(-7.8f, -4.8f, 7.8f), new Vector3(2.5f, 8.8f, 2.5f), flameMat, coreMat);
+                rightPlume = MakeTaperedPlume("BoosterPlumeNE", plumeRoot.transform, new Vector3(7.8f, -4.8f, 7.8f), new Vector3(2.5f, 8.8f, 2.5f), flameMat, coreMat);
+                boosterPlume3 = MakeTaperedPlume("BoosterPlumeSW", plumeRoot.transform, new Vector3(-7.8f, -4.8f, -7.8f), new Vector3(2.5f, 8.8f, 2.5f), flameMat, coreMat);
+                boosterPlume4 = MakeTaperedPlume("BoosterPlumeSE", plumeRoot.transform, new Vector3(7.8f, -4.8f, -7.8f), new Vector3(2.5f, 8.8f, 2.5f), flameMat, coreMat);
+                plasmaShield = MakePlumeCone("AtmosphericPlasmaEnvelope", plumeRoot.transform, new Vector3(0f, 62f, 0f), new Vector3(8.2f, 6.4f, 8.2f), plasmaMat);
+
+                // Billowing liftoff steam & exhaust cloud under engine bells during low-altitude ascent
+                var steamGo = new GameObject("LiftoffPadSteam");
+                steamGo.transform.SetParent(plumeRoot.transform, false);
+                steamGo.transform.localPosition = new Vector3(0f, -2.5f, 0f);
+                padSteamBillow = steamGo.AddComponent<ParticleSystem>();
+                padSteamBillow.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var sm = padSteamBillow.main;
+                sm.loop = true; sm.playOnAwake = false; sm.simulationSpace = ParticleSystemSimulationSpace.World;
+                sm.startLifetime = new ParticleSystem.MinMaxCurve(1.4f, 2.8f);
+                sm.startSpeed = new ParticleSystem.MinMaxCurve(8f, 22f);
+                sm.startSize = new ParticleSystem.MinMaxCurve(3.5f, 8.5f);
+                sm.startColor = new Color(0.92f, 0.90f, 0.86f, 0.42f);
+                sm.maxParticles = 96;
+                var se = padSteamBillow.emission; se.rateOverTime = 36f;
+                var ss = padSteamBillow.shape; ss.shapeType = ParticleSystemShapeType.Cone; ss.angle = 68f; ss.radius = 5.5f; ss.rotation = new Vector3(90f, 0f, 0f);
+                var sr = padSteamBillow.GetComponent<ParticleSystemRenderer>();
+                sr.sharedMaterial = MakeVertexColorMaterial("PadSteamMat", false);
+                sr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+                // 3D Deep-Space Star-Streak / Hyperjump Warp Particles rushing past cockpit
+                var warpGo = new GameObject("DeepSpaceWarpStreaks");
+                warpGo.transform.SetParent(spaceDomeRoot ? spaceDomeRoot.transform : transform, false);
+                warpStreaks = warpGo.AddComponent<ParticleSystem>();
+                warpStreaks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var wm = warpStreaks.main;
+                wm.loop = true; wm.playOnAwake = false; wm.simulationSpace = ParticleSystemSimulationSpace.Local;
+                wm.startLifetime = new ParticleSystem.MinMaxCurve(0.45f, 0.95f);
+                wm.startSpeed = new ParticleSystem.MinMaxCurve(65f, 140f);
+                wm.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.22f);
+                wm.startColor = new Color(0.76f, 0.90f, 1f, 0.85f);
+                wm.maxParticles = 180;
+                var we = warpStreaks.emission; we.rateOverTime = 95f;
+                var ws = warpStreaks.shape; ws.shapeType = ParticleSystemShapeType.Box; ws.scale = new Vector3(38f, 26f, 4f); ws.position = new Vector3(0f, 0f, 52f); ws.rotation = new Vector3(0f, 180f, 0f);
+                var wr = warpStreaks.GetComponent<ParticleSystemRenderer>();
+                wr.renderMode = ParticleSystemRenderMode.Stretch;
+                wr.lengthScale = 6.5f;
+                wr.velocityScale = 0.08f;
+                wr.sharedMaterial = MakeVertexColorMaterial("WarpStreakMat", true);
+                wr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
                 var lightGo = new GameObject("RocketExhaustLight");
                 lightGo.transform.SetParent(plumeRoot.transform, false);
-                lightGo.transform.localPosition = new Vector3(0.5f, -3f, 3.2f);
+                lightGo.transform.localPosition = new Vector3(0f, -3.5f, 0f);
                 engineLight = lightGo.AddComponent<Light>();
                 engineLight.type = LightType.Point;
                 engineLight.color = new Color(1f, 0.68f, 0.28f);
-                engineLight.range = 42f;
-                engineLight.intensity = 6f;
+                engineLight.range = 56f;
+                engineLight.intensity = 7.5f;
             }
             if (plumeRoot.transform.parent != shuttleTransform)
             {
@@ -1182,11 +1232,19 @@ namespace LestingCraft.Runtime
                 bool engineOn = stage == FlightStage.Ascent || retroBurning || progress01 < 0.35;
                 plumeRoot.SetActive(engineOn || stage == FlightStage.Approach);
                 float flicker = 0.86f + 0.24f * Mathf.Sin(Time.time * 47f);
-                if (mainFlame) mainFlame.localScale = new Vector3(2.6f, (engineOn ? 9.8f : 2.2f) * flicker, 2.6f);
-                if (leftPlume) leftPlume.gameObject.SetActive(stage == FlightStage.Ascent);
-                if (rightPlume) rightPlume.gameObject.SetActive(stage == FlightStage.Ascent);
+                if (mainFlame) mainFlame.localScale = new Vector3(4.8f, (engineOn ? 12.5f : 3.2f) * flicker, 4.8f);
+                bool boostersOn = stage == FlightStage.Ascent;
+                if (leftPlume) leftPlume.gameObject.SetActive(boostersOn);
+                if (rightPlume) rightPlume.gameObject.SetActive(boostersOn);
+                if (boosterPlume3) boosterPlume3.gameObject.SetActive(boostersOn);
+                if (boosterPlume4) boosterPlume4.gameObject.SetActive(boostersOn);
+                if (padSteamBillow)
+                {
+                    if (boostersOn && altitudeMeters < 180.0) { if (!padSteamBillow.isPlaying) padSteamBillow.Play(); }
+                    else if (padSteamBillow.isPlaying) padSteamBillow.Stop();
+                }
                 if (plasmaShield) plasmaShield.gameObject.SetActive(stage == FlightStage.Approach && retroBurning);
-                if (engineLight) engineLight.intensity = engineOn ? 6.5f * flicker : 1.2f;
+                if (engineLight) engineLight.intensity = engineOn ? 7.5f * flicker : 1.2f;
                 WobblePlumes();
             }
         }
@@ -1364,12 +1422,27 @@ namespace LestingCraft.Runtime
                 bool engineOn = helm.Throttle > 0.04f || helm.InHyperjump;
                 plumeRoot.SetActive(engineOn);
                 float flicker = 0.85f + 0.25f * Mathf.Sin(Time.time * 49f);
-                if (mainFlame) mainFlame.localScale = new Vector3(2.6f, Mathf.Lerp(2.4f, 11.2f, helm.Throttle) * flicker, 2.6f);
+                if (mainFlame) mainFlame.localScale = new Vector3(4.8f, Mathf.Lerp(3.2f, 14.5f, helm.Throttle) * flicker, 4.8f);
                 if (leftPlume) leftPlume.gameObject.SetActive(helm.Boost);
                 if (rightPlume) rightPlume.gameObject.SetActive(helm.Boost);
+                if (boosterPlume3) boosterPlume3.gameObject.SetActive(helm.Boost);
+                if (boosterPlume4) boosterPlume4.gameObject.SetActive(helm.Boost);
+                if (padSteamBillow && padSteamBillow.isPlaying) padSteamBillow.Stop();
                 if (plasmaShield) plasmaShield.gameObject.SetActive(helm.InHyperjump);
-                if (engineLight) engineLight.intensity = engineOn ? Mathf.Lerp(1.6f, 7.5f, helm.Throttle) * flicker : 0.6f;
+                if (engineLight) engineLight.intensity = engineOn ? Mathf.Lerp(2.0f, 8.5f, helm.Throttle) * flicker : 0.6f;
                 WobblePlumes();
+            }
+            if (warpStreaks)
+            {
+                bool showStreaks = helm.InHyperjump || helm.SpeedKmPerSec > 18.0;
+                if (showStreaks)
+                {
+                    warpStreaks.transform.localRotation = Quaternion.identity;
+                    var wr = warpStreaks.GetComponent<ParticleSystemRenderer>();
+                    if (wr) wr.lengthScale = helm.InHyperjump ? 18f : Mathf.Lerp(2.2f, 7.5f, (float)(helm.SpeedKmPerSec / 185.0));
+                    if (!warpStreaks.isPlaying) warpStreaks.Play();
+                }
+                else if (warpStreaks.isPlaying) warpStreaks.Stop();
             }
         }
 

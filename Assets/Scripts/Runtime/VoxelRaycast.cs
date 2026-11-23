@@ -27,7 +27,7 @@ namespace LestingCraft.Runtime
             for(int step=0;step<128&&distance<=reach;step++)
             {
                 ushort block=sample(cell.x,cell.y,cell.z);
-                if(block==11||block==15)
+                if(World.BlockRegistry.IsCustomPlacedModel(block))
                 {
                     float start=distance,limit=Mathf.Min(reach,Mathf.Min(tx,Mathf.Min(ty,tz)));
                     if(LestingCraft.Presentation.VoxelItemModels.TracePlaced(block,cell,origin+direction*start,direction,Mathf.Max(0,limit-start),out var shaped))

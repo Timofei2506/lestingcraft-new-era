@@ -169,8 +169,10 @@ namespace LestingCraft.Runtime
         }
 
         public int ContentVersion { get; private set; }
+        public int BaseSeed { get; private set; }
         public int Seed { get; private set; }
         public Dimension Dimension { get; private set; }
+        public int ActiveRealmId { get; private set; }
         public bool Online { get; private set; }
         public bool Ready { get; private set; }
         public int LoadedChunks { get { return chunks.Count; } }
@@ -182,6 +184,8 @@ namespace LestingCraft.Runtime
 
         public void Initialize(int seed, Dimension dimension, bool online, int contentVersion = 7)
         {
+            BaseSeed = seed;
+            ActiveRealmId = (int)dimension;
             Seed = seed; ContentVersion = contentVersion; Dimension = dimension; Online = online;
             detailQuality = LestingCraft.Presentation.VisualSettings.Current.Preset;
             crystalMaterial = new Material(Resources.Load<Material>("Generated/Crystal"));
@@ -741,29 +745,8 @@ namespace LestingCraft.Runtime
             foreach (var pair in v.SpecialCells)
             {
                 Vector3Int p = pair.Key;
-                if (pair.Value == 15)
-                {
-                    LestingCraft.Presentation.PlacedVoxelModel.Create(15, v.Specials.transform, p, objectMaterial);
-                    v.Fires.Add(new Vector3(key.x * 16 + p.x + .5f, p.y + .42f, key.y * 16 + p.z + .5f));
-                }
-                else if (pair.Value == BlockRegistry.TorchBlockId || pair.Value == BlockRegistry.BedBlockId || pair.Value == BlockRegistry.LanternBlockId)
-                {
-                    var placedObj = LestingCraft.Presentation.PlacedVoxelModel.Create(pair.Value, v.Specials.transform, p, objectMaterial);
-                    if (pair.Value == BlockRegistry.TorchBlockId || pair.Value == BlockRegistry.LanternBlockId)
-                    {
-                        var lampGo = new GameObject(pair.Value == BlockRegistry.LanternBlockId ? "LanternLight" : "TorchLight");
-                        lampGo.transform.SetParent(placedObj.transform, false);
-                        lampGo.transform.localPosition = new Vector3(0, .62f, 0);
-                        var light = lampGo.AddComponent<Light>();
-                        light.type = LightType.Point;
-                        light.color = pair.Value == BlockRegistry.LanternBlockId ? new Color(1f, .84f, .52f) : new Color(1f, .72f, .34f);
-                        light.intensity = pair.Value == BlockRegistry.LanternBlockId ? 1.55f : 1.25f;
-                        light.range = pair.Value == BlockRegistry.LanternBlockId ? 10.5f : 8.5f;
-                        light.shadows = LightShadows.None;
-                        v.Fires.Add(new Vector3(key.x * 16 + p.x + .5f, p.y + .6f, key.y * 16 + p.z + .5f));
-                    }
-                }
-                else
+                ushort sid = pair.Value;
+                if (sid == BlockRegistry.CrystalId)
                 {
                     int x = key.x * 16 + p.x, z = key.y * 16 + p.z;
                     if (!BlockRegistry.Occludes(GetBlock(x + 1, p.y, z)) ||
@@ -772,6 +755,42 @@ namespace LestingCraft.Runtime
                         !BlockRegistry.Occludes(GetBlock(x, p.y - 1, z)) ||
                         !BlockRegistry.Occludes(GetBlock(x, p.y, z + 1)) ||
                         !BlockRegistry.Occludes(GetBlock(x, p.y, z - 1))) crystals.Add(p);
+                }
+                else
+                {
+                    var placedObj = LestingCraft.Presentation.PlacedVoxelModel.Create(sid, v.Specials.transform, p, objectMaterial);
+                    if (sid == BlockRegistry.CampfireId || sid == BlockRegistry.FurnaceId)
+                    {
+                        float fireY = sid == BlockRegistry.FurnaceId ? .88f : .42f;
+                        v.Fires.Add(new Vector3(key.x * 16 + p.x + .5f, p.y + fireY, key.y * 16 + p.z + .5f));
+                    }
+                    if (sid == BlockRegistry.TorchBlockId || sid == BlockRegistry.LanternBlockId ||
+                        sid == BlockRegistry.FurnaceId || sid == BlockRegistry.GlowShroomId ||
+                        sid == BlockRegistry.NuclearReactorId || sid == BlockRegistry.ElectricFloodlightId ||
+                        sid == BlockRegistry.RadiaTerminalId)
+                    {
+                        var lampGo = new GameObject(sid == BlockRegistry.LanternBlockId ? "LanternLight" :
+                            sid == BlockRegistry.TorchBlockId ? "TorchLight" : "PlacedObjectLight");
+                        lampGo.transform.SetParent(placedObj.transform, false);
+                        lampGo.transform.localPosition = new Vector3(0, sid == BlockRegistry.ElectricFloodlightId ? .85f : .62f, 0);
+                        var light = lampGo.AddComponent<Light>();
+                        light.type = LightType.Point;
+                        light.color = sid == BlockRegistry.LanternBlockId ? new Color(1f, .84f, .52f) :
+                            sid == BlockRegistry.FurnaceId ? new Color(1f, .56f, .20f) :
+                            sid == BlockRegistry.GlowShroomId ? new Color(.30f, .92f, .88f) :
+                            sid == BlockRegistry.NuclearReactorId ? new Color(.22f, .78f, 1f) :
+                            sid == BlockRegistry.ElectricFloodlightId ? new Color(.92f, .96f, 1f) :
+                            sid == BlockRegistry.RadiaTerminalId ? new Color(.28f, .95f, .52f) :
+                            new Color(1f, .72f, .34f);
+                        light.intensity = sid == BlockRegistry.ElectricFloodlightId ? 2.4f :
+                            sid == BlockRegistry.LanternBlockId || sid == BlockRegistry.NuclearReactorId ? 1.55f :
+                            sid == BlockRegistry.FurnaceId ? 1.35f : 1.15f;
+                        light.range = sid == BlockRegistry.ElectricFloodlightId ? 16f :
+                            sid == BlockRegistry.LanternBlockId || sid == BlockRegistry.NuclearReactorId ? 10.5f : 8.5f;
+                        light.shadows = LightShadows.None;
+                        if (sid == BlockRegistry.TorchBlockId)
+                            v.Fires.Add(new Vector3(key.x * 16 + p.x + .5f, p.y + .72f, key.y * 16 + p.z + .5f));
+                    }
                 }
             }
             LestingCraft.Presentation.PlacedVoxelModel.CreateCrystalBatch(v.Specials.transform, crystals, crystalMaterial);
@@ -782,20 +801,21 @@ namespace LestingCraft.Runtime
 
         public LestingCraft.Gameplay.SavedBlock[] ExportEdits()
         {
+            int currentRealm = ActiveRealmId != 0 || Dimension == Dimension.Lestingia ? ActiveRealmId : (int)Dimension;
             var result = new List<LestingCraft.Gameplay.SavedBlock>();
             foreach (var edit in edits)
                 result.Add(new LestingCraft.Gameplay.SavedBlock
                 {
-                    realm = (int)Dimension, x = edit.Key.x, y = edit.Key.y, z = edit.Key.z, block = edit.Value
+                    realm = currentRealm, x = edit.Key.x, y = edit.Key.y, z = edit.Key.z, block = edit.Value
                 });
             return result.ToArray();
         }
         public LestingCraft.Gameplay.SavedBlock[] ExportAllMergedEdits(LestingCraft.Gameplay.SavedBlock[] existingAllRealms)
         {
+            int currentRealm = ActiveRealmId != 0 || Dimension == Dimension.Lestingia ? ActiveRealmId : (int)Dimension;
             var result = new List<LestingCraft.Gameplay.SavedBlock>();
             if (existingAllRealms != null)
             {
-                int currentRealm = (int)Dimension;
                 for (int i = 0; i < existingAllRealms.Length; i++)
                 {
                     var b = existingAllRealms[i];
@@ -805,11 +825,12 @@ namespace LestingCraft.Runtime
             foreach (var edit in edits)
                 result.Add(new LestingCraft.Gameplay.SavedBlock
                 {
-                    realm = (int)Dimension, x = edit.Key.x, y = edit.Key.y, z = edit.Key.z, block = edit.Value
+                    realm = currentRealm, x = edit.Key.x, y = edit.Key.y, z = edit.Key.z, block = edit.Value
                 });
             return result.ToArray();
         }
-        public void SwitchPlanet(Dimension targetDimension, LestingCraft.Gameplay.SavedBlock[] allSavedBlocks = null)
+        public void SwitchPlanet(Dimension targetDimension, LestingCraft.Gameplay.SavedBlock[] allSavedBlocks = null,
+            int? seedOverride = null, int? realmIdOverride = null)
         {
             var disposable = work as IDisposable;
             if (disposable != null) disposable.Dispose();
@@ -828,10 +849,12 @@ namespace LestingCraft.Runtime
             edits.Clear();
             editRevision++;
             Dimension = targetDimension;
+            Seed = seedOverride ?? (BaseSeed != 0 ? BaseSeed : Seed);
+            ActiveRealmId = realmIdOverride ?? (int)targetDimension;
             Ready = false;
             if (allSavedBlocks != null)
             {
-                int targetRealm = (int)targetDimension;
+                int targetRealm = ActiveRealmId;
                 for (int i = 0; i < allSavedBlocks.Length; i++)
                 {
                     var e = allSavedBlocks[i];

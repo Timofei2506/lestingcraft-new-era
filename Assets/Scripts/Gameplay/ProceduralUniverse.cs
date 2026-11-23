@@ -77,9 +77,26 @@ namespace LestingCraft.Gameplay
         public bool HasNebula;
         public bool HasGalaxyCore;
         public float NebulaR, NebulaG, NebulaB;
+        /// <summary>Stellar mass in Solar masses (M☉) for Keplerian orbital mechanics.</summary>
+        public double MassSolar;
+        /// <summary>Bolometric luminosity in Solar luminosities (L☉), Stefan-Boltzmann + remnant accretion.</summary>
+        public double LuminositySolar;
+        public double HabitableInnerAu, HabitableOuterAu, FrostLineAu;
         /// <summary>Absolute position in the shared double-precision kilometre frame.</summary>
         public SpaceVector AnchorKm;
         public string SpectralCode;
+    }
+
+    /// <summary>Deterministic natural moon orbiting a procedural planet.</summary>
+    public struct UniverseMoon
+    {
+        public string Name;
+        public double RadiusKm;
+        public double OrbitRadiusKm;
+        public double OrbitHours;
+        public double PhaseRad;
+        public float R, G, B;
+        public bool Volcanic;
     }
 
     /// <summary>A world with its own atmosphere, weather and hazard level.</summary>
@@ -219,17 +236,33 @@ namespace LestingCraft.Gameplay
 
             switch (sys.Star)
             {
-                case StarKind.BlackHole: sys.StarRadiusKm = rng.Range(18.0, 62.0); sys.TemperatureK = 0; break;
-                case StarKind.NeutronStar: sys.StarRadiusKm = rng.Range(9.0, 14.0); sys.TemperatureK = rng.Range(600000, 1600000); break;
-                case StarKind.WhiteDwarf: sys.StarRadiusKm = rng.Range(6000, 14000); sys.TemperatureK = rng.Range(9000, 36000); break;
-                case StarKind.BrownDwarf: sys.StarRadiusKm = rng.Range(58000, 96000); sys.TemperatureK = rng.Range(700, 2400); break;
-                case StarKind.RedDwarf: sys.StarRadiusKm = rng.Range(120000, 320000); sys.TemperatureK = rng.Range(2600, 3900); break;
-                case StarKind.OrangeDwarf: sys.StarRadiusKm = rng.Range(420000, 620000); sys.TemperatureK = rng.Range(3900, 5200); break;
-                case StarKind.YellowDwarf: sys.StarRadiusKm = rng.Range(560000, 780000); sys.TemperatureK = rng.Range(5200, 6200); break;
-                case StarKind.WhiteStar: sys.StarRadiusKm = rng.Range(820000, 1400000); sys.TemperatureK = rng.Range(7500, 11500); break;
-                case StarKind.BlueGiant: sys.StarRadiusKm = rng.Range(3600000, 9200000); sys.TemperatureK = rng.Range(11000, 31000); break;
-                default: sys.StarRadiusKm = rng.Range(24000000, 92000000); sys.TemperatureK = rng.Range(3200, 4700); break;
+                case StarKind.BlackHole: sys.StarRadiusKm = rng.Range(18.0, 62.0); sys.TemperatureK = 0; sys.MassSolar = rng.Range(5.2, 38.0); break;
+                case StarKind.NeutronStar: sys.StarRadiusKm = rng.Range(9.0, 14.0); sys.TemperatureK = rng.Range(600000, 1600000); sys.MassSolar = rng.Range(1.35, 2.15); break;
+                case StarKind.WhiteDwarf: sys.StarRadiusKm = rng.Range(6000, 14000); sys.TemperatureK = rng.Range(9000, 36000); sys.MassSolar = rng.Range(0.52, 1.32); break;
+                case StarKind.BrownDwarf: sys.StarRadiusKm = rng.Range(58000, 96000); sys.TemperatureK = rng.Range(700, 2400); sys.MassSolar = rng.Range(0.02, 0.075); break;
+                case StarKind.RedDwarf: sys.StarRadiusKm = rng.Range(120000, 320000); sys.TemperatureK = rng.Range(2600, 3900); sys.MassSolar = rng.Range(0.09, 0.52); break;
+                case StarKind.OrangeDwarf: sys.StarRadiusKm = rng.Range(420000, 620000); sys.TemperatureK = rng.Range(3900, 5200); sys.MassSolar = rng.Range(0.56, 0.86); break;
+                case StarKind.YellowDwarf: sys.StarRadiusKm = rng.Range(560000, 780000); sys.TemperatureK = rng.Range(5200, 6200); sys.MassSolar = rng.Range(0.86, 1.18); break;
+                case StarKind.WhiteStar: sys.StarRadiusKm = rng.Range(820000, 1400000); sys.TemperatureK = rng.Range(7500, 11500); sys.MassSolar = rng.Range(1.42, 2.65); break;
+                case StarKind.BlueGiant: sys.StarRadiusKm = rng.Range(3600000, 9200000); sys.TemperatureK = rng.Range(11000, 31000); sys.MassSolar = rng.Range(4.5, 18.0); break;
+                default: sys.StarRadiusKm = rng.Range(24000000, 92000000); sys.TemperatureK = rng.Range(3200, 4700); sys.MassSolar = rng.Range(1.15, 4.2); break;
             }
+
+            // Stefan-Boltzmann bolometric luminosity L/L☉ = (R/R☉)^2 * (T/T☉)^4, with remnant accretion flux for compact objects.
+            if (sys.Star == StarKind.BlackHole)
+                sys.LuminositySolar = rng.Range(0.004, 0.085);
+            else if (sys.Star == StarKind.NeutronStar)
+                sys.LuminositySolar = rng.Range(0.015, 0.24);
+            else
+            {
+                double rSol = sys.StarRadiusKm / 696340.0;
+                double tSol = sys.TemperatureK / 5772.0;
+                sys.LuminositySolar = Math.Max(0.00002, rSol * rSol * tSol * tSol * tSol * tSol);
+            }
+            double sqrtL = Math.Sqrt(sys.LuminositySolar);
+            sys.HabitableInnerAu = 0.75 * sqrtL;
+            sys.HabitableOuterAu = 1.77 * sqrtL;
+            sys.FrostLineAu = 2.70 * sqrtL;
 
             sys.SpectralCode = sys.Star == StarKind.BlackHole ? "BH"
                 : sys.Star == StarKind.NeutronStar ? "PSR"
@@ -267,79 +300,122 @@ namespace LestingCraft.Gameplay
             return System(key.X, key.Y, key.Z);
         }
 
-        /// <summary>Worlds of one system. Orbit radii, weather and atmosphere all vary per seed.</summary>
+        /// <summary>Worlds of one system: astrophysically coherent orbits, flux zones, Kepler periods & bulk gravity.</summary>
         public static UniversePlanet[] Planets(UniverseSystem system)
         {
             int count = Math.Max(0, system.PlanetCount);
             var planets = new UniversePlanet[count];
             if (count == 0) return planets;
             var rng = new UniverseRng(system.Key.X, system.Key.Y, system.Key.Z, 0x9A17E7, 7717);
-            double orbit = rng.Range(0.09, 0.55);
+            const double AuKm = 149597870.7;
+            double starRadiusAu = system.StarRadiusKm / AuKm;
+            double lum = Math.Max(0.00002, system.LuminositySolar > 0 ? system.LuminositySolar : 1.0);
+            // Safe innermost orbit: strictly outside 3.6 stellar radii (critical for Red/Blue Giants!)
+            // and scaled to stellar luminosity while fitting up to 8 planets cleanly within 62 AU.
+            double minSafeAu = Math.Max(0.035, starRadiusAu * 3.6);
+            double startAu = Math.Max(minSafeAu, Math.Min(2.4, 0.24 * Math.Pow(lum, 0.28)) * rng.Range(0.68, 1.28));
+            double maxSpanRatio = Math.Pow(58.0 / Math.Max(0.04, startAu), 1.0 / Math.Max(1, count));
+            double maxStep = Math.Max(1.22, Math.Min(1.88, maxSpanRatio));
+            double minStep = Math.Min(1.32, maxStep - 0.04);
+            double orbit = startAu;
+            double lastAu = 0.0;
+
             for (int i = 0; i < count; i++)
             {
                 var r = new UniverseRng(system.Key.X, system.Key.Y, system.Key.Z, 0x9A17E7, i * 2654435761L + 11);
                 var p = new UniversePlanet { Name = PlanetName(r) + " " + Roman[i % Roman.Length] };
                 p.Seed = (int)(r.NextUInt() & 0x7ffffff);
-                // Hot close worlds, temperate middle, frozen outer: a physically sensible ladder.
-                double au = orbit;
-                orbit *= r.Range(1.35f, 1.95f);
-                if (double.IsNaN(au) || au <= 0) au = 0.3;
-                p.OrbitAu = Math.Min(au, 48.0);
-                p.OrbitDays = Math.Max(0.4, 365.25 * Math.Pow(p.OrbitAu, 1.5) * r.Range(.82f, 1.24f));
+
+                double au = Math.Max(lastAu + 0.035, Math.Min(62.5 - (count - 1 - i) * 0.25, orbit));
+                orbit = au * r.Range(minStep, maxStep);
+                lastAu = au;
+                p.OrbitAu = au;
+
+                // Kepler's Third Law: P_days = 365.25 * sqrt(a^3 / M_star)
+                double mStar = Math.Max(0.02, system.MassSolar > 0 ? system.MassSolar : 1.0);
+                p.OrbitDays = Math.Max(0.35, 365.25 * Math.Sqrt((au * au * au) / mStar));
                 p.OrbitPhaseRad = r.Range(0.0, Math.PI * 2.0);
-                p.InclinationDeg = r.Range(-9f, 9f);
+                p.InclinationDeg = r.Range(-7.5f, 7.5f);
 
+                // Incident bolometric stellar flux S / S⊕ = L / a^2
+                double flux = lum / Math.Max(0.0008, au * au);
                 float cls = r.NextFloat();
-                if (p.OrbitAu < 0.45) p.Class = cls < .42f ? WorldClass.Lava : cls < .74f ? WorldClass.Toxic : WorldClass.Rock;
-                else if (p.OrbitAu < 0.95) p.Class = cls < .30f ? WorldClass.Desert : cls < .58f ? WorldClass.Rock : cls < .82f ? WorldClass.Ocean : WorldClass.Toxic;
-                else if (p.OrbitAu < 3.4) p.Class = cls < .22f ? WorldClass.Rock : cls < .38f ? WorldClass.Desert : cls < .60f ? WorldClass.Ocean : cls < .78f ? WorldClass.Toxic : cls < .92f ? WorldClass.GasGiant : WorldClass.Ice;
-                else p.Class = cls < .34f ? WorldClass.Ice : cls < .58f ? WorldClass.IceGiant : cls < .84f ? WorldClass.GasGiant : WorldClass.Barren;
-                if (r.Chance(0.03f)) p.Class = WorldClass.Rogue;
+                if (flux > 3.6)
+                {
+                    // Scorched inner zone (inside inner Habitable Zone edge): silicate/iron/magma/Venusian worlds
+                    p.Class = cls < 0.44f ? WorldClass.Lava : cls < 0.74f ? WorldClass.Rock : WorldClass.Toxic;
+                }
+                else if (flux >= 0.32)
+                {
+                    // Circumstellar Habitable Zone (liquid water band): oceans, temperate continents, deserts
+                    p.Class = cls < 0.34f ? WorldClass.Ocean : cls < 0.64f ? WorldClass.Rock : cls < 0.86f ? WorldClass.Desert : WorldClass.Toxic;
+                }
+                else if (flux >= 0.055)
+                {
+                    // Frost-Line transition (~2.7 * sqrt(L)): gas giant core accretion + cold rocky/icy worlds
+                    p.Class = cls < 0.32f ? WorldClass.GasGiant : cls < 0.54f ? WorldClass.Ice : cls < 0.72f ? WorldClass.Rock : cls < 0.88f ? WorldClass.Desert : WorldClass.Toxic;
+                }
+                else
+                {
+                    // Deep outer cryogenic zone: volatile-rich giants, glacial moons/planets & Kuiper dwarfs
+                    p.Class = cls < 0.34f ? WorldClass.Ice : cls < 0.60f ? WorldClass.IceGiant : cls < 0.84f ? WorldClass.GasGiant : WorldClass.Barren;
+                }
+                if (i == count - 1 && flux < 0.15 && r.Chance(0.06f)) p.Class = WorldClass.Rogue;
 
-                double radius = 0;
+                double radius;
+                double densityGcm3;
                 switch (p.Class)
                 {
-                    case WorldClass.Rock: radius = r.Range(2100, 9100); break;
-                    case WorldClass.Desert: radius = r.Range(2600, 11200); break;
-                    case WorldClass.Ocean: radius = r.Range(4200, 13800); break;
-                    case WorldClass.Ice: radius = r.Range(1800, 9600); break;
-                    case WorldClass.Lava: radius = r.Range(2200, 8800); break;
-                    case WorldClass.Toxic: radius = r.Range(3100, 12600); break;
-                    case WorldClass.GasGiant: radius = r.Range(24000, 78000); break;
-                    case WorldClass.IceGiant: radius = r.Range(16000, 38000); break;
-                    case WorldClass.Barren: radius = r.Range(580, 2600); break;
-                    default: radius = r.Range(1500, 7200); break;
+                    case WorldClass.Rock: radius = r.Range(2400, 9200); densityGcm3 = r.Range(4.8, 5.9); break;
+                    case WorldClass.Desert: radius = r.Range(2800, 10800); densityGcm3 = r.Range(3.9, 5.1); break;
+                    case WorldClass.Ocean: radius = r.Range(4500, 13200); densityGcm3 = r.Range(4.1, 5.3); break;
+                    case WorldClass.Ice: radius = r.Range(1800, 9400); densityGcm3 = r.Range(1.8, 2.9); break;
+                    case WorldClass.Lava: radius = r.Range(2300, 8900); densityGcm3 = r.Range(5.1, 6.4); break;
+                    case WorldClass.Toxic: radius = r.Range(3400, 12200); densityGcm3 = r.Range(4.3, 5.4); break;
+                    case WorldClass.GasGiant: radius = r.Range(28000, 78000); densityGcm3 = r.Range(0.85, 1.55); break;
+                    case WorldClass.IceGiant: radius = r.Range(16500, 36000); densityGcm3 = r.Range(1.25, 1.85); break;
+                    case WorldClass.Barren: radius = r.Range(620, 2700); densityGcm3 = r.Range(2.1, 3.6); break;
+                    default: radius = r.Range(1600, 7400); densityGcm3 = r.Range(2.6, 4.4); break;
                 }
                 p.RadiusKm = radius;
-                p.GravityG = (float)Math.Max(0.03, Math.Min(4.2, radius / 6371.0 * (p.Class == WorldClass.GasGiant ? 1.9 : 1.0)));
+                // Surface gravity from planetary radius & bulk density relative to Earth (R⊕=6371 km, ρ⊕=5.51 g/cm³)
+                p.GravityG = (float)Math.Max(0.04, Math.Min(4.35, (radius / 6371.0) * (densityGcm3 / 5.51)));
 
-                // Atmosphere: thick for giants and ocean worlds, none for barren rocks and rogues.
-                float atmo = p.Class == WorldClass.GasGiant || p.Class == WorldClass.IceGiant ? r.Range(.82f, 1f)
+                // Atmosphere retention scales with escape velocity / world class
+                float atmo = p.Class == WorldClass.GasGiant || p.Class == WorldClass.IceGiant ? r.Range(.84f, 1f)
                     : p.Class == WorldClass.Barren || p.Class == WorldClass.Rogue ? 0f
-                    : p.Class == WorldClass.Ocean ? r.Range(.45f, .95f)
-                    : p.Class == WorldClass.Ice ? r.Range(.05f, .6f)
-                    : r.Range(.02f, .72f);
-                if (system.Star == StarKind.BlackHole) atmo *= 0.4f;
+                    : p.Class == WorldClass.Ocean ? r.Range(.48f, .94f)
+                    : p.Class == WorldClass.Toxic ? r.Range(.62f, .99f)
+                    : p.Class == WorldClass.Ice ? r.Range(.03f, .52f)
+                    : p.GravityG < 0.22f ? r.Range(0f, .08f)
+                    : r.Range(.04f, .74f);
+                if (system.Star == StarKind.BlackHole || system.Star == StarKind.NeutronStar) atmo *= 0.45f;
                 p.AtmosphereDensity = atmo;
                 if (atmo > 0.01f)
                 {
-                    // Hue by class, brightness by density: blue oceans, ochre deserts, green poison.
                     float hue = r.NextFloat();
-                    if (p.Class == WorldClass.Ocean) { p.AtmoR = .30f; p.AtmoG = .55f + hue * .18f; p.AtmoB = 1f; }
+                    if (p.Class == WorldClass.Ocean) { p.AtmoR = .28f; p.AtmoG = .58f + hue * .18f; p.AtmoB = 1f; }
                     else if (p.Class == WorldClass.Desert) { p.AtmoR = 1f; p.AtmoG = .66f + hue * .12f; p.AtmoB = .38f; }
-                    else if (p.Class == WorldClass.Toxic) { p.AtmoR = .52f; p.AtmoG = .92f; p.AtmoB = .46f; }
-                    else if (p.Class == WorldClass.Lava) { p.AtmoR = 1f; p.AtmoG = .38f; p.AtmoB = .22f; }
+                    else if (p.Class == WorldClass.Toxic) { p.AtmoR = .54f; p.AtmoG = .92f; p.AtmoB = .44f; }
+                    else if (p.Class == WorldClass.Lava) { p.AtmoR = 1f; p.AtmoG = .38f; p.AtmoB = .20f; }
                     else if (p.Class == WorldClass.Ice || p.Class == WorldClass.IceGiant) { p.AtmoR = .68f; p.AtmoG = .86f; p.AtmoB = 1f; }
-                    else if (p.Class == WorldClass.GasGiant) { p.AtmoR = .92f; p.AtmoG = .76f; p.AtmoB = .58f + hue * .3f; }
-                    else { p.AtmoR = .55f + hue * .3f; p.AtmoG = .60f + hue * .2f; p.AtmoB = .72f + hue * .2f; }
+                    else if (p.Class == WorldClass.GasGiant) { p.AtmoR = .92f; p.AtmoG = .76f; p.AtmoB = .58f + hue * .28f; }
+                    else { p.AtmoR = .55f + hue * .28f; p.AtmoG = .62f + hue * .2f; p.AtmoB = .76f + hue * .2f; }
                 }
 
-                // Temperature from stellar flux; a black hole leaves only tidal leftovers.
-                double flux = system.Star == StarKind.BlackHole ? 0.004 : (system.TemperatureK / 5772.0) * (system.TemperatureK / 5772.0) / Math.Max(0.02, p.OrbitAu * p.OrbitAu);
-                double equilibrium = 278.0 * Math.Pow(Math.Max(1e-6, flux), 0.25) - 273.15;
-                if (p.Class == WorldClass.Lava) equilibrium += r.Range(180, 640);
-                if (p.Class == WorldClass.Ice || p.Class == WorldClass.IceGiant) equilibrium -= r.Range(40, 150);
-                p.TemperatureC = Math.Max(-273.0, Math.Min(1200.0, equilibrium));
+                // Radiative equilibrium temperature T_eq = 278.5 * ((1 - BondAlbedo) * flux)^0.25 + greenhouse + internal heat
+                double albedo = p.Class == WorldClass.Ice ? 0.58
+                    : p.Class == WorldClass.Toxic ? 0.62
+                    : p.Class == WorldClass.GasGiant || p.Class == WorldClass.IceGiant ? 0.44
+                    : p.Class == WorldClass.Desert ? 0.34
+                    : p.Class == WorldClass.Ocean ? 0.27
+                    : p.Class == WorldClass.Lava ? 0.10 : 0.21;
+                double teqK = 278.5 * Math.Pow(Math.Max(1e-7, (1.0 - albedo) * flux), 0.25);
+                double greenhouseK = p.Class == WorldClass.Toxic ? 210.0 * atmo
+                    : p.Class == WorldClass.GasGiant ? 38.0
+                    : 36.0 * atmo;
+                double internalK = p.Class == WorldClass.Lava ? r.Range(240.0, 560.0) : 0.0;
+                p.TemperatureC = Math.Max(-273.0, Math.Min(1200.0, teqK + greenhouseK + internalK - 273.15));
 
                 // Weather: the colder, the more snow; the hotter, the more ash and flare.
                 float w = r.NextFloat();
@@ -514,6 +590,53 @@ namespace LestingCraft.Gameplay
                 case UniverseWeather.IonStorm: return "ионные бури";
                 default: return "без осадков";
             }
+        }
+
+        public static bool IsLandable(WorldClass cls)
+        {
+            return cls != WorldClass.GasGiant && cls != WorldClass.IceGiant;
+        }
+
+        /// <summary>Exact 3D orbital position of a procedural planet in the shared double-precision km frame.</summary>
+        public static SpaceVector PlanetPositionKm(UniverseSystem system, UniversePlanet planet, double days)
+        {
+            double angle = planet.OrbitPhaseRad + (days / Math.Max(0.2, planet.OrbitDays)) * Math.PI * 2.0;
+            double orbitKm = planet.OrbitAu * 149597870.7;
+            double incRad = planet.InclinationDeg * (Math.PI / 180.0);
+            return new SpaceVector(
+                system.AnchorKm.X + Math.Cos(angle) * orbitKm,
+                system.AnchorKm.Y + Math.Sin(angle) * Math.Sin(incRad) * orbitKm,
+                system.AnchorKm.Z + Math.Sin(angle) * Math.Cos(incRad) * orbitKm);
+        }
+
+        /// <summary>Deterministic natural moons outside the Roche limit with Keplerian orbital periods.</summary>
+        public static UniverseMoon[] Moons(UniversePlanet planet)
+        {
+            int count = Math.Max(0, Math.Min(6, planet.MoonCount));
+            var list = new UniverseMoon[count];
+            if (count == 0) return list;
+            double orbitRadii = 3.4; // strictly outside fluid Roche limit (~2.44 R_p)
+            char[] letters = { 'a', 'b', 'c', 'd', 'e', 'f' };
+            for (int i = 0; i < count; i++)
+            {
+                var r = new UniverseRng(planet.Seed, i * 1315423911L + 29);
+                orbitRadii *= r.Range(1.32, 1.68);
+                bool volcanic = i == 0 && (planet.Class == WorldClass.GasGiant || planet.Class == WorldClass.IceGiant) && r.Chance(0.45f);
+                bool icy = !volcanic && (planet.TemperatureC < -10 || i >= 1);
+                list[i] = new UniverseMoon
+                {
+                    Name = planet.Name + " " + letters[i],
+                    RadiusKm = planet.RadiusKm * r.Range(0.04, 0.22),
+                    OrbitRadiusKm = planet.RadiusKm * orbitRadii,
+                    OrbitHours = Math.Max(6.0, 14.0 * Math.Pow(orbitRadii / 3.4, 1.5)),
+                    PhaseRad = r.Range(0.0, Math.PI * 2.0),
+                    Volcanic = volcanic,
+                    R = volcanic ? .96f : icy ? .82f : .58f,
+                    G = volcanic ? .68f : icy ? .88f : .55f,
+                    B = volcanic ? .26f : icy ? .96f : .52f
+                };
+            }
+            return list;
         }
 
         /// <summary>Short line for the cockpit: class, weather, atmosphere and hazard.</summary>

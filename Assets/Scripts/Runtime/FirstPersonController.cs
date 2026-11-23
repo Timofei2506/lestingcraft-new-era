@@ -323,7 +323,11 @@ namespace LestingCraft.Runtime
             if(keyboard.gKey.wasPressedThisFrame&&!Game.Session.Inventory.ToggleOffhand())Game.Session.Notice="G · выберите факел на хотбаре; для снятия нужно место в сумке";
             if(keyboard.qKey.wasPressedThisFrame)Game.Session.Living.DropActive();
             if(Game.Session.Living.Pending){Game.Session.ResetMining();return;}
-            if(mouse.leftButton.wasPressedThisFrame&&Weapons.Has(Game.Session.Inventory.Active.item)&&Game.Session.Inventory.Active.item!=164)GameAudio.PlaySwing();
+            if(mouse.leftButton.wasPressedThisFrame&&Weapons.Has(Game.Session.Inventory.Active.item)&&Game.Session.Inventory.Active.item!=164)
+            {
+                GameAudio.PlaySwing();
+                WorldVisualEffects.TriggerSlash(Camera.transform.position,Camera.transform.rotation,Game.Session.Inventory.Active.item);
+            }
             if(Game.Story&&mouse.leftButton.isPressed&&Game.Story.Attack(new Ray(Camera.transform.position,Camera.transform.forward),6)){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
             if(mouse.leftButton.wasPressedThisFrame&&Game.TryAttackPlanetaryBoss(new Ray(Camera.transform.position,Camera.transform.forward))){TargetingAnimal=true;HasTarget=false;Game.Session.ResetMining();return;}
             Selected=SurvivalSession.PlaceableBlockForItem(Game.Session.Inventory.Active.item,World.ContentVersion);
@@ -357,8 +361,26 @@ namespace LestingCraft.Runtime
                 else Game.Session.Notice="Нельзя поставить блок внутри персонажа";
             }
             else if(mouse.leftButton.isPressed&&HasTarget)
+            {
+                ushort minedId=World.GetBlock(target.Cell.x,target.Cell.y,target.Cell.z);
+                if(BlockRegistry.Get(minedId).Hardness>=1.4f)
+                {
+                    Color sparkCol=minedId==BlockRegistry.CrystalId||minedId==BlockRegistry.AndromedaCrystalId?new Color(.55f,.88f,1f):new Color(1f,.72f,.26f);
+                    WorldVisualEffects.EmitImpactSparks((Vector3)target.Cell+Vector3.one*.5f+(Vector3)target.Normal*.52f,target.Normal,sparkCol,10);
+                }
                 Game.Session.Mine(target.Cell,Mathf.Min(Time.deltaTime,.25f));
+            }
             else Game.Session.ResetMining();
+
+            var vfx=WorldVisualEffects.Ensure(Game.transform);
+            if(vfx&&Camera)
+            {
+                vfx.TrackedCamera=Camera.transform;
+                vfx.ActiveDimension=World.Dimension;
+                vfx.DayClock01=Game.Session.Data!=null?(float)(Game.Session.Data.clock%1.0):0.5f;
+                int actIt=Game.Session.Inventory.Active.count>0?Game.Session.Inventory.Active.item:0;
+                vfx.HoldingTorch=Game.Session.Inventory.OffhandTorch||actIt==Items.Torch||actIt==BlockRegistry.TorchBlockId;
+            }
         }
     }
 }
