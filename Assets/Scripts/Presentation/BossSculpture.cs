@@ -220,6 +220,35 @@ namespace LestingCraft.Presentation
             }
         }
 
+        /// <summary>Temporary crimson-white damage flash; restores exact authored vertex colors when amount &lt;= 0.</summary>
+        public void SetHitFlash(float amount)
+        {
+            float f = Mathf.Clamp01(amount);
+            for (int i = 0; i < meshes.Count; i++)
+            {
+                var mesh = meshes[i];
+                if (!mesh) continue;
+                var baseCol = baseColors[mesh];
+                if (f <= 0.001f)
+                {
+                    mesh.colors = baseCol;
+                    continue;
+                }
+                var cur = mesh.colors;
+                if (cur == null || cur.Length != baseCol.Length) cur = (Color[])baseCol.Clone();
+                for (int k = 0; k < cur.Length; k++)
+                {
+                    var b = baseCol[k];
+                    cur[k] = new Color(
+                        Mathf.Lerp(b.r, 1f, f * .78f),
+                        Mathf.Lerp(b.g, .32f, f * .72f),
+                        Mathf.Lerp(b.b, .26f, f * .72f),
+                        Mathf.Max(b.a, f * .48f));
+                }
+                mesh.colors = cur;
+            }
+        }
+
         public float LightIntensity
         {
             get { return localLight ? localLight.intensity : 0f; }

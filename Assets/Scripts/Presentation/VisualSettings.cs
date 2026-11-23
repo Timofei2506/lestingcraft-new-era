@@ -20,6 +20,8 @@ namespace LestingCraft.Presentation
         public int VolumetricQuality = 1;
         public float Sensitivity = .10f;
         public float FieldOfView = 75;
+        public float SfxVolume = .80f;
+        public float AmbientVolume = .65f;
         public static VisualSettings Current { get; private set; }
         public static bool IsMobile { get { return Application.isMobilePlatform; } }
 
@@ -49,6 +51,8 @@ namespace LestingCraft.Presentation
                 parsed.VolumetricQuality = IsMobile ? 0 : 1;
             }
             if (empty || !json.Contains("\"AmbientOcclusion\"")) parsed.AmbientOcclusion = true;
+            if (empty || !json.Contains("\"SfxVolume\"")) parsed.SfxVolume = .80f;
+            if (empty || !json.Contains("\"AmbientVolume\"")) parsed.AmbientVolume = .65f;
             parsed.Clamp();
             return parsed;
         }
@@ -60,6 +64,8 @@ namespace LestingCraft.Presentation
             RenderScale = VisualQualityPolicy.ClampRenderScale(RenderScale, IsMobile);
             Sensitivity = Mathf.Clamp(Sensitivity, .04f, .25f);
             FieldOfView = Mathf.Clamp(FieldOfView, 60, 100);
+            SfxVolume = Mathf.Clamp01(SfxVolume);
+            AmbientVolume = Mathf.Clamp01(AmbientVolume);
             ShadowResolution = VisualQualityPolicy.ClampShadowResolution(ShadowResolution, IsMobile);
         }
         public void Save()

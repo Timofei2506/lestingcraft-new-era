@@ -52,6 +52,8 @@ namespace LestingCraft.Presentation
         Vector3 baseRigScale = Vector3.one;
         Vector3 baseBodyScale = Vector3.one;
         float elapsed, filteredSpeed, animationClock;
+        float hitFlash;
+        Vector3 hitRecoilLocal;
 
         static Dictionary<int, MobOverrideEntry> cachedOverrides;
         static bool overridesLoaded;
@@ -218,11 +220,22 @@ namespace LestingCraft.Presentation
             }
         }
 
+        public void TriggerHit(Vector3 worldKnockDir)
+        {
+            hitFlash = 1f;
+            Vector3 localDir = Quaternion.Inverse(transform.rotation) * new Vector3(worldKnockDir.x, 0f, worldKnockDir.z).normalized;
+            hitRecoilLocal = localDir * 0.14f + Vector3.up * 0.06f;
+            if (sculpt) sculpt.SetHitFlash(1f);
+        }
+
         public void ResetMotion()
         {
             last = transform.position;
             filteredSpeed = 0;
             animationClock = 0;
+            if (hitFlash > 0f && sculpt) sculpt.SetHitFlash(0f);
+            hitFlash = 0f;
+            hitRecoilLocal = Vector3.zero;
             if (rig)
             {
                 rig.localPosition = baseRigPos;
@@ -259,7 +272,13 @@ namespace LestingCraft.Presentation
             bool hopper = species == 1 || species == 10 || species == 21;
             bool flyer = species == 11 || species == 12 || species == 19 || species == 25 || species == 26 || species == 33;
             float hop = hopper ? Mathf.Max(0, Mathf.Sin(g)) * (species == 10 ? .2f : .13f) * Mathf.Clamp01(filteredSpeed) : 0;
-            rig.localPosition = baseRigPos + new Vector3(0, hop, 0);
+            if (hitFlash > 0f)
+            {
+                hitFlash = Mathf.Max(0f, hitFlash - dt * 6.5f);
+                if (sculpt) sculpt.SetHitFlash(hitFlash);
+            }
+            hitRecoilLocal = Vector3.MoveTowards(hitRecoilLocal, Vector3.zero, dt * 1.4f);
+            rig.localPosition = baseRigPos + new Vector3(0, hop, 0) + hitRecoilLocal;
             for (int i = 0; i < Legs.Count; i++)
             {
                 float phase = hopper ? (i < 2 ? 0 : .65f) : i % 2 == 0 ? 0 : Mathf.PI;

@@ -473,9 +473,11 @@ namespace LestingCraft.Presentation
             Button("Постэффекты: "+(settings.PostEffects?"вкл.":"выкл."),419,589,328,58,()=>{settings.PostEffects=!settings.PostEffects;settings.Save();ShowSettings(settingsBack);});
             Button("Объёмы: "+(settings.VolumetricQuality==2?"Ultra":settings.VolumetricQuality==1?"высокие":"сокращённые"),92,667,315,38,()=>{settings.VolumetricQuality=(settings.VolumetricQuality+1)%3;settings.Save();ShowSettings(settingsBack);});
             Button("SSAO: "+(settings.AmbientOcclusion?"вкл.":"выкл."),424,667,323,38,()=>{settings.AmbientOcclusion=!settings.AmbientOcclusion;settings.Save();ShowSettings(settingsBack);});
-            Slider("Поле зрения",828,354,680,settings.FieldOfView,60,100,true,v=>{settings.FieldOfView=v;settings.Save();},v=>(int)v+"°");
-            Slider("Чувствительность мыши",828,469,680,settings.Sensitivity,.04f,.25f,false,v=>{settings.Sensitivity=v;settings.Save();},v=>v.ToString("0.00"));
-            Label(content.transform,"WASD — движение     SPACE — прыжок\nЛКМ — убрать блок     ПКМ — поставить\n1–9 — быстрые слоты     E — инвентарь         ESC — меню",828,596,679,106,18,White);
+            Slider("Поле зрения",828,342,680,settings.FieldOfView,60,100,true,v=>{settings.FieldOfView=v;settings.Save();},v=>(int)v+"°");
+            Slider("Чувствительность мыши",828,432,680,settings.Sensitivity,.04f,.25f,false,v=>{settings.Sensitivity=v;settings.Save();},v=>v.ToString("0.00"));
+            Slider("Звуки",828,522,326,settings.SfxVolume,0f,1f,false,v=>{settings.SfxVolume=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
+            Slider("Атмосфера",1182,522,326,settings.AmbientVolume,0f,1f,false,v=>{settings.AmbientVolume=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
+            Label(content.transform,"WASD — движение   SPACE — прыжок   C / CTRL — красться (защита от края)\nЛКМ — ломать/атака   ПКМ — поставить   1–9 — слоты   E — инвентарь",828,622,680,92,16,White);
             Button("←  Готово",64,798,210,54,()=>{settings.Save();if(settingsBack==Page.Pause)ShowPause();else ShowHome();},true);
             int[] presets={VisualQualityPolicy.Mobile,VisualQualityPolicy.Balanced,VisualQualityPolicy.High,VisualQualityPolicy.Ultra,VisualQualityPolicy.Cinematic};
             for(int i=0;i<presets.Length;i++)

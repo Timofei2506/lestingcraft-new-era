@@ -7,11 +7,11 @@ namespace LestingCraft.Presentation
     public sealed class MenuButtonFeedback : MonoBehaviour,IPointerEnterHandler,IPointerExitHandler,ISelectHandler,IDeselectHandler,IPointerDownHandler,IPointerUpHandler
     {
         public Image Border;public Color Tint;bool hovered,selected,pressed;
-        public void OnPointerEnter(PointerEventData e){hovered=true;}
+        public void OnPointerEnter(PointerEventData e){hovered=true;GameAudio.PlayUiHover();}
         public void OnPointerExit(PointerEventData e){hovered=false;pressed=false;}
         public void OnSelect(BaseEventData e){selected=true;}
         public void OnDeselect(BaseEventData e){selected=false;pressed=false;}
-        public void OnPointerDown(PointerEventData e){pressed=true;}
+        public void OnPointerDown(PointerEventData e){pressed=true;GameAudio.PlayUiClick();}
         public void OnPointerUp(PointerEventData e){pressed=false;}
         void Update()
         {

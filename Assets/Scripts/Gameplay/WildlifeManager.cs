@@ -174,6 +174,30 @@ namespace LestingCraft.Gameplay
             return false;
         }
 
+        public bool TryInspect(Ray ray, float maxDistance, out AnimalState found)
+        {
+            found = null;
+            if (!Enabled) return false;
+            float nearest = maxDistance;
+            foreach (AnimalState a in States)
+            {
+                if (a.dead) continue;
+                var center = new Vector3(a.x, a.y + WildlifeSimulation.Height(a.species) * .5f, a.z);
+                if ((center - ray.origin).sqrMagnitude > (maxDistance + 4f) * (maxDistance + 4f)) continue;
+                Quaternion inverse = Quaternion.Inverse(Quaternion.Euler(0, a.yaw, 0));
+                var localRay = new Ray(inverse * (ray.origin - center), inverse * ray.direction);
+                var bounds = new Bounds(Vector3.zero, new Vector3(WildlifeSimulation.Radius(a.species) * 2f,
+                    WildlifeSimulation.Height(a.species), WildlifeSimulation.Length(a.species)));
+                float distance;
+                if (bounds.IntersectRay(localRay, out distance) && distance >= 0f && distance < nearest)
+                {
+                    found = a;
+                    nearest = distance;
+                }
+            }
+            return found != null;
+        }
+
         public int NewArrowShot() { return ++requestId; }
 
         public void Attack(string id, bool arrow = false, int arrowRequest = 0)
@@ -182,6 +206,7 @@ namespace LestingCraft.Gameplay
             attackAt = Time.time + Weapons.Get(session.Inventory.Active.item).Cooldown / 1000f / session.Vitals.body.Dexterity;
             session.ResetMining();
             int weapon = arrow ? 164 : session.Inventory.Active.item;
+            int dealtDmg = WildlifeSimulation.Damage(weapon);
             if (session.Game.Online)
             {
                 if (queuedAttacks.Count >= 4) return;
@@ -190,12 +215,27 @@ namespace LestingCraft.Gameplay
                 {
                     slot = arrow ? -1 : session.Inventory.selected, item = weapon, at = Time.unscaledTime
                 };
+                AnimalState rem;
+                if (remote.TryGetValue(id, out rem))
+                {
+                    AnimalVisual rVis;
+                    Vector3 camPos = session.Player.Camera.transform.position;
+                    Vector3 hitPt = new Vector3(rem.x, rem.y + WildlifeSimulation.Height(rem.species) * .65f, rem.z);
+                    if (visuals.TryGetValue(id, out rVis) && rVis) rVis.TriggerHit(hitPt - camPos);
+                    int estHp = Mathf.Max(0, rem.health - dealtDmg);
+                    bool estKill = estHp <= 0;
+                    GameAudio.PlayMobHit(estKill);
+                    CombatFeedbackOverlay.NotifyHit(hitPt, dealtDmg, estKill,
+                        AnimalSculpts.SpeciesNames[Mathf.Clamp(rem.species, 0, AnimalSculpts.SpeciesNames.Length - 1)],
+                        estHp, WildlifeSimulation.MaxHealth(rem.species),
+                        WildlifeSimulation.IsRadiaMutant(rem.species) || WildlifeSimulation.IsAggressive(rem.species));
+                }
                 session.Game.SendAnimalHit(id, weapon == 102 || weapon == 103 || Weapons.Has(weapon) ? weapon : 0, request);
                 return;
             }
             AnimalState a = simulation.Animals.Find(q => q.id == id && !q.dead);
             if (a == null) return;
-            if (a.health <= WildlifeSimulation.Damage(weapon))
+            if (a.health <= dealtDmg)
             {
                 var copy = session.Inventory.Clone();
                 AnimalLoot loot = WildlifeSimulation.Loot(a);
@@ -206,7 +246,16 @@ namespace LestingCraft.Gameplay
                 }
             }
             Vector3 p = session.Player.Camera.transform.position;
+            Vector3 worldHit = new Vector3(a.x, a.y + WildlifeSimulation.Height(a.species) * .65f, a.z);
+            AnimalVisual hitVis;
+            if (visuals.TryGetValue(id, out hitVis) && hitVis) hitVis.TriggerHit(worldHit - p);
             AnimalLoot result = simulation.Hit(id, weapon, p.x, p.y, p.z);
+            bool killedNow = result != null || a.dead;
+            GameAudio.PlayMobHit(killedNow);
+            CombatFeedbackOverlay.NotifyHit(worldHit, dealtDmg, killedNow,
+                AnimalSculpts.SpeciesNames[Mathf.Clamp(a.species, 0, AnimalSculpts.SpeciesNames.Length - 1)],
+                killedNow ? 0 : a.health, WildlifeSimulation.MaxHealth(a.species),
+                WildlifeSimulation.IsRadiaMutant(a.species) || WildlifeSimulation.IsAggressive(a.species));
             if (!session.Creative && !arrow) session.Inventory.WearTool();
             if (result != null)
             {

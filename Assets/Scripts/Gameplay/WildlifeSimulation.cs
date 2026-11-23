@@ -146,6 +146,7 @@ namespace LestingCraft.Gameplay
 
         public static bool IsFlyer(int s) { return s == 11 || s == 12 || s == 19 || s == 25 || s == 26 || s == 33; }
         public static bool IsRadiaMutant(int s) { return s >= 20 && s < 30; }
+        public static bool IsAggressive(int s) { return s >= 0 && s < AttackDamage.Length && AttackDamage[s] > 0; }
 
         public WildlifeSimulation(int seed, WildlifeSave saved = null, int contentVersion = 2)
         {

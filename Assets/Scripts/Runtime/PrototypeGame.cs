@@ -760,7 +760,7 @@ namespace LestingCraft.Runtime
             if(dim==Dimension.Dream)PlanetaryDroneController.BuildMachineCity(world.transform,world.Seed,anchor);
         }
 
-        public bool TryAttackPlanetaryBoss(Ray aimRay)
+        public bool TryAttackPlanetaryBoss(Ray aimRay,float maxRange=7.5f)
         {
             if(Session&&InRadiaDimension&&Tech)
             {
@@ -768,6 +768,8 @@ namespace LestingCraft.Runtime
                 int radiaDmg=Weapons.Has(held)?Weapons.Get(held).Damage:(Items.IsPick(held)?11:14);
                 if(Tech.Sim.TryHitBoss(aimRay,radiaDmg,out string bossMsg))
                 {
+                    GameAudio.PlayMobHit(false);
+                    CombatFeedbackOverlay.NotifyHit(aimRay.origin+aimRay.direction*Mathf.Min(maxRange,4.5f),radiaDmg,false);
                     Session.Notice=bossMsg;
                     return true;
                 }
@@ -776,15 +778,28 @@ namespace LestingCraft.Runtime
             {
                 int heldMob=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
                 int mobDmg=Weapons.Has(heldMob)?Weapons.Get(heldMob).Damage:(Items.IsPick(heldMob)?9:12);
-                if(PlanetaryDroneController.TryHitAny(aimRay,7.5f,mobDmg,out _,out string droneMsg))
-                {Session.Notice=droneMsg;return true;}
-                if(BacteriaMobController.TryHitAny(aimRay,7.5f,mobDmg,out _,out string mobMsg))
-                {Session.Notice=mobMsg;return true;}
+                if(PlanetaryDroneController.TryHitAny(aimRay,maxRange,mobDmg,out bool droneKilled,out string droneMsg))
+                {
+                    GameAudio.PlayMobHit(droneKilled);
+                    CombatFeedbackOverlay.NotifyHit(aimRay.origin+aimRay.direction*Mathf.Min(maxRange,4.5f),mobDmg,droneKilled);
+                    Session.Notice=droneMsg;
+                    return true;
+                }
+                if(BacteriaMobController.TryHitAny(aimRay,maxRange,mobDmg,out bool bactKilled,out string mobMsg))
+                {
+                    GameAudio.PlayMobHit(bactKilled);
+                    CombatFeedbackOverlay.NotifyHit(aimRay.origin+aimRay.direction*Mathf.Min(maxRange,4.5f),mobDmg,bactKilled);
+                    Session.Notice=mobMsg;
+                    return true;
+                }
             }
             if(!activePlanetBoss||activePlanetBoss.Defeated||!Session)return false;
             int activeItem=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
             int weaponDmg=Weapons.Has(activeItem)?Weapons.Get(activeItem).Damage:(Items.IsPick(activeItem)?9:12);
-            if(!activePlanetBoss.TryHitBoss(aimRay,7.5f,weaponDmg,out bool killedNow,out var drops))return false;
+            if(!activePlanetBoss.TryHitBoss(aimRay,maxRange,weaponDmg,out bool killedNow,out var drops))return false;
+            GameAudio.PlayMobHit(killedNow);
+            CombatFeedbackOverlay.NotifyHit(activePlanetBoss.transform.position+Vector3.up*2f,weaponDmg,killedNow,
+                activePlanetBoss.BossName,killedNow?0:activePlanetBoss.Health,activePlanetBoss.MaxHealth,true);
             if(killedNow)
             {
                 Session.Data.defeatedPlanetBossMask|=1<<(int)activePlanetBoss.BossDimension;
@@ -1479,6 +1494,8 @@ namespace LestingCraft.Runtime
             try{ui.Initialize(this);}
             catch(Exception error){Debug.LogException(error);StartupErrorPanel.Show();return;}
             VisualSettings.Current.Apply();
+            GameAudio.Ensure(transform);
+            CombatFeedbackOverlay.Ensure(transform);
             Debug.Log("[Presentation] Interface ready");
         }
         void SetCursor(bool locked)
@@ -1690,6 +1707,8 @@ namespace LestingCraft.Runtime
         }
         void Update()
         {
+            if(GameAudio.Instance)GameAudio.Instance.TickSoundscape(this);
+            if(CombatFeedbackOverlay.Instance)CombatFeedbackOverlay.Instance.TickAimTarget(this);
             foreach(var peerAvatar in avatars.Values)if(peerAvatar)peerAvatar.SetActive(!StoryLocked&&!InDreamDimension);
             if(world&&world.Ready&&status=="Генерируется мир…")status="Мир готов — нажми «Продолжить»";
 

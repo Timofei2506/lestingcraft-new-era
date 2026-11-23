@@ -68,7 +68,9 @@ namespace LestingCraft.Gameplay
             if(cell!=miningCell){miningCell=cell;mineTime=0;}
             float speed=Inventory.Active.item==151?7:Inventory.Active.item==150?5:Items.IsPick(Inventory.Active.item)?3:Inventory.Active.item==102&&block==4?4:1;
             float duration=VoxelRaycast.MiningSeconds(Creative,BlockRegistry.Get(block).Hardness,speed);
-            mineTime+=dt*Vitals.body.Dexterity;MiningProgress=Mathf.Clamp01(mineTime/duration);if(mineTime<duration)return;
+            mineTime+=dt*Vitals.body.Dexterity;MiningProgress=Mathf.Clamp01(mineTime/duration);
+            GameAudio.PlayMineTick(block,MiningProgress);
+            if(mineTime<duration)return;
             mineTime=0;MiningProgress=0;pending=true;pendingCell=cell;drop=Creative?0:reward;harvestBlock=block;spend=0;toolSlot=Inventory.selected;Game.RequestEdit(cell,0);
         }
         public void ResetMining(){mineTime=0;MiningProgress=0;}
@@ -87,6 +89,11 @@ namespace LestingCraft.Gameplay
         {
             if(!pending||cell!=pendingCell)return;
             if(Living)Living.Edited(cell);
+            if(harvestBlock>0&&spend==0)
+            {
+                GameAudio.PlayBlockBreak((ushort)harvestBlock);
+                BlockFeedback.SpawnBreakDebris(cell,(ushort)harvestBlock);
+            }
             if(drop>0)
             {
                 Progress.Add("mined");Progress.Add("mine_"+harvestBlock);
@@ -101,9 +108,18 @@ namespace LestingCraft.Gameplay
                 if(drop==122&&UnityEngine.Random.value<.25f)Inventory.Add(110,1);
                 if(harvestBlock==3&&UnityEngine.Random.value<.45f)Inventory.Add(113,1);
             }
-            if(spend>0){Progress.Add("placed");Progress.Add("place_"+PlaceableBlockForItem(spend,World.ContentVersion));Inventory.Remove(spend,1);}
+            if(spend>0)
+            {
+                ushort placedId=PlaceableBlockForItem(spend,World.ContentVersion);
+                GameAudio.PlayBlockPlace(placedId);
+                Progress.Add("placed");Progress.Add("place_"+placedId);Inventory.Remove(spend,1);
+            }
+            else if(Creative&&harvestBlock==0)
+            {
+                GameAudio.PlayBlockPlace(PlaceableBlockForItem(Inventory.Active.item,World.ContentVersion));
+            }
             if(toolSlot>=0&&!Creative){int selected=Inventory.selected;Inventory.selected=toolSlot;Inventory.WearTool();Inventory.selected=selected;}
-            pending=false;drop=spend=0;Notice="";
+            pending=false;drop=spend=harvestBlock=0;Notice="";
         }
         public void RejectEdit(string message){pending=false;Notice=message;ResetMining();}
         public bool CanInteract=>!InDream&&World.Dimension!=Dimension.Somnia&&!(Living&&Living.Pending)&&!pending&&!Vitals.dead&&!Data.campaign.runEnded;
@@ -129,7 +145,7 @@ namespace LestingCraft.Gameplay
             if(World.Online&&World.ContentVersion<5){var r=CraftingTable.Match(Inventory.grid,width);if(r!=null&&(r.Output>=149||r.Output==48)){Notice="Нужна новая комната версии 5";return 0;}}
             if(World.Online&&World.ContentVersion<7){var r7=CraftingTable.Match(Inventory.grid,width);if(r7!=null&&CraftingTable.RoomVersionFor(r7.Output)==7){Notice="Нужна новая комната версии 7";return 0;}}
             if(!CanInteract)return 0;var recipe=CraftingTable.Match(Inventory.grid,width);int count=CraftingTable.Take(Inventory,width,shift);
-            if(count>0){Progress.Add("crafted",count);Progress.Add("craft_"+recipe.Output,count);if(recipe.Output==100||recipe.Output==101)Data.player.milestones|=1;Notice="Создано: "+Items.Get(recipe.Output).Name;}return count;
+            if(count>0){GameAudio.PlayCraftDone();Progress.Add("crafted",count);Progress.Add("craft_"+recipe.Output,count);if(recipe.Output==100||recipe.Output==101)Data.player.milestones|=1;Notice="Создано: "+Items.Get(recipe.Output).Name;}return count;
         }
         public void UseStation(int id,Vector3Int cell)
         {
@@ -140,11 +156,11 @@ namespace LestingCraft.Gameplay
         public void UseActive()
         {
             if(!CanInteract)return;var item=Items.Get(Inventory.Active.item);
-            if(item.Food>0&&Vitals.hunger<100){Inventory.Remove(item.Id,1);Progress.Add("food");Vitals.Eat(item.Food);Notice="";}
-            else if(Equipment.Slot(item.Id)>=0){Notice=Equipment.Equip(Inventory,Inventory.selected)?"Надето: "+item.Name:"Не удалось надеть предмет";}
+            if(item.Food>0&&Vitals.hunger<100){Inventory.Remove(item.Id,1);Progress.Add("food");Vitals.Eat(item.Food);GameAudio.PlayHealOrEat();Notice="";}
+            else if(Equipment.Slot(item.Id)>=0){bool eq=Equipment.Equip(Inventory,Inventory.selected);if(eq)GameAudio.PlayBagToggle();Notice=eq?"Надето: "+item.Name:"Не удалось надеть предмет";}
         }
         public void Transfer(int from,int to){if(CanInteract)Inventory.Transfer(from,to);}
-        public void DamagePart(float amount,BodyPart part){if(amount<=0||Vitals.dead||Creative)return;float protection=Equipment.Protection(Inventory,part);Vitals.DamagePart(amount*(1-protection),Mode,part);Equipment.Wear(Inventory,amount,part);}
+        public void DamagePart(float amount,BodyPart part){if(amount<=0||Vitals.dead||Creative)return;float protection=Equipment.Protection(Inventory,part);Vitals.DamagePart(amount*(1-protection),Mode,part);Equipment.Wear(Inventory,amount,part);if(amount>=2f)GameAudio.PlayPlayerHurt();}
         public void Damage(float amount){DamagePart(amount,BodyPart.Torso);}
         public void Impact(float amount,BodyPart part,Vector3 direction){DamagePart(amount,part);if(!Creative)Player.Knockback(direction.normalized*Mathf.Min(7,amount*.4f)+Vector3.up*1.4f);}
         public void Respawn()
