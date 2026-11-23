@@ -66,6 +66,37 @@ namespace LestingCraft.Gameplay
             }
         }
 
+        // Realistic anatomical scale multipliers calibrated against 1 block = 1.0m and Player = 2.00 blocks.
+        public static readonly float[] SpeciesScale =
+        {
+            1.06f, 0.60f, 1.15f, 0.83f, 1.22f, 0.66f,
+            1.24f, 0.78f, 0.74f, 0.78f, 0.55f, 0.86f,
+            0.66f, 0.86f, 1.28f, 0.56f, 0.76f, 1.28f,
+            0.88f, 1.95f,
+            1.14f, 1.18f, 1.52f, 1.38f, 1.75f,
+            0.66f, 1.95f, 1.38f, 1.44f, 1.28f,
+            1.16f, 1.75f, 1.22f, 2.45f
+        };
+
+        static SculptData ScaleSculpt(SculptData d, float scale)
+        {
+            if (Math.Abs(scale - 1f) < 1e-4f) return d;
+            d.Unit *= scale;
+            d.MinX *= scale; d.MinY *= scale; d.MinZ *= scale;
+            d.MaxX *= scale; d.MaxY *= scale; d.MaxZ *= scale;
+            d.LightX *= scale; d.LightY *= scale; d.LightZ *= scale; d.LightRange *= scale;
+            if (d.Parts != null)
+            {
+                for (int i = 0; i < d.Parts.Length; i++)
+                {
+                    d.Parts[i].PX *= scale;
+                    d.Parts[i].PY *= scale;
+                    d.Parts[i].PZ *= scale;
+                }
+            }
+            return d;
+        }
+
         public static SculptData For(int kind)
         {
             if (kind < 0 || kind >= SpeciesNames.Length) kind = 0;
@@ -73,7 +104,7 @@ namespace LestingCraft.Gameplay
             var s = new Sculptor(u, (int)((uint)(kind + 1) * 2654435761u & 0x7fffffff));
             BuildPalette(s, kind);
             BuildSpecies(s, kind);
-            return s.Finish("animal_" + kind);
+            return ScaleSculpt(s.Finish("animal_" + kind), SpeciesScale[kind]);
         }
 
         static void BuildPalette(Sculptor s, int kind)
@@ -115,9 +146,11 @@ namespace LestingCraft.Gameplay
 
             // furLayer in Assets/Art/PBR already carries the authored species coat color (fox orange, bear brown, camel tan, etc.).
             // Keep FUR near neutral white so vertex color never double-darkens the PBR coat texture!
-            Color furTint = Color.Lerp(Color.white, c, .15f);
-            Color darkTint = kind == 5 ? new Color(.24f, .20f, .18f) : new Color(.64f, .60f, .57f);
-            string furLayer = SpeciesFurNames[kind];
+            Color furTint = kind == 30 ? new Color(.74f, .90f, 1.0f) : Color.Lerp(Color.white, c, .15f);
+            Color darkTint = kind == 5 ? new Color(.24f, .20f, .18f) :
+                             kind == 30 ? new Color(.52f, .72f, .92f) :
+                             new Color(.64f, .60f, .57f);
+            string furLayer = kind == 30 ? "animal-underfur" : SpeciesFurNames[kind];
             s.Pal("fur", furLayer, furTint.r, furTint.g, furTint.b, 0f);                                 // 0 FUR
             s.Pal("under", "animal-underfur", under.r, under.g, under.b, 0f);                            // 1 UNDER
             s.Pal("dark", furLayer, darkTint.r, darkTint.g, darkTint.b, 0f);                             // 2 DARK
@@ -574,9 +607,9 @@ namespace LestingCraft.Gameplay
             for (int side = -1; side <= 1; side += 2)
             {
                 s.Part(side < 0 ? "wingL" : "wingR", side * .16f, .52f, .04f);
-                s.Tube(side * .16f, .52f, .06f, side * .52f, .56f, .02f, .06f, .045f, FUR);
-                s.Ellipsoid(side * .38f, .50f, -.04f, .24f, .038f, .15f, FUR);
-                s.Ellipsoid(side * .56f, .48f, -.08f, .16f, .032f, .12f, DARK);
+                s.Tube(side * .16f, .52f, .06f, side * .78f, .58f, .02f, .065f, .042f, FUR);
+                s.Ellipsoid(side * .46f, .50f, -.04f, .34f, .040f, .17f, FUR);
+                s.Ellipsoid(side * .78f, .49f, -.08f, .24f, .034f, .14f, DARK);
             }
 
             s.Part("tail", 0, .34f, -.20f);
@@ -660,8 +693,8 @@ namespace LestingCraft.Gameplay
         static void BuildCamel(Sculptor s)
         {
             s.Part("body", 0, 1.24f, 0);
-            s.Ellipsoid(0, 1.22f, .14f, .34f, .34f, .44f, FUR);
-            s.Ellipsoid(0, 1.20f, -.28f, .32f, .32f, .42f, FUR);
+            s.Ellipsoid(0, 1.22f, .14f, .41f, .36f, .46f, FUR);
+            s.Ellipsoid(0, 1.20f, -.28f, .39f, .34f, .44f, FUR);
             // Sculpted twin desert humps
             s.Ellipsoid(0, 1.60f, .16f, .22f, .24f, .24f, DARK);
             s.Ellipsoid(0, 1.56f, -.26f, .20f, .22f, .22f, DARK);
@@ -862,8 +895,16 @@ namespace LestingCraft.Gameplay
 
             s.Part("head", 0, .86f, .48f);
             s.Ellipsoid(0, .88f, .56f, .18f, .16f, .20f, FUR);
-            s.Tube(0, .82f, .68f, 0, .78f, .90f, .11f, .08f, DARK);
-            Eyes(s, .92f, .64f, .12f, .045f, true);
+            s.Tube(0, .82f, .68f, 0, .78f, .92f, .11f, .08f, DARK);
+            s.Ellipsoid(0, .85f, .78f, .045f, .028f, .10f, GLOW);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Tube(side * .065f, .76f, .86f, side * .065f, .69f, .88f, .024f, .016f, HORN);
+                s.Part(side < 0 ? "earL" : "earR", side * .12f, 1.00f, .52f);
+                s.Tube(side * .12f, 1.00f, .52f, side * .16f, 1.18f, .48f, .046f, .022f, DARK);
+            }
+            s.Part("head", 0, .86f, .48f);
+            Eyes(s, .92f, .64f, .12f, .048f, true);
 
             s.Part("tail", 0, .74f, -.52f);
             s.Tube(0, .74f, -.52f, 0, .54f, -.92f, .06f, .03f, DARK);

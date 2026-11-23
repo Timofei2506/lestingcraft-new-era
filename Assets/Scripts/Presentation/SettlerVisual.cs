@@ -86,8 +86,8 @@ namespace LestingCraft.Presentation
     workArm = transform.Find("Right shoulder pivot"); if (!workArm) workArm = transform;
     workTool = new GameObject("Village work tool", typeof(MeshFilter), typeof(MeshRenderer));
     workTool.transform.SetParent(workArm, false);
-    workTool.transform.localPosition = new Vector3(0, -.60f, .17f);
-    workTool.transform.localScale = Vector3.one * (job == 1 || job == 7 ? .42f : .28f);
+    workTool.transform.localPosition = new Vector3(0, -.60f, .17f) * CharacterVisual.ModelScale;
+    workTool.transform.localScale = Vector3.one * ((job == 1 || job == 7 ? .42f : .28f) * CharacterVisual.ModelScale);
     workTool.GetComponent<MeshFilter>().sharedMesh = VoxelItemModels.MeshFor(toolId);
     workTool.GetComponent<MeshRenderer>().sharedMaterial = Resources.Load<Material>("Generated/VoxelObjects");
     workTool.SetActive(false);

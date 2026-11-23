@@ -4,8 +4,8 @@ namespace LestingCraft.Presentation
  // Camera-projected local uGUI text works in URP, including Cyrillic; voxel line-of-sight prevents wall ESP.
  public sealed class PlayerNameplate:MonoBehaviour
  {
-  static int layoutFrame=-1;static readonly List<Rect> occupied=new List<Rect>();static Canvas layer;Text label;VoxelWorld world;float height=2.1f;string nickname;
-  public void Initialize(string name,VoxelWorld owner,float headHeight=2.1f)
+  static int layoutFrame=-1;static readonly List<Rect> occupied=new List<Rect>();static Canvas layer;Text label;VoxelWorld world;float height=2.24f;string nickname;
+  public void Initialize(string name,VoxelWorld owner,float headHeight=2.24f)
   {
    world=owner;height=headHeight;nickname=(name??"Игрок").Replace('\n',' ').Replace('\r',' ');if(nickname.Length>24)nickname=nickname.Substring(0,24);
    if(!layer){var root=new GameObject("Visible player names",typeof(Canvas));layer=root.GetComponent<Canvas>();layer.renderMode=RenderMode.ScreenSpaceOverlay;layer.sortingOrder=85;}

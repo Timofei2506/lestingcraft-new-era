@@ -144,7 +144,7 @@ public sealed class MobWorkbenchWindow : EditorWindow
         EditorGUILayout.HelpBox(
             "Масштаб игры LestingCraft:\n" +
             "• 1 блок игры = ровно 1.0 × 1.0 × 1.0 метр Unity (Cube со Scale 1, 1, 1)\n" +
-            "• Высота игрока = 1.80 блока (ширина 0.60 блока)",
+            "• Высота игрока = 2.00 блока (ширина 0.60 блока)",
             MessageType.Info);
 
         // --- SECTION 1: SELECT & SPAWN ---
@@ -175,7 +175,7 @@ public sealed class MobWorkbenchWindow : EditorWindow
         EditorGUILayout.BeginHorizontal();
         showBlockWire = GUILayout.Toggle(showBlockWire, "Контур 1×1×1 на мобе");
         showMobBounds = GUILayout.Toggle(showMobBounds, "Габариты моба");
-        showPlayerRef = GUILayout.Toggle(showPlayerRef, "Игрок (1.8 бл.)");
+        showPlayerRef = GUILayout.Toggle(showPlayerRef, "Игрок (2.0 бл.)");
         if (GUILayout.Button("Убрать стенд", GUILayout.Width(95)))
             ClearStage();
         EditorGUILayout.EndHorizontal();
@@ -673,12 +673,12 @@ public sealed class MobWorkbenchWindow : EditorWindow
             Handles.DrawWireCube(new Vector3(0f, 0.5f, 0f), Vector3.one);
         }
 
-        // Optional player height silhouette (1.80 blocks tall, 0.60 wide) at X = +1.5
+        // Optional player height silhouette (2.00 blocks tall, 0.60 wide) at X = +1.5
         if (showPlayerRef && currentMobHost)
         {
             Handles.color = new Color(0.3f, 1f, 0.55f, 0.75f);
-            Handles.DrawWireCube(new Vector3(1.5f, 0.9f, 0f), new Vector3(0.6f, 1.8f, 0.6f));
-            Handles.Label(new Vector3(1.5f, 1.95f, 0f), "Игрок (1.80 бл.)", labelStyle);
+            Handles.DrawWireCube(new Vector3(1.5f, 1.0f, 0f), new Vector3(0.6f, 2.0f, 0.6f));
+            Handles.Label(new Vector3(1.5f, 2.15f, 0f), "Игрок (2.00 бл.)", labelStyle);
         }
 
         // Live mob bounding box in blocks

@@ -11,6 +11,8 @@ namespace LestingCraft.Presentation
     /// </summary>
     public sealed class CharacterVisual : MonoBehaviour
     {
+        // Scales the 1.826m authored rig to strictly 2.00 blocks (2.00m) from boot sole to crown.
+        public const float ModelScale = 1.095f;
         Transform thighL, thighR, shinL, shinR, upperL, upperR, foreL, foreR, headPivot, scarfTail;
         MeshFilter headFilter;
         int faceOpen = 3, faceClosed = 11;
@@ -84,9 +86,9 @@ namespace LestingCraft.Presentation
             if (id != 148 || !foreL) return;
             carried = new GameObject("Visible left-hand torch");
             carried.transform.SetParent(foreL, false);
-            carried.transform.localPosition = new Vector3(0, -.24f, .16f);
+            carried.transform.localPosition = new Vector3(0, -.24f, .16f) * ModelScale;
             carried.transform.localRotation = Quaternion.Euler(-20, 0, 0);
-            carried.transform.localScale = Vector3.one * .75f;
+            carried.transform.localScale = Vector3.one * (.75f * ModelScale);
             carried.AddComponent<TorchVisual>().Build(lighting);
         }
 
@@ -108,7 +110,7 @@ namespace LestingCraft.Presentation
             Part("Backpack", new Vector3(0, 1.08f, -.205f), new Vector3(.34f, .42f, .16f), 6, transform);
             Part("Backpack flap", new Vector3(0, 1.26f, -.215f), new Vector3(.36f, .09f, .18f), 7, transform);
             Part("Scarf collar", new Vector3(0, 1.355f, .005f), new Vector3(.46f, .075f, .30f), 7, transform);
-            BlockGeometry.Part("Collar shadow", transform, new Vector3(0, 1.312f, .005f), new Vector3(.39f, .02f, .275f), shadow, 2);
+            BlockGeometry.Part("Collar shadow", transform, new Vector3(0, 1.312f, .005f) * ModelScale, new Vector3(.39f, .02f, .275f) * ModelScale, shadow, 2);
 
             scarfTail = Pivot("Scarf tail", new Vector3(.08f, 1.32f, -.165f));
             Part("Scarf tail", new Vector3(0, -.15f, -.02f), new Vector3(.13f, .28f, .04f), 7, scarfTail);
@@ -122,10 +124,10 @@ namespace LestingCraft.Presentation
                 Part("Ear", new Vector3(i * .202f, .175f, -.01f), new Vector3(.034f, .095f, .075f), 0, headPivot);
 
             // Stranded hair cap & temple locks (using dedicated hair strand tile 10)
-            BlockGeometry.Part("Hair cap", headPivot, new Vector3(0, .382f, -.008f), new Vector3(.402f, .052f, .402f), hair, 10);
-            BlockGeometry.Part("Hair back", headPivot, new Vector3(0, .205f, -.198f), new Vector3(.396f, .33f, .036f), hair, 10);
+            BlockGeometry.Part("Hair cap", headPivot, new Vector3(0, .382f, -.008f) * ModelScale, new Vector3(.402f, .052f, .402f) * ModelScale, hair, 10);
+            BlockGeometry.Part("Hair back", headPivot, new Vector3(0, .205f, -.198f) * ModelScale, new Vector3(.396f, .33f, .036f) * ModelScale, hair, 10);
             for (int i = -1; i <= 1; i += 2)
-                BlockGeometry.Part("Side lock", headPivot, new Vector3(i * .196f, .255f, -.02f), new Vector3(.032f, .19f, .33f), hair, 10);
+                BlockGeometry.Part("Side lock", headPivot, new Vector3(i * .196f, .255f, -.02f) * ModelScale, new Vector3(.032f, .19f, .33f) * ModelScale, hair, 10);
 
             // Folded ranger hood resting cleanly at crown/back (kept named for StoryActors overrides)
             Part("Block hood top", new Vector3(0, .408f, -.045f), new Vector3(.42f, .036f, .34f), 7, headPivot);
@@ -148,7 +150,7 @@ namespace LestingCraft.Presentation
         {
             var pivot = new GameObject(name).transform;
             pivot.SetParent(transform, false);
-            pivot.localPosition = position;
+            pivot.localPosition = position * ModelScale;
             return pivot;
         }
 
@@ -156,8 +158,9 @@ namespace LestingCraft.Presentation
         {
             var thigh = Pivot(side + " thigh pivot", new Vector3(x, .78f, 0));
             Part("Cuboid trousers", new Vector3(0, -.17f, 0), new Vector3(.205f, .36f, .23f), 2, thigh);
-            var shin = Pivot("Shin pivot", new Vector3(0, -.35f, 0));
+            var shin = new GameObject("Shin pivot").transform;
             shin.SetParent(thigh, false);
+            shin.localPosition = new Vector3(0, -.35f, 0) * ModelScale;
             Part("Cuboid shin", new Vector3(0, -.15f, 0), new Vector3(.195f, .31f, .22f), 2, shin);
             Part("Cuboid boot", new Vector3(0, -.335f, .016f), new Vector3(.215f, .19f, .285f), 4, shin);
             Part("Boot sole", new Vector3(0, -.432f, .018f), new Vector3(.225f, .028f, .295f), 6, shin);
@@ -168,8 +171,9 @@ namespace LestingCraft.Presentation
         {
             var upper = Pivot(side + " shoulder pivot", new Vector3(x, 1.31f, 0));
             Part("Cuboid sleeve", new Vector3(0, -.145f, 0), new Vector3(.185f, .31f, .215f), 1, upper);
-            var fore = Pivot("Elbow pivot", new Vector3(0, -.29f, 0));
+            var fore = new GameObject("Elbow pivot").transform;
             fore.SetParent(upper, false);
+            fore.localPosition = new Vector3(0, -.29f, 0) * ModelScale;
             Part("Cuboid forearm", new Vector3(0, -.12f, 0), new Vector3(.175f, .25f, .205f), 1, fore);
             Part("Square cuff", new Vector3(0, -.25f, 0), new Vector3(.19f, .055f, .22f), 4, fore);
             Part("Block hand", new Vector3(0, -.335f, 0), new Vector3(.17f, .15f, .195f), 12, fore);
@@ -177,7 +181,7 @@ namespace LestingCraft.Presentation
         }
 
         Transform Part(string name, Vector3 position, Vector3 scale, int tile, Transform parent, int front = -1)
-            => BlockGeometry.Part(name, parent, position, scale, material, tile, front);
+            => BlockGeometry.Part(name, parent, position * ModelScale, scale * ModelScale, material, tile, front);
 
         public void SetEquipment(int[] ids)
         {
@@ -232,7 +236,7 @@ namespace LestingCraft.Presentation
 
         void Gear(string name, Transform parent, Vector3 position, Vector3 scale, int tile, bool armored = false)
         {
-            extras.Add(BlockGeometry.Part(name, parent, position, scale, armored ? metal : material, tile).gameObject);
+            extras.Add(BlockGeometry.Part(name, parent, position * ModelScale, scale * ModelScale, armored ? metal : material, tile).gameObject);
         }
 
         void LateUpdate()

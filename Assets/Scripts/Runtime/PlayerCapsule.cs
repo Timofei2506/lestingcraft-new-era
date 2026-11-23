@@ -5,7 +5,9 @@ namespace LestingCraft.Runtime
     public static class PlayerCapsule
     {
         static readonly RaycastHit[] hits=new RaycastHit[16];
-        public const float Height=1.75f,Radius=.28f,Skin=.02f,Step=.25f,EyeHeight=1.58f;
+        // Visual character is 2.00 blocks tall; capsule height 1.92 + 2*skinWidth (0.04) = 1.96m so a
+        // 2-block-tall player still passes smoothly through standard 2-block-high doorways and tunnels.
+        public const float Height=1.92f,Radius=.28f,Skin=.02f,Step=.25f,EyeHeight=1.78f;
         public static void Configure(CharacterController controller)
         {controller.height=Height;controller.radius=Radius;controller.center=Vector3.up*(Height*.5f);controller.skinWidth=Skin;controller.stepOffset=Step;controller.minMoveDistance=0;controller.slopeLimit=46;controller.enableOverlapRecovery=true;}
         public static void UpdateStep(CharacterController controller,Vector3 movement)
