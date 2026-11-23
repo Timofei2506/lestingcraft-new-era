@@ -537,7 +537,9 @@ namespace LestingCraft.Presentation
         {
             if (!ambientPrimary || !ambientSecondary) return;
             float masterAmb = AmbientGain;
-            bool playingWorld = game && game.Session != null && game.World != null && game.World.Ready && !game.Paused;
+            var session = game ? game.Session : null;
+            var world = session ? session.World : null;
+            bool playingWorld = session != null && world != null && world.Ready && !game.Paused;
             if (!playingWorld || masterAmb <= 0.001f)
             {
                 ambientPrimary.volume = Mathf.MoveTowards(ambientPrimary.volume, 0f, Time.unscaledDeltaTime * 1.5f);
@@ -545,10 +547,11 @@ namespace LestingCraft.Presentation
                 return;
             }
 
-            Dimension dim = game.World.Dimension;
+            Dimension dim = world.Dimension;
             bool inSpace = game.DockedAtOrbitalStation || game.InMoonFlight || (game.SpaceHelm != null && game.SpaceHelm.Active);
             bool inRadia = dim == Dimension.Radia;
-            bool raining = !inSpace && !inRadia && dim == Dimension.Lestingia && game.Session.Weather && AtmosphereProfile.Density(game.Session.Data.weather) > AtmosphereProfile.Density(0) * 1.15f;
+            bool raining = !inSpace && !inRadia && dim == Dimension.Lestingia && session.Data != null &&
+                           WeatherSample.At(session.Data.seed, (int)dim, session.Data.clock).Precipitation > 0.15f;
 
             string targetLoop = inSpace ? "amb_space" : inRadia ? "amb_radia" : "amb_wind";
             var wantClip = GetClip(targetLoop);

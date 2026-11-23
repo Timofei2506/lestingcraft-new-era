@@ -62,10 +62,22 @@ namespace LestingCraft.Presentation
             ActiveInstance.EmitDebris((Vector3)cell+Vector3.one*.5f,blockId);
         }
 
+        static Color DebrisColorFor(ushort id)
+        {
+            if(id==3||id==5||id==44)return new Color(.36f,.64f,.28f,1f);
+            if(id==60||id==65)return new Color(.84f,.54f,.74f,1f);
+            if(id==2||id==62)return new Color(.52f,.36f,.24f,1f);
+            if(id==6)return new Color(.84f,.76f,.52f,1f);
+            if(id==4||id==16||id==18||id==57||id==58)return new Color(.58f,.42f,.25f,1f);
+            if(id==14||id==63)return new Color(.86f,.93f,.98f,1f);
+            if(id==11||id==67)return new Color(.35f,.85f,.95f,1f);
+            if(id>=70&&id<=73)return new Color(.25f,.90f,.65f,1f);
+            return new Color(.54f,.56f,.58f,1f);
+        }
+
         void EmitDebris(Vector3 center,ushort blockId)
         {
-            Color baseCol=LestingCraft.World.BlockRegistry.Get(blockId).Color;
-            if(baseCol.a<=0.01f)baseCol=new Color(.62f,.58f,.52f,1f);
+            Color baseCol=DebrisColorFor(blockId);
             for(int k=0;k<12;k++)
             {
                 int idx=debrisCursor;

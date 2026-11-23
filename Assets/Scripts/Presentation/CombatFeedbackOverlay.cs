@@ -237,7 +237,10 @@ namespace LestingCraft.Presentation
 
         public void TickAimTarget(PrototypeGame game)
         {
-            bool hudVisible = game && game.Session != null && !game.Paused && !game.InventoryOpen && !game.StationTradeOpen && game.Player && game.Player.Camera;
+            var session = game ? game.Session : null;
+            var player = session ? session.Player : null;
+            var cam = player ? player.Camera : null;
+            bool hudVisible = session != null && !game.Paused && !game.InventoryOpen && !game.StationTradeOpen && cam != null;
             if (!hudVisible)
             {
                 if (targetGroup) targetGroup.alpha = 0f;
@@ -246,8 +249,8 @@ namespace LestingCraft.Presentation
             }
 
             // Raycast up to 14m to inspect hovered wildlife even before hitting
-            var cam = game.Player.Camera;
-            if (game.Session.Animals && game.Session.Animals.TryInspect(new Ray(cam.transform.position, cam.transform.forward), 14f, out var hovered) && hovered != null)
+            AnimalState hovered = null;
+            if (session.Animals && session.Animals.TryInspect(new Ray(cam.transform.position, cam.transform.forward), 14f, out hovered) && hovered != null)
             {
                 string speciesName = AnimalSculpts.SpeciesNames[Mathf.Clamp(hovered.species, 0, AnimalSculpts.SpeciesNames.Length - 1)];
                 bool mutant = WildlifeSimulation.IsRadiaMutant(hovered.species);
