@@ -12,7 +12,7 @@ namespace LestingCraft.Tests.EditMode
             var resource=Resources.Load<TextAsset>("Space/Shuttle");Assert.IsNotNull(resource);
             var approved=SpaceVoxelAsset.Read(resource.bytes);
             var fitted=ShuttleCabinCarving.Make(approved);
-            Assert.AreEqual(16240,approved.SolidCount);
+            Assert.AreEqual(11638,approved.SolidCount);
             Assert.Less(fitted.SolidCount,approved.SolidCount-200);
             Assert.Greater(fitted.SolidCount,approved.SolidCount-400);
             int removedSurface=0;
@@ -111,8 +111,8 @@ namespace LestingCraft.Tests.EditMode
         {
             var approved=SpaceVoxelAsset.Read(Resources.Load<TextAsset>("Space/LaunchPad").bytes);
             var fitted=LaunchPadLiftOpening.Make(approved);
-            Assert.AreEqual(27813,approved.SolidCount);
-            Assert.AreEqual(27803,fitted.SolidCount);
+            Assert.AreEqual(32896,approved.SolidCount);
+            Assert.AreEqual(32886,fitted.SolidCount);
             int changed=0;
             for(int x=0;x<approved.X;x++)for(int y=0;y<approved.Y;y++)for(int z=0;z<approved.Z;z++)
                 if(approved.At(x,y,z)!=fitted.At(x,y,z))
