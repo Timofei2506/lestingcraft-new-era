@@ -68,18 +68,22 @@ Shader "LestingCraft/Grass"
                 lighting.normalizedScreenSpaceUV=GetNormalizedScreenSpaceUV(i.p);
                 half3 albedo=SAMPLE_TEXTURE2D_ARRAY(_AlbedoArray,sampler_AlbedoArray,i.uv*float2(.35,.6),2).rgb;
                 half root=smoothstep(0,.65,i.uv.y);
+                half petal=saturate((1.0-i.color.a)*1.34);
                 SurfaceData surface=(SurfaceData)0;
-                surface.albedo=albedo*i.color.rgb*lerp(.68,1.18,root)*1.22*half3(.86,1.06,.78);
+                half3 bladeAlbedo=albedo*i.color.rgb*lerp(.74,1.22,root)*1.24*half3(.90,1.06,.82);
+                half3 flowerAlbedo=i.color.rgb*1.12;
+                surface.albedo=lerp(bladeAlbedo,flowerAlbedo,petal);
                 surface.alpha=1;
-                surface.smoothness=.16;
-                surface.occlusion=lerp(.60,1,root);
+                surface.smoothness=lerp(.16,.24,petal);
+                surface.occlusion=lerp(.65,1,root);
                 Light sun=GetMainLight(lighting.shadowCoord);
                 half sky=LC_SurfaceSky(i.ws,normal,1);
                 half back=pow(saturate(dot(-sun.direction,lighting.viewDirectionWS)),3);
-                surface.emission=albedo*i.color.rgb*sun.color*half3(1,.94,.76)*
-                    back*.34*root*sun.shadowAttenuation*LC_SkyEnergy(sky);
-                surface.emission+=albedo*i.color.rgb*(_EnvironmentHorizon.rgb*.62+_EnvironmentZenith.rgb*.38)*
-                    pow(saturate(sky),1.35)*saturate(_EnvironmentDaylight)*.50*root;
+                half3 glowBase=lerp(albedo*i.color.rgb,flowerAlbedo,petal);
+                surface.emission=glowBase*sun.color*half3(1,.95,.80)*
+                    back*.38*root*sun.shadowAttenuation*LC_SkyEnergy(sky);
+                surface.emission+=glowBase*(_EnvironmentHorizon.rgb*.65+_EnvironmentZenith.rgb*.35)*
+                    pow(saturate(sky),1.30)*saturate(_EnvironmentDaylight)*.58*root;
                 if(_LCAmbientOcclusionProbe>.5)
                 {
                     #if defined(_SCREEN_SPACE_OCCLUSION)

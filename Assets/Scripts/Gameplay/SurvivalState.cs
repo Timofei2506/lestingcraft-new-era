@@ -63,11 +63,11 @@ namespace LestingCraft.Gameplay
             float chance=(h&65535)/65535f;float baseline=18;
             if(realm==0&&((int)cycle%8)>=5)baseline-=13;
             float air=baseline+Mathf.Sin((hour-6)*Mathf.PI/12)*7;
-            if(clock<480&&realm==0)return new WeatherSample(WeatherKind.Clear,0,air,.28f,.15f);
-            if(chance<.35f)return new WeatherSample(WeatherKind.Clear,0,air,.28f,.16f);
-            if(chance<.58f)return new WeatherSample(WeatherKind.Cloudy,0,air,.56f,.35f);
-            bool snow=air<2;bool storm=chance>.88f;
-            return new WeatherSample(snow?WeatherKind.Snow:storm?WeatherKind.Storm:WeatherKind.Rain,storm?1:.65f,air-3,storm?.90f:.75f,storm?1:.5f);
+            if(clock<540&&realm==0)return new WeatherSample(WeatherKind.Clear,0,air,.22f,.14f);
+            if(chance<.64f)return new WeatherSample(WeatherKind.Clear,0,air,.22f,.15f);
+            if(chance<.84f)return new WeatherSample(WeatherKind.Cloudy,0,air,.42f,.28f);
+            bool snow=air<2;bool storm=chance>.95f;
+            return new WeatherSample(snow?WeatherKind.Snow:storm?WeatherKind.Storm:WeatherKind.Rain,storm?1:.60f,air-3,storm?.86f:.70f,storm?.9f:.45f);
         }
     }
     [Serializable] public sealed class PlayerSave

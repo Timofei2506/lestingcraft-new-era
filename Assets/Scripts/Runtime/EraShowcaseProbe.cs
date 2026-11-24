@@ -96,6 +96,18 @@ namespace LestingCraft.Runtime
                 VisualSettings.Current.Ultra();
             }
             ui.ShowHome();
+            yield return null;
+            yield return null;
+            yield return new WaitForEndOfFrame();
+            var menuSnap = ScreenCapture.CaptureScreenshotAsTexture();
+            if (menuSnap)
+            {
+                string logShotsDir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "Logs"));
+                Directory.CreateDirectory(logShotsDir);
+                File.WriteAllBytes(Path.Combine(logShotsDir, "00-main-menu-3d-panorama.png"), menuSnap.EncodeToPNG());
+                Destroy(menuSnap);
+                Debug.Log("[Showcase] Captured live 3D main menu panorama -> 00-main-menu-3d-panorama.png");
+            }
             game.ShowcaseStartFreshWorld();
             yield return null;
 

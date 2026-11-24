@@ -71,8 +71,8 @@ namespace LestingCraft.Presentation
                         float dx = (x / (size - 1f) - .5f) * 2f;
                         float dy = (y / (size - 1f) - .5f) * 2f;
                         float r = Mathf.Clamp01(Mathf.Sqrt(dx * dx + dy * dy) / 1.45f);
-                        float alpha = Mathf.Pow(r, 2.8f) * .28f;
-                        pixels[y * size + x] = new Color32(6, 10, 18, (byte)(alpha * 255));
+                        float alpha = Mathf.Pow(r, 3.1f) * .08f;
+                        pixels[y * size + x] = new Color32(8, 22, 36, (byte)(alpha * 255));
                     }
                 vignette.SetPixels32(pixels);
                 vignette.Apply(false, false);
@@ -94,10 +94,10 @@ namespace LestingCraft.Presentation
                     for (int x = 0; x < 128; x++)
                     {
                         float t = x / 127f;
-                        float scrim = Mathf.Pow(1f - Mathf.SmoothStep(0f, .62f, t), 1.35f);
-                        float edge = Mathf.Pow(Mathf.Abs(y / 7f - .5f) * 2f, 2.4f) * .06f;
-                        float alpha = Mathf.Lerp(.02f, .52f, scrim) + edge;
-                        shade.SetPixel(x, y, new Color(.035f, .055f, .095f, Mathf.Clamp01(alpha)));
+                        float scrim = Mathf.Pow(1f - Mathf.SmoothStep(0f, .48f, t), 1.5f);
+                        float edge = Mathf.Pow(Mathf.Abs(y / 7f - .5f) * 2f, 2.6f) * .03f;
+                        float alpha = Mathf.Lerp(0f, .28f, scrim) + edge * (1f - t);
+                        shade.SetPixel(x, y, new Color(.04f, .11f, .18f, Mathf.Clamp01(alpha)));
                     }
                 shade.Apply();
                 return shade;

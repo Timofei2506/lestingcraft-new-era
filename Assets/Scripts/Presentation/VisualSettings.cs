@@ -129,13 +129,13 @@ namespace LestingCraft.Presentation
         static Vignette globalVignette;
 
         // Single source of truth for the natural-world grade. Editor bake and runtime agree.
-        public const float BloomThreshold = .90f;
-        public const float BloomIntensity = .48f;
-        public const float BloomScatter = .72f;
-        public const float GradeContrast = 10f;
-        public const float GradeSaturation = 8f;
-        public const float GradeExposure = .05f;
-        public const float GradeVignette = .12f;
+        public const float BloomThreshold = .92f;
+        public const float BloomIntensity = .32f;
+        public const float BloomScatter = .70f;
+        public const float GradeContrast = 14f;
+        public const float GradeSaturation = 22f;
+        public const float GradeExposure = .26f;
+        public const float GradeVignette = .06f;
 
         public static void ConfigureBaseVolume(VolumeProfile profile)
         {
@@ -152,9 +152,9 @@ namespace LestingCraft.Presentation
             colors.saturation.Override(GradeSaturation);
             colors.postExposure.Override(GradeExposure);
             var split = profile.TryGet(out SplitToning s) ? s : profile.Add<SplitToning>(true);
-            split.shadows.Override(new Color(.47f, .50f, .54f));
-            split.highlights.Override(new Color(.54f, .52f, .48f));
-            split.balance.Override(-4f);
+            split.shadows.Override(new Color(.48f, .51f, .56f));
+            split.highlights.Override(new Color(.55f, .52f, .46f));
+            split.balance.Override(10f);
             var lift = profile.TryGet(out LiftGammaGain lgg) ? lgg : profile.Add<LiftGammaGain>(true);
             lift.lift.Override(Vector4.zero);
             lift.gamma.Override(new Vector4(1, 1, 1, 0));
@@ -235,8 +235,7 @@ namespace LestingCraft.Presentation
     {
         public static void Configure(Camera camera, int realm, double clock = 420)
         {
-            var old = GameObject.Find("WorldAtmosphere");
-            if (old) UnityEngine.Object.Destroy(old);
+            Clear();
             var root = new GameObject("WorldAtmosphere");
             var sunlight = new GameObject("Sun");
             sunlight.transform.SetParent(root.transform);
@@ -244,7 +243,7 @@ namespace LestingCraft.Presentation
             var light = sunlight.AddComponent<Light>();
             light.type = LightType.Directional;
             light.shadows = LightShadows.Soft;
-            light.shadowStrength = .88f;
+            light.shadowStrength = .80f;
             light.shadowBias = .04f;
             light.shadowNormalBias = .08f;
             RenderSettings.sun = light;
@@ -252,13 +251,15 @@ namespace LestingCraft.Presentation
             var sky = new Material(Resources.Load<Material>("Generated/Sky"));
             RenderSettings.skybox = sky;
             camera.clearFlags = CameraClearFlags.Skybox;
-            AtmosphereLighting.At(clock, (LestingCraft.World.Dimension)realm, .28f, 0).Apply(light, clock);
+            AtmosphereLighting.At(clock, (LestingCraft.World.Dimension)realm, .22f, 0).Apply(light, clock);
+            sky.SetFloat("_CloudCoverage", .24f);
             root.AddComponent<AtmosphereLifetime>().Sky = sky;
             RenderSettings.fog = false;
             RenderSettings.fogMode = FogMode.Linear;
             var volume = root.AddComponent<Volume>();
             volume.isGlobal = true;
             volume.sharedProfile = Resources.Load<VolumeProfile>("Generated/WorldVolume");
+            VisualSettings.EnsurePostProcessingVolume();
             var data = camera.GetComponent<UniversalAdditionalCameraData>();
             if (!data) data = camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
             data.renderPostProcessing = true;
@@ -273,7 +274,13 @@ namespace LestingCraft.Presentation
         public static void Clear()
         {
             var obj = GameObject.Find("WorldAtmosphere");
-            if (obj) UnityEngine.Object.Destroy(obj);
+            if (obj)
+            {
+                obj.name = "DisposedWorldAtmosphere";
+                obj.SetActive(false);
+                if (Application.isPlaying) UnityEngine.Object.Destroy(obj);
+                else UnityEngine.Object.DestroyImmediate(obj);
+            }
         }
     }
 }

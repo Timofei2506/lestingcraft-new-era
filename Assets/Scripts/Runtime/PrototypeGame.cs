@@ -1616,9 +1616,10 @@ namespace LestingCraft.Runtime
             var pipeline=Resources.Load<UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset>("Generated/HighDefinition");
             UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline=pipeline;QualitySettings.renderPipeline=pipeline;
             Debug.Log("[Presentation] Pipeline configured");
-            var camera=new GameObject("Menu Camera").AddComponent<Camera>();camera.backgroundColor=new Color(.055f,.09f,.15f);camera.clearFlags=CameraClearFlags.SolidColor;
+            var camera=new GameObject("Menu Camera").AddComponent<Camera>();camera.backgroundColor=new Color(.24f,.64f,.92f);camera.clearFlags=CameraClearFlags.SolidColor;
             camera.tag="MainCamera";camera.gameObject.AddComponent<AudioListener>();
             SetCursor(false);
+            MenuPanoramaScene.Ensure(camera);
             ui=new GameObject("Game Interface").AddComponent<GameUI>();
             try{ui.Initialize(this);}
             catch(Exception error){Debug.LogException(error);StartupErrorPanel.Show();return;}
@@ -1647,6 +1648,7 @@ namespace LestingCraft.Runtime
         }
         void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=11,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
         {
+            MenuPanoramaScene.Teardown();
             if(multiplayer)IsSurfacePreview=false;
             realm=Mathf.Clamp(realm,0,14);
             bool restoreStation=!multiplayer&&resumeSave!=null&&resumeSave.dockedAtStation;
@@ -1948,6 +1950,7 @@ namespace LestingCraft.Runtime
             offlineFlightActive=false;offlineNav=null;dockedAtStation=false;
             shuttleSeats=new string[2];flightSnapshot=null;flightSeatIndex=-1;lastFlightHeartbeat=0;lastFlightControl=0;
             online=false;busy=false;paused=true;SetCursor(false);status="";lastError="";WorldAtmosphere.Clear();
+            if(camera&&Application.isPlaying)MenuPanoramaScene.Ensure(camera);
         }
         static Vector3 FindSpawn(int seed,Dimension realm,int contentVersion)
         {
@@ -1960,6 +1963,6 @@ namespace LestingCraft.Runtime
             return new Vector3(.5f,TerrainGenerator.Height(0,0,seed,realm)+10,.5f);
         }
         void OnApplicationQuit(){if(Session)Session.Checkpoint();}
-        void OnDestroy(){if(avatarMaterial)Destroy(avatarMaterial);}
+        void OnDestroy(){MenuPanoramaScene.Teardown();if(avatarMaterial)Destroy(avatarMaterial);}
     }
 }

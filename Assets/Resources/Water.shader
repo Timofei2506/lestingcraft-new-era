@@ -179,9 +179,9 @@ Shader "LestingCraft/Water"
                 float2 refractedUV=saturate(screen+viewNormal*.014*saturate(waterDepth*.5));
                 if(LinearEyeDepth(SampleSceneDepth(refractedUV),_ZBufferParams)<eyeDepth+.02)refractedUV=screen;
                 half3 behind=SampleSceneColor(refractedUV);
-                half3 transmission=exp(-half3(.25,.075,.043)*waterDepth);
-                half3 body=lerp(_EnvironmentShallowWater.rgb,_EnvironmentDeepWater.rgb,saturate(waterDepth*.14));
-                body*=lerp(.12,1,_EnvironmentDaylight)*sky;
+                half3 transmission=exp(-half3(.19,.055,.032)*waterDepth);
+                half3 body=lerp(_EnvironmentShallowWater.rgb,_EnvironmentDeepWater.rgb,saturate(waterDepth*.13));
+                body*=lerp(.16,1.08,_EnvironmentDaylight)*sky;
                 half nl=saturate(dot(n,sun.direction));
                 if(waterDepth<8&&top>.5&&sky>.01)
                 {
@@ -196,7 +196,7 @@ Shader "LestingCraft/Water"
                     float caustic=pow(saturate(1-abs(a+c)*.7),12);
                     float second=pow(saturate(1-abs(sin(p.x*5.1-time*.65)+
                         sin(p.y*4.7+time*.83))*.65),16);
-                    behind*=1+(caustic+second*.5)*.18*exp(-waterDepth*.55)*nl*sun.shadowAttenuation*sky;
+                    behind*=1+(caustic+second*.5)*.26*exp(-waterDepth*.50)*nl*sun.shadowAttenuation*sky;
                 }
                 half3 refracted=behind*transmission+body*(1-transmission);
                 half fresnel=.02+.98*pow(1-saturate(dot(n,view)),5);
@@ -227,7 +227,7 @@ Shader "LestingCraft/Water"
                 half foam=shore*crest*top;
                 // Rain-driven chop raises the foam line and adds a fine spray sheen.
                 foam=saturate(foam+saturate(_LCWaterRain)*.18*top*crest);
-                color=lerp(color,half3(.78,.83,.79)*lerp(.16,1,_EnvironmentDaylight),foam*.58*sky);
+                color=lerp(color,half3(.93,.97,.98)*lerp(.18,1,_EnvironmentDaylight),foam*.64*sky);
                 // Aerial perspective: the far sea dissolves into the lit horizon haze exactly as
                 // in the reference seascape, without touching near-field readability.
                 half3 horizonHaze=LC_SkyRadiance(normalize(float3(-view.x,.045,-view.z)))*sky;

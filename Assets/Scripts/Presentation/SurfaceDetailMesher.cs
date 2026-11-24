@@ -39,13 +39,14 @@ namespace LestingCraft.Presentation
                     y + 1.003f, z + .08f + ((h >> 12) & 255) / 255f * .84f);
                 int first = mesh.Vertices.Count;
                 float lean = .07f + spread * .17f;
-                bool flower = hash % 19 == 0 && blade == 0;
-                bool clover = !flower && hash % 11 == 0;
+                bool flower = hash % 8 == 0 && blade <= 1;
+                bool clover = !flower && hash % 9 == 0;
                 for (int segment = 0; segment <= segments; segment++)
                 {
                     float t = (float)segment / segments;
                     float w = width * (1 - t * t);
                     if (clover) w *= 1 + Mathf.Sin(t * Mathf.PI) * .65f;
+                    if (flower && t > .58f) w = Mathf.Max(w, width * 1.45f * Mathf.Sin(Mathf.InverseLerp(.55f, 1f, t) * Mathf.PI * .85f + .2f));
                     var center = root + Vector3.up * (height * t) + forward * (lean * t * t);
                     Vector3 normal = (forward - Vector3.up * (2 * lean * t / height)).normalized;
                     for (int edge = 0; edge < 2; edge++)
@@ -54,14 +55,18 @@ namespace LestingCraft.Presentation
                         mesh.Normals.Add(normal);
                         mesh.Tangents.Add(new Vector4(side.x, 0, side.z, 1));
                         mesh.UVs.Add(new Vector3(edge, t, root.y));
-                        float tint = .78f + (h % 100) / 450f;
-                        Color color = new Color(tint, 1, .84f + (h % 17) / 100f, 1);
-                        if (clover) color *= new Color(.82f, .97f, .85f, 1);
-                        if (flower && t > .55f)
+                        float tint = .84f + (h % 100) / 420f;
+                        Color color = new Color(tint, 1f, .86f + (h % 17) / 110f, 1f);
+                        if (clover) color *= new Color(.84f, 1f, .86f, 1f);
+                        if (flower && t > .52f)
                         {
-                            Color accent = (hash & 1) == 0
-                                ? new Color(1, .72f, .92f, 1) : new Color(1, .94f, .57f, 1);
-                            color = Color.Lerp(color, accent, Mathf.InverseLerp(.55f, .9f, t));
+                            uint kind = (hash >> 3) & 3u;
+                            Color accent = kind == 0 ? new Color(1f, .86f, .18f, .25f) // Dandelion gold
+                                : kind == 1 ? new Color(1f, .34f, .28f, .25f)          // Poppy coral-red
+                                : kind == 2 ? new Color(.32f, .70f, 1f, .25f)          // Cornflower sky-blue
+                                : new Color(1f, .54f, .82f, .25f);                     // Sakura rose-pink
+                            float petalBlend = Mathf.InverseLerp(.52f, .82f, t);
+                            color = Color.Lerp(color, accent, petalBlend);
                         }
                         mesh.Colors.Add(color);
                     }

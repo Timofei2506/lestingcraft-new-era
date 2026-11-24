@@ -22,6 +22,16 @@ namespace LestingCraft.Tests
         }
         [Test] public void MenuReadabilityGradientIsGeneratedWithoutSourceTexture()
         {Assert.IsNotNull(MenuArtwork.Shade);Assert.Greater(MenuArtwork.Shade.GetPixel(0,4).a,MenuArtwork.Shade.GetPixel(127,4).a);}
+        [Test] public void VibrantWorldPaletteAndMenuPanoramaContractsHold()
+        {
+            var noon=AtmosphereLighting.At(600);
+            Assert.Greater(noon.Zenith.b,noon.Zenith.r*3f,"Clear day sky must be rich azure blue, not gray");
+            Assert.Greater(noon.ShallowWater.g,.60f,"Shallow water must be bright sunlit turquoise");
+            Assert.Greater(noon.ShallowWater.b,.65f,"Shallow water must be clear cyan-azure");
+            Assert.GreaterOrEqual(VisualSettings.GradeSaturation,18f,"World color grade must be vibrant");
+            MenuPanoramaScene.Teardown();
+            Assert.IsFalse(MenuPanoramaScene.IsActive);
+        }
         [Test] public void ActualInterfaceConstructsAndMainButtonsNavigate()
         {
             var owner=new GameObject("Inactive UI test owner");owner.SetActive(false);

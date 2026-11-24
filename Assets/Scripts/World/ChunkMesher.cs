@@ -156,24 +156,24 @@ namespace LestingCraft.World
         {
             switch (id)
             {
-                case 1: return new Color32(119,133,146,255);
-                case 2: return new Color32(133,91,60,255);
-                case 3: return new Color32(105,177,89,255);
-                case 4: return new Color32(111,75,46,255);
-                case 5: return new Color32(61,135,76,255);
-                case 6: return new Color32(226,206,143,255);
-                case 7: return new Color32(59,137,197,255);
-                case 8: return new Color32(246,105,47,255);
-                case 9: return new Color32(39,45,56,255);
-                case 10: return new Color32(79,68,78,255);
-                case 11: return new Color32(174,108,224,255);
-                case 12: return new Color32(105,211,216,255);
-                case 13: return new Color32(194,160,103,255);
-                case 14: return new Color32(224,236,244,255);
-                case 15: return new Color32(153,91,43,255);
-                case 16: return new Color32(139,101,61,255);
-                case 17: return new Color32(106,103,97,255);
-                case 18: return new Color32(154,113,68,255);
+                case 1: return new Color32(148,154,164,255);
+                case 2: return new Color32(138,94,58,255);
+                case 3: return new Color32(78,178,56,255);
+                case 4: return new Color32(118,80,48,255);
+                case 5: return new Color32(68,162,48,255);
+                case 6: return new Color32(234,210,142,255);
+                case 7: return new Color32(42,172,214,255);
+                case 8: return new Color32(250,112,48,255);
+                case 9: return new Color32(42,48,58,255);
+                case 10: return new Color32(84,74,84,255);
+                case 11: return new Color32(184,116,236,255);
+                case 12: return new Color32(88,218,232,255);
+                case 13: return new Color32(204,168,108,255);
+                case 14: return new Color32(236,244,252,255);
+                case 15: return new Color32(168,98,46,255);
+                case 16: return new Color32(176,120,64,255);
+                case 17: return new Color32(128,132,140,255);
+                case 18: return new Color32(192,142,82,255);
                 default: return new Color32(255,0,255,255);
             }
         }

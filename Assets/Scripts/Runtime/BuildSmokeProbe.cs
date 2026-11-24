@@ -40,6 +40,7 @@ namespace LestingCraft.Runtime
             var game=FindFirstObjectByType<PrototypeGame>();var ui=FindFirstObjectByType<GameUI>();
             if(!game||!Camera.main||!ui||!ui.IsReady||failure!=null){Fail("Bootstrap/menu initialization: "+failure);yield break;}
             if(!MenuArtwork.Backdrop){Fail("Menu backdrop is missing.");yield break;}
+            if(!MenuPanoramaScene.IsActive){Fail("Live 3D rotating menu panorama did not start.");yield break;}
             foreach(var name in new[]{"VoxelPBR","VoxelObjects","Water","Grass","Sky","Atmosphere","Precipitation","Fire","Smoke","Crystal","Glass","StoryBlood"})
             {
                 var material=Resources.Load<Material>("Generated/"+name);

@@ -138,6 +138,16 @@ Shader "LestingCraft/VoxelPBR"
                 }
                 if(lava)surfaceUV+=_EnvironmentTime*float2(.006,.0035);
                 half4 albedo=SAMPLE_TEXTURE2D_ARRAY_GRAD(_AlbedoArray,sampler_AlbedoArray,surfaceUV,i.uv.z,dx,dy);
+                if(abs(i.uv.z-3)<.25&&abs(n.y)<.5)
+                {
+                    float hy=frac(i.positionWS.y);
+                    float hx=i.positionWS.x*n.z-i.positionWS.z*n.x;
+                    float fringe=.64+.06*sin(hx*6.28318)+.035*sin(hx*18.84955+1.7);
+                    half turf=smoothstep(fringe-.045,fringe+.04,hy);
+                    half4 turfAlbedo=SAMPLE_TEXTURE2D_ARRAY_GRAD(_AlbedoArray,sampler_AlbedoArray,surfaceUV,2,dx,dy);
+                    half lipShadow=1-.13*smoothstep(fringe-.14,fringe-.02,hy)*(1-turf);
+                    albedo.rgb=lerp(albedo.rgb*lipShadow,turfAlbedo.rgb,turf);
+                }
                 half3 normalTS=SAMPLE_TEXTURE2D_ARRAY_GRAD(_NormalArray,sampler_NormalArray,surfaceUV,i.uv.z,dx,dy).xyz*2-1;
                 half4 mask=SAMPLE_TEXTURE2D_ARRAY_GRAD(_MaskArray,sampler_MaskArray,surfaceUV,i.uv.z,dx,dy);
                 float upward=saturate(n.y);
@@ -179,28 +189,28 @@ Shader "LestingCraft/VoxelPBR"
                 lighting.shadowMask=half4(1,1,1,1);
                 float snow=upward*_GlobalSnow*.75*step(i.uv.z,8.5);
                 if(abs(i.uv.z-15)<.25)snow=max(snow,.9);
-                half ao=saturate(mask.g*i.color.r);
+                half ao=saturate(mask.g*lerp(.32,1,i.color.r));
                 SurfaceData surface=(SurfaceData)0;
-                half3 baseAlbedo=albedo.rgb*macro*(1-wet*porosity*.24)*reliefShadow;
+                half3 baseAlbedo=albedo.rgb*macro*(1-wet*porosity*.20)*reliefShadow;
                 // The submerged Cherenkov rows are intentionally blue-on-black, not white LEDs. Suppress their surface luminance only in Radia; other worlds keep the authored material.
                 if(cherenkov)baseAlbedo*=lerp(.26,1,saturate(_EnvironmentWaterReflection));
-                surface.albedo=lerp(baseAlbedo,half3(.73,.79,.84),snow);
+                surface.albedo=lerp(baseAlbedo,half3(.86,.91,.96),snow);
                 surface.metallic=mask.r;
                 surface.specular=half3(.04,.04,.04);
                 surface.smoothness=saturate(lerp(lerp(mask.a+wet*.20,.92,puddle),.24,snow));
                 surface.smoothness*=lerp(.55,1,ao*ao);
                 surface.normalTS=normalTS;
-                surface.occlusion=ao*ao;
+                surface.occlusion=lerp(.28,1,ao*ao);
                 surface.alpha=1;
                 half sky=LC_SurfaceSky(i.positionWS,n,i.color.g);
                 if(foliage)
                 {
-                    half transmission=pow(saturate(dot(-sun.direction,view)),3);
-                    half canopySky=max(sky,i.color.g*.85);
-                    half canopyEnergy=pow(saturate(canopySky),1.5);
-                    half3 bounce=albedo.rgb*(_EnvironmentHorizon.rgb*.62+_EnvironmentZenith.rgb*.38)*
-                        canopyEnergy*saturate(_EnvironmentDaylight)*.55;
-                    surface.emission=bounce+albedo.rgb*sun.color*transmission*.30*
+                    half transmission=pow(saturate(dot(-sun.direction,view)),2.6);
+                    half canopySky=max(sky,i.color.g*.88);
+                    half canopyEnergy=pow(saturate(canopySky),1.35);
+                    half3 bounce=albedo.rgb*(_EnvironmentHorizon.rgb*.65+_EnvironmentZenith.rgb*.35)*
+                        canopyEnergy*saturate(_EnvironmentDaylight)*.68;
+                    surface.emission=bounce+albedo.rgb*sun.color*transmission*.38*
                         sun.shadowAttenuation*LC_SkyEnergy(sky);
                     surface.smoothness=min(surface.smoothness,.24);
                 }
