@@ -24,7 +24,7 @@ namespace LestingCraft.Tests
         {Assert.IsNotNull(MenuArtwork.Shade);Assert.Greater(MenuArtwork.Shade.GetPixel(0,4).a,MenuArtwork.Shade.GetPixel(127,4).a);}
         [Test] public void VibrantWorldPaletteAndMenuPanoramaContractsHold()
         {
-            var noon=AtmosphereLighting.At(600);
+            var noon=AtmosphereLighting.At(600,LestingCraft.World.Dimension.Lestingia);
             Assert.Greater(noon.Zenith.b,noon.Zenith.r*3f,"Clear day sky must be rich azure blue, not gray");
             Assert.Greater(noon.ShallowWater.g,.60f,"Shallow water must be bright sunlit turquoise");
             Assert.Greater(noon.ShallowWater.b,.65f,"Shallow water must be clear cyan-azure");
