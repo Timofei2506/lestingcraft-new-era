@@ -214,12 +214,209 @@ namespace LestingCraft.Runtime
             get
             {
                 string world = string.IsNullOrEmpty(hostedServerName) ? "мой мир" : "«" + hostedServerName + "»";
+                if (IsHostingLan)
+                {
+                    var lan = LocalLanServer.Active;
+                    return "Заходи в мой локальный мир LestingCraft — " + world + "!\n" +
+                           "• В одной сети (Wi-Fi / LAN / Radmin / Tailscale): открой «Многопользовательская игра» — мир появится в блоке «Локальная сеть (LAN)» автоматически!\n" +
+                           "• Или введи адрес вручную: " + lan.ShareAddress + "  (код: " + lan.ShortCode + ")";
+                }
+                string shortTag = !string.IsNullOrEmpty(hostedServerCode) && hostedServerCode.Length >= 6
+                    ? "  (быстрый код: " + hostedServerCode.Substring(0, 6).ToUpperInvariant() + ")"
+                    : "";
                 return "Заходи в LestingCraft — " + world + ".\n" +
                        "1. Скачай игру: " + WebsiteUrl + "\n" +
-                       "2. Мультиплеер → «Добавить сервер»\n" +
-                       "3. Адрес: " + EndpointAddress + "  (порт 443)\n" +
+                       "2. Мультиплеер → «Быстрый вход» или «Добавить сервер»\n" +
+                       "3. Адрес: " + EndpointAddress + shortTag + "\n" +
                        "Мир появится в списке, останется нажать «Войти».";
             }
+        }
+
+        public bool IsHostingLan => LocalLanServer.Active != null && LocalLanServer.Active.IsRunning;
+        public string ActiveLanAddress => IsHostingLan ? LocalLanServer.Active.ShareAddress : LocalLanServer.DetectLocalIPv4() + ":8787";
+
+        public int EnsureOfficialCloudServerAdded()
+        {
+            const string cloudHost = "lestingcraft.kroterallitir.workers.dev";
+            int idx = Servers.Add(new ServerAddress
+            {
+                host = cloudHost,
+                port = 443,
+                name = "Официальный Облачный Хаб"
+            });
+            SaveServers();
+            if (string.IsNullOrEmpty(endpoint)) endpoint = "https://" + cloudHost;
+            return idx;
+        }
+
+        /// <summary>Opens the currently running local singleplayer world on the embedded LAN server immediately.</summary>
+        public void OpenLocalWorldToLan(string serverName = null, int maxPlayers = 8)
+        {
+            if (busy) return;
+            if (!world || !Session)
+            {
+                HostNewLanWorld(serverName, selectedMode, Guid.NewGuid().GetHashCode(), maxPlayers, Fail);
+                return;
+            }
+            if (world.Dimension != Dimension.Lestingia)
+            {
+                Session.Notice = "Открыть локальный мир по LAN можно на планете Лестингия — вернитесь через портал или шаттл";
+                return;
+            }
+            var localEdits = world.ExportEdits();
+            int seed = world.Seed;
+            int mode = (int)Session.Mode;
+            string hostNick = Accounts != null && Accounts.Logged && Accounts.Profile != null
+                ? Accounts.Profile.username
+                : LestingCraft.Presentation.ProfileAvatar.LocalNickname;
+            string title = string.IsNullOrWhiteSpace(serverName) ? ("Мир @" + hostNick) : serverName.Trim();
+
+            var lan = LocalLanServer.StartOrReplace(title, hostNick, seed, mode, maxPlayers, localEdits);
+            if (lan == null)
+            {
+                Session.Notice = "Не удалось открыть порт LAN (в WebGL используйте «Опубликовать облачный сервер»)";
+                return;
+            }
+
+            RealmFeaturesAndMarket.AddContractProgress("coop_host", 1);
+            pendingUpload = null; // All local edits are already preloaded directly into LocalLanServer!
+            hostedServerName = lan.WorldName;
+            hostedServerCode = lan.RoomCode;
+            lobbyAutoStart = true;
+            endpoint = lan.ConnectLocalUrl;
+            code = lan.RoomCode;
+            GUIUtility.systemCopyBuffer = lan.ShareAddress;
+            busy = true;
+            ReturnToMenu();
+            StartCoroutine(JoinAfterLeave());
+        }
+
+        /// <summary>Creates and joins a brand-new local LAN server directly from the Multiplayer Studio.</summary>
+        public void HostNewLanWorld(string serverName, int mode, int seed, int maxPlayers, Action<string> failed)
+        {
+            if (busy) return;
+            string hostNick = Accounts != null && Accounts.Logged && Accounts.Profile != null
+                ? Accounts.Profile.username
+                : LestingCraft.Presentation.ProfileAvatar.LocalNickname;
+            string title = string.IsNullOrWhiteSpace(serverName) ? ("LAN Мир @" + hostNick) : serverName.Trim();
+            var lan = LocalLanServer.StartOrReplace(title, hostNick, seed, mode, maxPlayers, null);
+            if (lan == null)
+            {
+                string err = "Локальный LAN-сервер доступен в настольной сборке ПК (для браузера выберите Облачный сервер)";
+                if (failed != null) failed(err); else Fail(err);
+                return;
+            }
+
+            RealmFeaturesAndMarket.AddContractProgress("coop_host", 1);
+            selectedMode = Mathf.Clamp(mode, 0, 3);
+            seedText = seed.ToString();
+            pendingUpload = null;
+            hostedServerName = lan.WorldName;
+            hostedServerCode = lan.RoomCode;
+            lobbyAutoStart = true;
+            endpoint = lan.ConnectLocalUrl;
+            code = lan.RoomCode;
+            GUIUtility.systemCopyBuffer = lan.ShareAddress;
+            JoinRoomInternal();
+        }
+
+        /// <summary>Creates a new Cloud server with explicit mode and seed.</summary>
+        public void HostNewCloudWorldAdvanced(string serverName, int mode, int seed, Action<string> failed)
+        {
+            if (busy) return;
+            if (string.IsNullOrEmpty(endpoint))
+                endpoint = WebsiteUrl;
+            if (!ValidateEndpoint()) { if (failed != null) failed("Сначала укажите https:// адрес облачного сервера"); return; }
+            selectedMode = Mathf.Clamp(mode, 0, 3);
+            seedText = seed.ToString();
+            string name = string.IsNullOrWhiteSpace(serverName) ? "Новый сервер" : serverName.Trim();
+            busy = true;
+            RealmFeaturesAndMarket.AddContractProgress("coop_host", 1);
+            Publish(seed, selectedMode, name,
+                server =>
+                {
+                    pendingUpload = null;
+                    hostedServerName = server.name;
+                    hostedServerCode = server.code;
+                    lobbyAutoStart = true;
+                    code = server.code;
+                    JoinRoomInternal();
+                },
+                error => { busy = false; if (failed != null) failed(error); else Fail(error); });
+        }
+
+        public void StopLocalLanServer()
+        {
+            LocalLanServer.StopActive();
+        }
+
+        /// <summary>One-click join by 6-char short room code, 32-char room code, or IP:Port / domain!</summary>
+        public void QuickJoinByCodeOrAddress(string rawInput, Action<string> failed)
+        {
+            if (busy || world) return;
+            string clean = (rawInput ?? "").Trim();
+            if (clean.Length == 0) { if (failed != null) failed("Введите IP:Порт или код комнаты"); return; }
+
+            // 1. Exact 32-char hex room code
+            if (clean.Length == 32 && clean.IndexOf('.') < 0 && clean.IndexOf(':') < 0)
+            {
+                if (string.IsNullOrEmpty(endpoint)) endpoint = WebsiteUrl;
+                JoinPublishedWorld(endpoint, clean.ToLowerInvariant(), "Комната");
+                return;
+            }
+
+            // 2. Short 4..10 char code -> match active LAN beacons first, then query current cloud endpoint!
+            if (clean.Length >= 4 && clean.Length <= 10 && clean.IndexOf('.') < 0 && clean.IndexOf(':') < 0)
+            {
+                string prefix = clean.ToLowerInvariant();
+                foreach (var lan in LanDiscoveryRadar.ActiveWorlds())
+                {
+                    if (!string.IsNullOrEmpty(lan.code) && lan.code.ToLowerInvariant().StartsWith(prefix, StringComparison.Ordinal))
+                    {
+                        JoinPublishedWorld(lan.EndpointUrl, lan.code, lan.title);
+                        return;
+                    }
+                }
+                string cloudUrl = string.IsNullOrEmpty(endpoint) ? WebsiteUrl : endpoint;
+                Browser.List(cloudUrl,
+                    worlds =>
+                    {
+                        if (worlds != null)
+                        {
+                            foreach (var w in worlds)
+                            {
+                                if (w != null && !string.IsNullOrEmpty(w.code) && w.code.ToLowerInvariant().StartsWith(prefix, StringComparison.Ordinal))
+                                {
+                                    JoinPublishedWorld(cloudUrl, w.code, w.name);
+                                    return;
+                                }
+                            }
+                        }
+                        if (failed != null) failed("Комната с кодом «" + clean.ToUpperInvariant() + "» не найдена");
+                    },
+                    err => { if (failed != null) failed("Не удалось проверить код: " + err); });
+                return;
+            }
+
+            // 3. IP:Port or Domain -> parse, save in ServerBook, fetch worlds, and auto-join first active world!
+            if (ServerAddressRules.TryParse(clean, "", out string host, out int port, out string parseErr))
+            {
+                var addr = new ServerAddress { host = host, port = port, name = ServerAddressRules.SuggestName(host) };
+                Servers.Add(addr);
+                SaveServers();
+                Browser.List(addr.Url,
+                    worlds =>
+                    {
+                        if (worlds != null && worlds.Length > 0 && !string.IsNullOrEmpty(worlds[0].code))
+                            JoinPublishedWorld(addr.Url, worlds[0].code, worlds[0].name);
+                        else if (failed != null)
+                            failed("Сервер " + addr.Address + " добавлен в список, но там пока нет открытых миров");
+                    },
+                    err => { if (failed != null) failed("Сервер " + addr.Address + " не ответил: " + err); });
+                return;
+            }
+
+            if (failed != null) failed(parseErr);
         }
     }
 }

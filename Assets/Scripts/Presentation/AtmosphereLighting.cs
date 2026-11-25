@@ -22,7 +22,8 @@ namespace LestingCraft.Presentation
                 case Dimension.Pluto:
                 case Dimension.Dream:
                 case Dimension.Backrooms:
-                    return 0f; // Airless vacuum / sealed interior / frozen exosphere — crystal-clear starry sky, zero water clouds
+                case Dimension.Inferno:
+                    return 0f; // Airless vacuum / sealed interior / cavernous underworld — zero water clouds
                 case Dimension.Mars:
                     return Mathf.Clamp01(baseClouds * 0.22f); // Thin high CO2-ice cirrus wisps
                 case Dimension.Venus:
@@ -81,6 +82,8 @@ namespace LestingCraft.Presentation
                     return 2.60f;
                 case Dimension.Backrooms:
                     return 3.60f; // Sickly yellow gloom swallows distant rooms
+                case Dimension.Inferno:
+                    return 2.95f; // Glowing volcanic ash & ember haze across cavernous lava seas
                 default:
                     return 1.0f;
             }
@@ -285,6 +288,19 @@ namespace LestingCraft.Presentation
                 AmbientGround = new Color(.18f, .17f, .09f);
                 ShallowWater = new Color(.30f, .27f, .12f);
                 DeepWater = new Color(.12f, .11f, .05f);
+            }
+            else if (realm == Dimension.Inferno)
+            {
+                // Cavernous Basalt & Crimson Underworld lit by boiling lava oceans and soul-crystals.
+                Zenith = new Color(.22f, .035f, .018f);
+                Horizon = new Color(.68f, .17f, .045f);
+                SunColor = new Color(1.00f, .52f, .20f);
+                DirectIntensity = .62f;
+                AmbientSky = new Color(.38f, .12f, .06f);
+                AmbientEquator = new Color(.44f, .15f, .06f);
+                AmbientGround = new Color(.32f, .10f, .04f);
+                ShallowWater = new Color(.95f, .36f, .06f);
+                DeepWater = new Color(.55f, .12f, .02f);
             }
         }
 

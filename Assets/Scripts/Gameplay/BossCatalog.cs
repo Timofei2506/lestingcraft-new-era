@@ -112,6 +112,7 @@ namespace LestingCraft.Gameplay
                 case Dimension.Somnia: return new[] { For(DroneKind.Scout), For(DroneKind.Guard) };
                 case Dimension.Dream: return new[] { For(DroneKind.Combat), For(DroneKind.Guard) };
                 case Dimension.Radia: return new[] { For(DroneKind.Heavy), For(DroneKind.Ground) };
+                case Dimension.Inferno: return new[] { For(DroneKind.Heavy), For(DroneKind.Combat) };
                 default: return new[] { For(DroneKind.Guard), For(DroneKind.Scout) };
             }
         }
@@ -152,7 +153,9 @@ namespace LestingCraft.Gameplay
             new BossProfile(Dimension.Radia, "Тринититовый Колосс", "Пепел Радиа", BossArchetype.Colossus,
                 440, .30f, .32f, .24f, .78f, .82f, .30f, .62f, 1.00f, .38f, 1.16f, 8, 10, 14, 3),
             new BossProfile(Dimension.Backrooms, "The Black Bacteria", "\u0421\u0443\u0449\u043d\u043e\u0441\u0442\u044c 23", BossArchetype.Warden,
-                420, .12f, .12f, .14f, .50f, .50f, .55f, .75f, .80f, .95f, 1.02f, 6, 9, 13, 5)
+                420, .12f, .12f, .14f, .50f, .50f, .55f, .75f, .80f, .95f, 1.02f, 6, 9, 13, 5),
+            new BossProfile(Dimension.Inferno, "Infernal Archfiend", "Владыка Преисподней", BossArchetype.Colossus,
+                480, .18f, .10f, .10f, .86f, .28f, .12f, 1.00f, .48f, .12f, 1.18f, 9, 14, 15, 3)
         };
 
         /// <summary>Earth carries three canon bosses (bible): extras spawn alongside the guardian.</summary>

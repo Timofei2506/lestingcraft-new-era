@@ -20,7 +20,8 @@ namespace LestingCraft.Runtime
         static void Bootstrap(){if(!FindAnyObjectByType<PrototypeGame>())new GameObject("LestingCraft").AddComponent<PrototypeGame>();}
         readonly string[] dimensions={
             "Лестингия","Луна","Марс","Венера","Меркурий",
-            "Европа","Титан","Плутон","Проксима b","TRAPPIST-1e","Кеплер-452b","Андромеда Прайм","Сомния","Измерение «Сон»","Черенковский Затон"
+            "Европа","Титан","Плутон","Проксима b","TRAPPIST-1e","Кеплер-452b","Андромеда Прайм","Сомния","Измерение «Сон»","Черенковский Затон",
+            "Закулисье","Ад · Преисподняя"
         };
         readonly Dictionary<string,GameObject> avatars=new Dictionary<string,GameObject>();
         readonly Dictionary<string,Vector3> targets=new Dictionary<string,Vector3>();
@@ -86,6 +87,8 @@ namespace LestingCraft.Runtime
         public bool DockedAtOrbitalStation => dockedAtStation;
         public bool StationTradeOpen => ui && ui.IsStationTradeOpen;
         public string CurrentPlanetTitle => world ? dimensions[Mathf.Clamp((int)world.Dimension, 0, dimensions.Length - 1)] : "Космос";
+        public Vector3 PlayerWorldPos => player ? player.transform.position : Vector3.zero;
+        public float PlayerYaw => cam ? cam.transform.eulerAngles.y : (player ? player.transform.eulerAngles.y : 0f);
 
         public void OpenChat()
         {
@@ -138,6 +141,38 @@ namespace LestingCraft.Runtime
             if(result.Action=="clear"){chatLog.Clear();ChatRevision++;}
             else if(result.Action=="save")Session.Checkpoint();
             else if(result.Action=="time")Session.Data.clock=result.Value;
+            else if(result.Action=="sethome")RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed,"Дом",player.transform.position,world.Dimension,"home");
+            else if(result.Action=="home")
+            {
+                if(RealmFeaturesAndMarket.TryGetWaypoint(world.Seed,"home",out var hw))
+                {
+                    if(hw.dimension!=(int)world.Dimension&&hw.dimension==0&&world.Dimension==Dimension.Inferno)ExitInfernoDimension();
+                    player.TeleportTo(new Vector3(hw.x+0.5f,hw.y+0.5f,hw.z+0.5f),false);
+                }
+                else AddChat(new NetPacket{name="Система",message="Точка дома ещё не задана — введите /sethome"});
+            }
+            else if(!string.IsNullOrEmpty(result.Action)&&result.Action.StartsWith("waypoint:",StringComparison.Ordinal))
+            {
+                string wpTitle=result.Action.Substring("waypoint:".Length);
+                RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed,wpTitle,player.transform.position,world.Dimension,"custom");
+            }
+            else if(result.Action=="waypoints")
+            {
+                var wps=RealmFeaturesAndMarket.LoadWaypoints(world.Seed);
+                string summary=wps.Count==0?"Путевых точек пока нет (/sethome, /wp Имя или клавиша [N])":string.Join(" · ",wps.ConvertAll(w=>$"{w.name} ({w.x},{w.y},{w.z})"));
+                AddChat(new NetPacket{name="Точки",message=summary});
+                return;
+            }
+            else if(result.Action=="lan"){CloseChat();OpenLocalWorldToLan();}
+            else if(result.Action=="market"){CloseChat();paused=true;SetCursor(false);ui.ShowMarket();return;}
+            else if(result.Action=="inferno"){CloseChat();EnterInfernoDimension();return;}
+            else if(result.Action=="overworld"){CloseChat();if(world.Dimension==Dimension.Inferno)ExitInfernoDimension();return;}
+            else if(!string.IsNullOrEmpty(result.Action)&&result.Action.StartsWith("tp:",StringComparison.Ordinal))
+            {
+                var sp=result.Action.Split(':');
+                if(sp.Length==4&&float.TryParse(sp[1],out float tx)&&float.TryParse(sp[2],out float ty)&&float.TryParse(sp[3],out float tz))
+                    player.TeleportTo(new Vector3(tx,ty,tz),false);
+            }
             AddChat(new NetPacket{name="Система",message=result.Message});
         }
         void AddChat(NetPacket packet)
@@ -1408,6 +1443,157 @@ namespace LestingCraft.Runtime
                 ExitBackroomsSequence();
         }
 
+        Dimension infernoReturnDim=Dimension.Lestingia;
+        Vector3 infernoReturnPos=new Vector3(0.5f,65f,0.5f);
+        float infernoPortalCooldownUntil;
+        public bool MinimapVisible { get; set; } = true;
+
+        public void EnterInfernoDimension()
+        {
+            if(!world||!player||!Session||online||world.Dimension==Dimension.Inferno)return;
+            if(ChatOpen)CloseChat();
+            if(InventoryOpen){paused=false;ui.ShowHUD();}
+            Session.ResetMining();
+            Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
+            infernoReturnDim=world.Dimension==Dimension.Somnia?Dimension.Lestingia:world.Dimension;
+            infernoReturnPos=player.transform.position+player.transform.forward*-1.8f;
+            infernoPortalCooldownUntil=Time.unscaledTime+4.0f;
+
+            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
+
+            world.SwitchPlanet(Dimension.Inferno,Session.Data.blocks);
+            dimension=(int)Dimension.Inferno;
+            Session.Data.activeDimension=(int)Dimension.Inferno;
+            int spawnY=InfernoTerrain.FloorTop(0,0,world.Seed);
+            player.TeleportTo(new Vector3(0.5f,spawnY+1.4f,2.5f),false);
+            player.transform.rotation=Quaternion.Euler(0f,180f,0f);
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            var cam=Camera.main;
+            if(cam)WorldAtmosphere.Configure(cam,(int)Dimension.Inferno,Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Inferno,player,cam);
+            SpawnBossIfApplicable(Dimension.Inferno);
+            SetCursor(true);
+            RealmFeaturesAndMarket.AddContractProgress("hell_pioneer",1);
+            RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed,"Врата возврата",new Vector3(0,42,-8),Dimension.Inferno,"portal");
+            Session.Checkpoint();
+            Session.Notice="🔥 ИЗМЕРЕНИЕ «АД · БАЗАЛЬТОВАЯ ПРЕИСПОДНЯЯ»! Багровые леса, лавовые моря, Цитадели обсидиана и Владыка Преисподней! Арка позади возвращает домой.";
+        }
+
+        public void ExitInfernoDimension()
+        {
+            if(!world||!player||!Session||world.Dimension!=Dimension.Inferno)return;
+            Session.ResetMining();
+            Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
+            infernoPortalCooldownUntil=Time.unscaledTime+4.0f;
+            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+
+            Dimension retDim=infernoReturnDim==Dimension.Inferno?Dimension.Lestingia:infernoReturnDim;
+            world.SwitchPlanet(retDim,Session.Data.blocks);
+            dimension=(int)retDim;
+            Session.Data.activeDimension=(int)retDim;
+            int safeY=TerrainGenerator.Height(Mathf.RoundToInt(infernoReturnPos.x),Mathf.RoundToInt(infernoReturnPos.z),world.Seed,retDim)+2;
+            Vector3 safePos=new Vector3(infernoReturnPos.x,Mathf.Max(infernoReturnPos.y+0.5f,safeY),infernoReturnPos.z);
+            player.TeleportTo(safePos,true);
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            var cam=Camera.main;
+            if(cam)WorldAtmosphere.Configure(cam,(int)retDim,Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(retDim,player,cam);
+            if(sharedLaunchSite.HasValue&&!launchVisual&&retDim!=Dimension.Radia)
+                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,retDim);
+            Session.Checkpoint();
+            Session.Notice="✦ Вы прошли сквозь обсидиановые врата и вернулись из Преисподней в солнечный мир!";
+        }
+
+        public void PlaceActiveBlueprintNearPlayer()
+        {
+            if(!world||!player||!Session||paused||InDreamDimension||InMoonFlight)return;
+            var bp=RealmFeaturesAndMarket.GetActiveBlueprint();
+            if(!RealmFeaturesAndMarket.IsBlueprintUnlocked(bp.Code))
+            {
+                Session.Notice="Чертёж «"+bp.Title+"» закрыт — откройте его на Маркетплейсе!";
+                return;
+            }
+            Vector3 fwd=player.transform.forward;fwd.y=0f;
+            if(fwd.sqrMagnitude<0.01f)fwd=Vector3.forward;
+            fwd.Normalize();
+            int dist=Mathf.Max(bp.SizeX,bp.SizeZ)/2+4;
+            int cx=Mathf.RoundToInt(player.transform.position.x+fwd.x*dist);
+            int cz=Mathf.RoundToInt(player.transform.position.z+fwd.z*dist);
+            if(Story&&Story.Enabled&&world.Dimension==Dimension.Lestingia&&StoryWorld.Protected(cx,cz))
+            {
+                Session.Notice="Здесь сюжетная зона — отойдите чуть дальше для постройки чертежа";
+                return;
+            }
+            int baseY=Mathf.RoundToInt(player.transform.position.y)-1;
+            if(baseY<2)baseY=TerrainGenerator.Height(cx,cz,world.Seed,world.Dimension);
+            int placedCount=RealmFeaturesAndMarket.ConstructBlueprint(bp.Code,cx,baseY,cz,(x,y,z,b)=>
+            {
+                if(online)
+                {
+                    if(client&&client.Connected)client.Send(new NetPacket{type="edit",x=x,y=y,z=z,block=b});
+                }
+                else world.Edit(x,y,z,b);
+            });
+            RealmFeaturesAndMarket.AddContractProgress("master_builder",placedCount);
+            Session.Checkpoint();
+            Session.Notice="🏛 Построен чертёж «"+bp.Title+"» ("+placedCount+" блоков)! [Shift+B] — сменить чертёж.";
+        }
+
+        void UpdateInfernoAndShortcuts()
+        {
+            if(!world||!player||!Session||paused||ChatOpen||EditingText)return;
+
+            var kb=Keyboard.current;
+            if(kb!=null)
+            {
+                if(kb.mKey.wasPressedThisFrame)
+                {
+                    MinimapVisible=!MinimapVisible;
+                    Session.Notice=MinimapVisible?"Миникарта включена [M]":"Миникарта скрыта [M]";
+                }
+                if(kb.nKey.wasPressedThisFrame)
+                {
+                    int idx=RealmFeaturesAndMarket.LoadWaypoints(world.Seed).Count+1;
+                    string wpName="Метка #"+idx;
+                    RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed,wpName,player.transform.position,world.Dimension,"custom");
+                    Session.Notice="📍 Путевая точка «"+wpName+"» отмечена на миникарте! (/waypoints — список)";
+                }
+                if(kb.bKey.wasPressedThisFrame)
+                {
+                    if(kb.leftShiftKey.isPressed||kb.rightShiftKey.isPressed)
+                    {
+                        var nextBp=RealmFeaturesAndMarket.CycleNextUnlockedBlueprint();
+                        Session.Notice="Выбран чертёж: «"+nextBp.Title+"» ("+nextBp.Category+") · Нажмите [B] для постройки!";
+                    }
+                    else PlaceActiveBlueprintNearPlayer();
+                }
+            }
+
+            // Sky Island explorer contract check
+            if(world.Dimension==Dimension.Lestingia&&player.transform.position.y>=130f)
+                RealmFeaturesAndMarket.AddContractProgress("sky_explorer",1);
+
+            if(online||Time.unscaledTime<infernoPortalCooldownUntil)return;
+
+            Vector3 p=player.transform.position;
+            int bx=Mathf.RoundToInt(p.x),by=Mathf.FloorToInt(p.y+0.2f),bz=Mathf.RoundToInt(p.z);
+            if(world.Dimension==Dimension.Inferno)
+            {
+                if(InfernoTerrain.IsExitThreshold(bx,bz,world.Seed)&&Mathf.Abs(by-42)<=3)
+                    ExitInfernoDimension();
+            }
+            else if(world.Dimension==Dimension.Lestingia)
+            {
+                // Enter Hell via either an Ancient Obsidian Hellgate Shrine OR any player-built/blueprint Obsidian Portal!
+                bool inShrine=world.ContentVersion>=11&&RealmWondersPlan.IsInHellgateDoorway(bx,by,bz,world.Seed);
+                bool inCustomPortal=!inShrine&&(world.GetBlock(bx,by+2,bz)==BlockRegistry.AndromedaCrystalId||world.GetBlock(bx,by+3,bz)==BlockRegistry.AndromedaCrystalId)&&
+                                    (world.GetBlock(bx,by-1,bz)==BlockRegistry.MagmaBasaltId||world.GetBlock(bx,by-1,bz)==BlockRegistry.DreamMonolithId);
+                if(inShrine||inCustomPortal)
+                    EnterInfernoDimension();
+            }
+        }
+
         void UpdateDreamAnomaly(float dt)
         {
             if(!Dream.IsActive||!player||!world)return;
@@ -1488,6 +1674,19 @@ namespace LestingCraft.Runtime
             if(hasTarget)
             {
                 ushort targetBlock=world.GetBlock(hitCell.x,hitCell.y,hitCell.z);
+                // Ignite an Obsidian / Magma-Basalt Hellgate Portal when clicking with Torch / Lantern / Campfire / Crystal!
+                if(!online&&world.Dimension==Dimension.Lestingia&&
+                   (targetBlock==BlockRegistry.DreamMonolithId||targetBlock==BlockRegistry.MagmaBasaltId||targetBlock==BlockRegistry.BasaltId)&&
+                   (activeId==148||activeId==BlockRegistry.TorchBlockId||activeId==BlockRegistry.LanternBlockId||activeId==BlockRegistry.CampfireId||activeId==BlockRegistry.CrystalId)&&
+                   RealmFeaturesAndMarket.IsCustomPortalFrameReady(world.GetBlock,hitCell))
+                {
+                    world.Edit(hitCell.x,hitCell.y,hitCell.z,BlockRegistry.MagmaBasaltId);
+                    world.Edit(hitCell.x,hitCell.y+1,hitCell.z,BlockRegistry.AirId);
+                    world.Edit(hitCell.x,hitCell.y+2,hitCell.z,BlockRegistry.AirId);
+                    world.Edit(hitCell.x,hitCell.y+3,hitCell.z,BlockRegistry.AndromedaCrystalId);
+                    Session.Notice="🔥 ВРАТА ПРЕИСПОДНЕЙ ЗАЖГЛИСЬ! Шагните в светящийся проём, чтобы войти в измерение «Ад»!";
+                    return true;
+                }
                 if(targetBlock==BlockRegistry.RadiaTerminalId)
                 {
                     Session.Notice=Tech.Sim.TryActivateDamTerminal();
@@ -1582,7 +1781,11 @@ namespace LestingCraft.Runtime
             paused=true;SetCursor(false);ui.ShowInventory(id,cell);
         }
         public void UseStation(int id,Vector3Int cell){if(Session)Session.UseStation(id,cell);}
-        public void OpenDeathScreen(){paused=true;SetCursor(false);ui.ShowDeathScreen();}
+        public void OpenDeathScreen()
+        {
+            if(world&&player)RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed,"Гибель",player.transform.position,world.Dimension,"death");
+            paused=true;SetCursor(false);ui.ShowDeathScreen();
+        }
         public void SendSave(PlayerSave save,bool force=false)
         {
             if(flightSnapshot!=null&&flightSnapshot.active)return;
@@ -1645,12 +1848,13 @@ namespace LestingCraft.Runtime
             if(online)
             {if(client&&client.Connected)client.Send(new NetPacket {type="edit",x=cell.x,y=cell.y,z=cell.z,block=block});else {Fail("Нет соединения: изменения заблокированы");if(Session)Session.RejectEdit(lastError);}}
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
+            RealmFeaturesAndMarket.AddContractProgress(block==0?"deep_miner":"master_builder",1);
         }
         void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=11,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
         {
             MenuPanoramaScene.Teardown();
             if(multiplayer)IsSurfacePreview=false;
-            realm=Mathf.Clamp(realm,0,14);
+            realm=Mathf.Clamp(realm,0,16);
             bool restoreStation=!multiplayer&&resumeSave!=null&&resumeSave.dockedAtStation;
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
 
@@ -1744,7 +1948,7 @@ namespace LestingCraft.Runtime
                     }
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
                     if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Несовместимые правила комнаты. Обновите сервер; для нового содержимого нужна новая комната");Destroy(client.gameObject);return;}
-                    if(packet.contentVersion>9||packet.contentVersion<0||packet.rulesVersion>=14&&packet.contentVersion!=9||packet.rulesVersion==13&&packet.contentVersion!=8||(packet.rulesVersion>=10&&packet.rulesVersion<=12&&packet.contentVersion!=7)||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
+                    if(packet.contentVersion>11||packet.contentVersion<0||packet.rulesVersion>=14&&(packet.contentVersion<9||packet.contentVersion>11)||packet.rulesVersion==13&&packet.contentVersion!=8||(packet.rulesVersion>=10&&packet.rulesVersion<=12&&packet.contentVersion!=7)||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;IsHost=packet.host;pendingWelcome=packet;
                     if(packet.lobby&&!packet.started){online=true;busy=false;InLobby=true;ui.ShowLobby();break;}BeginNetworkWorld(packet);break;
                 case "lobby":ApplyLobby(packet);break;
@@ -1868,7 +2072,8 @@ namespace LestingCraft.Runtime
 
             if(Dream.IsActive)
                 UpdateDreamAnomaly(Mathf.Min(Time.deltaTime,0.1f));
-                UpdateBackrooms();
+            UpdateBackrooms();
+            UpdateInfernoAndShortcuts();
 
             if(SpaceHelm.Active)
                 UpdateOpenSpaceFlight(Mathf.Min(Time.deltaTime,0.1f));
@@ -1963,6 +2168,6 @@ namespace LestingCraft.Runtime
             return new Vector3(.5f,TerrainGenerator.Height(0,0,seed,realm)+10,.5f);
         }
         void OnApplicationQuit(){if(Session)Session.Checkpoint();}
-        void OnDestroy(){MenuPanoramaScene.Teardown();if(avatarMaterial)Destroy(avatarMaterial);}
+        void OnDestroy(){LocalLanServer.StopActive();MenuPanoramaScene.Teardown();if(avatarMaterial)Destroy(avatarMaterial);}
     }
 }

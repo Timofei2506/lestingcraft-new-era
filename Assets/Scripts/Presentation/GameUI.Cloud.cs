@@ -16,6 +16,10 @@ namespace LestingCraft.Presentation
         string cloudNotice = "";
         string marketCode = "";
         string marketPrice = "";
+        string marketSearch = "";
+        int marketSort; // 0 = Новые, 1 = Дешевле, 2 = Дороже
+        int marketTab = -1; // 0 = P2P Скины, 1 = Биржа Ресурсов, 2 = Чертежи [B], 3 = Контракты Гильдии
+        int blueprintPage;
         string friendKey = "";
         string friendGreeting = "Привет! Пошли исследовать парящие острова!";
         string friendFilter = "";
@@ -123,61 +127,159 @@ namespace LestingCraft.Presentation
             }
 
             Button("← В главное меню", 64, 804, 250, 52, () => { cloudNotice = ""; if (game && game.InWorld) ShowPause(); else ShowHome(); });
-            Button("Маркетплейс игроков  →", 330, 804, 360, 52, () => { a.CloudMarket(AfterCloud); ShowMarket(); }, true);
+            Button("Маркетплейс и чертежи  →", 330, 804, 360, 52, () => { a.CloudMarket(AfterCloud); ShowMarketTab(0); }, true);
             Button("Друзья  →", 706, 804, 240, 52, () => { a.CloudFriends(AfterCloud); ShowFriends(); });
             Button("Мой профиль", 962, 804, 240, 52, () => { cloudNotice = ""; ShowAccount(); });
             status = Label(content.transform, !string.IsNullOrEmpty(cloudNotice) ? cloudNotice : string.IsNullOrEmpty(a.CloudMessage) ? "" : a.CloudMessage,
                 1216, 804, 320, 52, 13, Accent, false, TextAnchor.MiddleRight);
         }
 
+        public void ShowMarketTab(int tab)
+        {
+            marketTab = Mathf.Clamp(tab, 0, 3);
+            ShowMarket();
+        }
+
         public void ShowMarket()
         {
             Clear(Page.Market);
-            Header("Маркетплейс", false);
+            Header("Торговая Площадь и Маркетплейс", false);
             var a = Accounts;
-            if (a == null || !a.Logged) { RequireLogin(Page.Market, "Маркетплейс"); return; }
-            if (a.Board == null && !a.CloudBusy) a.CloudMarket(AfterCloud);
+            bool logged = a != null && a.Logged;
+            if (marketTab < 0) marketTab = logged ? 0 : 1;
+            if (logged && marketTab == 0 && a.Board == null && !a.CloudBusy) a.CloudMarket(AfterCloud);
+
+            // Top Wallet + 4 Category Tabs Bar
+            var topBar = Box(content.transform, 64, 128, 1472, 66, Panel);
+            string tab0Name = "1. P2P-Скины Игроков";
+            string tab1Name = "2. Биржа Ресурсов";
+            string tab2Name = "3. Чертежи Построек [B]";
+            string tab3Name = "4. Контракты Гильдии";
+
+            var t0 = Button(tab0Name, 14, 9, 272, 48, () => { marketTab = 0; cloudNotice = ""; ShowMarket(); }, marketTab == 0, topBar.transform);
+            t0.name = "Market.Tab.0";
+            var t1 = Button(tab1Name, 294, 9, 258, 48, () => { marketTab = 1; cloudNotice = ""; ShowMarket(); }, marketTab == 1, topBar.transform);
+            t1.name = "Market.Tab.1";
+            var t2 = Button(tab2Name, 560, 9, 278, 48, () => { marketTab = 2; cloudNotice = ""; ShowMarket(); }, marketTab == 2, topBar.transform);
+            t2.name = "Market.Tab.2";
+            var t3 = Button(tab3Name, 846, 9, 266, 48, () => { marketTab = 3; cloudNotice = ""; ShowMarket(); }, marketTab == 3, topBar.transform);
+            t3.name = "Market.Tab.3";
+
+            string cloudCoinsText = logged && a.Wallet != null ? ("Облако: " + CloudFormat.Coins(a.Wallet.balance) + " м.  ·  ") : "";
+            Label(topBar.transform, cloudCoinsText + "Монеты Гильдии: " + RealmFeaturesAndMarket.GuildCoins,
+                1124, 18, 330, 30, 15, SpringAccent, true, TextAnchor.MiddleRight);
+
+            if (marketTab == 0) DrawMarketCloudTab(a, logged);
+            else if (marketTab == 1) DrawMarketResourcesTab();
+            else if (marketTab == 2) DrawMarketBlueprintsTab();
+            else DrawMarketContractsTab();
+
+            // Bottom Navigation Bar
+            Button(game && game.InWorld ? "← Вернуться в мир" : "← В главное меню", 64, 804, 290, 52, () =>
+            {
+                cloudNotice = "";
+                if (game && game.InWorld) ShowPause();
+                else ShowHome();
+            });
+            Button("Кошелёк и скины", 368, 804, 260, 52, () => { cloudNotice = ""; ShowStore(); });
+            if (marketTab == 0 && logged)
+                Button("Обновить лоты", 642, 804, 220, 52, () => a.CloudMarket(AfterCloud));
+
+            string msg = !string.IsNullOrEmpty(cloudNotice)
+                ? cloudNotice
+                : (logged && !string.IsNullOrEmpty(a.CloudMessage) ? a.CloudMessage : "Маркетплейс работает и онлайн (P2P-скины), и в любом мире (ресурсы, 3D-чертежи [B], контракты).");
+            status = Label(content.transform, msg, 64, 756, 1472, 34, 15, Accent);
+        }
+
+        void DrawMarketCloudTab(AccountClient a, bool logged)
+        {
+            if (!logged)
+            {
+                var card = Box(content.transform, 280, 226, 1040, 480, Panel);
+                Label(card.transform, "P2P-МАРКЕТПЛЕЙС КОСМЕТИКИ И СКИНОВ", 44, 34, 920, 36, 24, White, true);
+                Label(card.transform, "На вкладке P2P игроки торгуют редкими плащами, коронами и обликами через защищённый серверный эскроу.\n\nВойдите в облачный аккаунт, чтобы покупать и выставлять скины — или переключитесь на вкладки «Биржа Ресурсов», «Чертежи Построек [B]» и «Контракты Гильдии» сверху (они доступны мгновенно даже оффлайн!).",
+                    44, 92, 952, 180, 17, Muted);
+                Button("Войти или создать аккаунт  →", 44, 310, 420, 62, () => { afterAuth = Page.Market; ShowAccount(); }, true, card.transform);
+                Button("Перейти к Бирже Ресурсов  →", 484, 310, 420, 62, () => ShowMarketTab(1), false, card.transform);
+                return;
+            }
+
             var board = a.Board;
             var wallet = a.Wallet;
 
-            var left = Box(content.transform, 64, 150, 940, 540, Panel);
-            Label(left.transform, "ЛОТЫ ИГРОКОВ", 26, 18, 600, 30, 17, Accent, true);
-            Label(left.transform, "Комиссия 5% платит продавец. Предмет находится в защищённом эскроу, пока лот активен.", 26, 48, 880, 24, 14, Muted);
-            var listings = board != null ? board.listings : null;
-            if (listings == null || listings.Length == 0)
-                Label(left.transform, "Активных лотов пока нет. Выставьте свой свободный скин справа!", 26, 96, 800, 30, 16, Muted);
-            for (int i = 0; listings != null && i < Mathf.Min(listings.Length, 5); i++)
+            var left = Box(content.transform, 64, 206, 940, 538, Panel);
+            Label(left.transform, "ЛОТЫ ИГРОКОВ (ЗАЩИЩЁННЫЙ ЭСКРОУ · КОМИССИЯ 5%)", 24, 14, 620, 26, 16, Accent, true);
+
+            // Search & Sort Controls
+            InputIn(left.transform, "", marketSearch, "Поиск по названию или продавцу…", 24, 32, 430, v => { marketSearch = v; }, 32);
+            Button("Найти", 464, 46, 108, 42, ShowMarket, false, left.transform);
+            Button("Новые", 584, 46, 104, 42, () => { marketSort = 0; ShowMarket(); }, marketSort == 0, left.transform);
+            Button("Цена ↑", 694, 46, 104, 42, () => { marketSort = 1; ShowMarket(); }, marketSort == 1, left.transform);
+            Button("Цена ↓", 804, 46, 108, 42, () => { marketSort = 2; ShowMarket(); }, marketSort == 2, left.transform);
+
+            var filtered = new List<MarketListing>();
+            if (board != null && board.listings != null)
             {
-                var lot = listings[i];
-                var row = Box(left.transform, 22, 88 + i * 78, 896, 68, new Color(.05f, .13f, .21f, .92f));
-                Label(row.transform, lot.title ?? lot.item, 18, 8, 420, 26, 18, White, true);
-                Label(row.transform, (lot.seller ?? "Игрок") + "  ·  " + CloudFormat.Kind(lot.kind), 18, 36, 420, 22, 14, Muted);
-                Label(row.transform, CloudFormat.Coins(lot.price) + " монет", 470, 20, 200, 26, 17, Accent, false, TextAnchor.MiddleRight);
+                string q = (marketSearch ?? "").Trim().ToLowerInvariant();
+                for (int i = 0; i < board.listings.Length; i++)
+                {
+                    var lot = board.listings[i];
+                    if (lot == null) continue;
+                    if (q.Length > 0)
+                    {
+                        string t = (lot.title ?? lot.item ?? "").ToLowerInvariant();
+                        string s = (lot.seller ?? "").ToLowerInvariant();
+                        if (!t.Contains(q) && !s.Contains(q)) continue;
+                    }
+                    filtered.Add(lot);
+                }
+            }
+            if (marketSort == 1) filtered.Sort((x, y) => x.price.CompareTo(y.price));
+            else if (marketSort == 2) filtered.Sort((x, y) => y.price.CompareTo(x.price));
+
+            if (filtered.Count == 0)
+                Label(left.transform, "Подходящих активных лотов пока нет. Выставьте свой свободный скин справа!", 26, 112, 860, 30, 16, Muted);
+
+            for (int i = 0; i < Mathf.Min(filtered.Count, 5); i++)
+            {
+                var lot = filtered[i];
+                var row = Box(left.transform, 22, 102 + i * 82, 896, 72, new Color(.05f, .13f, .21f, .92f));
+                Label(row.transform, lot.title ?? lot.item, 18, 9, 430, 26, 18, White, true);
+                Label(row.transform, "@" + (lot.seller ?? "Игрок") + "  ·  " + CloudFormat.Kind(lot.kind), 18, 38, 430, 22, 14, Muted);
+                Label(row.transform, CloudFormat.Coins(lot.price) + " монет", 470, 22, 200, 26, 17, Accent, false, TextAnchor.MiddleRight);
                 if (lot.mine)
-                    Button("Снять", 690, 9, 186, 50, () => a.CloudCancel(lot.id, AfterCloud), false, row.transform);
+                    Button("Снять лот", 690, 11, 186, 50, () => a.CloudCancel(lot.id, AfterCloud), false, row.transform);
                 else
                 {
-                    var buy = Button("Купить", 690, 9, 186, 50, () => a.CloudPurchase(lot.id, AfterCloud), true, row.transform);
+                    var buy = Button("Купить", 690, 11, 186, 50, () => a.CloudPurchase(lot.id, AfterCloud), true, row.transform);
                     buy.name = "Market.buy." + lot.id;
                 }
             }
 
-            var right = Box(content.transform, 1028, 150, 508, 540, Panel);
-            Label(right.transform, "ПРОДАТЬ СВОЙ СКИН", 24, 18, 460, 30, 17, Accent, true);
+            var right = Box(content.transform, 1024, 206, 512, 538, Panel);
+            Label(right.transform, "ПРОДАТЬ СВОЙ СКИН", 24, 16, 460, 28, 17, Accent, true);
             var owned = wallet != null ? wallet.owned : null;
             if (owned == null || owned.Length == 0)
-                Label(right.transform, "У вас нет свободных скинов.\nНадетый или выставленный скин\nнельзя продать повторно.", 24, 60, 460, 90, 15, Muted);
+                Label(right.transform, "У вас пока нет свободных скинов.\nЗагляните в «Кошелёк и скины», чтобы приобрести облик (надетый скин продать нельзя).", 24, 56, 464, 96, 15, Muted);
             else
                 for (int i = 0; i < Mathf.Min(owned.Length, 4); i++)
                 {
                     var item = owned[i];
                     bool chosen = marketCode == item.code;
-                    var row = Button("", 20, 60 + i * 58, 468, 50, () => { marketCode = item.code; ShowMarket(); }, chosen, right.transform);
+                    var row = Button("", 20, 54 + i * 58, 472, 50, () => { marketCode = item.code; ShowMarket(); }, chosen, right.transform);
                     Label(row.transform, item.title, 16, 6, 430, 22, 16, chosen ? Ink : White, true);
                     Label(row.transform, CloudFormat.Kind(item.kind), 16, 27, 300, 18, 12, chosen ? Ink : Muted);
                 }
-            InputIn(right.transform, "ЦЕНА В МОНЕТАХ", marketPrice, "Например 250", 24, 304, 210, v => marketPrice = v, 10);
-            var listButton = Button("Выставить лот", 248, 328, 236, 52, () =>
+
+            InputIn(right.transform, "ЦЕНА В МОНЕТАХ", marketPrice, "Например 250", 24, 300, 214, v => marketPrice = v, 10);
+            long previewPrice;
+            if (long.TryParse((marketPrice ?? "").Trim(), out previewPrice) && previewPrice > 0)
+            {
+                long net = Math.Max(1L, previewPrice - (previewPrice * 5L) / 100L);
+                Label(right.transform, "Вы получите чистыми (после 5%): " + CloudFormat.Coins(net) + " монет", 24, 392, 464, 24, 13, SpringAccent);
+            }
+
+            var listButton = Button("Выставить лот", 252, 324, 236, 52, () =>
             {
                 long price;
                 if (string.IsNullOrEmpty(marketCode)) { cloudNotice = "Сначала выберите скин в списке."; ShowMarket(); return; }
@@ -189,13 +291,164 @@ namespace LestingCraft.Presentation
             listButton.name = "Market.list";
 
             if (wallet != null && wallet.listings != null && wallet.listings.Length > 0)
-                Label(right.transform, "Активных ваших лотов: " + wallet.listings.Length, 24, 412, 460, 26, 15, Accent);
+                Label(right.transform, "Ваших активных лотов на витрине: " + wallet.listings.Length, 24, 430, 460, 26, 15, Accent);
+        }
 
-            Button("← Кошелёк и скины", 64, 804, 340, 52, () => { cloudNotice = ""; ShowStore(); });
-            Button("Обновить", 420, 804, 220, 52, () => a.CloudMarket(AfterCloud));
-            Button("← В главное меню", 1260, 804, 276, 52, () => { cloudNotice = ""; if (game && game.InWorld) ShowPause(); else ShowHome(); });
-            status = Label(content.transform, !string.IsNullOrEmpty(cloudNotice) ? cloudNotice : string.IsNullOrEmpty(a.CloudMessage) ? "Покупка проверяется на сервере атомарно." : a.CloudMessage,
-                64, 718, 1472, 36, 15, Accent);
+        void DrawMarketResourcesTab()
+        {
+            var inv = game && game.Session != null ? game.Session.Inventory : null;
+            bool hasInv = game && game.InWorld && inv != null;
+
+            // Left: Sell Mined Resources for Guild Coins
+            var left = Box(content.transform, 64, 206, 720, 538, Panel);
+            Label(left.transform, "СКУПКА РЕСУРСОВ КАРАВАНОМ (+МОНЕТЫ ГИЛЬДИИ)", 24, 14, 660, 26, 16, SpringAccent, true);
+            Label(left.transform, hasInv
+                ? "Продавайте излишки дерева, руды и адских кристаллов прямо из вашего рюкзака!"
+                : "Зайдите в любой мир (Одиночная игра или Сервер), чтобы продавать ресурсы из рюкзака.", 24, 42, 672, 24, 13, Muted);
+
+            for (int i = 0; i < RealmFeaturesAndMarket.SellOffers.Length; i++)
+            {
+                var offer = RealmFeaturesAndMarket.SellOffers[i];
+                int inBag = hasInv ? inv.Count(offer.ItemId) : 0;
+                var row = Box(left.transform, 20, 76 + i * 74, 680, 66, new Color(.05f, .14f, .21f, .92f));
+                Label(row.transform, offer.Title, 16, 7, 420, 24, 16, White, true);
+                Label(row.transform, offer.Subtitle + (hasInv ? "  ·  В сумке: " + inBag : ""), 16, 33, 440, 22, 12, Muted);
+                bool canSell = hasInv && inBag >= offer.Count;
+                var btn = Button("+" + offer.CoinValue + " монет", 488, 10, 176, 46, () =>
+                {
+                    if (!hasInv) { cloudNotice = "Сначала войдите в игровой мир, чтобы торговать содержимым инвентаря!"; ShowMarket(); return; }
+                    RealmFeaturesAndMarket.TryExecuteTrade(offer, inv, out string msg);
+                    cloudNotice = msg;
+                    ShowMarket();
+                }, canSell, row.transform);
+                btn.name = "Market.Sell." + offer.Code;
+            }
+
+            // Right: Buy Expedition Kits, Diamond Tools & Hellgate Kit
+            var right = Box(content.transform, 808, 206, 728, 538, Panel);
+            Label(right.transform, "ЭКСПЕДИЦИОННОЕ СНАБЖЕНИЕ И АРТЕФАКТЫ", 24, 14, 660, 26, 16, Accent, true);
+            Label(right.transform, "Покупайте инструменты, редкие блоки и готовый набор Врат Ада за Монеты Гильдии.", 24, 42, 680, 24, 13, Muted);
+
+            for (int i = 0; i < RealmFeaturesAndMarket.BuySupplies.Length; i++)
+            {
+                var offer = RealmFeaturesAndMarket.BuySupplies[i];
+                var row = Box(right.transform, 20, 76 + i * 74, 688, 66, new Color(.05f, .14f, .21f, .92f));
+                Label(row.transform, offer.Title, 16, 7, 430, 24, 16, White, true);
+                Label(row.transform, offer.Subtitle, 16, 33, 440, 22, 12, Muted);
+                bool canBuy = hasInv && RealmFeaturesAndMarket.GuildCoins >= offer.CoinValue;
+                var btn = Button(offer.CoinValue + " монет", 494, 10, 178, 46, () =>
+                {
+                    if (!hasInv) { cloudNotice = "Войдите в игровой мир, чтобы получить купленный набор прямо в инвентарь!"; ShowMarket(); return; }
+                    RealmFeaturesAndMarket.TryExecuteTrade(offer, inv, out string msg);
+                    cloudNotice = msg;
+                    ShowMarket();
+                }, canBuy, row.transform);
+                btn.name = "Market.BuySupply." + offer.Code;
+            }
+        }
+
+        void DrawMarketBlueprintsTab()
+        {
+            var panel = Box(content.transform, 64, 206, 1472, 538, Panel);
+            Label(panel.transform, "3D-ЧЕРТЕЖИ АРХИТЕКТОРА (МГНОВЕННАЯ ПОСТРОЙКА ПО КЛАВИШЕ [B])", 26, 14, 980, 28, 17, Accent, true);
+            Label(panel.transform, "Откройте чертёж один раз — и он навсегда доступен во всех мирах! В игре нажмите [B], чтобы возвести выбранную постройку перед собой ([Shift+B] — переключить чертёж).",
+                26, 42, 1380, 24, 14, Muted);
+
+            string activeCode = RealmFeaturesAndMarket.ActiveBlueprintCode;
+            var all = RealmFeaturesAndMarket.Blueprints;
+
+            for (int i = 0; i < all.Length; i++)
+            {
+                var bp = all[i];
+                int col = i % 2;
+                int rowIdx = i / 2;
+                float x = 24 + col * 720;
+                float y = 78 + rowIdx * 110;
+                bool unlocked = RealmFeaturesAndMarket.IsBlueprintUnlocked(bp.Code);
+                bool equipped = unlocked && bp.Code == activeCode;
+
+                var card = Box(panel.transform, x, y, 704, 100, equipped ? new Color(.08f, .25f, .22f, .94f) : new Color(.05f, .13f, .21f, .92f));
+                Label(card.transform, bp.Title + "  ·  " + bp.SizeHint, 18, 10, 450, 26, 17, equipped ? SpringAccent : White, true);
+                Label(card.transform, bp.Category + "  —  " + bp.Description, 18, 38, 450, 48, 13, Muted);
+
+                if (!unlocked)
+                {
+                    var buyBtn = Button("Открыть · " + bp.PriceCoins + " м.", 486, 22, 202, 54, () =>
+                    {
+                        if (RealmFeaturesAndMarket.GuildCoins < bp.PriceCoins)
+                        {
+                            cloudNotice = "Недостаточно Монет Гильдии (" + RealmFeaturesAndMarket.GuildCoins + " / " + bp.PriceCoins + "). Выполните Контракт или продайте ресурсы!";
+                            ShowMarket();
+                            return;
+                        }
+                        RealmFeaturesAndMarket.GuildCoins -= bp.PriceCoins;
+                        RealmFeaturesAndMarket.UnlockBlueprint(bp.Code);
+                        RealmFeaturesAndMarket.ActiveBlueprintCode = bp.Code;
+                        RealmFeaturesAndMarket.AddContractProgress("market_trader", 1);
+                        cloudNotice = "Чертёж «" + bp.Title + "» открыт и выбран для клавиши [B]!";
+                        ShowMarket();
+                    }, RealmFeaturesAndMarket.GuildCoins >= bp.PriceCoins, card.transform);
+                    buyBtn.name = "Market.Blueprint." + bp.Code;
+                }
+                else
+                {
+                    Button(equipped ? "✓ Активен [B]" : "Выбрать для [B]", 486, 10, 202, 38, () =>
+                    {
+                        RealmFeaturesAndMarket.ActiveBlueprintCode = bp.Code;
+                        cloudNotice = "Активный чертёж [B]: «" + bp.Title + "».";
+                        ShowMarket();
+                    }, !equipped, card.transform);
+
+                    if (game && game.InWorld)
+                    {
+                        Button("Построить сейчас!", 486, 54, 202, 38, () =>
+                        {
+                            RealmFeaturesAndMarket.ActiveBlueprintCode = bp.Code;
+                            game.Resume();
+                            game.PlaceActiveBlueprintNearPlayer();
+                        }, true, card.transform);
+                    }
+                }
+            }
+        }
+
+        void DrawMarketContractsTab()
+        {
+            var panel = Box(content.transform, 64, 206, 1472, 538, Panel);
+            Label(panel.transform, "ДОСКА КОНТРАКТОВ И ПОРУЧЕНИЙ ГИЛЬДИИ", 26, 14, 900, 28, 17, SpringAccent, true);
+            Label(panel.transform, "Выполняйте поручения во время приключений — получайте Монеты Гильдии для чертежей и редкие алмазы в рюкзак!",
+                26, 42, 1380, 24, 14, Muted);
+
+            var inv = game && game.Session != null && game.InWorld ? game.Session.Inventory : null;
+            var list = RealmFeaturesAndMarket.Contracts;
+
+            for (int i = 0; i < list.Length; i++)
+            {
+                var c = list[i];
+                int col = i % 2;
+                int rowIdx = i / 2;
+                float x = 24 + col * 720;
+                float y = 80 + rowIdx * 144;
+                int prog = RealmFeaturesAndMarket.GetContractProgress(c.Id);
+                bool claimed = RealmFeaturesAndMarket.IsContractClaimed(c.Id);
+                bool ready = prog >= c.Target && !claimed;
+
+                var card = Box(panel.transform, x, y, 704, 130, claimed ? new Color(.05f, .18f, .16f, .86f) : new Color(.05f, .13f, .21f, .92f));
+                Label(card.transform, c.Title, 18, 10, 440, 26, 18, claimed ? SpringAccent : White, true);
+                Label(card.transform, c.Description, 18, 38, 450, 42, 13, Muted);
+                Label(card.transform, "Прогресс: " + prog + " / " + c.Target + "   ·   Награда: +" + c.RewardCoins + " монет",
+                    18, 88, 450, 26, 14, ready ? SpringAccent : Accent, true);
+
+                string btnText = claimed ? "✓ Получено" : (ready ? "Забрать +" + c.RewardCoins + " м.!" : "В процессе");
+                var claimBtn = Button(btnText, 488, 36, 198, 56, () =>
+                {
+                    if (!ready) return;
+                    RealmFeaturesAndMarket.TryClaimContract(c.Id, inv, out string msg);
+                    cloudNotice = msg;
+                    ShowMarket();
+                }, ready, card.transform);
+                claimBtn.name = "Market.Contract." + c.Id;
+            }
         }
 
         public void ShowFriends()

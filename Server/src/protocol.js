@@ -523,7 +523,7 @@ export function validatePlayerSave(save,expanded=true,chapter=false,expedition=f
   const equipment=extras(inv.equipment,8);validateEquipmentIds(equipment.map(s=>s.count?s.item:0));
   const slots=inv.slots.map(cleanStack),grid=extras(inv.grid,9),cursor=cleanStack(inv.cursor||empty());
   const raw=inv.furnace||{},furnace={input:cleanStack(raw.input||empty()),fuel:cleanStack(raw.fuel||empty()),output:cleanStack(raw.output||empty())};
-  for(const [key,min,max] of [['burn',0,40],['progress',0,8],['recipe',0,147],['x',chapter?-384:-64,chapter?383:63],['y',0,255],['z',chapter?-384:-64,chapter?383:63],['realm',0,13]]){
+  for(const [key,min,max] of [['burn',0,40],['progress',0,8],['recipe',0,147],['x',chapter?-384:-64,chapter?383:63],['y',0,255],['z',chapter?-384:-64,chapter?383:63],['realm',0,16]]){
     const value=raw[key]===undefined?0:raw[key];if(!finite(value)||value<min||value>max||(!['burn','progress'].includes(key)&&!integer(value)))throw new Error('Invalid furnace '+key);furnace[key]=value;
   }
   let grave=[],graveExtras=[];

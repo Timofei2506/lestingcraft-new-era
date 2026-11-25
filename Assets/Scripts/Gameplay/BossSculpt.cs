@@ -338,6 +338,7 @@ namespace LestingCraft.Gameplay
                 case Dimension.Dream: return FirstNode(seed);
                 case Dimension.Radia: return RadiaColossus(seed);
                 case Dimension.Backrooms: return BlackBacteria(seed);
+                case Dimension.Inferno: return InfernalArchfiend(seed);
                 default: return Warden(seed, false);
             }
         }
@@ -1165,6 +1166,75 @@ namespace LestingCraft.Gameplay
 
             s.Light(0, 3.6f, .9f, .80f, .85f, 1f, 10f, 2.2f);
             return s.Finish("The Black Bacteria");
+        }
+
+        // ---------- 17. Inferno: Winged Horned Obsidian-Magma Archfiend ----------
+
+        static SculptData InfernalArchfiend(int seed)
+        {
+            var s = new Sculptor(.115f, seed);
+            int obsidian = s.Pal("obsidian plate", "obsidian", .14f, .11f, .13f, 0);
+            int basalt = s.Pal("basalt hide", "basalt", .28f, .22f, .21f, 0);
+            int crimson = s.Pal("crimson carapace", "red-mesa", .72f, .22f, .14f, 0);
+            int magma = s.Pal("magma veins", "magma-basalt", .98f, .44f, .14f, 1.5f);
+            int core = s.Pal("hellfire heart", "lava", 1.00f, .66f, .18f, 2.8f);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "leg_l" : "leg_r", side * .62f, 1.85f, 0);
+                s.Path(new[] { side * .62f, 1.85f, .06f, side * .74f, 1.05f, -.22f, side * .68f, .22f, .14f },
+                    new[] { .34f, .26f, .22f }, basalt);
+                s.Box(side * .48f, .02f, -.06f, side * .88f, .24f, .44f, obsidian);
+                s.Tube(side * .68f, 1.15f, -.24f, side * .72f, 1.52f, -.48f, .10f, .04f, crimson);
+            }
+
+            s.Part("body", 0, 2.55f, 0);
+            s.Ellipsoid(0, 2.58f, 0, .86f, 1.08f, .62f, basalt);
+            s.Ellipsoid(0, 3.12f, .08f, 1.06f, .72f, .68f, obsidian);
+            // Glowing hellfire furnace core inside ribcage
+            s.Ellipsoid(0, 2.86f, .46f, .38f, .44f, .24f, core);
+            for (int r = 0; r < 4; r++)
+                s.Ring(0, 2.35f + r * .28f, .18f, .68f - r * .04f, .075f, crimson);
+            // Jagged spine ridges & tail
+            for (int k = 0; k < 5; k++)
+                s.Tube(0, 2.2f + k * .36f, -.48f, 0, 2.45f + k * .38f, -.88f, .11f, .04f, magma);
+            s.Path(new[] { 0f, 1.92f, -.44f, 0f, 1.25f, -1.18f, 0f, .72f, -1.92f }, new[] { .22f, .14f, .07f }, obsidian);
+
+            // Swept volcanic bat-wings
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wing_l" : "wing_r", side * .82f, 3.38f, -.32f);
+                s.Path(new[] { side * .82f, 3.38f, -.32f, side * 1.95f, 4.35f, -.62f, side * 2.75f, 3.45f, -.88f },
+                    new[] { .16f, .12f, .08f }, obsidian);
+                for (int fin = 0; fin < 3; fin++)
+                    s.Tube(side * (1.55f + fin * .45f), 4.05f - fin * .22f, -.58f,
+                        side * (1.72f + fin * .48f), 2.35f - fin * .18f, -.76f, .11f, .05f, fin == 1 ? magma : crimson);
+            }
+
+            // Massive clawed magma gauntlets
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.18f, 3.28f, .10f);
+                s.Ellipsoid(side * 1.22f, 3.42f, .08f, .38f, .34f, .36f, crimson);
+                s.Path(new[] { side * 1.18f, 3.22f, .10f, side * 1.54f, 2.38f, .38f, side * 1.42f, 1.52f, .78f },
+                    new[] { .28f, .24f, .26f }, basalt);
+                s.Ellipsoid(side * 1.42f, 1.44f, .82f, .30f, .28f, .32f, magma);
+                for (int c = -1; c <= 1; c++)
+                    s.Tube(side * (1.42f + c * .12f), 1.32f, .96f, side * (1.46f + c * .15f), .96f, 1.24f, .07f, .03f, obsidian);
+            }
+
+            s.Part("head", 0, 3.88f, .22f);
+            s.Ellipsoid(0, 4.18f, .28f, .46f, .50f, .48f, obsidian);
+            s.Ellipsoid(0, 4.02f, .56f, .30f, .24f, .26f, crimson);
+            s.Ellipsoid(-.16f, 4.26f, .68f, .09f, .08f, .07f, core);
+            s.Ellipsoid(.16f, 4.26f, .68f, .09f, .08f, .07f, core);
+            // Sweeping twin demon horns
+            for (int side = -1; side <= 1; side += 2)
+                s.Path(new[] { side * .28f, 4.48f, .24f, side * .78f, 4.98f, -.08f, side * .54f, 5.56f, .32f },
+                    new[] { .15f, .10f, .045f }, magma);
+
+            s.Light(0, 3.2f, .8f, 1.0f, .42f, .12f, 16f, 3.4f);
+            return s.Finish("Infernal Archfiend");
         }
 
         // ---------- Extras: Corrupted AI & Void Horror ----------

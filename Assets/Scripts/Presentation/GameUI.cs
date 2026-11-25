@@ -22,6 +22,7 @@ namespace LestingCraft.Presentation
         Text vitalsHUD,objectiveHUD,noticeHUD,healthHUD;HealthSilhouette healthBody;RawImage[] slotIcons;Text[] slotCounts;ItemHover[] slotHovers;RectTransform tooltip;Text tooltipText;int lastInventoryRevision=-1,lastSlot=-1;
         Image oxygenBar,staminaBar,thirstBar,temperatureBar;RectTransform oxygenRow,staminaRow,thirstRow,temperatureRow;RectTransform[] vitalsRows;Text foodHUD,tempHUD;Image[] slotFrames;Image[] objectiveChecks;Text[] objectiveLabels;
         Image miningBar;Text miningLabel;GameObject chatRoot;Text chatText;InputField chatInput;int chatRevision=-1;string lastNotice="";float noticeAt;
+        RectTransform minimapPanel;RawImage minimapRaw;Text minimapCoords;Texture2D minimapTex;float minimapTimer;
         public string ChatText=>chatInput?chatInput.text:"";
         public void SetChatOpen(bool open)
         {
@@ -226,12 +227,17 @@ namespace LestingCraft.Presentation
             splashRect.anchoredPosition=new Vector2(292+127,-(150+16));
             Label(splashBadge.transform,splashLine,10,0,234,32,12,Ink,true,TextAnchor.MiddleCenter);
 
-            var vistaPill=Box(content.transform,56,812,516,52,new Color(.060f,.165f,.265f,.72f));
+            var vistaPill=Box(content.transform,56,812,544,52,new Color(.060f,.165f,.265f,.72f));
             vistaPill.raycastTarget=false;
             Box(vistaPill.transform,0,10,4,32,Accent,false);
-            Label(vistaPill.transform,"v"+Application.version+"  ·  Города, водопады, небесные острова и 16 миров",18,0,486,52,13,Muted,false,TextAnchor.MiddleLeft);
+            Label(vistaPill.transform,"v"+Application.version+"  ·  Города, водопады, небесные острова, Ад и 17 миров",18,0,514,52,13,Muted,false,TextAnchor.MiddleLeft);
 
-            // 2. Top-Right Corner: Player Balance Widget (opens Wallet & Skins)
+            // 2. Top-Right Corner: Quick Marketplace Button + Player Balance Widget
+            var marketBtn=Button("",1024,32,192,64,ShowMarket);
+            marketBtn.name="Home.Market";
+            Label(marketBtn.transform,"МАРКЕТПЛЕЙС",16,10,160,18,11,SpringAccent,true,TextAnchor.MiddleLeft);
+            Label(marketBtn.transform,"Лоты и чертежи →",16,30,164,24,14,White,true,TextAnchor.MiddleLeft);
+
             long coins=logged&&a.Wallet!=null?a.Wallet.balance:0;
             string balanceValue=CloudFormat.Coins(coins)+" монет";
             var balanceBtn=Button("",1228,32,316,64,ShowStore);
@@ -322,21 +328,33 @@ namespace LestingCraft.Presentation
             bool hasSave=game!=null&&game.HasSave;
             if(hasSave)
             {
-                Label(content.transform,"Сохранённый мир найден",542,626,330,34,20,SpringAccent,true);
-                Label(content.transform,"Вернитесь в текущую экспедицию\nили создайте новый мир справа.",542,670,330,68,15,Muted);
-                var resumeBtn=Button("Продолжить мир  →",886,668,322,64,game.ContinueOffline,true);
+                Label(content.transform,"Сохранённый мир найден",542,616,330,34,20,SpringAccent,true);
+                Label(content.transform,"Вернитесь в экспедицию, создайте новый мир\nили сразу откройте его друзьям по LAN!",542,654,330,68,14,Muted);
+                var resumeBtn=Button("Продолжить мир  →",886,634,322,58,game.ContinueOffline,true);
                 resumeBtn.name="World.Continue";
-                var newBtn=Button("Новый мир  →",1224,668,312,64,game.PlayOffline,false);
+                var newBtn=Button("Новый мир  →",1224,634,312,58,game.PlayOffline,false);
                 newBtn.name="World.New";
+                var lanBtn=Button("📡 Продолжить и сразу открыть мир по локальной сети (LAN)  →",886,704,650,54,()=>
+                {
+                    game.ContinueOffline();
+                    game.OpenLocalWorldToLan("Мир "+game.PlayerName);
+                },false);
+                lanBtn.name="World.OpenLan";
             }
             else
             {
-                Label(content.transform,"Локальная экспедиция",542,626,640,34,20,White);
-                Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nНовый мир заменяет предыдущее локальное сохранение.",542,675,650,72,16,Muted);
-                var startBtn=Button("Начать  →",1227,668,309,64,game.PlayOffline,true);
+                Label(content.transform,"Локальная экспедиция",542,616,640,34,20,White);
+                Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nМожно играть одному или сразу открыть мир по LAN.",542,654,650,68,15,Muted);
+                var startBtn=Button("Начать одиночную игру  →",886,634,650,58,game.PlayOffline,true);
                 startBtn.name="World.New";
+                var lanBtn=Button("📡 Начать и сразу открыть мир по локальной сети (LAN)  →",886,704,650,54,()=>
+                {
+                    game.PlayOffline();
+                    game.OpenLocalWorldToLan("Мир "+game.PlayerName);
+                },false);
+                lanBtn.name="World.OpenLan";
             }
-            status=Label(content.transform,"Бортовой архив экспедиции (3 главы), живые города, парящие острова, 26 боссов миров и межпланетные полёты доступны во всех режимах.",542,784,940,66,14,Muted);
+            status=Label(content.transform,"Бортовой архив (3 главы), живые города, парящие острова, врата Ада, миникарта [M] и чертежи [B] доступны во всех режимах.",542,784,994,66,14,Muted);
         }
         int lobbyRevision=-1;
         public void ShowLobby()
@@ -345,35 +363,69 @@ namespace LestingCraft.Presentation
             Label(content.transform,"МИР ГОТОВ К ЗАХОДУ",64,160,1000,48,30,White,true);
             LobbyAddressCard(content.transform,64,222,1472);
             string names="";int count=0;foreach(var peer in game.LobbyPlayers){names+=peer.name+(peer.id==game.HostId?" · хозяин":"")+"\n";count++;}
-            if(count==0)names="Пока только вы.\nПозовите друзей: Мультиплеер → «Добавить сервер» → "+game.EndpointAddress;
+            if(count==0)names="Пока только вы.\nПозовите друзей: Мультиплеер → «Быстрый вход» → "+(game.IsHostingLan?game.ActiveLanAddress:game.EndpointAddress);
             Label(content.transform,names,64,382,1000,320,24,White);
             if(game.IsHost)Button("Начать игру  →",1120,392,416,68,game.StartLobby,true);
             else Label(content.transform,"Ждём, когда хозяин начнёт игру",1120,398,416,70,22,Accent);
             var invite=Button("Скопировать приглашение",1120,486,416,58,()=>GUIUtility.systemCopyBuffer=game.InviteText,true);invite.name="Lobby.Invite";
-            Label(content.transform,"Скопирует текст с адресом и ссылкой на скачивание — можно сразу отправить другу.",1120,548,416,54,13,Muted);
+            Label(content.transform,"Скопирует текст с адресом и кодом — можно сразу отправить другу.",1120,548,416,54,13,Muted);
             Button("Выйти",1120,612,416,58,game.ReturnToMenu);
-            status=Label(content.transform,"Друзьям нужен только этот адрес: мир уже опубликован на сервере.",64,806,1000,32,15,Muted);
+            status=Label(content.transform,"Друзьям нужен только этот адрес или код: мир уже открыт для входа.",64,806,1000,32,15,Muted);
             if(game.IsHost&&game.AutoStartLobby&&!game.IsConnecting)game.StartLobby();
         }
         public void ShowPause()
         {
             Clear(Page.Pause);Header("Пауза");
-            Label(content.transform,"МИР ПОДОЖДЁТ",64,210,680,76,44,White,true);
-            Label(content.transform,game.WorldLabel+"\n"+(game.Online?"Комната "+game.RoomCode+" · сетевой мир не останавливается":"Локальная экспедиция"),67,300,680,82,21,Muted);
-            var storyCard=Box(content.transform,776,174,760,334,Panel);
-            Label(storyCard.transform,"СЮЖЕТ И БОРТОВОЙ ЖУРНАЛ",28,22,704,36,22,Accent,true);
-            Label(storyCard.transform,game.PauseStorySummary,28,68,704,176,17,White);
-            Button("Открыть все 3 главы сюжета  →",28,254,704,56,ShowStoryJournal,true,storyCard.transform);
+            Label(content.transform,"МИР ПОДОЖДЁТ",64,174,680,68,42,White,true);
+            string netDesc=game.IsHostingLan
+                ?("📡 LAN-сервер активен: "+game.ActiveLanAddress+" · друзья могут войти по Wi-Fi / LAN")
+                :(game.Online?"Комната "+game.RoomCode+" · сетевой мир не останавливается":"Локальная экспедиция · можно открыть по LAN или в облако");
+            Label(content.transform,game.WorldLabel+"\n"+netDesc,67,248,680,76,19,Muted);
+
+            // Quick In-Game Marketplace & Blueprints Banner on Left
+            var marketBtn=Button("⚖ Маркетплейс, чертежи построек [B] и контракты  →",64,344,680,64,ShowMarket,true);
+            marketBtn.name="Pause.Market";
+            Label(content.transform,"Горячие клавиши: [M] Миникарта · [N] Поставить метку · [B] Возвести чертёж · [Shift+B] Сменить чертёж · Чат: /sethome, /home, /lan, /hell",
+                66,418,680,68,14,Muted);
+
+            var storyCard=Box(content.transform,776,164,760,324,Panel);
+            Label(storyCard.transform,"СЮЖЕТ И БОРТОВОЙ ЖУРНАЛ",28,20,704,34,21,Accent,true);
+            Label(storyCard.transform,game.PauseStorySummary,28,62,704,174,16,White);
+            Button("Открыть все 3 главы сюжета  →",28,248,704,54,ShowStoryJournal,true,storyCard.transform);
+
             Button("Продолжить  →",64,534,395,64,game.Resume,true);
             Button("Сюжет и журнал",505,534,420,64,ShowStoryJournal);
             Button("Профиль и достижения",505,698,420,58,ShowAccount);
             Button("Настройки",64,619,395,58,()=>ShowSettings(Page.Pause));
             Button("В главное меню",64,698,395,58,game.ReturnToMenu);
-            Label(content.transform,"ESC — продолжить · E — инвентарь · Шаттл: SHIFT/CTRL — тяга, X — тормоз, G — цель, J — прыжок, L — посадка",952,535,584,84,15,Muted);
-            if(game.Online)Button("Скопировать адрес сервера",505,619,420,58,()=>GUIUtility.systemCopyBuffer=game.EndpointAddress);
-            else {Button("Друзья и команда",505,619,420,58,OpenFriendsHub);
-                  var hostServer=Button("Создать сервер",952,630,584,62,()=>game.OpenWorldAsServer("Мир "+game.PlayerName),true);hostServer.name="Pause.HostServer";
-                  Label(content.transform,"Мир откроется для друзей по адресу "+game.EndpointAddress+".",952,696,584,54,14,Muted);}
+
+            if(game.Online)
+            {
+                string copyAddr=game.IsHostingLan?game.ActiveLanAddress:game.EndpointAddress;
+                Button("Скопировать IP / адрес ("+copyAddr+")",505,619,420,58,()=>GUIUtility.systemCopyBuffer=copyAddr);
+                if(game.IsHostingLan)
+                {
+                    var lanCard=Box(content.transform,952,534,584,222,Panel);
+                    Label(lanCard.transform,"📡 ВАШ ЛОКАЛЬНЫЙ МИР ОТКРЫТ В СЕТИ!",24,18,536,28,17,SpringAccent,true);
+                    Label(lanCard.transform,"Адрес для друзей: "+game.ActiveLanAddress+"\nМир виден автоматически в «Многопользовательская игра» у всех в одной сети Wi-Fi / LAN / VPN.",24,52,536,88,14,White);
+                    Button("Скопировать приглашение",24,150,336,52,()=>GUIUtility.systemCopyBuffer=game.InviteText,true,lanCard.transform);
+                    Button("Стоп LAN",374,150,186,52,()=>{game.StopLocalLanServer();ShowPause();},false,lanCard.transform);
+                }
+                else
+                {
+                    Label(content.transform,"ESC — продолжить · E — инвентарь · B — чертёж · M — миникарта · Шаттл: G — цель, J — прыжок",952,535,584,84,15,Muted);
+                }
+            }
+            else
+            {
+                Button("Друзья и команда",505,619,420,58,OpenFriendsHub);
+                var hostLan=Button("📡 Открыть мир по LAN (Wi-Fi / Сеть)",952,534,584,64,()=>{game.OpenLocalWorldToLan("Мир "+game.PlayerName);},true);
+                hostLan.name="Pause.HostLan";
+                var hostServer=Button("☁ Опубликовать на облачном сервере",952,612,584,58,()=>game.OpenWorldAsServer("Мир "+game.PlayerName),false);
+                hostServer.name="Pause.HostServer";
+                Label(content.transform,"LAN открывает текущий мир мгновенно на вашем ПК ("+game.ActiveLanAddress+"), а Облако публикует на "+game.EndpointAddress+". Все постройки сохранятся!",
+                    952,680,584,76,13,Muted);
+            }
         }
         public void ShowStoryJournal()
         {
@@ -655,6 +707,23 @@ namespace LestingCraft.Presentation
                 objectiveLabels[i]=Label(objectivePanel.transform,"",44,51+i*30,214,28,14,White);
             }
             objectiveHUD=Label(objectivePanel.transform,"",18,150,240,24,11,Muted);
+
+            // Live Voxel Minimap Panel [M], aligned beside Objectives (824, 24, 148, 178)
+            var mmBox=Box(content.transform,824,24,148,178,new Color(.045f,.125f,.205f,.82f));
+            minimapPanel=mmBox.rectTransform;
+            Label(minimapPanel,"КАРТА [M]",10,6,128,18,11,Accent,true,TextAnchor.MiddleCenter);
+            if(!minimapTex)
+            {
+                minimapTex=new Texture2D(64,64,TextureFormat.RGBA32,false);
+                minimapTex.filterMode=FilterMode.Point;
+                minimapTex.wrapMode=TextureWrapMode.Clamp;
+            }
+            minimapRaw=Rect("Minimap Texture",minimapPanel,10,26,128,124).gameObject.AddComponent<RawImage>();
+            minimapRaw.texture=minimapTex;minimapRaw.raycastTarget=false;
+            minimapCoords=Label(minimapPanel,"",6,152,136,22,10,Muted,false,TextAnchor.MiddleCenter);
+            minimapPanel.gameObject.SetActive(game&&game.MinimapVisible);
+            minimapTimer=99f;
+
             miningBar=Box(content.transform,565,484,0,4,Accent,false);miningBar.gameObject.name="Mining progress";
             miningLabel=Label(content.transform,"",540,494,200,29,12,White,false,TextAnchor.MiddleCenter);
             chatRoot=Box(content.transform,26,265,590,260,new Color(.025f,.045f,.04f,.78f)).gameObject;
@@ -754,6 +823,23 @@ namespace LestingCraft.Presentation
                 }
                 else loadingHUD.text="";
             }
+            if(minimapPanel&&game&&game.Session&&game.Session.World)
+            {
+                bool showMap=game.MinimapVisible;
+                if(minimapPanel.gameObject.activeSelf!=showMap)minimapPanel.gameObject.SetActive(showMap);
+                if(showMap)
+                {
+                    minimapTimer+=Time.unscaledDeltaTime;
+                    if(minimapTimer>.45f)
+                    {
+                        minimapTimer=0f;
+                        var w=game.Session.World;
+                        var ppos=game.PlayerWorldPos;
+                        RealmFeaturesAndMarket.RenderMinimap(minimapTex,w.Seed,w.Dimension,ppos,game.PlayerYaw,RealmFeaturesAndMarket.LoadWaypoints(w.Seed));
+                        if(minimapCoords)minimapCoords.text=$"{Mathf.RoundToInt(ppos.x)}, {Mathf.RoundToInt(ppos.y)}, {Mathf.RoundToInt(ppos.z)}  ·  [B]";
+                    }
+                }
+            }
             if(game.Session)
             {
                 float progress=game.Session.MiningProgress;miningBar.rectTransform.sizeDelta=new Vector2(150*progress,4);miningLabel.text=progress>.01f?$"{progress*100:0}%":"";
@@ -818,7 +904,7 @@ namespace LestingCraft.Presentation
                 else objectiveHUD.text="";
             }
         }
-        void OnDestroy(){if(rounded)Destroy(rounded);}
+        void OnDestroy(){if(rounded)Destroy(rounded);if(minimapTex)Destroy(minimapTex);}
         int achievementPage;bool achievementOnlyEarned;
         int authTab; // 0=login, 1=register, 2=recover
         int accountRightTab; // 0=showcase & stats, 1=security

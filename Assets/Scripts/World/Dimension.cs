@@ -18,6 +18,7 @@ namespace LestingCraft.World
         Somnia = 12,
         Dream = 13,
         Radia = 14,
-        Backrooms = 15
+        Backrooms = 15,
+        Inferno = 16
     }
 }
