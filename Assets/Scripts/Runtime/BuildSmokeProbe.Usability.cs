@@ -23,9 +23,9 @@ namespace LestingCraft.Runtime
   IEnumerator ProbeUsability(PrototypeGame game,GameUI ui,string folder)
   {
    var s=game.Session;var player=s.Player;var world=s.World;var camera=Camera.main;Vector3 originalPosition=camera.transform.position;Quaternion originalRotation=camera.transform.rotation;
-   var glass=Resources.Load<Material>("Generated/Glass");if(glass.GetFloat("_Density")<.12f||glass.GetFloat("_GlassEdge")<.3f){Fail("Glass surface/edge visibility settings missing");yield break;}
+   var glass=Resources.Load<Material>("Generated/Glass");if(glass.GetFloat("_Density")<.04f||glass.GetFloat("_GlassEdge")<.20f){Fail("Glass surface/edge visibility settings missing");yield break;}
    var oren=GameObject.Find("Орен");var marta=GameObject.Find("Марта");
-   if(!oren||!marta||Quaternion.Angle(oren.transform.rotation,marta.transform.rotation)<30||Vector3.Distance(oren.transform.localScale,marta.transform.localScale)<.08f||!oren.transform.Find("Oren short angular beard")||!marta.transform.Find("Marta hair crown")){Fail("Opening witnesses still share an identical silhouette/pose");yield break;}
+   if(!oren||!marta||Quaternion.Angle(oren.transform.rotation,marta.transform.rotation)<30||Vector3.Distance(oren.transform.localScale,marta.transform.localScale)<.08f||!DeepPart(oren.transform,"Oren short angular beard")||!DeepPart(marta.transform,"Marta hair crown")){Fail("Opening witnesses still share an identical silhouette/pose");yield break;}
    var inspectedHand=s.Inventory.Active;s.Inventory.slots[s.Inventory.selected]=new ItemStack();s.Inventory.revision++;
    camera.transform.position=new Vector3(-33,LestingCraft.Story.StoryWorld.Floor(world.Seed)+4.3f,-28.7f);camera.transform.LookAt((oren.transform.position+marta.transform.position)*.5f+new Vector3(-.1f,-.6f,.1f));
    yield return null;

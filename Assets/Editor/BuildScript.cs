@@ -45,6 +45,7 @@ public static class BuildScript
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
+        PlayerSettings.Android.bundleVersionCode = 80;
         PlayerSettings.Android.useCustomKeystore = false; // Temporary Unity debug signing; no private keystore is stored in CI.
         EditorUserBuildSettings.buildAppBundle = false;
         Build(BuildTarget.Android, "Builds/Android/LestingCraft-Android-arm64.apk");
@@ -69,14 +70,23 @@ public static class BuildScript
         if(LestingCraft.Gameplay.GameRules.Version!=14)throw new InvalidOperationException("Expected rules14 era-v9 build");
         PlayerSettings.companyName = "LestingCraft";
         PlayerSettings.productName = "LestingCraft New Era";
-        // Developer playtest build from the space branch; not a public release until Unity smoke passes.
-        PlayerSettings.bundleVersion = "0.5.2-era-v9";
+        PlayerSettings.bundleVersion = "0.8.0";
         PlayerSettings.colorSpace = ColorSpace.Linear;
         var icon=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Brand/AppIcon.png");
         if(!icon)throw new InvalidOperationException("Application icon missing");
         var sizes=PlayerSettings.GetIconSizes(UnityEditor.Build.NamedBuildTarget.Standalone,IconKind.Application);
         if(sizes!=null&&sizes.Length>0)
             PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Standalone,sizes.Select(_=>icon).ToArray(),IconKind.Application);
+        if(target==BuildTarget.Android)
+        {
+            try
+            {
+                var androidSizes=PlayerSettings.GetIconSizes(UnityEditor.Build.NamedBuildTarget.Android,IconKind.Application);
+                if(androidSizes!=null&&androidSizes.Length>0)
+                    PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Android,androidSizes.Select(_=>icon).ToArray(),IconKind.Application);
+            }
+            catch (Exception e) { Debug.LogWarning("BuildScript: Android icon setup warning: " + e.Message); }
+        }
 
         var options = new BuildPlayerOptions
         {

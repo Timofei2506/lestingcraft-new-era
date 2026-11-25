@@ -2148,11 +2148,27 @@ namespace LestingCraft.Runtime
             VisualSettings.Current.Apply();
             GameAudio.Ensure(transform);
             CombatFeedbackOverlay.Ensure(transform);
+            MobileTouchHud.Ensure(this);
             Debug.Log("[Presentation] Interface ready");
+        }
+        public void OpenRealmCodexOverlay()
+        {
+            if(!world||!Session||StoryLocked||Session.Vitals.dead)return;
+            if(ChatOpen)CloseChat();
+            paused=true;
+            SetCursor(false);
+            ui.ShowMarket();
         }
         void SetCursor(bool locked)
         {
             if(StoryLocked)locked=false;
+            if(Application.isMobilePlatform)
+            {
+                Cursor.lockState=CursorLockMode.None;
+                Cursor.visible=false;
+                if(player)player.Active=locked||CockpitMouseMode;
+                return;
+            }
             bool cursorVisible=!locked||CockpitMouseMode;
             Cursor.lockState=cursorVisible?CursorLockMode.None:CursorLockMode.Locked;
             Cursor.visible=cursorVisible;
