@@ -71,10 +71,20 @@ new GridRecipe(150,1,3,140,140,140,0,121,0,0,121,0),new GridRecipe(151,1,3,149,1
             new GridRecipe(192,1,3,80,77,80,140,73,140,85,72,85),                    // Электровоз «ЭР-Воксель» + грузовой вагон
             new GridRecipe(193,1,3,140,0,140,72,73,72,140,145,140),                  // Инженерный квадрокоптер (Дрон)
             new GridRecipe(194,1,3,80,77,80,81,73,81,140,72,140),                    // Шагающий робот «Титан-М»
-            new GridRecipe(195,1,3,0,141,0,140,145,140,0,72,0)                       // Дозиметр «Припять»
+            new GridRecipe(195,1,3,0,141,0,140,145,140,0,72,0),                      // Дозиметр «Припять»
+            // Era v11: Саженцы, цветы для портала в Рай, костная мука и чистая вода
+            new GridRecipe(92,2,2,5,121),                                            // Саженец дуба ×2
+            new GridRecipe(93,2,2,60,121),                                           // Саженец сакуры ×2
+            new GridRecipe(94,2,2,122,113),                                          // Солнечный одуванчик ×2
+            new GridRecipe(95,2,2,122,110),                                          // Алый мак ×2
+            new GridRecipe(96,2,2,122,11),                                           // Небесный василёк ×2
+            new GridRecipe(97,2,1,65),                                               // Лавандовый цветок ×2
+            new GridRecipe(196,3,1,28),                                              // Костная мука ×3 (из известняка)
+            new GridRecipe(7,4,1,63),                                                // Вода ×4 (из ледникового льда)
+            new GridRecipe(7,2,2,14,14)                                              // Вода ×2 (из снега)
         };
-        /// <summary>Room content version needed to craft an output: 9 for 70..89 & 190..195, 8 for 54..69, 7 for stations 49..53, 5 for 48 and 149+, else 0.</summary>
-        public static int RoomVersionFor(int output)=>(output>=70&&output<=89)||(output>=190&&output<=195)?9:output>=54&&output<=69?8:output>=49&&output<=53?7:output>=149||output==48?5:0;
+        /// <summary>Room content version needed to craft an output: 11 for 92..97 & 196, 9 for 70..89 & 190..195, 8 for 54..69, 7 for stations 49..53, 5 for 48 and 149+, else 0.</summary>
+        public static int RoomVersionFor(int output)=>(output>=70&&output<=97)||(output>=190&&output<=196)?9:output>=54&&output<=69?8:output>=49&&output<=53?7:output>=149||output==48?5:0;
         public static GridRecipe Match(ItemStack[] grid,int size)
         {
             if(grid==null||grid.Length!=9||(size!=2&&size!=3))return null;

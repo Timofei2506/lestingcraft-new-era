@@ -36,8 +36,8 @@ namespace LestingCraft.Tests
         [Test]
         public void AllThirtyFourMobSculptsHaveRealisticBlockProportions()
         {
-            Assert.AreEqual(34, AnimalSculpts.SpeciesNames.Length);
-            Assert.AreEqual(34, AnimalSculpts.SpeciesScale.Length);
+            Assert.AreEqual(42, AnimalSculpts.SpeciesNames.Length);
+            Assert.AreEqual(42, AnimalSculpts.SpeciesScale.Length);
 
             // Small critters strictly below 1 block tall
             foreach (int small in new[] { 1, 5, 8, 9, 10, 11, 12, 13, 15, 16, 18, 25, 31, 32 })

@@ -36,6 +36,13 @@ namespace LestingCraft.Gameplay
         public float Height { get { return MaxY - MinY; } }
         public float Width { get { return MaxX - MinX; } }
         public float Depth { get { return MaxZ - MinZ; } }
+        public bool HasPart(string name)
+        {
+            if (Parts == null) return false;
+            for (int i = 0; i < Parts.Length; i++)
+                if (Parts[i].Name == name) return true;
+            return false;
+        }
     }
 
     /// <summary>
@@ -339,6 +346,7 @@ namespace LestingCraft.Gameplay
                 case Dimension.Radia: return RadiaColossus(seed);
                 case Dimension.Backrooms: return BlackBacteria(seed);
                 case Dimension.Inferno: return InfernalArchfiend(seed);
+                case Dimension.Paradise: return SeraphOfEden(seed);
                 default: return Warden(seed, false);
             }
         }
@@ -1237,6 +1245,66 @@ namespace LestingCraft.Gameplay
             return s.Finish("Infernal Archfiend");
         }
 
+        // ---------- 18. Paradise: Six-Winged Marble & Solar-Gold Seraph of Eden ----------
+
+        static SculptData SeraphOfEden(int seed)
+        {
+            var s = new Sculptor(.11f, seed);
+            int marble = s.Pal("alabaster robe", "polished-marble", .86f, .84f, .78f, 0);
+            int gold = s.Pal("gilded trim", "ore-gold", .92f, .74f, .26f, 0);
+            int azure = s.Pal("aether sash", "crystal", .38f, .78f, .98f, .6f);
+            int sunCore = s.Pal("seraphic sun", "cherenkov-crystal", 1.00f, .95f, .68f, 2.6f);
+            int shadow = s.Pal("fluted shadow", "limestone", .58f, .55f, .48f, 0);
+
+            ArchonRobe(s, marble, gold, 4.35f, 1.28f);
+            s.Part("body", 0, 2.80f, 0);
+            s.Ellipsoid(0, 3.72f, 0, .72f, .96f, .52f, marble);
+            s.Ellipsoid(0, 3.85f, .38f, .34f, .42f, .20f, sunCore);
+            for (int r = 0; r < 3; r++)
+                s.Ring(0, 3.20f + r * .42f, 0, .66f - r * .05f, .06f, gold);
+
+            // Six celestial wings (3 pairs: upper, middle, lower) under wing_l / wing_r
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wing_l" : "wing_r", side * .74f, 4.15f, -.26f);
+                for (int tier = 0; tier < 3; tier++)
+                {
+                    float wy = 4.55f - tier * .55f;
+                    float span = 2.65f - tier * .32f;
+                    s.Path(new[] { side * .72f, wy, -.26f, side * (span * .62f), wy + .58f - tier * .12f, -.48f, side * span, wy - .18f, -.64f },
+                        new[] { .14f, .11f, .07f }, tier == 0 ? gold : marble);
+                    for (int f = 0; f < 4; f++)
+                        s.Tube(side * (.95f + f * .38f), wy + .34f - f * .08f, -.44f,
+                            side * (1.05f + f * .40f), wy - .62f - f * .06f, -.58f, .085f, .04f, f == 3 ? azure : shadow);
+                }
+            }
+
+            // Sculpted arms wielding a radiant Solar Lance
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * .92f, 4.18f, .06f);
+                s.Ellipsoid(side * .96f, 4.26f, .06f, .28f, .26f, .26f, gold);
+                s.Path(new[] { side * .92f, 4.10f, .08f, side * 1.18f, 3.38f, .34f, side * 1.04f, 2.74f, .68f },
+                    new[] { .20f, .16f, .15f }, marble);
+                if (side > 0)
+                {
+                    s.Tube(1.04f, 1.45f, .68f, 1.04f, 4.95f, .68f, .065f, .055f, gold);
+                    s.Ellipsoid(1.04f, 5.15f, .68f, .14f, .32f, .14f, sunCore);
+                }
+            }
+
+            s.Part("head", 0, 4.78f, .08f);
+            s.Ellipsoid(0, 5.08f, .10f, .36f, .42f, .36f, marble);
+            s.Ellipsoid(-.12f, 5.12f, .42f, .07f, .06f, .05f, sunCore);
+            s.Ellipsoid(.12f, 5.12f, .42f, .07f, .06f, .05f, sunCore);
+            // Blazing Golden Halo Crown
+            s.Ring(0, 5.66f, -.04f, .78f, .065f, gold);
+            s.Ring(0, 5.66f, -.04f, .56f, .045f, sunCore);
+
+            s.Light(0, 4.1f, .8f, 1.0f, .94f, .68f, 18f, 3.2f);
+            return s.Finish("Seraph of Eden");
+        }
+
         // ---------- Extras: Corrupted AI & Void Horror ----------
 
         static SculptData CorruptedAI(int seed)
@@ -1299,38 +1367,109 @@ namespace LestingCraft.Gameplay
             return s.Finish("The Void Horror");
         }
 
-        // ---------- Liminal Backrooms Stalker Mob ----------
+        // ---------- Liminal Backrooms Stalker Mobs (3 Distinct Archetypes!) & Dream Nightmare Watcher ----------
+
+        public static string BackroomsEntityTitle(int seed)
+        {
+            int kind = Math.Abs(seed) % 3;
+            return kind == 1 ? "Улыбающийся (Smiler)" : kind == 2 ? "Кожекрад (Skin-Stealer)" : "Сущность 23 · Бактерия";
+        }
 
         public static SculptData BacteriaMob(int seed)
         {
+            int variant = Math.Abs(seed) % 3;
             var s = new Sculptor(.06f, seed);
             int black = s.Pal("bacteria mass", "wraith-shroud", .08f, .08f, .11f, 0);
             int wire = s.Pal("wire sinew", "obsidian", .22f, .22f, .28f, 0);
-            int face = s.Pal("lure face", "bone-stalker-hide", .78f, .82f, .92f, .85f);
-            int eye = s.Pal("lure eye", "glow-shroom", .58f, .68f, .88f, 2.1f);
+            int pale = s.Pal("gaunt flesh", "bone-stalker-hide", .74f, .72f, .66f, 0);
+            int face = s.Pal("lure face", "bone-stalker-hide", .84f, .88f, .96f, .95f);
+            int eye = s.Pal("lure eye", "glow-shroom", variant == 1 ? 1.0f : .62f, variant == 1 ? .94f : .74f, .88f, 2.4f);
+
+            int bodyMat = variant == 2 ? pale : black;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "leg_l" : "leg_r", side * .17f, .64f, 0);
+                s.Path(new[] { side * .17f, .64f, 0f, side * .22f, .34f, variant == 2 ? -.06f : .05f, side * .22f, .06f, .14f },
+                    new[] { .088f, .068f, .092f }, bodyMat);
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * .35f, 1.08f, .04f);
+                s.Path(new[] { side * .35f, 1.08f, .04f, side * .43f, .58f, .12f, side * .40f, .18f, .22f },
+                    new[] { .078f, .058f, .048f }, bodyMat);
+                for (int f = -1; f <= 1; f++)
+                    s.Tube(side * .40f, .18f, .22f, side * (.42f + f * .035f), .04f, .32f + f * .05f, .035f, .022f, wire);
+            }
+
+            s.Part("body", 0, 0, 0);
+            s.Path(new[] { 0f, .58f, 0f, 0f, .88f, -.03f, 0f, 1.18f, .03f }, new[] { .23f, .19f, .22f }, bodyMat);
+            for (int r = 0; r < 3; r++)
+                s.Ring(0, .68f + r * .18f, 0, .22f, .036f, variant == 2 ? black : wire);
+            if (variant == 0)
+            {
+                // Bacteria dorsal wire loops
+                s.Tube(-.14f, 1.12f, -.08f, -.32f, 1.48f, -.22f, .042f, .025f, wire);
+                s.Tube(.14f, 1.12f, -.08f, .34f, 1.52f, -.20f, .042f, .025f, wire);
+            }
+
+            s.Part("head", 0, 1.30f, .02f);
+            if (variant == 1)
+            {
+                // Smiler: wide pitch-black cowl with piercing eyes & luminous fanged grin
+                s.Ellipsoid(0, 1.46f, .04f, .32f, .30f, .28f, black);
+                s.Ellipsoid(-.11f, 1.52f, .29f, .055f, .045f, .035f, eye);
+                s.Ellipsoid(.11f, 1.52f, .29f, .055f, .045f, .035f, eye);
+                for (int t = -3; t <= 3; t++)
+                    s.Ellipsoid(t * .048f, 1.37f + Math.Abs(t) * .014f, .29f, .028f, .042f, .03f, eye);
+            }
+            else if (variant == 2)
+            {
+                // Skin-Stealer: elongated gaunt skull, hollow sockets, hunched neck
+                s.Ellipsoid(0, 1.48f, .06f, .22f, .31f, .24f, pale);
+                s.Ellipsoid(-.08f, 1.52f, .26f, .045f, .055f, .035f, black);
+                s.Ellipsoid(.08f, 1.52f, .26f, .045f, .055f, .035f, black);
+                s.Ellipsoid(-.08f, 1.52f, .28f, .025f, .025f, .025f, eye);
+                s.Ellipsoid(.08f, 1.52f, .28f, .025f, .025f, .025f, eye);
+                s.Box(0, 1.35f, .25f, .08f, .045f, .03f, black);
+            }
+            else
+            {
+                // Classic Entity 23 Bacteria tripod-loop skull
+                s.Ellipsoid(0, 1.44f, .02f, .26f, .30f, .24f, black);
+                s.Ring(0, 1.62f, .04f, .18f, .035f, wire);
+                s.Ellipsoid(0, 1.42f, .22f, .16f, .20f, .06f, face);
+                s.Eyes(0, 1.47f, .26f, .08f, .04f, face, eye, face);
+            }
+            s.Light(0, 1.42f, .42f, .68f, .76f, .92f, 5.5f, 1.15f);
+            return s.Finish(BackroomsEntityTitle(seed));
+        }
+
+        public static SculptData DreamWatcher(int seed = 1313)
+        {
+            var s = new Sculptor(.065f, seed);
+            int shadow = s.Pal("nightmare shadow", "wraith-shroud", .03f, .025f, .05f, 0);
+            int rib = s.Pal("gaunt rib", "obsidian", .10f, .08f, .14f, 0);
+            int eye = s.Pal("paralysis eye", "cherenkov-crystal", .95f, .96f, 1.0f, 2.8f);
 
             for (int side = -1; side <= 1; side += 2)
             {
-                s.Part(side < 0 ? "leg_l" : "leg_r", side * .16f, .62f, 0);
-                s.Path(new[] { side * .16f, .62f, 0f, side * .20f, .32f, .04f, side * .22f, .06f, .14f },
-                    new[] { .085f, .065f, .09f }, black);
-                s.Part(side < 0 ? "arm_l" : "arm_r", side * .34f, 1.06f, .04f);
-                s.Path(new[] { side * .34f, 1.06f, .04f, side * .40f, .58f, .10f, side * .38f, .20f, .18f },
-                    new[] { .075f, .055f, .045f }, black);
-                for (int f = -1; f <= 1; f++)
-                    s.Tube(side * .38f, .20f, .18f, side * (.40f + f * .03f), .04f, .28f + f * .05f, .035f, .022f, wire);
+                s.Part(side < 0 ? "leg_l" : "leg_r", side * .18f, 1.05f, 0);
+                s.Path(new[] { side * .18f, 1.05f, 0f, side * .22f, .52f, -.05f, side * .20f, .06f, .08f },
+                    new[] { .095f, .075f, .085f }, shadow);
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * .42f, 2.08f, .04f);
+                s.Path(new[] { side * .42f, 2.08f, .04f, side * .50f, 1.32f, .12f, side * .46f, .58f, .22f },
+                    new[] { .085f, .065f, .052f }, shadow);
+                for (int c = -1; c <= 1; c++)
+                    s.Tube(side * .46f, .58f, .22f, side * (.48f + c * .04f), .34f, .32f, .032f, .018f, rib);
             }
             s.Part("body", 0, 0, 0);
-            s.Path(new[] { 0f, .58f, 0f, 0f, .86f, -.02f, 0f, 1.14f, .02f }, new[] { .22f, .19f, .21f }, black);
-            for (int r = 0; r < 3; r++)
-                s.Ring(0, .66f + r * .18f, 0, .22f, .035f, wire);
+            s.Path(new[] { 0f, 1.02f, 0f, 0f, 1.58f, -.06f, 0f, 2.16f, .04f }, new[] { .22f, .25f, .32f }, shadow);
+            for (int r = 0; r < 4; r++)
+                s.Ring(0, 1.32f + r * .20f, .02f, .25f, .035f, rib);
 
-            s.Part("head", 0, 1.28f, .02f);
-            s.Ellipsoid(0, 1.42f, .02f, .26f, .30f, .24f, black);
-            s.Ellipsoid(0, 1.40f, .22f, .16f, .20f, .06f, face);
-            s.Eyes(0, 1.45f, .26f, .08f, .04f, face, eye, face);
-            s.Light(0, 1.4f, .42f, .62f, .72f, .90f, 5f, 1.1f);
-            return s.Finish("Entity 23");
+            s.Part("head", 0, 2.28f, .06f);
+            s.Ellipsoid(0, 2.54f, .08f, .22f, .30f, .22f, shadow);
+            s.Ellipsoid(-.085f, 2.58f, .28f, .045f, .032f, .03f, eye);
+            s.Ellipsoid(.085f, 2.58f, .28f, .045f, .032f, .03f, eye);
+            s.Light(0, 2.35f, .55f, .58f, .34f, .82f, 12f, 1.6f);
+            return s.Finish("Dream Shadow Watcher");
         }
 
         // ---------- 7 Aerospace & Ground Drones ----------

@@ -107,6 +107,36 @@ class CheckUltraWildlifeCore
         Assert(predatorAttacks > 0, "Predator species (Wolf/Bear/Lynx) attacks nearby player");
         assertions++;
 
-        Console.WriteLine("PASS: " + assertions + " ultra-wildlife assertions across all 12 species (0..11), legacy gate, soaring eagle, predator aggro, and 72 PBR surface layers.");
+        // 5. Verify Inferno (species 34..37) and Paradise (species 38..41) dimension fauna habitats & stats
+        Assert(WildlifeSimulation.SpeciesCount == 42, "Expected 42 species, got " + WildlifeSimulation.SpeciesCount);
+        assertions++;
+
+        var infernoSim = new WildlifeSimulation(2506, null, 11);
+        infernoSim.SurfaceAt = (x, z) => -16;
+        for (int ring = -240; ring <= 240; ring += 48)
+            infernoSim.Spawn(new AnimalObserver { id = "p1", x = ring, y = 46, z = ring, alive = true }, flatGround);
+        Assert(infernoSim.Animals.Count > 0, "Inferno habitat must spawn Hell fauna");
+        assertions++;
+        foreach (var a in infernoSim.Animals)
+        {
+            Assert(a.species >= 34 && a.species <= 37, "Inferno spawned non-Inferno species " + a.species);
+            Assert(WildlifeSimulation.IsInfernoBeast(a.species) && WildlifeSimulation.IsAggressive(a.species), "Inferno beast must be aggressive");
+            assertions++;
+        }
+
+        var paradiseSim = new WildlifeSimulation(2506, null, 11);
+        paradiseSim.SurfaceAt = (x, z) => -17;
+        for (int ring = -240; ring <= 240; ring += 48)
+            paradiseSim.Spawn(new AnimalObserver { id = "p1", x = ring, y = 46, z = -ring, alive = true }, flatGround);
+        Assert(paradiseSim.Animals.Count > 0, "Paradise habitat must spawn Eden fauna");
+        assertions++;
+        foreach (var a in paradiseSim.Animals)
+        {
+            Assert(a.species >= 38 && a.species <= 41, "Paradise spawned non-Paradise species " + a.species);
+            Assert(WildlifeSimulation.IsParadiseCreature(a.species) && !WildlifeSimulation.IsAggressive(a.species), "Paradise fauna must be peaceful");
+            assertions++;
+        }
+
+        Console.WriteLine("PASS: " + assertions + " ultra-wildlife assertions across all 42 species (0..41), Inferno & Paradise habitats, legacy gate, soaring flyers, predator aggro, and 114 PBR surface layers.");
     }
 }

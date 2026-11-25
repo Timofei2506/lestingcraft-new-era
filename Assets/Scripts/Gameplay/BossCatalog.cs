@@ -113,6 +113,7 @@ namespace LestingCraft.Gameplay
                 case Dimension.Dream: return new[] { For(DroneKind.Combat), For(DroneKind.Guard) };
                 case Dimension.Radia: return new[] { For(DroneKind.Heavy), For(DroneKind.Ground) };
                 case Dimension.Inferno: return new[] { For(DroneKind.Heavy), For(DroneKind.Combat) };
+                case Dimension.Paradise: return new[] { For(DroneKind.Guard), For(DroneKind.Repair) };
                 default: return new[] { For(DroneKind.Guard), For(DroneKind.Scout) };
             }
         }
@@ -155,7 +156,9 @@ namespace LestingCraft.Gameplay
             new BossProfile(Dimension.Backrooms, "The Black Bacteria", "\u0421\u0443\u0449\u043d\u043e\u0441\u0442\u044c 23", BossArchetype.Warden,
                 420, .12f, .12f, .14f, .50f, .50f, .55f, .75f, .80f, .95f, 1.02f, 6, 9, 13, 5),
             new BossProfile(Dimension.Inferno, "Infernal Archfiend", "Владыка Преисподней", BossArchetype.Colossus,
-                480, .18f, .10f, .10f, .86f, .28f, .12f, 1.00f, .48f, .12f, 1.18f, 9, 14, 15, 3)
+                480, .18f, .10f, .10f, .86f, .28f, .12f, 1.00f, .48f, .12f, 1.18f, 9, 14, 15, 3),
+            new BossProfile(Dimension.Paradise, "Seraph of Eden", "Серафим Эдема", BossArchetype.Archon,
+                460, .48f, .45f, .36f, .92f, .78f, .32f, 1.00f, .96f, .72f, 1.12f, 10, 14, 12, 4)
         };
 
         /// <summary>Earth carries three canon bosses (bible): extras spawn alongside the guardian.</summary>

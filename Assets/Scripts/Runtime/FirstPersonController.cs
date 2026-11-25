@@ -34,6 +34,23 @@ namespace LestingCraft.Runtime
         float eyeOffsetCurrent = PlayerCapsule.EyeHeight;
         float landDip, stepAccum, bobPhase;
 
+        public bool CreativeFlyActive {get;set;}
+        float lastSpaceTapUnscaled = -10f;
+        Vector3 flyVelocity;
+
+        public bool ToggleCreativeFlight()
+        {
+            if(!Game||!Game.Session||!Game.Session.Creative)
+            {
+                CreativeFlyActive=false;
+                return false;
+            }
+            CreativeFlyActive=!CreativeFlyActive;
+            vertical=0f;
+            flyVelocity=Vector3.zero;
+            return CreativeFlyActive;
+        }
+
         public static bool HasFootSupport(float x, float z, int supportY, float r, Func<int, int, int, ushort> getBlock)
         {
             for (int sx = -1; sx <= 1; sx += 2)
@@ -223,6 +240,53 @@ namespace LestingCraft.Runtime
                 return;
             }
 
+            // === CREATIVE FLIGHT (double-tap Space or /fly in Creative mode) ===
+            bool isCreative=Game.Session!=null&&Game.Session.Creative;
+            if(!isCreative&&CreativeFlyActive){CreativeFlyActive=false;vertical=0f;flyVelocity=Vector3.zero;}
+            if(isCreative&&keyboard.spaceKey.wasPressedThisFrame)
+            {
+                float nowTap=Time.unscaledTime;
+                if(nowTap-lastSpaceTapUnscaled<=0.34f)
+                {
+                    ToggleCreativeFlight();
+                    lastSpaceTapUnscaled=-10f;
+                    Game.Session.Notice=CreativeFlyActive?"🕊 Полёт включён! [Пробел] — вверх · [Ctrl / C] — вниз · [Shift] — ускорение":"Полёт выключен";
+                }
+                else lastSpaceTapUnscaled=nowTap;
+            }
+            if(CreativeFlyActive&&isCreative)
+            {
+                bool flyFast=keyboard.leftShiftKey.isPressed;
+                bool flyUp=keyboard.spaceKey.isPressed;
+                bool flyDown=keyboard.leftCtrlKey.isPressed||keyboard.rightCtrlKey.isPressed||keyboard.cKey.isPressed;
+                Sprinting=flyFast&&move.sqrMagnitude>0f;
+                Crouching=false;
+                float horizSpeed=flyFast?18.5f:10.5f;
+                float vertSpeed=flyFast?13.5f:8.5f;
+                Vector3 wishHoriz=(transform.right*move.x+transform.forward*move.y)*horizSpeed;
+                flyVelocity=Vector3.MoveTowards(flyVelocity,wishHoriz,Time.deltaTime*64f);
+                float vy=(flyUp?vertSpeed:0f)-(flyDown?vertSpeed:0f);
+                Vector3 flyTarget=transform.position+flyVelocity*Time.deltaTime;
+                if(!Game.DockedAtOrbitalStation&&(!World.Loaded(flyTarget)||!World.Contains(Mathf.FloorToInt(flyTarget.x),1,Mathf.FloorToInt(flyTarget.z))))
+                    flyVelocity=Vector3.zero;
+                controller.Move((flyVelocity+Vector3.up*vy+impulse)*Time.deltaTime);
+                impulse=Vector3.MoveTowards(impulse,Vector3.zero,Time.deltaTime*15f);
+                vertical=0f;
+                if(flyDown&&controller.isGrounded)
+                {
+                    CreativeFlyActive=false;
+                    flyVelocity=Vector3.zero;
+                }
+                if(Camera)
+                {
+                    eyeOffsetCurrent=Mathf.Lerp(eyeOffsetCurrent,PlayerCapsule.EyeHeight,1f-Mathf.Exp(-Time.deltaTime*14f));
+                    Camera.transform.localPosition=new Vector3(0f,eyeOffsetCurrent,0f);
+                    if(VisualSettings.Current!=null)
+                        Camera.fieldOfView=Mathf.Lerp(Camera.fieldOfView,VisualSettings.Current.FieldOfView+(Sprinting?7.5f:0f),1f-Mathf.Exp(-Time.deltaTime*10f));
+                }
+            }
+            else
+            {
             bool swimming=!Game.DockedAtOrbitalStation&&World.InFluid(transform.position+Vector3.up*.8f,7);
             if(swimming&&!wasSwimming)GameAudio.PlayLand(6f,true);
             wasSwimming=swimming;
@@ -314,6 +378,7 @@ namespace LestingCraft.Runtime
             }
             float safeImpact=11f/Mathf.Sqrt(grav);
             if(!groundedBefore&&controller.isGrounded&&impact< -safeImpact&&Game.Session){float hurt=(-impact-safeImpact)*1.5f*grav;Game.Session.DamagePart(hurt,BodyPart.LeftLeg);Game.Session.DamagePart(hurt,BodyPart.RightLeg);}
+            }
             if(!Game.DockedAtOrbitalStation&&!Game.InMoonFlight&&(transform.position.y<1||transform.position.y>250)){if(Game.Session)Game.Session.Damage(10000);controller.enabled=false;transform.position=spawn;controller.enabled=true;vertical=0;}
             if(!Game.Session||Game.DockedAtOrbitalStation)return;
 
@@ -321,7 +386,7 @@ namespace LestingCraft.Runtime
             for(int i=0;i<keys.Length;i++)if(keys[i].wasPressedThisFrame)Game.Session.Inventory.selected=i;
             if(keyboard.hKey.wasPressedThisFrame){var inv=Game.Session.Inventory;if(inv.Count(Items.Fiber)>=3&&Game.Session.Vitals.Treat()){inv.Remove(Items.Fiber,3);GameAudio.PlayHealOrEat();Game.Session.Notice="Повязка: восстановлено 22 HP";Game.Session.Checkpoint();}else Game.Session.Notice="Для повязки нужны 3 волокна и повреждение";}
             if(keyboard.gKey.wasPressedThisFrame&&!Game.Session.Inventory.ToggleOffhand())Game.Session.Notice="G · выберите факел на хотбаре; для снятия нужно место в сумке";
-            if(keyboard.qKey.wasPressedThisFrame)Game.Session.Living.DropActive();
+            if(keyboard.qKey.wasPressedThisFrame){if(!Game.TryThrowActiveIntoPortalWell())Game.Session.Living.DropActive();}
             if(Game.Session.Living.Pending){Game.Session.ResetMining();return;}
             if(mouse.leftButton.wasPressedThisFrame&&Weapons.Has(Game.Session.Inventory.Active.item)&&Game.Session.Inventory.Active.item!=164)
             {
@@ -346,6 +411,7 @@ namespace LestingCraft.Runtime
             {
                 Game.Session.ResetMining();
                 if(Game.TryUseIndustrialItemOrBlock(HasTarget,target.Cell,target.Adjacent))return;
+                if(Game.TryUsePortalRitualItem(HasTarget,target.Cell,target.Adjacent,new Ray(Camera.transform.position,Camera.transform.forward)))return;
                 if(!keyboard.leftShiftKey.isPressed&&HasTarget)
                 {
                     int station=World.GetBlock(target.Cell.x,target.Cell.y,target.Cell.z);

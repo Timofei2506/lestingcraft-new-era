@@ -153,42 +153,14 @@ namespace LestingCraft.Presentation
     return;
    }
 
-   int fur = System.Array.IndexOf(SurfaceLayers.Names, "cat-fur"), pale = 55;
-   var body = new AnimalVisual.Part();
-   body.Box(new Vector3(0, .31f, 0), new Vector3(.27f, .28f, .56f), Color.white, fur);
-   body.Box(new Vector3(0, .20f, .08f), new Vector3(.19f, .08f, .38f), Color.white, pale);
-   body.Build("Tabby fur and chest", transform, Vector3.zero);
-   var h = new AnimalVisual.Part();
-   h.Box(Vector3.zero, new Vector3(.28f, .24f, .25f), Color.white, fur);
-   h.Box(new Vector3(0, -.065f, .145f), new Vector3(.19f, .095f, .095f), Color.white, pale);
-   h.Box(new Vector3(0, -.022f, .202f), new Vector3(.044f, .026f, .016f), new Color(.78f, .46f, .44f), pale);
-   for (int side = -1; side <= 1; side += 2)
-   {
-    h.Box(new Vector3(side * .10f, .155f, 0), new Vector3(.075f, .14f, .085f), Color.white, fur);
-    h.Box(new Vector3(side * .10f, .16f, .044f), new Vector3(.04f, .09f, .012f), new Color(.86f, .62f, .60f), pale);
-    h.Box(new Vector3(side * .076f, .025f, .128f), new Vector3(.062f, .048f, .016f), new Color(.48f, .74f, .30f), pale);
-    h.Box(new Vector3(side * .076f, .025f, .139f), new Vector3(.016f, .038f, .012f), Color.black, pale);
-    for (int i = 0; i < 3; i++)
-     h.Box(new Vector3(side * .155f, -.044f - i * .016f, .165f), new Vector3(.16f, .006f, .006f), new Color(.84f, .84f, .80f), pale);
-   }
-   head = h.Build("Square head, ears, whiskers and eyes", transform, new Vector3(0, .47f, .29f)).transform;
+   int catSeed = string.IsNullOrEmpty(actorId) ? 707 + job * 31 : actorId.GetHashCode();
+   BossSculpture catBuilt = BossSculpture.Build(transform, AnimalSculpts.DomesticCat(catSeed), BossSculpture.SharedVoxelMaterial());
+   head = catBuilt.FindPart("head");
+   tail = catBuilt.FindPart("tail");
    for (int i = 0; i < 4; i++)
    {
-    var p = new AnimalVisual.Part();
-    p.Box(new Vector3(0, -.10f, 0), new Vector3(.082f, .21f, .092f), Color.white, fur);
-    p.Box(new Vector3(0, -.19f, .024f), new Vector3(.088f, .058f, .135f), Color.white, pale);
-    legs.Add(p.Build("Cat paw " + i, transform, new Vector3(i % 2 == 0 ? -.098f : .098f, .24f, i < 2 ? -.195f : .195f)).transform);
-   }
-   tail = new GameObject("Articulated voxel tail").transform;
-   tail.SetParent(transform, false);
-   tail.localPosition = new Vector3(0, .40f, -.27f);
-   Transform joint = tail;
-   for (int i = 0; i < 5; i++)
-   {
-    var p = new AnimalVisual.Part();
-    p.Box(new Vector3(0, 0, -.055f), new Vector3(.055f - i * .005f, .055f - i * .005f, .13f), Color.white, fur);
-    joint = p.Build("Tail joint " + i, joint, i == 0 ? Vector3.zero : new Vector3(0, 0, -.11f)).transform;
-    joint.localRotation = Quaternion.Euler(-12, 0, 0);
+    Transform limb = catBuilt.FindPart("leg" + i);
+    if (limb) legs.Add(limb);
    }
   }
 
@@ -204,9 +176,10 @@ namespace LestingCraft.Presentation
    previous = transform.position;
    phase += dt * speed * 8;
    for (int i = 0; i < legs.Count; i++)
-    legs[i].localRotation = Quaternion.Euler(a.sitting ? (i < 2 ? -70 : 0) : Mathf.Sin(phase + (i == 0 || i == 3 ? 0 : Mathf.PI)) * Mathf.Min(35, speed * 15), 0, 0);
-   tail.localRotation = Quaternion.Euler(a.sitting ? -55 : -10, Mathf.Sin(Time.time * 1.6f) * 18, 0);
-   head.localRotation = Quaternion.Euler(a.sitting ? 8 : 0, Mathf.Sin(Time.time * .6f) * 7, 0);
+    if (legs[i])
+     legs[i].localRotation = Quaternion.Euler(a.sitting ? (i < 2 ? -65 : -12) : Mathf.Sin(phase + (i == 0 || i == 3 ? 0 : Mathf.PI)) * Mathf.Min(35, speed * 15), 0, 0);
+   if (tail) tail.localRotation = Quaternion.Euler(a.sitting ? -48 : -10 + Mathf.Sin(Time.time * 2.2f) * 6f, Mathf.Sin(Time.time * 1.6f) * 20, 0);
+   if (head) head.localRotation = Quaternion.Euler(a.sitting ? 8 : Mathf.Sin(Time.time * 1.1f) * 4f, Mathf.Sin(Time.time * .75f) * 14, 0);
   }
 
   void LateUpdate()

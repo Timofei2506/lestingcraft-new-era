@@ -6,12 +6,31 @@ namespace LestingCraft.Gameplay
  {public readonly string Action,Message;public readonly int Value;public CommandResult(string message,string action="",int value=0){Message=message;Action=action;Value=value;}}
  public static class ChatCommands
  {
+  public static bool TryParseGameModeArg(string raw,out GameMode mode,out string label)
+  {
+   string s=(raw??"").Trim().ToLowerInvariant();
+   if(s=="0"||s=="s"||s=="survival"||s=="выживание"){mode=GameMode.Survival;label="Выживание";return true;}
+   if(s=="1"||s=="c"||s=="creative"||s=="креатив"||s=="творчество"){mode=GameMode.Creative;label="Творчество";return true;}
+   if(s=="2"||s=="h"||s=="hardcore"||s=="хардкор"){mode=GameMode.Hardcore;label="Хардкор";return true;}
+   if(s=="3"||s=="a"||s=="adventure"||s=="story"||s=="сюжет"||s=="приключение"){mode=GameMode.Story;label="Сюжет";return true;}
+   mode=GameMode.Survival;label="";return false;
+  }
+
   public static CommandResult Execute(string text,bool creative,bool offline,Inventory inv,int seed,Vector3 position,int players)
   {
    var p=(text??"").Trim().Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries);if(p.Length==0)return new CommandResult("Введите /help");
    switch(p[0].ToLowerInvariant())
    {
-    case "/help":return new CommandResult("/help /seed /where /players /sethome /home /wp [имя] /lan /market /hell /overworld /clear /save · creative: /give ID [1..64], /time day|night, /tp X Y Z");
+    case "/help":return new CommandResult("/help /gamemode [0|1|2|3|creative|survival] /fly /seed /where /players /sethome /home /wp [имя] /lan /market /hell /paradise /backrooms /overworld /clear /save · creative: /give ID [1..64], /time day|night, /tp X Y Z");
+    case "/gamemode":
+    case "/gm":
+     if(!offline)return new CommandResult("/gamemode доступна только в локальном мире или для хоста LAN");
+     if(p.Length!=2||!TryParseGameModeArg(p[1],out var targetMode,out var modeLabel))
+      return new CommandResult("Формат: /gamemode creative | survival | hardcore | adventure (или 0..3)");
+     return new CommandResult("Режим игры переключён: «"+modeLabel+"»"+(targetMode==GameMode.Creative?" · Двойной [Пробел] или /fly — полёт!":""),"gamemode",(int)targetMode);
+    case "/fly":
+     if(!offline||!creative)return new CommandResult("/fly доступна только в творческом режиме (/gamemode creative)");
+     return new CommandResult("Переключение полёта в креативе…","fly");
     case "/seed":return new CommandResult("Seed: "+seed);
     case "/where":return new CommandResult($"Координаты: {position.x:F1}, {position.y:F1}, {position.z:F1}");
     case "/players":return new CommandResult("Игроков в мире: "+players);
@@ -28,12 +47,20 @@ namespace LestingCraft.Gameplay
     case "/market":return new CommandResult("Открываю маркетплейс…","market");
     case "/hell":
     case "/inferno":
-     return offline&&(creative)?new CommandResult("Переход в измерение «Ад · Базальтовая Преисподняя»…","inferno")
-      :new CommandResult("В выживании постройте или найдите Обсидиановые Врата Ада (или чертёж [B]) и шагните в арку!");
+     return offline&&creative?new CommandResult("Переход в измерение «Ад · Базальтовая Преисподняя»…","inferno")
+      :new CommandResult("Ритуал Ада: вырастите БЕЗ костной муки 2 дерева на расстоянии 7 блоков, сожгите их — когда они обгорят, сплетётся Арка в Ад!");
+    case "/paradise":
+    case "/rai":
+    case "/рай":
+     return offline&&creative?new CommandResult("Вознесение в измерение «Рай · Небесный Эдем»…","paradise")
+      :new CommandResult("Ритуал Рая: выкопайте яму 2×2 глубиной 5 блоков, залейте водой, расставьте вокруг любые цветы, бросьте алмаз [Q] и прыгайте туда!");
+    case "/backrooms":
+     return offline&&creative?new CommandResult("Провал сквозь реальность в «Закулисье» (Backrooms)…","backrooms")
+      :new CommandResult("В Закулисье можно провалиться во сне или при полном истощении");
     case "/overworld":
     case "/earth":
      return offline&&creative?new CommandResult("Возвращение в Лестингию…","overworld")
-      :new CommandResult("Встаньте в светящуюся обсидиановую арку возврата, чтобы покинуть Преисподнюю");
+      :new CommandResult("Встаньте в светящиеся врата / фонтан возврата, чтобы вернуться в Лестингию");
     case "/tp":
      if(!creative||!offline)return new CommandResult("/tp разрешена только в локальном творческом режиме");
      float tx=0,ty=0,tz=0;

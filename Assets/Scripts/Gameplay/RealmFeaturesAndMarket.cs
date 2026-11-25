@@ -94,7 +94,8 @@ namespace LestingCraft.Gameplay
             new ResourceTradeOffer("buy_marble", "Античный мрамор ×32", "Белоснежный полированный мрамор для дворцов", 42, 32, 60, false),
             new ResourceTradeOffer("buy_pickaxe", "Алмазная кирка мастера", "Мгновенно раскалывает базальт, руду и обсидиан", 150, 1, 140, false),
             new ResourceTradeOffer("buy_blade", "Алмазный клинок стража", "Мощное оружие против боссов и тварей Ада", 152, 1, 155, false),
-            new ResourceTradeOffer("buy_hellkit", "Набор Врат Преисподней ×16", "Монолит обсидиана для постройки портала в Ад", BlockRegistry.DreamMonolithId, 16, 110, false),
+            new ResourceTradeOffer("buy_ritual_saplings", "Набор ритуальных саженцев ×8", "Вырастите 2 дуба без костной муки в 7 блоках и сожгите их для Арки в Ад!", BlockRegistry.OakSaplingId, 8, 55, false),
+            new ResourceTradeOffer("buy_eden_flowers", "Букет цветов Эдема ×12", "Расставьте вокруг колодца 2×2×5 с водой и бросьте алмаз для входа в Рай!", BlockRegistry.PoppyBlockId, 12, 50, false),
             new ResourceTradeOffer("buy_rails", "Комплект стальных рельсов ×24", "Скоростная железная дорога между городами", BlockRegistry.SteelRailId, 24, 85, false)
         };
 
@@ -102,8 +103,8 @@ namespace LestingCraft.Gameplay
         {
             new ArchitectBlueprint("cozy_cottage", "Уютный Дом Путника", "Жильё",
                 "Тёплый фахверковый коттедж 7×7 с черепичной крышей, кроватью, верстаком и фонарём. Открыт сразу бесплатно!", 0, 7, 7, 7),
-            new ArchitectBlueprint("hellgate_arch", "Обсидиановые Врата Ада", "Портал",
-                "Действующий портал в измерение «Ад · Преисподняя»! Поставьте и шагните в светящуюся арку.", 90, 7, 9, 5),
+            new ArchitectBlueprint("eden_pavilion", "Хрустальная Ротонда Эдема", "Святилище",
+                "Белоснежный мраморный павильон с золотыми колоннами, фонарями и цветущим садом.", 90, 7, 8, 7),
             new ArchitectBlueprint("watchtower", "Сторожевая Башня Зари", "Оборона",
                 "Каменная дозорная башня 5×11×5 с зубцами, смотровой площадкой и сигнальным огнём.", 75, 5, 11, 5),
             new ArchitectBlueprint("smithy_forge", "Кузница и Плавильня", "Ремесло",
@@ -362,31 +363,29 @@ namespace LestingCraft.Gameplay
 
             switch (code)
             {
-                case "hellgate_arch":
+                case "eden_pavilion":
                 {
-                    for (int dz = -2; dz <= 2; dz++)
+                    for (int dz = -3; dz <= 3; dz++)
                         for (int dx = -3; dx <= 3; dx++)
-                            Set(dx, 0, dz, Math.Abs(dx) <= 1 && Math.Abs(dz) <= 1 ? BlockRegistry.MagmaBasaltId : (ushort)29);
-                    // Corner obsidian braziers
+                            Set(dx, 0, dz, Math.Abs(dx) <= 1 && Math.Abs(dz) <= 1 ? BlockRegistry.CrystalId : (ushort)42);
                     foreach (int sx in new[] { -3, 3 })
-                        foreach (int sz in new[] { -2, 2 })
+                        foreach (int sz in new[] { -3, 3 })
                         {
-                            Set(sx, 1, sz, BlockRegistry.DreamMonolithId);
-                            Set(sx, 2, sz, BlockRegistry.CampfireId);
+                            for (int ry = 1; ry <= 5; ry++)
+                                Set(sx, ry, sz, ry == 5 ? (ushort)22 : (ushort)42);
                         }
-                    // Obsidian Portal Arch at dz == 0
-                    for (int ry = 1; ry <= 7; ry++)
-                    {
-                        Set(-2, ry, 0, BlockRegistry.DreamMonolithId);
-                        Set(2, ry, 0, BlockRegistry.DreamMonolithId);
-                    }
-                    for (int dx = -2; dx <= 2; dx++)
-                        Set(dx, 7, 0, dx == 0 ? BlockRegistry.MagmaBasaltId : BlockRegistry.DreamMonolithId);
-                    Set(0, 8, 0, BlockRegistry.LanternBlockId);
-                    // Walkable doorway ry = 1..3 + glowing Soul-Crystal Veil ry = 4..6!
-                    for (int dx = -1; dx <= 1; dx++)
-                        for (int ry = 1; ry <= 6; ry++)
-                            Set(dx, ry, 0, ry >= 4 ? BlockRegistry.AndromedaCrystalId : BlockRegistry.AirId);
+                    for (int dz = -3; dz <= 3; dz++)
+                        for (int dx = -3; dx <= 3; dx++)
+                            if (Math.Abs(dx) >= 2 || Math.Abs(dz) >= 2)
+                                Set(dx, 6, dz, (ushort)42);
+                    for (int dz = -2; dz <= 2; dz++)
+                        for (int dx = -2; dx <= 2; dx++)
+                            Set(dx, 7, dz, dx == 0 && dz == 0 ? BlockRegistry.AndromedaCrystalId : (ushort)30);
+                    Set(0, 5, 0, BlockRegistry.LanternBlockId);
+                    Set(-2, 1, 0, BlockRegistry.DandelionBlockId);
+                    Set(2, 1, 0, BlockRegistry.PoppyBlockId);
+                    Set(0, 1, -2, BlockRegistry.CornflowerBlockId);
+                    Set(0, 1, 2, BlockRegistry.LavenderFlowerId);
                     break;
                 }
 
@@ -543,21 +542,6 @@ namespace LestingCraft.Gameplay
             return count;
         }
 
-        /// <summary>Checks whether block Cell or adjacent portal frame is an active/ignitable Hellgate Portal.</summary>
-        public static bool IsCustomPortalFrameReady(Func<int, int, int, ushort> getBlock, Vector3Int center)
-        {
-            int obsidianOrBasaltCount = 0;
-            for (int dy = -2; dy <= 3; dy++)
-                for (int dz = -2; dz <= 2; dz++)
-                    for (int dx = -2; dx <= 2; dx++)
-                    {
-                        ushort b = getBlock(center.x + dx, center.y + dy, center.z + dz);
-                        if (b == BlockRegistry.DreamMonolithId || b == BlockRegistry.MagmaBasaltId || b == BlockRegistry.BasaltId)
-                            obsidianOrBasaltCount++;
-                    }
-            return obsidianOrBasaltCount >= 8;
-        }
-
         // =====================================================================
         // LIVE VOXEL MINIMAP RENDERER (64x64 TEXTURE)
         // =====================================================================
@@ -593,6 +577,30 @@ namespace LestingCraft.Gameplay
                               : b == 2 ? new Color32((byte)(shade * 3 / 4), (byte)(shade * 2 / 3), (byte)(shade / 2), 235)
                                        : new Color32(shade, (byte)(shade / 2), 28, 235);
                         }
+                    }
+                    else if (dim == Dimension.Paradise)
+                    {
+                        int h = ParadiseTerrain.FloorTop(wx, wz, seed);
+                        if (h <= ParadiseTerrain.SeaLevel)
+                            c = new Color32(72, 214, 245, 238);
+                        else
+                        {
+                            int b = ParadiseTerrain.BiomeAt(wx, wz, seed);
+                            byte v = (byte)Mathf.Clamp(150 + (h - 38) * 3, 140, 248);
+                            c = b == 0 ? new Color32((byte)(v * 48 / 100), v, (byte)(v * 58 / 100), 238)
+                              : b == 1 ? new Color32(v, (byte)(v * 96 / 100), (byte)(v * 84 / 100), 238)
+                              : b == 2 ? new Color32((byte)(v * 82 / 100), (byte)(v * 68 / 100), v, 238)
+                                       : new Color32(v, v, v, 238);
+                        }
+                    }
+                    else if (dim == Dimension.Backrooms)
+                    {
+                        int zZone = BackroomsTerrain.ZoneAt(wx, wz, seed);
+                        c = zZone == 1 ? new Color32(142, 224, 232, 235)
+                          : zZone == 2 ? new Color32(128, 134, 140, 235)
+                          : zZone == 3 ? new Color32(36, 40, 52, 235)
+                          : zZone == 4 ? new Color32(198, 48, 44, 235)
+                                       : new Color32(196, 174, 88, 235);
                     }
                     else if (dim == Dimension.Lestingia)
                     {
@@ -666,6 +674,18 @@ namespace LestingCraft.Gameplay
                 PlotDot(ex, ez, new Color32(216, 74, 255, 255), 2);
                 if (InfernoTerrain.TryGetCitadel(Mathf.FloorToInt(px / 192f), Mathf.FloorToInt(pz / 192f), seed, out int cx, out int cz))
                     PlotDot(cx, cz, new Color32(255, 196, 56, 255), 2);
+            }
+            else if (dim == Dimension.Paradise)
+            {
+                ParadiseTerrain.ExitPortal(px, pz, seed, out int ex, out int ez);
+                PlotDot(ex, ez, new Color32(92, 240, 255, 255), 2);
+                if (ParadiseTerrain.TryGetSanctuary(Mathf.FloorToInt(px / 192f), Mathf.FloorToInt(pz / 192f), seed, out int sx, out int sz))
+                    PlotDot(sx, sz, new Color32(255, 226, 92, 255), 2);
+            }
+            else if (dim == Dimension.Backrooms)
+            {
+                BackroomsTerrain.ExitDoor(px, pz, seed, out int ex, out int ez);
+                PlotDot(ex, ez, new Color32(120, 255, 190, 255), 2);
             }
 
             // Plot saved waypoints in current dimension

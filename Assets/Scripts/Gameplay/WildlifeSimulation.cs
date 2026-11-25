@@ -38,7 +38,7 @@ namespace LestingCraft.Gameplay
 
     public sealed class WildlifeSimulation
     {
-        public const int SpeciesCount = 34;
+        public const int SpeciesCount = 42;
         public const int MaxAnimals = 384, MaxSites = 8192, ActiveLimit = 32, ActiveLimitV8 = 96;
         public readonly List<AnimalState> Animals = new List<AnimalState>();
         readonly HashSet<string> sites = new HashSet<string>();
@@ -59,55 +59,64 @@ namespace LestingCraft.Gameplay
         {
             30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55,
             65, 48, 85, 115, 95, 42, 90, 130, 175, 140,
-            70, 24, 16, 150
+            70, 24, 16, 150,
+            88, 115, 58, 92, 36, 95, 120, 28
         };
         static readonly int[] Meat =
         {
             3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2,
             2, 1, 2, 5, 2, 1, 3, 2, 0, 1,
-            4, 1, 1, 9
+            4, 1, 1, 9,
+            3, 4, 2, 2, 2, 5, 6, 2
         };
         static readonly int[] Hide =
         {
             2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3,
             3, 2, 4, 4, 4, 2, 4, 5, 6, 5,
-            5, 2, 2, 7
+            5, 2, 2, 7,
+            4, 5, 3, 4, 3, 5, 6, 3
         };
         static readonly int[] AttackDamage =
         {
             0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0,
             11, 9, 14, 15, 12, 10, 13, 16, 19, 17,
-            15, 7, 0, 0
+            15, 7, 0, 0,
+            14, 11, 12, 15, 0, 0, 0, 0
         };
         static readonly float[] Heights =
         {
             2.10f, .45f, 1.05f, .96f, 1.72f, .55f, 2.06f, 1.16f, .78f, .40f, .24f, .72f, .57f, .75f, 2.53f, .38f, .34f, 2.78f, .60f, .58f,
             1.35f, .34f, 1.31f, 1.52f, 1.02f, .48f, .58f, 2.73f, 3.14f, 2.70f,
-            1.34f, .74f, .60f, 2.50f
+            1.34f, .74f, .60f, 2.50f,
+            1.38f, 2.25f, .95f, 1.28f, .86f, 2.20f, 2.15f, .68f
         };
         static readonly float[] Radii =
         {
             .34f, .15f, .36f, .26f, .56f, .16f, .64f, .24f, .22f, .22f, .18f, .48f, .28f, .24f, .50f, .26f, .28f, .82f, .26f, 1.25f,
             .36f, .36f, .82f, .54f, .95f, .28f, 1.25f, .58f, 1.12f, .65f,
-            .32f, .70f, .42f, 2.10f
+            .32f, .70f, .42f, 2.10f,
+            .38f, .52f, .42f, .78f, .36f, .38f, .48f, .30f
         };
         static readonly float[] Lengths =
         {
             1.65f, .48f, 1.80f, 1.52f, 2.50f, .98f, 2.62f, .98f, .88f, .98f, .38f, .95f, .42f, .46f, 2.79f, .72f, .78f, 2.70f, .97f, 3.45f,
             2.18f, 1.52f, 2.48f, 2.51f, 1.92f, .68f, 3.45f, 1.95f, 1.30f, 1.10f,
-            2.11f, 1.52f, 1.02f, 6.40f
+            2.11f, 1.52f, 1.02f, 6.40f,
+            2.15f, 1.85f, 1.15f, 2.35f, 1.10f, 1.75f, 2.05f, .82f
         };
         static readonly float[] Walk =
         {
             .65f, .75f, .65f, 1.15f, .65f, 1.25f, .55f, .9f, 1.05f, .55f, .5f, 2.8f, 2.4f, .62f, .72f, .95f, .35f, .60f, .58f, 2.6f,
             1.45f, 1.15f, 1.10f, 1.05f, .85f, 2.9f, 2.7f, 1.35f, .75f, 1.55f,
-            1.40f, 1.55f, .45f, .55f
+            1.40f, 1.55f, .45f, .55f,
+            1.55f, 1.05f, 2.85f, 1.15f, 2.15f, .95f, 2.65f, 2.75f
         };
         static readonly float[] Run =
         {
             3.8f, 4.2f, 3.8f, 4.6f, 3.3f, 4.8f, 3.4f, 3.6f, 4.4f, 2.1f, 2.7f, 4.5f, 4.1f, 2.4f, 3.5f, 3.6f, 1.2f, 3.9f, 2.8f, 4.6f,
             5.4f, 4.2f, 4.4f, 4.9f, 3.4f, 5.6f, 5.1f, 5.5f, 3.5f, 5.8f,
-            5.9f, 4.6f, 1.4f, 2.6f
+            5.9f, 4.6f, 1.4f, 2.6f,
+            5.8f, 3.8f, 5.4f, 4.5f, 4.2f, 4.6f, 5.2f, 4.8f
         };
 
         static readonly int[][] HabitatSpeciesV7 =
@@ -145,8 +154,10 @@ namespace LestingCraft.Gameplay
             new[] { 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 }
         };
 
-        public static bool IsFlyer(int s) { return s == 11 || s == 12 || s == 19 || s == 25 || s == 26 || s == 33; }
-        public static bool IsRadiaMutant(int s) { return s >= 20 && s < 30; }
+        public static bool IsFlyer(int s) { return s == 11 || s == 12 || s == 19 || s == 25 || s == 26 || s == 33 || s == 36 || s == 38 || s == 40 || s == 41; }
+        public static bool IsRadiaMutant(int s) { return (s >= 20 && s < 30) || (s >= 34 && s <= 37); }
+        public static bool IsInfernoBeast(int s) { return s >= 34 && s <= 37; }
+        public static bool IsParadiseCreature(int s) { return s >= 38 && s <= 41; }
         public static bool IsAggressive(int s) { return s >= 0 && s < AttackDamage.Length && AttackDamage[s] > 0; }
 
         public WildlifeSimulation(int seed, WildlifeSave saved = null, int contentVersion = 2)
@@ -205,6 +216,8 @@ namespace LestingCraft.Gameplay
 
         public static int Habitat(int surface, int x, int z, int seed)
         {
+            if (surface == -16) return 7; // Dimension.Inferno sentinel
+            if (surface == -17) return 8; // Dimension.Paradise sentinel
             if (surface == 78 || surface == 79 || surface == 80 || surface == 82 || surface == 88 || surface == 89) return 6;
             if (surface == 33 || surface == 34 || surface == 7 || surface == 61) return 4;
             if (surface == 6 || surface == 43 || surface == 62) return 3;
@@ -215,6 +228,10 @@ namespace LestingCraft.Gameplay
 
         public static int SpeciesForHabitat(uint hash, int habitat, int contentVersion = 7)
         {
+            if (habitat == 7 && contentVersion >= 11)
+                return 34 + (int)((hash >> 16) % 4u);
+            if (habitat == 8 && contentVersion >= 11)
+                return 38 + (int)((hash >> 16) % 4u);
             if (habitat == 6 && contentVersion >= 9)
                 return 20 + (int)((hash >> 16) % 10u);
             int[][] table = contentVersion >= 9 ? HabitatSpeciesV9
@@ -271,7 +288,7 @@ namespace LestingCraft.Gameplay
                         bool flyer = IsFlyer(species);
                         float ay = ground(mx, mz, -1, Radius(species), Height(species) + (flyer ? 6 : 0));
                         if (!Finite(ay)) continue;
-                        float flight = species == 33 ? 6.4f : species == 11 ? 4.75f : species == 12 || species == 25 ? 3.65f : species == 19 || species == 26 ? 4.25f : 0;
+                        float flight = species == 33 ? 6.4f : species == 40 ? 5.2f : species == 11 ? 4.75f : species == 36 || species == 41 ? 4.1f : species == 38 ? 3.2f : species == 12 || species == 25 ? 3.65f : species == 19 || species == 26 ? 4.25f : 0;
                         Animals.Add(new AnimalState
                         {
                             id = m == 0 ? ("a:" + key) : ("a:" + key + ":" + m),

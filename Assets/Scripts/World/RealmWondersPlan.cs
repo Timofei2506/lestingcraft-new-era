@@ -253,7 +253,7 @@ namespace LestingCraft.World
                     return true;
                 }
             }
-            // Guaranteed Ancient Obsidian Hellgate Shrine South of spawn -> step into the portal to enter Dimension.Inferno!
+            // Guaranteed Ancient Twin-Tree Ritual Clearing South of spawn (teaches the 7-block Twin-Tree burn ritual — zero obsidian portals!)
             if (cellX == 0 && cellZ == 1)
             {
                 centerX = 72; centerZ = 224; kind = 4;
@@ -270,7 +270,7 @@ namespace LestingCraft.World
 
             centerX = cellX * WonderCellSize + 36 + (int)(hash % 72u);
             centerZ = cellZ * WonderCellSize + 36 + (int)((hash >> 8) % 72u);
-            kind = 1 + (int)((hash >> 16) % 4u); // 1: Cliff Waterfall, 2: Windmill, 3: Mossy Arch Camp, 4: Obsidian Hellgate Shrine
+            kind = 1 + (int)((hash >> 16) % 4u); // 1: Cliff Waterfall, 2: Windmill, 3: Mossy Arch Camp, 4: Twin-Tree Ritual Clearing
 
             if (GroundProtected(centerX, centerZ, seed)) return false;
 
@@ -1103,54 +1103,39 @@ namespace LestingCraft.World
                 return false;
             }
 
-            // Kind 4: Ancient Obsidian Hellgate Shrine (Portal to Dimension.Inferno!)
+            // Kind 4: Ancient Twin-Tree Ritual Clearing (lore site with two ancient petrified stumps 7 blocks apart & wildflowers — no static obsidian portal!)
             if (p.WonderKind == 4)
             {
                 float r = math.sqrt(dx * dx + dz * dz);
                 if (r > 10.5f) return false;
-                if (y < baseY) { block = BlockRegistry.BasaltId; return true; }
+                if (y < baseY) { block = BlockRegistry.DirtId; return true; }
                 int ry = y - baseY;
                 if (ry == 0)
                 {
-                    if (math.abs(dx) <= 1 && math.abs(dz) <= 1) { block = BlockRegistry.MagmaBasaltId; return true; }
-                    block = r <= 5.5f ? (ushort)29 : ((dx + dz) % 3 == 0 ? BlockRegistry.MagmaBasaltId : BlockRegistry.BasaltId);
+                    block = r <= 4.8f ? (ushort)35 : BlockRegistry.GrassId;
                     return true;
                 }
-                // Corner Obsidian Braziers
-                if (math.abs(dx) == 4 && math.abs(dz) == 4)
+                // Two ancient petrified stumps spaced exactly 7 blocks apart at dx = -3 and dx = +4 (dz = 0)
+                if (dz == 0 && (dx == -3 || dx == 4))
                 {
-                    if (ry <= 2) { block = BlockRegistry.DreamMonolithId; return true; }
+                    if (ry <= 2) { block = BlockRegistry.WoodId; return true; }
                     if (ry == 3) { block = BlockRegistry.CampfireId; return true; }
                     return false;
                 }
-                // Monumental Obsidian Portal Arch along dz == 0, |dx| <= 3, ry = 1..8
-                if (dz == 0 && math.abs(dx) <= 3 && ry <= 8)
+                if (ry == 1 && dx == 0 && dz == 0)
                 {
-                    if (math.abs(dx) == 3 && ry <= 6) { block = BlockRegistry.BasaltId; return true; }
-                    if (math.abs(dx) == 2 && ry <= 7) { block = BlockRegistry.DreamMonolithId; return true; }
-                    if (ry == 7 && math.abs(dx) <= 2) { block = dx == 0 ? BlockRegistry.MagmaBasaltId : BlockRegistry.DreamMonolithId; return true; }
-                    if (ry == 8 && math.abs(dx) <= 1) { block = dx == 0 ? BlockRegistry.LanternBlockId : BlockRegistry.DreamMonolithId; return true; }
-                    // Glowing upper portal veil at ry = 4..6, walkable doorway at ry = 1..3
-                    if (math.abs(dx) <= 1 && ry >= 4 && ry <= 6) { block = BlockRegistry.AndromedaCrystalId; return true; }
-                    block = BlockRegistry.AirId;
+                    block = BlockRegistry.LanternBlockId;
+                    return true;
+                }
+                if (ry == 1 && math.abs(dz) == 3 && (dx == -2 || dx == 2))
+                {
+                    block = BlockRegistry.PoppyBlockId;
                     return true;
                 }
                 block = BlockRegistry.AirId;
-                return ry <= 8;
+                return ry <= 5;
             }
 
-            return false;
-        }
-
-        /// <summary>True when (wx, wy, wz) stands inside an Ancient Obsidian Hellgate Shrine doorway.</summary>
-        public static bool IsInHellgateDoorway(int wx, int wy, int wz, int seed)
-        {
-            int cx = FloorDiv(wx, WonderCellSize), cz = FloorDiv(wz, WonderCellSize);
-            for (int oz = -1; oz <= 1; oz++)
-                for (int ox = -1; ox <= 1; ox++)
-                    if (TryGetWonderSite(cx + ox, cz + oz, seed, out int sx, out int sy, out int sz, out int kind) && kind == 4)
-                        if (math.abs(wx - sx) <= 1 && math.abs(wz - sz) <= 1 && wy >= sy && wy <= sy + 4)
-                            return true;
             return false;
         }
     }

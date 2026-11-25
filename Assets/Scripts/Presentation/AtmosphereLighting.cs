@@ -36,6 +36,8 @@ namespace LestingCraft.Presentation
                     return Mathf.Lerp(0.45f, 0.78f, baseClouds);
                 case Dimension.AndromedaPrime:
                     return Mathf.Clamp01(baseClouds * 0.45f);
+                case Dimension.Paradise:
+                    return Mathf.Lerp(0.28f, 0.52f, baseClouds); // Soft sunlit celestial cumulus wisps
                 default:
                     return Mathf.Clamp01(baseClouds);
             }
@@ -52,6 +54,7 @@ namespace LestingCraft.Presentation
                 case Dimension.Europa:
                 case Dimension.Pluto:
                 case Dimension.Dream:
+                case Dimension.Paradise:
                     return 0f;
                 case Dimension.Titan:
                     return 0.45f; // Slow cryogenic methane drizzle/flakes
@@ -84,6 +87,8 @@ namespace LestingCraft.Presentation
                     return 3.60f; // Sickly yellow gloom swallows distant rooms
                 case Dimension.Inferno:
                     return 2.95f; // Glowing volcanic ash & ember haze across cavernous lava seas
+                case Dimension.Paradise:
+                    return 0.48f; // Crisp sunlit golden-azure horizon mist
                 default:
                     return 1.0f;
             }
@@ -301,6 +306,23 @@ namespace LestingCraft.Presentation
                 AmbientGround = new Color(.32f, .10f, .04f);
                 ShallowWater = new Color(.95f, .36f, .06f);
                 DeepWater = new Color(.55f, .12f, .02f);
+            }
+            else if (realm == Dimension.Paradise)
+            {
+                // Eternal Sunlit Celestial Eden: radiant azure zenith, warm golden horizon & crystal-turquoise ambrosia water.
+                Daylight = 1f;
+                MoonIsPrimary = false;
+                SolarAngle = 52f;
+                Zenith = new Color(.30f, .64f, .98f);
+                Horizon = new Color(.99f, .92f, .74f);
+                SunColor = new Color(1.00f, .96f, .82f);
+                DirectIntensity = 1.24f;
+                AmbientSky = new Color(.66f, .80f, .98f);
+                AmbientEquator = new Color(.84f, .82f, .74f);
+                AmbientGround = new Color(.52f, .62f, .50f);
+                ShallowWater = new Color(.36f, .90f, .96f);
+                DeepWater = new Color(.12f, .50f, .82f);
+                WaterReflection = .92f;
             }
         }
 

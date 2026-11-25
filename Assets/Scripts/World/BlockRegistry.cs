@@ -37,6 +37,9 @@ namespace LestingCraft.World
         public const ushort CherenkovBlockId = 78, ReinforcedConcreteId = 79, HazardSteelId = 80, LeadShieldId = 81;
         public const ushort WhiteTrussId = 82, AsphaltId = 83, ArmoredGlassId = 84, SteelRailId = 85;
         public const ushort PoweredRailId = 86, C4ChargeId = 87, TrinititeSlagId = 88, RadiaTerminalId = 89;
+        public const ushort BackroomsWallpaperId = 90, BackroomsCarpetId = 91;
+        public const ushort OakSaplingId = 92, SakuraSaplingId = 93;
+        public const ushort DandelionBlockId = 94, PoppyBlockId = 95, CornflowerBlockId = 96, LavenderFlowerId = 97;
 
         private static readonly BlockDefinition[] Definitions = BuildDefinitions();
 
@@ -81,14 +84,17 @@ namespace LestingCraft.World
         public static bool IsAir(ushort id) => id == 0;
         public static bool IsSolid(ushort id) => id < Definitions.Length && Definitions[id].Solid;
         public static bool IsRail(ushort id) => id == SteelRailId || id == PoweredRailId;
+        public static bool IsSapling(ushort id) => id == OakSaplingId || id == SakuraSaplingId;
+        public static bool IsFlower(ushort id) => id >= DandelionBlockId && id <= LavenderFlowerId;
         public static bool IsCustomPlacedModel(ushort id) =>
             id == CampfireId || id == CrystalId || id == WorkbenchId || id == FurnaceId ||
             id == TorchBlockId || id == BedBlockId || id == LanternBlockId || id == GlowShroomId ||
+            (id >= OakSaplingId && id <= LavenderFlowerId) ||
             id == CopperCableId || id == BatteryBankId || id == FuelGeneratorId ||
             id == SolarArrayId || id == NuclearReactorId || id == ElectricFloodlightId ||
             id == SteelRailId || id == PoweredRailId || id == C4ChargeId || id == RadiaTerminalId;
         public static float ColliderHeight(ushort id) =>
-            IsRail(id) ? .24f :
+            IsRail(id) || (id >= OakSaplingId && id <= LavenderFlowerId) ? .24f :
             id == CampfireId ? .34f :
             id == C4ChargeId ? .48f :
             id == BedBlockId ? .58f :

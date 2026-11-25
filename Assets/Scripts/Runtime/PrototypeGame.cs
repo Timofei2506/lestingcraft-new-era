@@ -141,12 +141,32 @@ namespace LestingCraft.Runtime
             if(result.Action=="clear"){chatLog.Clear();ChatRevision++;}
             else if(result.Action=="save")Session.Checkpoint();
             else if(result.Action=="time")Session.Data.clock=result.Value;
+            else if(result.Action=="gamemode")
+            {
+                var targetGm=(GameMode)Mathf.Clamp(result.Value,0,3);
+                selectedMode=targetGm;
+                Session.SetGameMode(targetGm);
+            }
+            else if(result.Action=="fly")
+            {
+                if(!player.ToggleCreativeFlight())
+                    result.Message="Полёт доступен только в Творческом режиме — введите /gamemode creative";
+                else
+                    result.Message=player.CreativeFlyActive
+                        ?"🕊 Полёт ВКЛЮЧЁН (Пробел — вверх, C/Ctrl — вниз, Shift — ускорение, 2×Пробел — выкл.)"
+                        :"Полёт выключен.";
+            }
             else if(result.Action=="sethome")RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed,"Дом",player.transform.position,world.Dimension,"home");
             else if(result.Action=="home")
             {
                 if(RealmFeaturesAndMarket.TryGetWaypoint(world.Seed,"home",out var hw))
                 {
-                    if(hw.dimension!=(int)world.Dimension&&hw.dimension==0&&world.Dimension==Dimension.Inferno)ExitInfernoDimension();
+                    if(hw.dimension!=(int)world.Dimension&&hw.dimension==0)
+                    {
+                        if(world.Dimension==Dimension.Inferno)ExitInfernoDimension();
+                        else if(world.Dimension==Dimension.Paradise)ExitParadiseDimension();
+                        else if(world.Dimension==Dimension.Backrooms)ExitBackroomsSequence();
+                    }
                     player.TeleportTo(new Vector3(hw.x+0.5f,hw.y+0.5f,hw.z+0.5f),false);
                 }
                 else AddChat(new NetPacket{name="Система",message="Точка дома ещё не задана — введите /sethome"});
@@ -166,7 +186,16 @@ namespace LestingCraft.Runtime
             else if(result.Action=="lan"){CloseChat();OpenLocalWorldToLan();}
             else if(result.Action=="market"){CloseChat();paused=true;SetCursor(false);ui.ShowMarket();return;}
             else if(result.Action=="inferno"){CloseChat();EnterInfernoDimension();return;}
-            else if(result.Action=="overworld"){CloseChat();if(world.Dimension==Dimension.Inferno)ExitInfernoDimension();return;}
+            else if(result.Action=="paradise"){CloseChat();EnterParadiseDimension();return;}
+            else if(result.Action=="backrooms"){CloseChat();EnterBackroomsSequence();return;}
+            else if(result.Action=="overworld")
+            {
+                CloseChat();
+                if(world.Dimension==Dimension.Inferno)ExitInfernoDimension();
+                else if(world.Dimension==Dimension.Paradise)ExitParadiseDimension();
+                else if(world.Dimension==Dimension.Backrooms)ExitBackroomsSequence();
+                return;
+            }
             else if(!string.IsNullOrEmpty(result.Action)&&result.Action.StartsWith("tp:",StringComparison.Ordinal))
             {
                 var sp=result.Action.Split(':');
@@ -911,14 +940,33 @@ namespace LestingCraft.Runtime
             }
         }
 
-        void SpawnBossIfApplicable(Dimension dim)
+        void ClearActiveRealmMobs()
         {
             if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            for(int i=PlanetaryDroneController.ActiveDrones.Count-1;i>=0;i--)
+            {
+                var d=PlanetaryDroneController.ActiveDrones[i];
+                if(d)Destroy(d.gameObject);
+            }
+            PlanetaryDroneController.ActiveDrones.Clear();
+            for(int i=BacteriaMobController.ActiveMobs.Count-1;i>=0;i--)
+            {
+                var m=BacteriaMobController.ActiveMobs[i];
+                if(m)Destroy(m.gameObject);
+            }
+            BacteriaMobController.ActiveMobs.Clear();
+        }
+
+        void SpawnBossIfApplicable(Dimension dim)
+        {
+            ClearActiveRealmMobs();
             if(!world||!Session)return;
             bool defeated=(Session.Data.defeatedPlanetBossMask&(1<<(int)dim))!=0;
-            Vector3 anchor=sharedLaunchSite.HasValue?(Vector3)sharedLaunchSite.Value:Vector3.zero;
+            bool usesZeroAnchor=dim==Dimension.Backrooms||dim==Dimension.Inferno||dim==Dimension.Paradise;
+            Vector3 anchor=(!usesZeroAnchor&&sharedLaunchSite.HasValue)?(Vector3)sharedLaunchSite.Value:Vector3.zero;
             activePlanetBoss=PlanetaryBossController.SpawnForPlanet(world.transform,dim,world,world.Seed,defeated,anchor);
-            PlanetaryDroneController.SpawnSwarm(world.transform,dim,world.Seed,anchor,dim==Dimension.Dream?9:4+(world.Seed&2));
+            int swarmCount=dim==Dimension.Backrooms?9:dim==Dimension.Dream?9:4+(world.Seed&2);
+            PlanetaryDroneController.SpawnSwarm(world.transform,dim,world.Seed,anchor,swarmCount);
             if(dim==Dimension.Dream)PlanetaryDroneController.BuildMachineCity(world.transform,world.Seed,anchor);
         }
 
@@ -1396,39 +1444,51 @@ namespace LestingCraft.Runtime
         Dimension backroomsReturnDim=Dimension.Lestingia;
         Vector3 backroomsReturnPos;
 
+        int lastBackroomsZone=-1;
+
         public void EnterBackroomsSequence()
         {
-            if(!world||!player||!Session||online)return;
+            if(!world||!player||!Session||online||world.Dimension==Dimension.Backrooms)return;
             if(ChatOpen)CloseChat();
             if(InventoryOpen){paused=false;ui.ShowHUD();}
             Session.ResetMining();
             Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
-            backroomsReturnDim=world.Dimension;
+            backroomsReturnDim=world.Dimension==Dimension.Somnia?Dimension.Lestingia:world.Dimension;
             backroomsReturnPos=player.transform.position;
             foreach(var kv in avatars)if(kv.Value)kv.Value.SetActive(false);
-            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            ClearActiveRealmMobs();
             if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
             world.SwitchPlanet(Dimension.Backrooms,Array.Empty<SavedBlock>());
             dimension=(int)Dimension.Backrooms;
             Session.Data.activeDimension=(int)Dimension.Backrooms;
-            player.TeleportTo(new Vector3(.5f,LestingCraft.World.BackroomsTerrain.FloorTop(0,0,world.Seed)+2.2f,.5f),false);
+            Vector3 openSpawn=BacteriaMobController.FindOpenCorridorSpawn(world.Seed,0,0)+Vector3.up*0.25f;
+            player.TeleportTo(openSpawn,false);
             player.transform.rotation=Quaternion.identity;
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
-            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Backrooms,player,Camera.main);
+            var cam=Camera.main;
+            if(cam)WorldAtmosphere.Configure(cam,(int)Dimension.Backrooms,Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Backrooms,player,cam);
+            SpawnBossIfApplicable(Dimension.Backrooms);
+            lastBackroomsZone=BackroomsTerrain.ZoneAt(0,0,world.Seed);
             SetCursor(true);
-            Session.Notice="ВАС ПРОВАЛИЛО СКВОЗЬ РЕАЛЬНОСТЬ: жёлтые комнаты, влажный ковёр, гудение ламп… ищите светящийся дверной проём.";
+            Session.Notice="🚪 ЗАКУЛИСЬЕ · "+BackroomsTerrain.SublevelTitle(lastBackroomsZone)+"! В коридорах бродят Сущности и Хозяин Порогов — ищите светящийся выход!";
         }
 
         void ExitBackroomsSequence()
         {
             if(!world||!player||!Session)return;
+            ClearActiveRealmMobs();
+            lastBackroomsZone=-1;
             world.SwitchPlanet(backroomsReturnDim,Session.Data.blocks);
             dimension=(int)backroomsReturnDim;
             Session.Data.activeDimension=(int)backroomsReturnDim;
-            player.TeleportTo(backroomsReturnPos,true);
+            player.TeleportTo(backroomsReturnPos+Vector3.up*0.4f,true);
             spaceVisuals=SpaceFlightVisuals.Ensure(null);
-            spaceVisuals.ApplyPlanetAtmosphereAndGravity(backroomsReturnDim,player,Camera.main);
-            if(sharedLaunchSite.HasValue&&!launchVisual)
+            var cam=Camera.main;
+            if(cam)WorldAtmosphere.Configure(cam,(int)backroomsReturnDim,Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(backroomsReturnDim,player,cam);
+            SpawnBossIfApplicable(backroomsReturnDim);
+            if(sharedLaunchSite.HasValue&&!launchVisual&&backroomsReturnDim!=Dimension.Radia&&backroomsReturnDim!=Dimension.Inferno&&backroomsReturnDim!=Dimension.Paradise)
                 launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,backroomsReturnDim);
             Session.Checkpoint();
             EvaluateStoryRadio();
@@ -1439,14 +1499,130 @@ namespace LestingCraft.Runtime
         {
             if(!world||!player||paused||world.Dimension!=Dimension.Backrooms)return;
             Vector3 p=player.transform.position;
-            if(LestingCraft.World.BackroomsTerrain.IsExitThreshold(Mathf.RoundToInt(p.x),Mathf.RoundToInt(p.z),world.Seed))
+            int bx=Mathf.RoundToInt(p.x),bz=Mathf.RoundToInt(p.z);
+            int zone=BackroomsTerrain.ZoneAt(bx,bz,world.Seed);
+            if(zone!=lastBackroomsZone)
+            {
+                lastBackroomsZone=zone;
+                if(Session)Session.Notice="🚪 Закулисье: "+BackroomsTerrain.SublevelTitle(zone);
+                Color zoneFog=zone==1?new Color(0.28f,0.52f,0.56f)
+                    :zone==2?new Color(0.32f,0.22f,0.14f)
+                    :zone==3?new Color(0.24f,0.24f,0.28f)
+                    :zone==4?new Color(0.34f,0.36f,0.40f)
+                    :new Color(0.46f,0.41f,0.18f);
+                RenderSettings.fogColor=zoneFog;
+                if(Camera.main)Camera.main.backgroundColor=zoneFog;
+            }
+            if(LestingCraft.World.BackroomsTerrain.IsExitThreshold(bx,bz,world.Seed))
                 ExitBackroomsSequence();
         }
 
+        readonly PortalRitualState portalRituals=new PortalRitualState();
         Dimension infernoReturnDim=Dimension.Lestingia;
         Vector3 infernoReturnPos=new Vector3(0.5f,65f,0.5f);
+        Dimension paradiseReturnDim=Dimension.Lestingia;
+        Vector3 paradiseReturnPos=new Vector3(0.5f,65f,0.5f);
         float infernoPortalCooldownUntil;
         public bool MinimapVisible { get; set; } = true;
+
+        void SetRitualBlock(int x,int y,int z,ushort block)
+        {
+            if(!world)return;
+            if(online)
+            {
+                if(client&&client.Connected)client.Send(new NetPacket{type="edit",x=x,y=y,z=z,block=block});
+            }
+            else world.Edit(x,y,z,block);
+        }
+
+        public void NotifyBlockPlaced(Vector3Int cell,ushort placedId)
+        {
+            if(!world||!Session||online)return;
+            if(placedId==BlockRegistry.WaterId)
+            {
+                PortalRitualState.CascadeWaterInPitColumn(cell.x,cell.y,cell.z,world.GetBlock,SetRitualBlock);
+                return;
+            }
+            if(BlockRegistry.IsSapling(placedId)&&world.Dimension==Dimension.Lestingia)
+            {
+                string msg=portalRituals.RegisterSapling(cell.x,cell.y,cell.z,placedId);
+                if(!string.IsNullOrEmpty(msg))Session.Notice=msg;
+            }
+        }
+
+        public bool TryThrowActiveIntoPortalWell()
+        {
+            if(!world||!player||!Session||online)return false;
+            int activeId=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
+            if(activeId!=149)return false;
+            if(world.Dimension!=Dimension.Lestingia)
+            {
+                Session.Notice="💎 Цветочный колодец вознесения в Рай открывается только в земном мире (Лестингии)!";
+                return true;
+            }
+            Transform camT=player.Camera?player.Camera.transform:player.transform;
+            Vector3 ahead=camT.position+camT.forward*2.2f;
+            if(portalRituals.TryActivateParadiseWellNear(ahead,world.GetBlock,SetRitualBlock,out _)||
+               portalRituals.TryActivateParadiseWellNear(player.transform.position,world.GetBlock,SetRitualBlock,out _))
+            {
+                if(!Session.Creative)Session.Inventory.ConsumeActive();
+                portalRituals.SaveToPrefs(world.Seed);
+                Session.Checkpoint();
+                Session.Notice="💎✨ Вы бросили алмаз в цветочный колодец (2×2×5) — вода вспыхнула светом! Прыгайте в колодец, чтобы попасть в РАЙ!";
+                return true;
+            }
+            Session.Notice="💎 Для портала в Рай: выкопайте квадратную яму 2×2 глубиной 5 блоков, залейте водой и расставьте любые цветы вокруг края, затем бросьте [Q] алмаз!";
+            return true;
+        }
+
+        public bool TryUsePortalRitualItem(bool hasTarget,Vector3Int cell,Vector3Int adjacent,Ray viewRay)
+        {
+            if(!world||!player||!Session||online)return false;
+            int activeId=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
+            if(activeId<=0)return false;
+
+            // 1. Bone Meal (196) on a Sapling (92..93) -> instant growth, marked UsedBoneMeal=true (disqualified for Hell Arch!)
+            if(hasTarget&&activeId==Items.BoneMeal&&BlockRegistry.IsSapling(world.GetBlock(cell.x,cell.y,cell.z)))
+            {
+                if(portalRituals.TryApplyBoneMeal(cell.x,cell.y,cell.z,world.GetBlock,SetRitualBlock,out string bmMsg))
+                {
+                    if(!Session.Creative)Session.Inventory.ConsumeActive();
+                    Session.Notice=bmMsg;
+                    return true;
+                }
+            }
+
+            // 2. Igniting a grown tree (Wood / Leaves) with Torch / Lantern / Campfire for the Twin-Tree Hell Ritual!
+            if(hasTarget&&world.Dimension==Dimension.Lestingia&&
+               (activeId==148||activeId==BlockRegistry.TorchBlockId||activeId==BlockRegistry.LanternBlockId||activeId==BlockRegistry.CampfireId))
+            {
+                ushort hitBlock=world.GetBlock(cell.x,cell.y,cell.z);
+                if(hitBlock==BlockRegistry.WoodId||hitBlock==BlockRegistry.LeavesId||hitBlock==BlockRegistry.CherryLeavesId)
+                {
+                    if(portalRituals.TryIgniteTreeAt(cell.x,cell.y,cell.z,world.GetBlock,SetRitualBlock,out string burnMsg))
+                    {
+                        Session.Notice=burnMsg;
+                        return true;
+                    }
+                }
+            }
+
+            // 3. Using a Diamond (149) directly on a 2x2x5 Flower-Ringed Water Well!
+            if(activeId==149&&world.Dimension==Dimension.Lestingia)
+            {
+                Vector3 probe=hasTarget?new Vector3(cell.x+0.5f,cell.y+0.5f,cell.z+0.5f):(viewRay.origin+viewRay.direction*2.3f);
+                if(portalRituals.TryActivateParadiseWellNear(probe,world.GetBlock,SetRitualBlock,out _))
+                {
+                    if(!Session.Creative)Session.Inventory.ConsumeActive();
+                    portalRituals.SaveToPrefs(world.Seed);
+                    Session.Checkpoint();
+                    Session.Notice="💎✨ Алмаз опустился в цветочный колодец (2×2×5) — портал в РАЙ открыт! Прыгните в воду!";
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         public void EnterInfernoDimension()
         {
@@ -1455,11 +1631,11 @@ namespace LestingCraft.Runtime
             if(InventoryOpen){paused=false;ui.ShowHUD();}
             Session.ResetMining();
             Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
-            infernoReturnDim=world.Dimension==Dimension.Somnia?Dimension.Lestingia:world.Dimension;
+            infernoReturnDim=(world.Dimension==Dimension.Somnia||world.Dimension==Dimension.Paradise)?Dimension.Lestingia:world.Dimension;
             infernoReturnPos=player.transform.position+player.transform.forward*-1.8f;
             infernoPortalCooldownUntil=Time.unscaledTime+4.0f;
 
-            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            ClearActiveRealmMobs();
             if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
 
             world.SwitchPlanet(Dimension.Inferno,Session.Data.blocks);
@@ -1477,7 +1653,7 @@ namespace LestingCraft.Runtime
             RealmFeaturesAndMarket.AddContractProgress("hell_pioneer",1);
             RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed,"Врата возврата",new Vector3(0,42,-8),Dimension.Inferno,"portal");
             Session.Checkpoint();
-            Session.Notice="🔥 ИЗМЕРЕНИЕ «АД · БАЗАЛЬТОВАЯ ПРЕИСПОДНЯЯ»! Багровые леса, лавовые моря, Цитадели обсидиана и Владыка Преисподней! Арка позади возвращает домой.";
+            Session.Notice="🔥 ИЗМЕРЕНИЕ «АД · БАЗАЛЬТОВАЯ ПРЕИСПОДНЯЯ»! Адские гончие, страйдеры, бесы, скорпионы и Владыка Преисподней! Арка позади возвращает домой.";
         }
 
         public void ExitInfernoDimension()
@@ -1486,7 +1662,7 @@ namespace LestingCraft.Runtime
             Session.ResetMining();
             Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
             infernoPortalCooldownUntil=Time.unscaledTime+4.0f;
-            if(activePlanetBoss){Destroy(activePlanetBoss.gameObject);activePlanetBoss=null;}
+            ClearActiveRealmMobs();
 
             Dimension retDim=infernoReturnDim==Dimension.Inferno?Dimension.Lestingia:infernoReturnDim;
             world.SwitchPlanet(retDim,Session.Data.blocks);
@@ -1499,10 +1675,68 @@ namespace LestingCraft.Runtime
             var cam=Camera.main;
             if(cam)WorldAtmosphere.Configure(cam,(int)retDim,Session.Data.clock);
             spaceVisuals.ApplyPlanetAtmosphereAndGravity(retDim,player,cam);
-            if(sharedLaunchSite.HasValue&&!launchVisual&&retDim!=Dimension.Radia)
+            SpawnBossIfApplicable(retDim);
+            if(sharedLaunchSite.HasValue&&!launchVisual&&retDim!=Dimension.Radia&&retDim!=Dimension.Backrooms&&retDim!=Dimension.Paradise)
                 launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,retDim);
             Session.Checkpoint();
-            Session.Notice="✦ Вы прошли сквозь обсидиановые врата и вернулись из Преисподней в солнечный мир!";
+            Session.Notice="✦ Вы прошли сквозь обугленную арку и вернулись из Преисподней в солнечный мир!";
+        }
+
+        public void EnterParadiseDimension()
+        {
+            if(!world||!player||!Session||online||world.Dimension==Dimension.Paradise)return;
+            if(ChatOpen)CloseChat();
+            if(InventoryOpen){paused=false;ui.ShowHUD();}
+            Session.ResetMining();
+            Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
+            paradiseReturnDim=(world.Dimension==Dimension.Somnia||world.Dimension==Dimension.Inferno)?Dimension.Lestingia:world.Dimension;
+            paradiseReturnPos=player.transform.position+Vector3.up*1.5f+player.transform.forward*-2.2f;
+            infernoPortalCooldownUntil=Time.unscaledTime+4.0f;
+
+            ClearActiveRealmMobs();
+            if(launchVisual){Destroy(launchVisual.gameObject);launchVisual=null;}
+
+            world.SwitchPlanet(Dimension.Paradise,Session.Data.blocks);
+            dimension=(int)Dimension.Paradise;
+            Session.Data.activeDimension=(int)Dimension.Paradise;
+            int spawnY=ParadiseTerrain.Height(0,0,world.Seed);
+            player.TeleportTo(new Vector3(0.5f,spawnY+1.4f,2.5f),false);
+            player.transform.rotation=Quaternion.Euler(0f,180f,0f);
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            var cam=Camera.main;
+            if(cam)WorldAtmosphere.Configure(cam,(int)Dimension.Paradise,Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(Dimension.Paradise,player,cam);
+            SpawnBossIfApplicable(Dimension.Paradise);
+            SetCursor(true);
+            RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed,"Источник возврата",new Vector3(0,56,-8),Dimension.Paradise,"portal");
+            Session.Checkpoint();
+            Session.Notice="☀✨ ИЗМЕРЕНИЕ «РАЙ · ЭДЕМСКИЕ САДЫ»! Золотые храмы, лебеди, златорогие олени, пегасы, Жар-птицы и Серафим Эдема! Источник позади возвращает домой.";
+        }
+
+        public void ExitParadiseDimension()
+        {
+            if(!world||!player||!Session||world.Dimension!=Dimension.Paradise)return;
+            Session.ResetMining();
+            Session.Data.blocks=world.ExportAllMergedEdits(Session.Data.blocks);
+            infernoPortalCooldownUntil=Time.unscaledTime+4.0f;
+            ClearActiveRealmMobs();
+
+            Dimension retDim=paradiseReturnDim==Dimension.Paradise?Dimension.Lestingia:paradiseReturnDim;
+            world.SwitchPlanet(retDim,Session.Data.blocks);
+            dimension=(int)retDim;
+            Session.Data.activeDimension=(int)retDim;
+            int safeY=TerrainGenerator.Height(Mathf.RoundToInt(paradiseReturnPos.x),Mathf.RoundToInt(paradiseReturnPos.z),world.Seed,retDim)+2;
+            Vector3 safePos=new Vector3(paradiseReturnPos.x,Mathf.Max(paradiseReturnPos.y,safeY),paradiseReturnPos.z);
+            player.TeleportTo(safePos,true);
+            spaceVisuals=SpaceFlightVisuals.Ensure(null);
+            var cam=Camera.main;
+            if(cam)WorldAtmosphere.Configure(cam,(int)retDim,Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(retDim,player,cam);
+            SpawnBossIfApplicable(retDim);
+            if(sharedLaunchSite.HasValue&&!launchVisual&&retDim!=Dimension.Radia&&retDim!=Dimension.Backrooms&&retDim!=Dimension.Inferno)
+                launchVisual=LaunchSiteVisual.Create(world.transform,sharedLaunchSite.Value,world.Seed,retDim);
+            Session.Checkpoint();
+            Session.Notice="✦ Вы ступили в Священный Источник и спустились из Эдемских Садов домой!";
         }
 
         public void PlaceActiveBlueprintNearPlayer()
@@ -1574,7 +1808,22 @@ namespace LestingCraft.Runtime
             if(world.Dimension==Dimension.Lestingia&&player.transform.position.y>=130f)
                 RealmFeaturesAndMarket.AddContractProgress("sky_explorer",1);
 
-            if(online||Time.unscaledTime<infernoPortalCooldownUntil)return;
+            if(online)return;
+
+            // Step Twin-Tree non-bonemeal growth, burning tree charring & Charred Hell Arch formation!
+            if(world.Dimension==Dimension.Lestingia)
+            {
+                int prevArches=portalRituals.HellArches.Count;
+                portalRituals.Step(Mathf.Min(Time.deltaTime,0.1f),world.GetBlock,SetRitualBlock,out string ritualNotice);
+                if(!string.IsNullOrEmpty(ritualNotice))Session.Notice=ritualNotice;
+                if(portalRituals.HellArches.Count!=prevArches)
+                {
+                    portalRituals.SaveToPrefs(world.Seed);
+                    Session.Checkpoint();
+                }
+            }
+
+            if(Time.unscaledTime<infernoPortalCooldownUntil)return;
 
             Vector3 p=player.transform.position;
             int bx=Mathf.RoundToInt(p.x),by=Mathf.FloorToInt(p.y+0.2f),bz=Mathf.RoundToInt(p.z);
@@ -1583,14 +1832,17 @@ namespace LestingCraft.Runtime
                 if(InfernoTerrain.IsExitThreshold(bx,bz,world.Seed)&&Mathf.Abs(by-42)<=3)
                     ExitInfernoDimension();
             }
+            else if(world.Dimension==Dimension.Paradise)
+            {
+                if(ParadiseTerrain.IsExitThreshold(bx,bz,world.Seed)&&Mathf.Abs(by-ParadiseTerrain.Height(0,-8,world.Seed))<=4)
+                    ExitParadiseDimension();
+            }
             else if(world.Dimension==Dimension.Lestingia)
             {
-                // Enter Hell via either an Ancient Obsidian Hellgate Shrine OR any player-built/blueprint Obsidian Portal!
-                bool inShrine=world.ContentVersion>=11&&RealmWondersPlan.IsInHellgateDoorway(bx,by,bz,world.Seed);
-                bool inCustomPortal=!inShrine&&(world.GetBlock(bx,by+2,bz)==BlockRegistry.AndromedaCrystalId||world.GetBlock(bx,by+3,bz)==BlockRegistry.AndromedaCrystalId)&&
-                                    (world.GetBlock(bx,by-1,bz)==BlockRegistry.MagmaBasaltId||world.GetBlock(bx,by-1,bz)==BlockRegistry.DreamMonolithId);
-                if(inShrine||inCustomPortal)
+                if(portalRituals.IsInsideActiveHellArch(p))
                     EnterInfernoDimension();
+                else if(portalRituals.IsPlayerInsideActivatedParadiseWell(p))
+                    EnterParadiseDimension();
             }
         }
 
@@ -1674,19 +1926,6 @@ namespace LestingCraft.Runtime
             if(hasTarget)
             {
                 ushort targetBlock=world.GetBlock(hitCell.x,hitCell.y,hitCell.z);
-                // Ignite an Obsidian / Magma-Basalt Hellgate Portal when clicking with Torch / Lantern / Campfire / Crystal!
-                if(!online&&world.Dimension==Dimension.Lestingia&&
-                   (targetBlock==BlockRegistry.DreamMonolithId||targetBlock==BlockRegistry.MagmaBasaltId||targetBlock==BlockRegistry.BasaltId)&&
-                   (activeId==148||activeId==BlockRegistry.TorchBlockId||activeId==BlockRegistry.LanternBlockId||activeId==BlockRegistry.CampfireId||activeId==BlockRegistry.CrystalId)&&
-                   RealmFeaturesAndMarket.IsCustomPortalFrameReady(world.GetBlock,hitCell))
-                {
-                    world.Edit(hitCell.x,hitCell.y,hitCell.z,BlockRegistry.MagmaBasaltId);
-                    world.Edit(hitCell.x,hitCell.y+1,hitCell.z,BlockRegistry.AirId);
-                    world.Edit(hitCell.x,hitCell.y+2,hitCell.z,BlockRegistry.AirId);
-                    world.Edit(hitCell.x,hitCell.y+3,hitCell.z,BlockRegistry.AndromedaCrystalId);
-                    Session.Notice="🔥 ВРАТА ПРЕИСПОДНЕЙ ЗАЖГЛИСЬ! Шагните в светящийся проём, чтобы войти в измерение «Ад»!";
-                    return true;
-                }
                 if(targetBlock==BlockRegistry.RadiaTerminalId)
                 {
                     Session.Notice=Tech.Sim.TryActivateDamTerminal();
@@ -1854,7 +2093,9 @@ namespace LestingCraft.Runtime
         {
             MenuPanoramaScene.Teardown();
             if(multiplayer)IsSurfacePreview=false;
-            realm=Mathf.Clamp(realm,0,16);
+            realm=Mathf.Clamp(realm,0,17);
+            portalRituals.Clear();
+            if(!multiplayer)portalRituals.LoadFromPrefs(seed);
             bool restoreStation=!multiplayer&&resumeSave!=null&&resumeSave.dockedAtStation;
             world=new GameObject("World").AddComponent<VoxelWorld>();online=multiplayer;world.Initialize(seed,(Dimension)realm,multiplayer,resumeSave?.contentVersion??contentVersion);
 
@@ -1866,8 +2107,10 @@ namespace LestingCraft.Runtime
                     sharedLaunchSite=LaunchSiteVisual.OfflineSite(seed,resumeSave.launchX,resumeSave.launchZ,Dimension.Lestingia);
                 else if(realm==0)
                     sharedLaunchSite=LaunchSiteVisual.OfflineSite(seed,LaunchSiteVisual.PadX,LaunchSiteVisual.PadZ,Dimension.Lestingia);
-                else
+                else if(realm!=(int)Dimension.Radia&&realm!=(int)Dimension.Backrooms&&realm!=(int)Dimension.Inferno&&realm!=(int)Dimension.Paradise)
                     sharedLaunchSite=LaunchSiteVisual.OfflineSite(seed,0,0,(Dimension)realm);
+                else
+                    sharedLaunchSite=null;
             }
             else sharedLaunchSite=null;
 
@@ -2048,6 +2291,7 @@ namespace LestingCraft.Runtime
             if(world&&world.Ready&&status=="Генерируется мир…")status="Мир готов — нажми «Продолжить»";
 
             if(!InDreamDimension&&!InRadiaDimension&&!dockedAtStation&&sharedLaunchSite.HasValue&&!launchVisual&&world&&world.Ready&&player&&
+               world.Dimension!=Dimension.Backrooms&&world.Dimension!=Dimension.Inferno&&world.Dimension!=Dimension.Paradise&&
                new Vector2(player.transform.position.x-sharedLaunchSite.Value.x,
                            player.transform.position.z-sharedLaunchSite.Value.z).sqrMagnitude<185f*185f)
             {
@@ -2104,7 +2348,7 @@ namespace LestingCraft.Runtime
                 {
                     var mob=mobs[mi];
                     if(!mob){mobs.RemoveAt(mi);continue;}
-                    mob.TickMob(dtMob,player.transform.position,(dmg,dir,msg)=>{Session.Impact(dmg,BodyPart.Torso,dir);Session.Notice=msg;});
+                    mob.TickMob(dtMob,player.transform.position,(dmg,dir,msg)=>{Session.Impact(dmg,BodyPart.Torso,dir);Session.Notice=msg;},world);
                 }
             }
 
@@ -2160,6 +2404,9 @@ namespace LestingCraft.Runtime
         static Vector3 FindSpawn(int seed,Dimension realm,int contentVersion)
         {
             if(realm==Dimension.Radia)return new Vector3(0.5f,50.2f,-11.5f);
+            if(realm==Dimension.Backrooms)return BacteriaMobController.FindOpenCorridorSpawn(seed,0,0)+Vector3.up*0.25f;
+            if(realm==Dimension.Inferno)return new Vector3(0.5f,InfernoTerrain.FloorTop(0,0,seed)+1.4f,2.5f);
+            if(realm==Dimension.Paradise)return new Vector3(0.5f,ParadiseTerrain.Height(0,0,seed)+1.4f,2.5f);
             for(int r=0;r<8;r++)for(int z=-r;z<=r;z++)for(int x=-r;x<=r;x++)
             {
                 int h=TerrainGenerator.Height(x,z,seed,realm);

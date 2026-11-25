@@ -3,161 +3,277 @@ using System;
 namespace LestingCraft.World
 {
     /// <summary>
-    /// Level 0 of the Backrooms (community canon): endless randomly segmented rooms with
-    /// mono-yellow wallpaper, damp carpet floor, buzzing fluorescent ceiling panels, and
-    /// rare red rooms that must not be entered. Pure deterministic math - no allocation,
-    /// usable from Burst jobs and from gameplay code alike. All blocks reuse the existing
-    /// palette: 91 damp Level 0 carpet, 90 mustard vinyl wallpaper, 30 marble-white ceiling
-    /// tiles, 56 lantern fluorescents, 62 red terracotta for red rooms. Blocks 90/91 exist
-    /// only for the Backrooms and carry their own photo-derived PBR materials.
-    /// Floors step gently between 16x16 regions (rare ledges of the canon) so the level has
-    /// real relief while every room stays walkable.
+    /// Procedural multi-sublevel liminal maze for Dimension.Backrooms (15):
+    /// - Zone 0: Level 0 "The Lobby" (mustard wallpaper #90, damp carpet #91, asymmetric partition baffles, office cubicles)
+    /// - Zone 1: Level 37 "The Poolrooms" (gleaming white porcelain marble #42, tiled colonnades, sunken warm pools #7)
+    /// - Zone 2: Level 1 "Habitable Concrete Warehouse" (reinforced concrete #79, hazard steel #80, supply crates)
+    /// - Zone 3: Level 6 "Lights Out" (pitch-dark slate #29 corridors with dead fluorescent fixtures)
+    /// - Zone 4: Level "!" "Red Emergency Corridor" (crimson alarm halls #62 with hazard ribs)
+    /// Pure deterministic C# with zero Unity dependencies.
     /// </summary>
     public static class BackroomsTerrain
     {
-        public const int CeilingBottom = 72; // fluorescent panels sit here
+        public const int CeilingBottom = 72;
         public const int CeilingTop = 73;
         public const int WallTop = 71;
 
-        const ushort Carpet = 91, Wallpaper = 90, CeilingTile = 30, Fluorescent = 56, RedWall = 62;
+        public const ushort BedrockId = 9;
+        public const ushort WallpaperId = 90;
+        public const ushort CarpetId = 91;
+        public const ushort PlasterId = 40;
+        public const ushort MarbleTileId = 42;
+        public const ushort SlateId = 29;
+        public const ushort RedRoomId = 62;
+        public const ushort ConcreteId = 79;
+        public const ushort HazardSteelId = 80;
+        public const ushort AsphaltId = 83;
+        public const ushort LightId = 56;
+        public const ushort FloodlightId = 77;
+        public const ushort WaterId = 7;
+        public const ushort PlanksId = 18;
+        public const ushort WorkbenchId = 16;
+        public const ushort BookshelfId = 57;
+        public const ushort ExitBeaconId = 67;
 
-        /// <summary>Backrooms is multi-level per community canon: white labyrinths (Level 484
-        /// "The Whiteout"), classic yellow Level 0, and dark service halls (Level 6 "Lights Out").
-        /// Level identity follows the 256x256 region, so a traveller crossing regions walks
-        /// from one level into another.</summary>
-        public static int LevelKind(int x, int z, int seed)
-        {
-            int rx = x >> 8, rz = z >> 8;
-            return (int)(Hash(rx, 57, rz, seed ^ 0x77A1) % 8); // 0..4 Level 0 yellow · 5,6 white · 7 dark
-        }
-        static bool IsYellow(int k) => k <= 4;
-        static bool IsWhite(int k) => k == 5 || k == 6;
-        static ushort WallFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return IsYellow(k) ? Wallpaper : IsWhite(k) ? (ushort)42 : (ushort)29; }
-        static ushort FloorFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return IsYellow(k) ? Carpet : IsWhite(k) ? (ushort)40 : (ushort)29; }
-        static ushort CeilingFor(int x, int z, int seed) { int k = LevelKind(x, z, seed); return k == 7 ? (ushort)29 : CeilingTile; }
+        const int Cell = 8;
+        const int ZoneCell = 48; // 6x6 rooms per sub-level sector
 
-        static uint Hash(int a, int b, int c, int seed)
+        static int Div(int a, int b) { return a >= 0 ? a / b : (a - b + 1) / b; }
+        static int Mod(int a, int b) { int r = a % b; return r < 0 ? r + b : r; }
+
+        static uint Hash(int x, int y, int z, int seed)
         {
             unchecked
             {
-                uint h = (uint)seed;
-                h ^= (uint)a * 0x8da6b343u; h = (h << 13) | (h >> 19);
-                h ^= (uint)b * 0xd8163841u; h = (h << 17) | (h >> 15);
-                h ^= (uint)c * 0xcb1ab31fu; h *= 0x9e3779b1u;
+                uint h = (uint)(seed ^ (x * 374761393) ^ (y * 668265263) ^ (z * 2147483647));
+                h = (h ^ (h >> 13)) * 1274126177u;
                 return h ^ (h >> 16);
             }
         }
 
-        static float Smoother(float t) => t * t * (3 - 2 * t);
+        /// <summary>
+        /// Sub-level zone at world (x, z):
+        /// 0 = Level 0 (Lobby), 1 = Level 37 (Poolrooms), 2 = Level 1 (Warehouse),
+        /// 3 = Level 6 (Lights Out), 4 = Level "!" (Red Alarm Sector).
+        /// Central spawn area (|x| &lt; 36, |z| &lt; 36) is always classic Level 0 Lobby.
+        /// </summary>
+        public static int ZoneAt(int x, int z, int seed)
+        {
+            if (Math.Abs(x) < 36 && Math.Abs(z) < 36) return 0;
+            int zx = Div(x, ZoneCell), zz = Div(z, ZoneCell);
+            uint h = Hash(zx, 101, zz, seed ^ 0x5B3C);
+            uint roll = h % 20u;
+            if (roll < 9u) return 0;   // 45% Classic Level 0 Lobby
+            if (roll < 13u) return 1;  // 20% Level 37 Poolrooms
+            if (roll < 16u) return 2;  // 15% Level 1 Concrete Warehouse
+            if (roll < 18u) return 3;  // 10% Level 6 Lights Out
+            return 4;                  // 10% Level "!" Red Emergency Halls
+        }
 
-        /// <summary>Region floor level: the ledges that make the endless rooms readable.</summary>
-        static float Level(int rx, int rz, int seed) => 64f + (Hash(rx, 11, rz, seed ^ 0xF100) % 11) - 5;
+        public static string SublevelTitle(int zone)
+        {
+            switch (zone)
+            {
+                case 1: return "Уровень 37 · «Бассейны» (Poolrooms)";
+                case 2: return "Уровень 1 · «Обитаемый склад»";
+                case 3: return "Уровень 6 · «Полная темнота»";
+                case 4: return "Уровень «!» · «Аварийный сектор»";
+                default: return "Уровень 0 · «Жёлтое лобби»";
+            }
+        }
 
-        /// <summary>Walkable carpet height: smooth-step blend between neighbouring region levels.</summary>
+        public static bool IsRedRoom(int x, int z, int seed)
+        {
+            int zone = ZoneAt(x, z, seed);
+            if (zone == 4) return true;
+            int rx = Div(x, Cell), rz = Div(z, Cell);
+            if (Math.Abs(rx) <= 2 && Math.Abs(rz) <= 2) return false;
+            return (Hash(rx, 5, rz, seed) % 29u) == 0u;
+        }
+
+        public static bool IsDarkRoom(int x, int z, int seed)
+        {
+            int zone = ZoneAt(x, z, seed);
+            if (zone == 3) return true;
+            int rx = Div(x, Cell), rz = Div(z, Cell);
+            if (Math.Abs(rx) <= 2 && Math.Abs(rz) <= 2) return false;
+            return !IsRedRoom(x, z, seed) && (Hash(rx, 6, rz, seed) % 13u) == 0u;
+        }
+
         public static int FloorTop(int x, int z, int seed)
         {
-            int rx = x >> 4, rz = z >> 4;
-            float fx = (x - rx * 16) / 16f, fz = (z - rz * 16) / 16f;
-            float a = Level(rx, rz, seed), b = Level(rx + 1, rz, seed);
-            float c = Level(rx, rz + 1, seed), d = Level(rx + 1, rz + 1, seed);
-            float sx = Smoother(fx), sz = Smoother(fz);
-            float v = (a * (1 - sx) + b * sx) * (1 - sz) + (c * (1 - sx) + d * sx) * sz;
-            return (int)Math.Round(v);
+            if (Math.Abs(x) <= 24 && Math.Abs(z) <= 24) return 64;
+            int zone = ZoneAt(x, z, seed);
+            float n = MoonTerrain.ValueNoise(x * .009f, z * .009f, seed ^ 19391);
+            int step = (int)Math.Round((n - .5f) * 10f);
+            if (zone == 1) step = Math.Max(-3, Math.Min(2, step)); // Level Poolrooms stays gently terraced
+            return 64 + Math.Max(-5, Math.Min(5, step));
         }
 
-        /// <summary>Room-cell identity used for red rooms and lighting.</summary>
-        static uint Room(int x, int z, int seed) => Hash(x >> 3, 51, z >> 3, seed ^ 0x8BAC);
-
-        /// <summary>True for the rare red-wallpaper rooms of Level 0.</summary>
-        public static bool IsRedRoom(int x, int z, int seed) => Room(x, z, seed) % 23 == 0;
-
-        /// <summary>Spawn plaza around the origin stays wide open and lit.</summary>
-        static bool SpawnPlaza(int x, int z) => Math.Abs(x) <= 10 && Math.Abs(z) <= 10;
-
-        /// <summary>Every 256x256 region hides one bright exit doorway.</summary>
-        public static void ExitDoor(int x, int z, int seed, out int ex, out int ez)
+        static bool HasWall(int rx, int rz, bool vertical, int seed)
         {
-            int rx = x >> 8, rz = z >> 8;
-            ex = rx * 256 + (int)(Hash(rx, 42, rz, seed ^ 0xE217) % 250) + 3;
-            ez = rz * 256 + (int)((Hash(rx, 43, rz, seed ^ 0xE217) >> 8) % 250) + 3;
-            if (rx == 0 && rz == 0) { if (ex < 48) ex += 48; if (ez < 48) ez += 48; } // never on spawn
+            if (Math.Abs(rx) <= 1 && Math.Abs(rz) <= 1) return false;
+            uint h = Hash(rx, vertical ? 1 : 2, rz, seed);
+            return (h % 10u) < 4u;
         }
 
-        /// <summary>Standing on the exit threshold (within 2 blocks) leads back to reality.</summary>
+        static bool DoorAt(int rx, int rz, bool vertical, int local, int seed)
+        {
+            int centre = 2 + (int)(Hash(rx, vertical ? 3 : 4, rz, seed) % 4u);
+            return Math.Abs(local - centre) <= 1;
+        }
+
+        static bool SpawnPlaza(int x, int z)
+        {
+            return Math.Abs(x) <= 10 && Math.Abs(z) <= 10;
+        }
+
+        public static void ExitDoor(int nearX, int nearZ, int seed, out int doorX, out int doorZ)
+        {
+            int sx = Div(nearX, 160), sz = Div(nearZ, 160);
+            uint h = Hash(sx, 77, sz, seed);
+            int rx = sx * 20 + 6 + (int)(h % 8u);
+            int rz = sz * 20 + 6 + (int)((h >> 8) % 8u);
+            if (Math.Abs(rx) <= 2 && Math.Abs(rz) <= 2) rx += 6;
+            doorX = rx * Cell + 4;
+            doorZ = rz * Cell + 4;
+        }
+
         public static bool IsExitThreshold(int x, int z, int seed)
         {
-            ExitDoor(x, z, seed, out int ex, out int ez);
-            return Math.Abs(x - ex) <= 2 && Math.Abs(z - ez) <= 2;
+            ExitDoor(x, z, seed, out int dx, out int dz);
+            return Math.Abs(x - dx) <= 1 && Math.Abs(z - dz) <= 1;
         }
 
-        /// <summary>Carpet block id at the floor of this column (also the exit marker floor).</summary>
-        public static ushort FloorBlock(int x, int z, int seed)
+        static ushort WallBlockForZone(int zone, bool red, bool dark, int y, int floorTop)
         {
-            ExitDoor(x, z, seed, out int ex, out int ez);
-            if (Math.Abs(x - ex) <= 1 && Math.Abs(z - ez) <= 1) return 40; // polished threshold
-            if (IsRedRoom(x, z, seed) && !SpawnPlaza(x, z)) return RedWall;
-            return FloorFor(x, z, seed);
+            if (red || zone == 4)
+                return y == floorTop + 1 ? HazardSteelId : RedRoomId;
+            if (dark || zone == 3)
+                return SlateId;
+            if (zone == 1)
+                return ((y - floorTop) == 3) ? PlasterId : MarbleTileId;
+            if (zone == 2)
+                return (y == floorTop + 1) ? HazardSteelId : ConcreteId;
+            return WallpaperId;
+        }
+
+        static ushort FloorBlock(int x, int z, int seed)
+        {
+            if (IsExitThreshold(x, z, seed)) return PlasterId;
+            int zone = ZoneAt(x, z, seed);
+            if (IsRedRoom(x, z, seed)) return RedRoomId;
+            if (IsDarkRoom(x, z, seed)) return SlateId;
+            if (zone == 1) return ((x + z) & 3) == 0 ? PlasterId : MarbleTileId;
+            if (zone == 2) return AsphaltId;
+            return CarpetId;
         }
 
         public static ushort Block(int x, int y, int z, int seed, int floorTop)
         {
-            if (y == 0) return 9;
-            if (y > CeilingTop) return 0;
-            if (y < floorTop) return 1;
+            if (y <= 0) return BedrockId;
+            if (y >= CeilingTop + 1) return 0;
+
+            int zone = ZoneAt(x, z, seed);
+            bool red = IsRedRoom(x, z, seed);
+            bool dark = IsDarkRoom(x, z, seed);
+            int rx = Div(x, Cell), rz = Div(z, Cell);
+            int lx = Mod(x, Cell), lz = Mod(z, Cell);
+
+            // Exit doorway overrides everything so it is never buried inside a wall
+            ExitDoor(x, z, seed, out int ex, out int ez);
+            int edx = x - ex, edz = z - ez;
+            if (Math.Abs(edx) <= 2 && Math.Abs(edz) <= 2)
+            {
+                if (y < floorTop) return BedrockId;
+                if (y == floorTop) return PlasterId;
+                if (y >= CeilingBottom) return PlasterId;
+                if (edz == -2 && Math.Abs(edx) <= 1 && y <= floorTop + 4)
+                {
+                    if (Math.Abs(edx) == 1 || y == floorTop + 4) return PlasterId;
+                    return y == floorTop + 3 ? ExitBeaconId : (ushort)0;
+                }
+                return 0;
+            }
+
+            if (y < floorTop) return (zone == 1 && y == floorTop - 1) ? MarbleTileId : BedrockId;
             if (y == floorTop) return FloorBlock(x, z, seed);
 
-            ExitDoor(x, z, seed, out int ex, out int ez);
-            bool exitCell = Math.Abs(x - ex) <= 1 && Math.Abs(z - ez) <= 1;
-            bool red = !exitCell && !SpawnPlaza(x, z) && IsRedRoom(x, z, seed);
-
+            // Ceiling slab with fluorescent/floodlight fixtures
             if (y >= CeilingBottom)
             {
-                // Fluorescent panels above room centres (never in red rooms), exit always glows.
-                int lk = LevelKind(x, z, seed);
-                uint roomRoll = Room(x, z, seed) % 100;
-                bool roomLight = IsYellow(lk) ? roomRoll < 78 : IsWhite(lk) ? roomRoll < 55 : roomRoll < 14;
-                int mx = ((x % 8) + 8) % 8, mz = ((z % 8) + 8) % 8;
-                bool inPanel = mx >= 2 && mx <= 5 && mz >= 2 && mz <= 5;
-                if (y == CeilingBottom && (exitCell || (roomLight && inPanel && !red))) return Fluorescent;
-                return red ? RedWall : CeilingFor(x, z, seed);
+                if (y == CeilingBottom && lx >= 3 && lx <= 4 && lz >= 3 && lz <= 4)
+                {
+                    if (dark)
+                    {
+                        // Level 6: 90% lights dead, rare faint emergency lamp
+                        return (Hash(rx, 19, rz, seed) % 10u) == 0u ? LightId : SlateId;
+                    }
+                    // Classic Level 0 occasional burnt-out fluorescent fixture
+                    if (zone == 0 && !SpawnPlaza(x, z) && (Hash(rx, 21, rz, seed) % 8u) == 0u)
+                        return PlasterId;
+                    return (zone == 1 || zone == 2) ? FloodlightId : LightId;
+                }
+                if (dark) return SlateId;
+                if (zone == 1) return MarbleTileId;
+                if (zone == 2) return ConcreteId;
+                return PlasterId;
             }
 
-            // Walls on the 8-grid borders: solid continuous runs with 2-cell doorways
-            // punched through some runs (classic Level 0 rooms, not scattered stubs).
-            int wx = ((x % 8) + 8) % 8, wz = ((z % 8) + 8) % 8;
-            bool borderX = wx == 0, borderZ = wz == 0;
-            bool wall = false;
-            if (borderX)
-            {
-                int mz = ((z % 8) + 8) % 8;
-                int rollX = (int)(Hash(x >> 3, 77, z >> 3, seed ^ 0x51A1) % 10);
-                wall = rollX < 7 || mz < 3 || mz > 4;
-            }
-            if (borderZ)
-            {
-                int mx = ((x % 8) + 8) % 8;
-                int rollZ = (int)(Hash(x >> 3, 78, z >> 3, seed ^ 0x51A2) % 10);
-                bool segWall = rollZ < 7 || mx < 3 || mx > 4;
-                wall = wall || segWall;
-            }
-            if (SpawnPlaza(x, z)) wall = false;
-            if (exitCell) wall = false;
-            if (wall) return red ? RedWall : WallFor(x, z, seed);
+            // Open arrival plaza at (0, 0) so spawn and tests always have clear headroom
+            if (SpawnPlaza(x, z)) return 0;
 
-            // Interior pillars give the endless rooms some depth cues.
-            if (!borderX && !borderZ && !SpawnPlaza(x, z) && Hash(x, 79, z, seed ^ 0x3301) % 31 == 0)
-                return red ? RedWall : WallFor(x, z, seed);
+            ushort wallMat = WallBlockForZone(zone, red, dark, y, floorTop);
+
+            // Outer cell boundary walls with off-center doorways
+            bool westWall = lx == 0 && HasWall(rx, rz, true, seed) && !(DoorAt(rx, rz, true, lz, seed) && y <= floorTop + 3);
+            bool southWall = lz == 0 && HasWall(rx, rz, false, seed) && !(DoorAt(rx, rz, false, lx, seed) && y <= floorTop + 3);
+            if (westWall || southWall) return wallMat;
+
+            uint roomHash = Hash(rx, 9, rz, seed);
+
+            // Sub-level interior features!
+            if (zone == 1)
+            {
+                // Level 37 Poolrooms: sunken warm crystal water basins (lx 2..5, lz 2..5) + tiled corner pillars
+                if ((lx == 1 || lx == 6) && (lz == 1 || lz == 6) && (roomHash % 3u) == 0u)
+                    return MarbleTileId;
+                if (y == floorTop + 1 && (roomHash % 5u) < 3u)
+                {
+                    if (lx >= 2 && lx <= 5 && lz >= 2 && lz <= 5) return WaterId;
+                }
+                return 0;
+            }
+
+            if (zone == 2)
+            {
+                // Level 1 Concrete Warehouse: steel H-columns & survivor supply crates/workbenches
+                if (lx == 4 && lz == 4 && (roomHash % 4u) == 0u) return HazardSteelId;
+                if (y == floorTop + 1 && lx == 2 && lz == 6 && (roomHash % 6u) == 0u) return WorkbenchId;
+                if (y <= floorTop + 2 && lx == 6 && lz == 2 && (roomHash % 5u) == 0u) return PlanksId;
+                return 0;
+            }
+
+            // Classic Level 0 / Dark / Red rooms: non-Euclidean asymmetric L-baffles, structural pillars & rare office cubicles
+            uint shape = roomHash % 14u;
+            if (shape == 0u && lx == 4 && lz == 4)
+                return wallMat;
+            if (shape == 1u && lx == 4 && lz >= 2 && lz <= 5 && y <= WallTop)
+                return wallMat; // Free-standing partition wall inside room
+            if (shape == 2u && lz == 4 && lx >= 2 && lx <= 5 && y <= WallTop)
+                return wallMat;
+            if (shape == 3u && zone == 0 && y <= floorTop + 2 && lx == 6 && lz == 6)
+                return y == floorTop + 1 ? BookshelfId : PlanksId; // Abandoned office shelf
+            if (shape == 4u && zone == 0 && y == floorTop + 1 && lx == 2 && lz == 6)
+                return PlanksId; // Abandoned office desk
+
             return 0;
         }
 
-        /// <summary>
-        /// Deterministic no-clip accident during an unlucky night: exhaustion, hunger or a
-        /// soaked body while sleeping in Lestingia can drop the player into the Backrooms.
-        /// </summary>
-        public static bool ShouldNoclip(int seed, int dayIdx, float stamina, float hunger, float wetness)
+        public static bool ShouldNoclip(int seed, int step, float hunger, float stamina)
         {
-            uint roll = Hash(seed, dayIdx, 13, 0x5C1D);
-            return (stamina < 55f || hunger < 50f || wetness > 0.25f) && roll % 100 < 18;
+            if (hunger > 45f && stamina > 35f) return false;
+            return (Hash(step, 99, 0, seed) % 64u) == 0u;
         }
     }
 }

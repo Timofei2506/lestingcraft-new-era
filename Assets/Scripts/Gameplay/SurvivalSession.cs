@@ -38,6 +38,35 @@ namespace LestingCraft.Gameplay
             Weather=gameObject.AddComponent<DynamicWeather>();Weather.Initialize(this,player.Camera);wasDead=Vitals.dead;UpdateGrave();
         }
 
+        public void SetGameMode(GameMode newMode)
+        {
+            if(Data==null)return;
+            Data.mode=(int)newMode;
+            ResetMining();
+            if(newMode==GameMode.Creative)
+            {
+                Vitals.Respawn();
+                wasDead=false;
+                Data.campaign.runEnded=false;
+            }
+            else if(Player)
+            {
+                Player.CreativeFlyActive=false;
+            }
+            Inventory.revision++;
+            Checkpoint();
+        }
+
+        public static bool RequiresSpaceSuit(Dimension dim)
+        {
+            return dim!=Dimension.Lestingia&&
+                   dim!=Dimension.Backrooms&&
+                   dim!=Dimension.Inferno&&
+                   dim!=Dimension.Paradise&&
+                   dim!=Dimension.Somnia&&
+                   dim!=Dimension.Dream;
+        }
+
         public bool HasFullSpaceSuit()
         {
             if(Inventory==null||Inventory.equipment==null||Inventory.equipment.Length<8)return false;
@@ -107,16 +136,25 @@ namespace LestingCraft.Gameplay
                 else if(!Game.Online)Living.SpawnDrop(drop,1,0,(Vector3)cell+Vector3.one*.5f,Vector3.up*2);
                 if(drop==122&&UnityEngine.Random.value<.25f)Inventory.Add(110,1);
                 if(harvestBlock==3&&UnityEngine.Random.value<.45f)Inventory.Add(113,1);
+                if(World.ContentVersion>=11)
+                {
+                    if(harvestBlock==5&&UnityEngine.Random.value<.45f)Inventory.Add(BlockRegistry.OakSaplingId,1);
+                    else if(harvestBlock==60&&UnityEngine.Random.value<.45f)Inventory.Add(BlockRegistry.SakuraSaplingId,1);
+                    else if((harvestBlock==3||harvestBlock==65)&&UnityEngine.Random.value<.50f)Inventory.Add(BlockRegistry.DandelionBlockId+UnityEngine.Random.Range(0,4),1);
+                }
             }
             if(spend>0)
             {
                 ushort placedId=PlaceableBlockForItem(spend,World.ContentVersion);
                 GameAudio.PlayBlockPlace(placedId);
                 Progress.Add("placed");Progress.Add("place_"+placedId);Inventory.Remove(spend,1);
+                if(Game)Game.NotifyBlockPlaced(cell,placedId);
             }
             else if(Creative&&harvestBlock==0)
             {
-                GameAudio.PlayBlockPlace(PlaceableBlockForItem(Inventory.Active.item,World.ContentVersion));
+                ushort placedCreative=PlaceableBlockForItem(Inventory.Active.item,World.ContentVersion);
+                GameAudio.PlayBlockPlace(placedCreative);
+                if(Game&&placedCreative>0)Game.NotifyBlockPlaced(cell,placedCreative);
             }
             if(toolSlot>=0&&!Creative){int selected=Inventory.selected;Inventory.selected=toolSlot;Inventory.WearTool();Inventory.selected=selected;}
             pending=false;drop=spend=harvestBlock=0;Notice="";
@@ -189,7 +227,7 @@ namespace LestingCraft.Gameplay
                 bool pressurized=Game.ShuttleSeated||Game.InMoonFlight||Game.DockedAtOrbitalStation||
                     (Game.LaunchSite&&Vector3.Distance(Player.transform.position,Game.LaunchSite.transform.position)<46f);
 
-                if(World.Dimension!=Dimension.Lestingia)
+                if(RequiresSpaceSuit(World.Dimension))
                 {
                     bool suit=HasFullSpaceSuit();
                     Vitals.StepSuit(elapsed,Mode,suit,pressurized);

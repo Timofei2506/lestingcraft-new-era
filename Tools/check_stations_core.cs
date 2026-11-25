@@ -57,12 +57,12 @@ class StationsCheck
             Check(Items.Exists(id)&&Items.Get(id).Block==id,"placeable v8 block item "+id);
             Check(CraftingTable.RoomVersionFor(id)==8,"room version 8 for block "+id);
         }
-        for(int id=70;id<=89;id++)
+        for(int id=70;id<=97;id++)
         {
-            Check(Items.Exists(id)&&Items.Get(id).Block==id,"placeable v9 block item "+id);
+            Check(Items.Exists(id)&&Items.Get(id).Block==id,"placeable v9+ block item "+id);
             Check(CraftingTable.RoomVersionFor(id)==9,"room version 9 for block "+id);
         }
-        Check(ExpandedContent.Blocks.Length==73&&ExpandedContent.MaxBlock==91,"73 expanded blocks, MaxBlock 91");
+        Check(ExpandedContent.Blocks.Length==79&&ExpandedContent.MaxBlock==97,"79 expanded blocks, MaxBlock 97");
 
         // Recipes: each station grid matches exactly its own recipe at any offset and mirror.
         int[][] shapes=

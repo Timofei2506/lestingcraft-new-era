@@ -16,7 +16,7 @@ namespace LestingCraft.Gameplay
     public static class Items
     {
         public const int Torch=148,WoodPick=100,StonePick=101,Axe=102,Sword=103,Coat=104,Berries=110,Bread=111,Planks=120,Stick=121,Fiber=122,Charcoal=123,RoastedBerries=112,Grain=113,Dough=114,Workbench=16,Furnace=17;
-        public const int UraniumRod=190,CherenkovCore=191,ElectricLocomotive=192,QuadDrone=193,IndustrialRobot=194,Dosimeter=195,ThermonukeId=666;
+        public const int UraniumRod=190,CherenkovCore=191,ElectricLocomotive=192,QuadDrone=193,IndustrialRobot=194,Dosimeter=195,BoneMeal=196,ThermonukeId=666;
         static readonly Dictionary<int,ItemDefinition> all=new Dictionary<int,ItemDefinition>();
         static Items()
         {
@@ -47,6 +47,7 @@ namespace LestingCraft.Gameplay
             all[QuadDrone]=new ItemDefinition(QuadDrone,"Инженерный квадрокоптер",1);
             all[IndustrialRobot]=new ItemDefinition(IndustrialRobot,"Робот-автоматон «Титан-М»",1);
             all[Dosimeter]=new ItemDefinition(Dosimeter,"Дозиметр «Припять»",1);
+            all[BoneMeal]=new ItemDefinition(BoneMeal,"Костная мука");
             // STRICTLY SECRET WARHEAD: never exposed in CatalogIds, CreativeCatalog, recipes, drops or trades — ONLY /give 666!
             all[ThermonukeId]=new ItemDefinition(ThermonukeId,"Объект 666 · Термоядерная боеголовка",1);
         }

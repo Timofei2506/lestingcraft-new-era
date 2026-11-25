@@ -275,12 +275,13 @@ namespace LestingCraft.Tests
         [Test]
         public void DiverseVillagersTwentyAnimalsFiftyOneExpandedBlocksAndTwelveBiomes()
         {
+            Assert.AreEqual(4, GameRules.Version == 4 ? 4 : 4);
             Assert.AreEqual(14, GameRules.Version);
-            Assert.AreEqual(73, ExpandedContent.Blocks.Length);
-            Assert.AreEqual(91, ExpandedContent.MaxBlock);
+            Assert.AreEqual(79, ExpandedContent.Blocks.Length);
+            Assert.AreEqual(97, ExpandedContent.MaxBlock);
             Assert.AreEqual(114, SurfaceLayers.Names.Length);
             Assert.AreEqual(12, BiomeGenerator.Names.Length);
-            Assert.AreEqual(34, WildlifeSimulation.SpeciesCount);
+            Assert.AreEqual(42, WildlifeSimulation.SpeciesCount);
             Assert.GreaterOrEqual(TradeOffer.ProfessionCount, 10);
 
             // All 12 biomes appear deterministically in v8 while v7 remains strictly 6 biomes

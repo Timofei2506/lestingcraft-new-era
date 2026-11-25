@@ -22,7 +22,9 @@ namespace LestingCraft.Gameplay
             "turtle-shell","moose-fur","capybara-fur","voidray-skin",
             "ash-hound-hide","cherenkov-leech-skin","rad-scorpion-carapace","mutant-boar-hide","slag-carapace",
             "fallout-crow-plumage","gamma-ray-membrane","bone-stalker-hide","vitrified-golem-crust","wraith-shroud",
-            "wolf-fur","scorpion-chitin","turtle-shell","voidray-skin"
+            "wolf-fur","scorpion-chitin","turtle-shell","voidray-skin",
+            "ash-hound-hide","magma-basalt","slag-carapace","rad-scorpion-carapace",
+            "owl-feathers","deer-fur","owl-feathers","eagle-feathers"
         };
 
         public static readonly string[] SpeciesNames =
@@ -33,7 +35,9 @@ namespace LestingCraft.Gameplay
             "Болотная черепаха","Северный лось","Капибара","Эфирный скат",
             "Пепельная гончая","Черенковская пиявка","Радио-скорпион","Двухголовый секач","Шлаковый краб",
             "Пепельный ворон","Гамма-скат","Костяной ловчий","Тринититовый голем","Фантом Спирали",
-            "Ледяной волк","Стеклянный паук","Грибной жук","Небесный кит"
+            "Ледяной волк","Стеклянный паук","Грибной жук","Небесный кит",
+            "Адская гончая","Лавовый страйдер","Пепельный бес","Адский скорпион",
+            "Небесный лебедь","Златорогий олень Эдема","Крылатый пегас","Жар-птица Эдема"
         };
 
         public static readonly Color[] CoatTints =
@@ -49,7 +53,9 @@ namespace LestingCraft.Gameplay
             new Color(.46f, .28f, .22f), new Color(.36f, .32f, .30f), new Color(.20f, .19f, .22f),
             new Color(.22f, .42f, .48f), new Color(.68f, .64f, .54f), new Color(.30f, .38f, .34f),
             new Color(.24f, .20f, .34f), new Color(.78f, .86f, .95f), new Color(.66f, .80f, .88f),
-            new Color(.48f, .34f, .22f), new Color(.38f, .48f, .62f)
+            new Color(.48f, .34f, .22f), new Color(.38f, .48f, .62f),
+            new Color(.32f, .12f, .09f), new Color(.48f, .16f, .08f), new Color(.28f, .14f, .12f), new Color(.42f, .12f, .08f),
+            new Color(.96f, .97f, .99f), new Color(.94f, .88f, .74f), new Color(.97f, .96f, .92f), new Color(.98f, .68f, .18f)
         };
 
         static float UnitFor(int kind)
@@ -57,9 +63,9 @@ namespace LestingCraft.Gameplay
             switch (kind)
             {
                 case 1: case 5: case 8: case 9: case 10: case 11: case 12: case 13:
-                case 15: case 16: case 18: case 21: case 25: case 31: case 32:
+                case 15: case 16: case 18: case 21: case 25: case 31: case 32: case 36: case 38: case 41:
                     return .038f;
-                case 4: case 6: case 14: case 17: case 27: case 28: case 29: case 33:
+                case 4: case 6: case 14: case 17: case 27: case 28: case 29: case 33: case 35: case 40:
                     return .064f;
                 default:
                     return .048f;
@@ -75,7 +81,9 @@ namespace LestingCraft.Gameplay
             0.88f, 1.95f,
             1.14f, 1.18f, 1.52f, 1.38f, 1.75f,
             0.66f, 1.95f, 1.38f, 1.44f, 1.28f,
-            1.16f, 1.75f, 1.22f, 2.45f
+            1.16f, 1.75f, 1.22f, 2.45f,
+            1.18f, 1.48f, 0.92f, 1.42f,
+            0.96f, 1.18f, 1.36f, 1.04f
         };
 
         static SculptData ScaleSculpt(SculptData d, float scale)
@@ -97,6 +105,8 @@ namespace LestingCraft.Gameplay
             return d;
         }
 
+        public static SculptData Build(int kind) => For(kind);
+
         public static SculptData For(int kind)
         {
             if (kind < 0 || kind >= SpeciesNames.Length) kind = 0;
@@ -111,8 +121,8 @@ namespace LestingCraft.Gameplay
         {
             Color c = CoatTints[kind];
             // Strictly zero emission on all natural terrestrial/avian wildlife so vertex alpha stays 0.
-            // Only cosmic rays/whales (19, 33) and Radia Abyss mutants (20..29) carry emissive accents.
-            bool emissiveAllowed = (kind >= 20 && kind <= 29) || kind == 19 || kind == 33;
+            // Only cosmic rays/whales (19, 33), Radia mutants (20..29), Inferno beasts (34..37), and Paradise phoenix/pegasus accents (40..41) carry emissive accents.
+            bool emissiveAllowed = (kind >= 20 && kind <= 29) || kind == 19 || kind == 33 || (kind >= 34 && kind <= 37) || kind == 40 || kind == 41;
 
             Color under = kind == 5 ? new Color(.95f, .93f, .89f) :
                           kind == 13 ? new Color(.95f, .96f, .98f) :
@@ -120,14 +130,20 @@ namespace LestingCraft.Gameplay
                           kind == 10 ? new Color(.68f, .72f, .46f) :
                           kind == 16 ? new Color(.72f, .66f, .46f) :
                           kind == 33 ? new Color(.86f, .89f, .94f) :
+                          kind >= 34 && kind <= 37 ? new Color(.72f, .24f, .08f) :
+                          kind >= 38 && kind <= 41 ? new Color(.99f, .98f, .93f) :
                           Color.Lerp(c, new Color(.92f, .88f, .82f), .45f);
 
             Color iris = kind == 3 || kind == 8 || kind == 11 || kind == 12 ? new Color(.88f, .64f, .16f) :
                          kind == 10 ? new Color(.84f, .68f, .18f) :
                          kind == 30 || kind == 31 ? new Color(.36f, .78f, .96f) :
+                         kind >= 34 && kind <= 37 ? new Color(1.0f, .48f, .10f) :
+                         kind >= 38 && kind <= 41 ? new Color(.38f, .76f, .98f) :
                          new Color(.14f, .12f, .10f);
 
-            Color glowCol = kind >= 20 && kind <= 29 ? new Color(.22f, .96f, .66f) :
+            Color glowCol = kind >= 34 && kind <= 37 ? new Color(1.0f, .42f, .08f) :
+                            kind == 40 || kind == 41 ? new Color(1.0f, .86f, .38f) :
+                            kind >= 20 && kind <= 29 ? new Color(.22f, .96f, .66f) :
                             kind == 19 ? new Color(.48f, .78f, 1.0f) :
                             new Color(.56f, .86f, 1.0f);
 
@@ -135,6 +151,7 @@ namespace LestingCraft.Gameplay
                             kind == 11 ? new Color(.92f, .72f, .20f) :
                             kind == 13 ? new Color(.94f, .54f, .16f) :
                             kind == 31 ? new Color(.82f, .94f, 1.0f) :
+                            kind >= 38 && kind <= 41 ? new Color(.98f, .82f, .28f) :
                             new Color(.82f, .76f, .64f);
 
             Color accent = kind == 1 ? new Color(.88f, .62f, .62f) :
@@ -239,6 +256,14 @@ namespace LestingCraft.Gameplay
                 case 31: BuildGlassSpider(s); break;
                 case 32: BuildMushroomBeetle(s); break;
                 case 33: BuildSkyWhale(s); break;
+                case 34: BuildHellhound(s); break;
+                case 35: BuildMagmaStrider(s); break;
+                case 36: BuildCinderImp(s); break;
+                case 37: BuildScorpion(s, true); break;
+                case 38: BuildCelestialSwan(s); break;
+                case 39: BuildEdenStag(s); break;
+                case 40: BuildSunlitPegasus(s); break;
+                case 41: BuildPhoenixDove(s); break;
             }
         }
 
@@ -1236,6 +1261,247 @@ namespace LestingCraft.Gameplay
             // Wide horizontal whale flukes
             for (int side = -1; side <= 1; side += 2)
                 s.Ellipsoid(side * .28f, .92f, -1.24f, .28f, .05f, .16f, DARK);
+        }
+
+        public static SculptData DomesticCat(int seed = 0)
+        {
+            var s = new Sculptor(.028f, seed == 0 ? 707 : Math.Abs(seed));
+            int variant = Math.Abs(seed) % 4;
+            Color coat = variant == 1 ? new Color(.18f, .18f, .21f) // tuxedo
+                       : variant == 2 ? new Color(.86f, .48f, .18f) // ginger
+                       : variant == 3 ? new Color(.76f, .78f, .83f) // silver
+                       : new Color(.56f, .42f, .29f);               // tabby
+            s.Pal("fur", "cat-fur", coat.r, coat.g, coat.b, 0f);                  // 0 FUR
+            s.Pal("under", "animal-underfur", .95f, .94f, .91f, 0f);              // 1 UNDER
+            s.Pal("dark", "cat-fur", coat.r * .58f, coat.g * .56f, coat.b * .55f, 0f); // 2 DARK
+            s.Pal("sclera", "animal-underfur", .96f, .96f, .94f, 0f);             // 3 SCLERA
+            s.Pal("iris", "obsidian", .36f, .78f, .28f, 0f);                      // 4 IRIS
+            s.Pal("glow", "animal-underfur", .90f, .54f, .54f, 0f);               // 5 nose pink
+            s.Pal("hoof", "obsidian", .14f, .13f, .12f, 0f);                      // 6 pupil/pad
+            s.Pal("horn", "animal-underfur", .92f, .92f, .88f, 0f);               // 7 whiskers
+            s.Pal("accent", "animal-underfur", .88f, .60f, .62f, 0f);             // 8 inner ear
+
+            s.Part("body", 0, .28f, 0);
+            s.Ellipsoid(0, .29f, .04f, .13f, .13f, .24f, FUR);
+            s.Ellipsoid(0, .28f, -.14f, .12f, .12f, .18f, FUR);
+            s.Ellipsoid(0, .22f, .06f, .095f, .065f, .20f, UNDER);
+            s.Ellipsoid(0, .37f, -.04f, .10f, .035f, .14f, DARK);
+
+            s.Part("head", 0, .42f, .25f);
+            s.Ellipsoid(0, .44f, .28f, .13f, .115f, .125f, FUR);
+            s.Ellipsoid(0, .40f, .36f, .085f, .055f, .065f, UNDER);
+            s.Ellipsoid(0, .42f, .41f, .028f, .022f, .022f, GLOW);
+            Eyes(s, .45f, .36f, .058f, .028f);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Tube(side * .08f, .52f, .26f, side * .11f, .63f, .27f, .045f, .018f, FUR);
+                s.Tube(side * .08f, .52f, .28f, side * .105f, .60f, .29f, .026f, .012f, ACCENT);
+                s.Tube(side * .06f, .40f, .37f, side * .18f, .39f, .38f, .012f, .010f, HORN);
+            }
+
+            QuadLegs(s, .085f, .16f, -.16f, .22f, .042f, .034f, UNDER, true);
+
+            s.Part("tail", 0, .35f, -.25f);
+            s.Path(new[] { 0f, .35f, -.25f, 0f, .44f, -.40f, 0f, .56f, -.48f },
+                new[] { .036f, .030f, .024f }, FUR);
+
+            return s.Finish("domestic_cat_" + variant);
+        }
+
+        // ---- INFERNO FAUNA (34..36; 37 uses BuildScorpion(s, true)) ----
+        static void BuildHellhound(Sculptor s)
+        {
+            s.Part("body", 0, .64f, 0);
+            s.Ellipsoid(0, .66f, .12f, .22f, .23f, .29f, FUR);
+            s.Ellipsoid(0, .63f, -.18f, .18f, .19f, .25f, DARK);
+            s.Ellipsoid(0, .54f, .02f, .14f, .09f, .32f, GLOW); // glowing magma ribcage fissures
+            for (int k = 0; k < 4; k++)
+            {
+                float sz = .22f - k * .13f;
+                s.Tube(0, .82f, sz, 0, .98f, sz - .06f, .045f, .018f, GLOW);
+            }
+
+            s.Part("head", 0, .82f, .38f);
+            s.Ellipsoid(0, .84f, .42f, .15f, .14f, .16f, FUR);
+            s.Tube(0, .80f, .50f, 0, .77f, .70f, .095f, .068f, DARK);
+            s.Tube(0, .73f, .50f, 0, .71f, .66f, .072f, .052f, GLOW);
+            Eyes(s, .88f, .50f, .095f, .038f, true);
+            for (int side = -1; side <= 1; side += 2)
+                s.Tube(side * .10f, .92f, .40f, side * .18f, 1.12f, .28f, .044f, .018f, HORN);
+
+            QuadLegs(s, .16f, .22f, -.22f, .52f, .075f, .054f, HOOF, true);
+
+            s.Part("tail", 0, .68f, -.36f);
+            s.Path(new[] { 0f, .68f, -.36f, 0f, .62f, -.64f, 0f, .74f, -.82f },
+                new[] { .058f, .042f, .032f }, DARK);
+            s.Ellipsoid(0, .75f, -.84f, .06f, .06f, .08f, GLOW);
+        }
+
+        static void BuildMagmaStrider(Sculptor s)
+        {
+            s.Part("body", 0, 1.02f, 0);
+            s.Ellipsoid(0, 1.06f, 0, .34f, .28f, .38f, FUR);
+            s.Ellipsoid(0, 1.24f, -.02f, .26f, .12f, .28f, DARK); // basalt carapace dome
+            s.Ellipsoid(0, .92f, .04f, .24f, .12f, .28f, GLOW);   // molten underbelly
+
+            s.Part("head", 0, 1.04f, .36f);
+            s.Ellipsoid(0, 1.04f, .44f, .22f, .18f, .20f, FUR);
+            Eyes(s, 1.08f, .54f, .13f, .048f, true);
+            for (int side = -1; side <= 1; side += 2)
+                s.Tube(side * .18f, 1.12f, .40f, side * .32f, 1.28f, .28f, .052f, .024f, GLOW);
+
+            for (int i = 0; i < 4; i++)
+            {
+                float lx = (i % 2 == 0 ? -1f : 1f) * .28f;
+                float lz = i < 2 ? -.20f : .20f;
+                s.Part("leg" + i, lx, .92f, lz);
+                s.Tube(lx, .92f, lz, lx * 1.28f, .48f, lz, .085f, .068f, DARK);
+                s.Tube(lx * 1.28f, .48f, lz, lx * 1.15f, .06f, lz, .068f, .082f, FUR);
+                s.Box(lx * 1.15f, .05f, lz, .10f, .05f, .12f, GLOW);
+            }
+
+            s.Part("tail", 0, 1.00f, -.36f);
+            s.Tube(0, 1.00f, -.36f, 0, .92f, -.66f, .09f, .04f, GLOW);
+        }
+
+        static void BuildCinderImp(Sculptor s)
+        {
+            s.Part("body", 0, .58f, 0);
+            s.Ellipsoid(0, .60f, 0, .16f, .22f, .15f, FUR);
+            s.Ellipsoid(0, .62f, .06f, .11f, .12f, .10f, GLOW);
+
+            s.Part("head", 0, .86f, .06f);
+            s.Ellipsoid(0, .90f, .08f, .14f, .13f, .14f, FUR);
+            Eyes(s, .92f, .18f, .072f, .036f, true);
+            for (int side = -1; side <= 1; side += 2)
+                s.Tube(side * .08f, .99f, .06f, side * .18f, 1.18f, -.04f, .038f, .016f, HORN);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wingL" : "wingR", side * .15f, .68f, -.04f);
+                s.Path(new[] { side * .15f, .68f, -.04f, side * .48f, .84f, -.10f, side * .74f, .66f, -.18f },
+                    new[] { .048f, .036f, .024f }, DARK);
+                s.Ellipsoid(side * .46f, .68f, -.12f, .24f, .14f, .035f, GLOW);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -1f : 1f) * .09f;
+                s.Part("leg" + i, lx, .40f, 0);
+                s.Tube(lx, .40f, 0, lx, .05f, .03f, .048f, .036f, HOOF);
+            }
+
+            s.Part("tail", 0, .44f, -.12f);
+            s.Path(new[] { 0f, .44f, -.12f, 0f, .38f, -.38f, 0f, .50f, -.54f },
+                new[] { .036f, .028f, .024f }, GLOW);
+        }
+
+        // ---- PARADISE FAUNA (38..41) ----
+        static void BuildCelestialSwan(Sculptor s)
+        {
+            s.Part("body", 0, .48f, 0);
+            s.Ellipsoid(0, .50f, -.04f, .22f, .20f, .34f, FUR);
+            s.Ellipsoid(0, .44f, 0, .18f, .12f, .28f, UNDER);
+            // Graceful S-curved swan neck
+            s.Path(new[] { 0f, .58f, .22f, 0f, .82f, .30f, 0f, 1.04f, .24f },
+                new[] { .075f, .055f, .048f }, FUR);
+
+            s.Part("head", 0, 1.06f, .26f);
+            s.Ellipsoid(0, 1.08f, .30f, .075f, .072f, .095f, FUR);
+            s.Tube(0, 1.06f, .36f, 0, 1.04f, .48f, .042f, .022f, HORN); // golden beak
+            Eyes(s, 1.10f, .34f, .052f, .024f);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wingL" : "wingR", side * .20f, .56f, .02f);
+                s.Ellipsoid(side * .38f, .60f, -.04f, .24f, .05f, .22f, FUR);
+                s.Ellipsoid(side * .56f, .64f, -.10f, .16f, .04f, .16f, HORN);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -1f : 1f) * .09f;
+                s.Part("leg" + i, lx, .32f, -.02f);
+                s.Tube(lx, .32f, -.02f, lx, .04f, .02f, .036f, .028f, HORN);
+            }
+
+            s.Part("tail", 0, .54f, -.34f);
+            s.Ellipsoid(0, .58f, -.42f, .14f, .08f, .16f, FUR);
+        }
+
+        static void BuildEdenStag(Sculptor s)
+        {
+            BuildDeer(s);
+            // Add luminous golden crown halo tines between the stag's antlers
+            s.Tube(0, 1.62f, .44f, 0, 1.92f, .46f, .036f, .020f, HORN);
+        }
+
+        static void BuildSunlitPegasus(Sculptor s)
+        {
+            s.Part("body", 0, .96f, 0);
+            s.Ellipsoid(0, .98f, .12f, .26f, .28f, .38f, FUR);
+            s.Ellipsoid(0, .96f, -.22f, .24f, .26f, .34f, FUR);
+            s.Tube(0, 1.10f, .32f, 0, 1.48f, .48f, .16f, .115f, FUR);
+            // Golden flowing mane
+            s.Path(new[] { 0f, 1.54f, .40f, 0f, 1.32f, .28f, 0f, 1.14f, .16f },
+                new[] { .055f, .062f, .050f }, HORN);
+
+            s.Part("head", 0, 1.50f, .50f);
+            s.Ellipsoid(0, 1.54f, .54f, .13f, .13f, .18f, FUR);
+            s.Tube(0, 1.50f, .64f, 0, 1.44f, .84f, .10f, .072f, FUR);
+            Eyes(s, 1.57f, .60f, .11f, .040f);
+            for (int side = -1; side <= 1; side += 2)
+                s.Tube(side * .09f, 1.64f, .48f, side * .13f, 1.78f, .46f, .038f, .018f, FUR);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wingL" : "wingR", side * .24f, 1.12f, .12f);
+                s.Path(new[] { side * .24f, 1.12f, .12f, side * .72f, 1.38f, .02f, side * 1.18f, 1.52f, -.14f },
+                    new[] { .085f, .068f, .045f }, FUR);
+                s.Ellipsoid(side * .68f, 1.26f, -.06f, .38f, .06f, .24f, UNDER);
+                s.Ellipsoid(side * 1.02f, 1.38f, -.16f, .24f, .05f, .18f, GLOW);
+            }
+
+            QuadLegs(s, .18f, .28f, -.28f, .76f, .088f, .062f, HORN, false);
+
+            s.Part("tail", 0, 1.00f, -.52f);
+            s.Path(new[] { 0f, 1.00f, -.52f, 0f, .78f, -.78f, 0f, .54f, -.88f },
+                new[] { .068f, .075f, .048f }, HORN);
+        }
+
+        static void BuildPhoenixDove(Sculptor s)
+        {
+            s.Part("body", 0, .54f, 0);
+            s.Ellipsoid(0, .56f, .04f, .17f, .18f, .26f, FUR);
+            s.Ellipsoid(0, .50f, .08f, .13f, .12f, .20f, GLOW);
+
+            s.Part("head", 0, .72f, .24f);
+            s.Ellipsoid(0, .76f, .28f, .11f, .11f, .12f, FUR);
+            s.Tube(0, .74f, .36f, 0, .72f, .48f, .045f, .018f, HORN);
+            // Radiant 3-plume phoenix crest
+            for (int k = -1; k <= 1; k++)
+                s.Tube(k * .03f, .84f, .24f, k * .06f, 1.02f, .10f, .026f, .014f, GLOW);
+            Eyes(s, .78f, .33f, .075f, .028f, true);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wingL" : "wingR", side * .16f, .60f, .04f);
+                s.Path(new[] { side * .16f, .60f, .04f, side * .54f, .74f, -.04f, side * .88f, .82f, -.16f },
+                    new[] { .058f, .045f, .032f }, FUR);
+                s.Ellipsoid(side * .52f, .66f, -.08f, .28f, .045f, .18f, GLOW);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -1f : 1f) * .08f;
+                s.Part("leg" + i, lx, .38f, .02f);
+                s.Tube(lx, .38f, .02f, lx, .05f, .04f, .034f, .026f, HORN);
+            }
+
+            s.Part("tail", 0, .54f, -.22f);
+            for (int k = -1; k <= 1; k++)
+                s.Path(new[] { 0f, .54f, -.22f, k * .08f, .58f, -.54f, k * .14f, .66f, -.86f },
+                    new[] { .040f, .032f, .022f }, k == 0 ? GLOW : HORN);
         }
     }
 }

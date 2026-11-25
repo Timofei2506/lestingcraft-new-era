@@ -42,6 +42,8 @@ namespace LestingCraft.Runtime
         GameObject spiralGalaxyObj;
         GameObject asteroidBeltObj;
         GameObject dreamWatcherRoot;
+        BossSculpture dreamWatcherSculpt;
+        Transform dreamWatcherHead, dreamWatcherArmL, dreamWatcherArmR;
         SpaceProceduralDome proceduralDome;
         readonly Dictionary<SpaceTargetKind, GameObject> planetSpheres = new Dictionary<SpaceTargetKind, GameObject>();
         readonly Dictionary<CelestialBodyId, GameObject> atlasBodyObjects = new Dictionary<CelestialBodyId, GameObject>();
@@ -195,6 +197,8 @@ namespace LestingCraft.Runtime
                 case Dimension.Somnia: return 0.62f;
                 case Dimension.Dream: return 0.86f;
                 case Dimension.Radia: return 1.04f;
+                case Dimension.Inferno: return 0.94f;
+                case Dimension.Paradise: return 0.78f;
                 default: return 1.0f;
             }
         }
@@ -1457,55 +1461,11 @@ namespace LestingCraft.Runtime
             {
                 dreamWatcherRoot = new GameObject("DreamShadowWatcher");
                 dreamWatcherRoot.transform.SetParent(transform, false);
-                var shadowMat = MakeLitMaterial("DreamShadowSilhouette", new Color(0.012f, 0.010f, 0.018f), new Color(0.028f, 0.014f, 0.045f), 0f, 0.05f);
-                var eyeMat = MakeLitMaterial("DreamShadowEyes", new Color(0.95f, 0.96f, 1.0f), new Color(2.4f, 2.2f, 2.8f), 0f, 0.9f);
-
-                var torso = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                torso.name = "WatcherTorso";
-                torso.transform.SetParent(dreamWatcherRoot.transform, false);
-                torso.transform.localPosition = new Vector3(0f, 1.24f, 0f);
-                torso.transform.localScale = new Vector3(0.48f, 2.38f, 0.24f);
-                SafeDestroy(torso.GetComponent<Collider>());
-                torso.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
-
-                var shoulders = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                shoulders.name = "WatcherShoulders";
-                shoulders.transform.SetParent(dreamWatcherRoot.transform, false);
-                shoulders.transform.localPosition = new Vector3(0f, 2.18f, 0f);
-                shoulders.transform.localScale = new Vector3(0.84f, 0.22f, 0.26f);
-                SafeDestroy(shoulders.GetComponent<Collider>());
-                shoulders.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
-
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    var arm = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    arm.name = "WatcherArm" + s;
-                    arm.transform.SetParent(dreamWatcherRoot.transform, false);
-                    arm.transform.localPosition = new Vector3(s * 0.44f, 1.26f, 0.04f);
-                    arm.transform.localRotation = Quaternion.Euler(0f, 0f, s * -5f);
-                    arm.transform.localScale = new Vector3(0.14f, 1.86f, 0.14f);
-                    SafeDestroy(arm.GetComponent<Collider>());
-                    arm.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
-                }
-
-                var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                head.name = "WatcherHead";
-                head.transform.SetParent(dreamWatcherRoot.transform, false);
-                head.transform.localPosition = new Vector3(0f, 2.62f, 0f);
-                head.transform.localScale = new Vector3(0.32f, 0.42f, 0.28f);
-                SafeDestroy(head.GetComponent<Collider>());
-                head.GetComponent<MeshRenderer>().sharedMaterial = shadowMat;
-
-                for (int i = -1; i <= 1; i += 2)
-                {
-                    var eye = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    eye.name = "WatcherEye" + i;
-                    eye.transform.SetParent(dreamWatcherRoot.transform, false);
-                    eye.transform.localPosition = new Vector3(i * 0.078f, 2.65f, 0.146f);
-                    eye.transform.localScale = new Vector3(0.052f, 0.028f, 0.02f);
-                    SafeDestroy(eye.GetComponent<Collider>());
-                    eye.GetComponent<MeshRenderer>().sharedMaterial = eyeMat;
-                }
+                dreamWatcherSculpt = BossSculpture.Build(dreamWatcherRoot.transform,
+                    BossSculpts.DreamWatcher(), BossSculpture.SharedVoxelMaterial());
+                dreamWatcherHead = dreamWatcherSculpt.FindPart("head");
+                dreamWatcherArmL = dreamWatcherSculpt.FindPart("arm_l");
+                dreamWatcherArmR = dreamWatcherSculpt.FindPart("arm_r");
 
                 var auraGo = new GameObject("WatcherAuraLight");
                 auraGo.transform.SetParent(dreamWatcherRoot.transform, false);
@@ -1518,7 +1478,17 @@ namespace LestingCraft.Runtime
                 aura.shadows = LightShadows.None;
             }
             dreamWatcherRoot.SetActive(true);
-            dreamWatcherRoot.transform.position = new Vector3(dream.StalkerX, dream.StalkerY - 1f, dream.StalkerZ);
+            float t = Time.time;
+            dreamWatcherRoot.transform.position = new Vector3(
+                dream.StalkerX, dream.StalkerY - 1f + Mathf.Sin(t * 1.4f) * 0.08f, dream.StalkerZ);
+            if (dreamWatcherHead)
+                dreamWatcherHead.localRotation = Quaternion.Euler(Mathf.Sin(t * 0.9f) * 6f, Mathf.Sin(t * 0.55f) * 14f, Mathf.Sin(t * 0.7f) * 4f);
+            if (dreamWatcherArmL)
+                dreamWatcherArmL.localRotation = Quaternion.Euler(-16f + Mathf.Sin(t * 1.2f) * 11f, 0f, -6f - Mathf.Sin(t * 0.8f) * 5f);
+            if (dreamWatcherArmR)
+                dreamWatcherArmR.localRotation = Quaternion.Euler(-16f - Mathf.Sin(t * 1.2f) * 11f, 0f, 6f + Mathf.Sin(t * 0.8f) * 5f);
+            if (dreamWatcherSculpt)
+                dreamWatcherSculpt.SetEmissionBoost(1.1f + 0.35f * Mathf.Sin(t * 2.8f));
             if (viewer)
             {
                 Vector3 toViewer = viewer.position - dreamWatcherRoot.transform.position;
@@ -1557,6 +1527,35 @@ namespace LestingCraft.Runtime
             }
 
             if (dreamWatcherRoot) dreamWatcherRoot.SetActive(false);
+
+            if (dim == Dimension.Paradise)
+            {
+                if (spaceDomeRoot)
+                {
+                    spaceDomeRoot.SetActive(true);
+                    if (cam) spaceDomeRoot.transform.position = cam.transform.position;
+                }
+                if (spaceKeyLight) spaceKeyLight.enabled = false;
+                if (domeRenderer) domeRenderer.enabled = false;
+                if (starfieldObj) starfieldObj.SetActive(false);
+                if (sunObj)
+                {
+                    sunObj.SetActive(true);
+                    sunObj.transform.localScale = Vector3.one * 1.38f;
+                    sunObj.transform.localPosition = new Vector3(-92f, 132f, 148f);
+                }
+                foreach (var kv in planetSpheres) if (kv.Value) kv.Value.SetActive(false);
+                foreach (var kv in atlasBodyObjects) if (kv.Value) kv.Value.SetActive(false);
+                if (spiralGalaxyObj) spiralGalaxyObj.SetActive(false);
+                if (asteroidBeltObj) asteroidBeltObj.SetActive(false);
+                Color edenMist = new Color(0.90f, 0.94f, 0.99f);
+                RenderSettings.fog = true;
+                RenderSettings.fogMode = FogMode.ExponentialSquared;
+                RenderSettings.fogColor = edenMist;
+                RenderSettings.fogDensity = 0.0040f;
+                if (cam) cam.backgroundColor = new Color(0.66f, 0.85f, 0.99f);
+                return;
+            }
 
             if (dim == Dimension.Lestingia && !showStationSky)
             {
@@ -1925,7 +1924,8 @@ namespace LestingCraft.Runtime
         BossSculpture sculpt;
         readonly List<Transform> rotors = new List<Transform>();
         Transform scanner;
-        float hoverBase, hoverPhase;
+        Vector3 anchorPos;
+        float hoverBase, hoverPhase, orbitAngle, orbitRadius;
         public LestingCraft.Gameplay.DroneProfile Profile { get; private set; }
 
         public static PlanetaryDroneController Spawn(Transform parent, LestingCraft.Gameplay.DroneProfile profile, Vector3 pos, float yaw)
@@ -1937,6 +1937,7 @@ namespace LestingCraft.Runtime
             go.transform.localScale = Vector3.one * profile.Size;
             var drone = go.AddComponent<PlanetaryDroneController>();
             drone.Profile = profile;
+            drone.Health = Mathf.Max(20, profile.MaxHealth);
             drone.BuildBody();
             return drone;
         }
@@ -1960,9 +1961,13 @@ namespace LestingCraft.Runtime
             Vector3 closest = aimRay.origin + aimRay.direction * along;
             float rad = 1.7f * Mathf.Max(0.7f, Profile.Size);
             if ((closest - transform.position).sqrMagnitude > rad * rad) return false;
-            Health -= Mathf.Max(4, dmg);
+            int dealt = Mathf.Max(4, dmg);
+            Health -= dealt;
             transform.localScale = Vector3.one * Profile.Size * 0.92f;
-            if (Health <= 0)
+            bool nowDead = Health <= 0;
+            CombatFeedbackOverlay.NotifyHit(transform.position + Vector3.up * 0.7f, dealt, nowDead,
+                Profile.Codename, Mathf.Max(0, Health), Mathf.Max(20, Profile.MaxHealth), true);
+            if (nowDead)
             {
                 Dead = true; killed = true;
                 if (sculpt) sculpt.SetEmissionBoost(0f);
@@ -1993,18 +1998,36 @@ namespace LestingCraft.Runtime
         {
             if (Dead) return;
             hoverPhase += dt * (Profile.Fly ? 2.2f : 1.1f);
-            var pos = transform.position;
-            pos.y += Mathf.Sin(hoverPhase) * (Profile.Fly ? 0.013f : 0.0022f);
-            transform.position = pos;
+            orbitAngle += dt * (Profile.Fly ? 0.58f : 0.34f);
+            Vector3 toPlayer = playerPos - transform.position;
+            float dist = toPlayer.magnitude;
+            Vector3 patrolGoal = anchorPos + new Vector3(Mathf.Cos(orbitAngle) * orbitRadius, 0f, Mathf.Sin(orbitAngle) * orbitRadius);
+            if (dist < 18f && dist > 3.8f)
+                patrolGoal = Vector3.Lerp(patrolGoal, playerPos - toPlayer.normalized * 4.2f, 0.55f);
+            Vector3 cur = transform.position;
+            Vector3 step = new Vector3(patrolGoal.x - cur.x, 0f, patrolGoal.z - cur.z);
+            float maxMove = (Profile.Fly ? 3.8f : 2.1f) * dt;
+            if (step.sqrMagnitude > 0.0004f)
+            {
+                Vector3 move = step.magnitude > maxMove ? step.normalized * maxMove : step;
+                cur.x += move.x;
+                cur.z += move.z;
+                float bank = Profile.Fly ? -10f : 0f;
+                transform.rotation = Quaternion.Slerp(transform.rotation,
+                    Quaternion.LookRotation(step.normalized, Vector3.up) * Quaternion.Euler(0f, 0f, bank),
+                    Mathf.Clamp01(dt * 4.5f));
+            }
+            cur.y = Profile.Fly ? hoverBase + Mathf.Sin(hoverPhase) * 0.34f : hoverBase;
+            transform.position = cur;
+            transform.localScale = Vector3.Lerp(transform.localScale, Vector3.one * Profile.Size, Mathf.Clamp01(dt * 8f));
             if (scanner) scanner.localRotation = Quaternion.Euler(0f, Mathf.Sin(hoverPhase * 0.7f) * 32f, 0f);
-            Vector3 to = playerPos - transform.position;
-            float dist = to.magnitude;
             attackCooldown -= dt;
             if (dist < 13f && attackCooldown <= 0f && onHitPlayer != null)
             {
                 attackCooldown = 2.4f + Profile.Size * 1.1f;
-                var dir = new Vector3(to.x, 0f, to.z).normalized;
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 0.65f);
+                var dir = new Vector3(toPlayer.x, 0f, toPlayer.z).normalized;
+                if (dir.sqrMagnitude > 0.001f)
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 0.65f);
                 onHitPlayer(2.5f + Profile.MaxHealth * 0.035f, dir,
                     "Дрон «" + Profile.Codename + "» открывает огонь! Уклоняйтесь или сбейте его!");
             }
@@ -2106,8 +2129,11 @@ namespace LestingCraft.Runtime
             var wr = sculpt.FindPart("wing_r");
             if (wl) rotors.Add(wl);
             if (wr) rotors.Add(wr);
+            anchorPos = transform.position;
             hoverBase = transform.position.y;
             hoverPhase = (GetInstanceID() & 255) * 0.02f;
+            orbitAngle = (GetInstanceID() & 63) * 0.1f;
+            orbitRadius = 3.6f + (Mathf.Abs(GetInstanceID()) % 4) * 1.4f;
             float size = Mathf.Max(.7f, profile.Size);
             var col = gameObject.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0f, data.Height * .5f - .2f, 0f);
@@ -2133,30 +2159,44 @@ namespace LestingCraft.Runtime
 
     }
 
-    /// <summary>The black bacteria of the Backrooms (Kane Pixels entity): a tall, wiry
-    /// black figure with a heavy head and floor-length arms, luring prey with imitated voices.</summary>
+    /// <summary>Backrooms stalker entities across all 5 sublevels:
+    /// Variant 0 — Entity 23 (Kane Pixels wire-bacteria), Variant 1 — Smiler, Variant 2 — Skin-Stealer.</summary>
     public sealed class BacteriaMobController : MonoBehaviour
     {
         BossSculpture sculpt;
-        Transform head;
-        float swayPhase;
+        Transform head, armL, armR, legL, legR;
+        float swayPhase, stridePhase, wanderAngle, wanderTimer;
+        int variantSeedUsed = -1;
+        int worldSeedUsed;
 
-        public static BacteriaMobController Spawn(Transform parent, Vector3 pos, float yaw)
+        public int Variant { get; private set; }
+        public string EntityName
         {
-            var go = new GameObject("BlackBacteria");
+            get
+            {
+                return Variant == 1 ? "Улыбающийся (Smiler)"
+                    : Variant == 2 ? "Кожекрад (Skin-Stealer)"
+                    : "Сущность 23 (Бактерия)";
+            }
+        }
+        public int MobMaxHealth => Variant == 2 ? 96 : Variant == 1 ? 64 : 80;
+
+        public static BacteriaMobController Spawn(Transform parent, Vector3 pos, float yaw, int variantSeed = -1, int worldSeed = 0)
+        {
+            var go = new GameObject("BackroomsEntity_" + (variantSeed < 0 ? 0 : (Mathf.Abs(variantSeed) % 3)));
             if (parent) go.transform.SetParent(parent, false);
             go.transform.position = pos;
             go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             var mob = go.AddComponent<BacteriaMobController>();
+            mob.variantSeedUsed = variantSeed;
+            mob.worldSeedUsed = worldSeed;
             mob.BuildBody();
             return mob;
         }
 
-        /// <summary>Backrooms swarm: bacteria replace the mechanical drones in the liminal halls.</summary>
-        // ---- bacteria battle loop (voice-lure attackers per canon) ----
         public static readonly List<BacteriaMobController> ActiveMobs = new List<BacteriaMobController>();
-        public int Health = 72;
-        public const int MaxHealth = 72;
+        public int Health = 80;
+        public const int MaxHealth = 80;
         public bool Dead;
         float attackCooldown = 1.2f;
 
@@ -2167,13 +2207,18 @@ namespace LestingCraft.Runtime
         {
             killed = false;
             if (Dead) return false;
-            Vector3 to = transform.position + Vector3.up * 0.9f - aimRay.origin;
+            Vector3 center = transform.position + Vector3.up * 0.95f;
+            Vector3 to = center - aimRay.origin;
             float along = Vector3.Dot(to, aimRay.direction);
             if (along < 0.5f || along > maxReach) return false;
             Vector3 closest = aimRay.origin + aimRay.direction * along;
-            if ((closest - (transform.position + Vector3.up * 0.9f)).sqrMagnitude > 3.24f) return false;
-            Health -= Mathf.Max(4, dmg);
-            if (Health <= 0)
+            if ((closest - center).sqrMagnitude > 3.24f) return false;
+            int dealt = Mathf.Max(4, dmg);
+            Health -= dealt;
+            bool nowDead = Health <= 0;
+            CombatFeedbackOverlay.NotifyHit(center + Vector3.up * 0.45f, dealt, nowDead,
+                EntityName, Mathf.Max(0, Health), MobMaxHealth, true);
+            if (nowDead)
             {
                 Dead = true; killed = true;
                 if (sculpt) sculpt.SetEmissionBoost(0f);
@@ -2192,49 +2237,159 @@ namespace LestingCraft.Runtime
                 if (mob.TryHitMob(aimRay, maxReach, dmg, out bool k))
                 {
                     killed = k;
-                    msg = k ? "Сущность 23 разрушается и растекается чёрной волокнистой массой…"
-                           : "Удар по Сущности 23! HP: " + mob.Health + "/" + MaxHealth;
+                    msg = k
+                        ? mob.EntityName + " распадается во мраке коридора…"
+                        : "Удар по «" + mob.EntityName + "»! HP: " + mob.Health + "/" + mob.MobMaxHealth;
                     return true;
                 }
             }
             return false;
         }
 
-        public void TickMob(float dt, Vector3 playerPos, Action<float, Vector3, string> onHitPlayer)
+        static bool IsOpenCorridor(VoxelWorld world, int worldSeed, float wx, float fy, float wz)
+        {
+            int bx = Mathf.FloorToInt(wx), bz = Mathf.FloorToInt(wz), by = Mathf.FloorToInt(fy);
+            if (world != null && world.Ready && world.Contains(bx, by + 1, bz))
+                return !BlockRegistry.IsSolid(world.GetBlock(bx, by, bz)) &&
+                       !BlockRegistry.IsSolid(world.GetBlock(bx, by + 1, bz));
+            ushort lo = BackroomsTerrain.SampleBlock(bx, by, bz, worldSeed);
+            ushort hi = BackroomsTerrain.SampleBlock(bx, by + 1, bz, worldSeed);
+            return !BlockRegistry.IsSolid(lo) && !BlockRegistry.IsSolid(hi);
+        }
+
+        public void TickMob(float dt, Vector3 playerPos, Action<float, Vector3, string> onHitPlayer, VoxelWorld world = null)
         {
             if (Dead) return;
-            Vector3 to = playerPos - transform.position;
-            float dist = to.magnitude;
-            attackCooldown -= dt;
-            if (dist < 11f && attackCooldown <= 0f && onHitPlayer != null)
+            Vector3 cur = transform.position;
+            Vector3 to = playerPos - cur;
+            Vector3 flatTo = new Vector3(to.x, 0f, to.z);
+            float dist = flatTo.magnitude;
+
+            Vector3 moveDir;
+            float moveSpeed;
+            if (dist < 26f && dist > 1.35f)
             {
-                attackCooldown = 1.9f;
-                var dir = new Vector3(to.x, 0f, to.z).normalized;
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 0.8f);
-                onHitPlayer(6.5f, dir,
-                    "Сущность 23 кричит человеческим голосом-приманкой и бросается на вас!");
+                moveDir = flatTo / Mathf.Max(0.01f, dist);
+                moveSpeed = Variant == 1 ? 4.65f : Variant == 2 ? 3.55f : 4.15f;
             }
+            else if (dist <= 1.35f)
+            {
+                moveDir = flatTo.sqrMagnitude > 0.001f ? flatTo.normalized : transform.forward;
+                moveSpeed = 0f;
+            }
+            else
+            {
+                wanderTimer -= dt;
+                if (wanderTimer <= 0f)
+                {
+                    wanderTimer = 2.2f + ((Mathf.Abs(GetInstanceID()) % 5) * 0.6f);
+                    wanderAngle += 1.35f;
+                }
+                moveDir = new Vector3(Mathf.Cos(wanderAngle), 0f, Mathf.Sin(wanderAngle));
+                moveSpeed = 1.55f;
+            }
+
+            if (moveSpeed > 0.01f)
+            {
+                float step = moveSpeed * dt;
+                float nx = cur.x + moveDir.x * step;
+                float nz = cur.z + moveDir.z * step;
+                if (IsOpenCorridor(world, worldSeedUsed, nx, cur.y + 0.15f, nz))
+                {
+                    cur.x = nx; cur.z = nz;
+                }
+                else if (IsOpenCorridor(world, worldSeedUsed, nx, cur.y + 0.15f, cur.z))
+                {
+                    cur.x = nx;
+                }
+                else if (IsOpenCorridor(world, worldSeedUsed, cur.x, cur.y + 0.15f, nz))
+                {
+                    cur.z = nz;
+                }
+                else
+                {
+                    wanderAngle += 1.57f;
+                }
+                int gy = BackroomsTerrain.FloorTop(Mathf.FloorToInt(cur.x), Mathf.FloorToInt(cur.z), worldSeedUsed);
+                cur.y = Mathf.Lerp(cur.y, gy + 1.02f, Mathf.Clamp01(dt * 10f));
+                transform.position = cur;
+            }
+
+            if (moveDir.sqrMagnitude > 0.001f)
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir, Vector3.up), Mathf.Clamp01(dt * 7.5f));
+
+            stridePhase += dt * (2.5f + moveSpeed * 2.4f);
+            float swing = moveSpeed > 0.1f ? Mathf.Sin(stridePhase) * 34f : Mathf.Sin(Time.time * 1.9f + swayPhase) * 5f;
+            if (legL) legL.localRotation = Quaternion.Euler(swing, 0f, 0f);
+            if (legR) legR.localRotation = Quaternion.Euler(-swing, 0f, 0f);
+            if (armL) armL.localRotation = Quaternion.Euler(-18f - swing * 0.85f, 0f, -5f);
+            if (armR) armR.localRotation = Quaternion.Euler(-18f + swing * 0.85f, 0f, 5f);
+
+            attackCooldown -= dt;
+            if (dist < 2.65f && Mathf.Abs(to.y) < 2.8f && attackCooldown <= 0f && onHitPlayer != null)
+            {
+                attackCooldown = Variant == 1 ? 1.45f : 1.85f;
+                var dir = flatTo.sqrMagnitude > 0.001f ? flatTo.normalized : transform.forward;
+                float hitDmg = Variant == 2 ? 8.5f : Variant == 1 ? 6.0f : 7.0f;
+                string taunt = Variant == 1
+                    ? "Улыбающийся (Smiler) бросается из темноты!"
+                    : Variant == 2
+                        ? "Кожекрад наносит тяжёлый удар когтями!"
+                        : "Сущность 23 кричит искажённым человеческим голосом и атакует!";
+                onHitPlayer(hitDmg, dir, taunt);
+            }
+        }
+
+        public static Vector3 FindOpenCorridorSpawn(int seed, int startX, int startZ)
+        {
+            for (int r = 0; r <= 7; r++)
+            {
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    for (int dz = -r; dz <= r; dz++)
+                    {
+                        if (Mathf.Abs(dx) != r && Mathf.Abs(dz) != r) continue;
+                        int bx = startX + dx, bz = startZ + dz;
+                        int gy = BackroomsTerrain.FloorTop(bx, bz, seed);
+                        if (!BlockRegistry.IsSolid(BackroomsTerrain.SampleBlock(bx, gy + 1, bz, seed)) &&
+                            !BlockRegistry.IsSolid(BackroomsTerrain.SampleBlock(bx, gy + 2, bz, seed)) &&
+                            !BlockRegistry.IsSolid(BackroomsTerrain.SampleBlock(bx, gy + 3, bz, seed)))
+                            return new Vector3(bx + 0.5f, gy + 1.02f, bz + 0.5f);
+                    }
+                }
+            }
+            int fy = BackroomsTerrain.FloorTop(startX, startZ, seed);
+            return new Vector3(startX + 0.5f, fy + 1.02f, startZ + 0.5f);
         }
 
         public static void SpawnSwarm(Transform parent, int seed, Vector3 anchor, int count)
         {
-            for (int i = 0; i < count; i++)
+            int total = Mathf.Max(count, 9);
+            for (int i = 0; i < total; i++)
             {
                 float angle = i * 2.399f + (seed % 89) * 0.07f;
-                float radius = 10f + (i % 4) * 6f;
+                float radius = 12f + (i % 5) * 7.5f;
                 int bx = Mathf.RoundToInt(anchor.x + Mathf.Cos(angle) * radius);
                 int bz = Mathf.RoundToInt(anchor.z + Mathf.Sin(angle) * radius);
-                int groundY = LestingCraft.World.BackroomsTerrain.FloorTop(bx, bz, seed);
-                Spawn(parent, new Vector3(bx + 0.5f, groundY + 1.05f, bz + 0.5f), angle * Mathf.Rad2Deg);
+                Vector3 openPos = FindOpenCorridorSpawn(seed, bx, bz);
+                Spawn(parent, openPos, angle * Mathf.Rad2Deg, i + Mathf.Abs(seed % 17), seed);
             }
         }
 
         void BuildBody()
         {
-            var data = LestingCraft.Gameplay.BossSculpts.BacteriaMob(GetInstanceID());
+            int vSeed = variantSeedUsed >= 0 ? variantSeedUsed : Mathf.Abs(GetInstanceID());
+            Variant = Mathf.Abs(vSeed) % 3;
+            Health = MobMaxHealth;
+            var data = LestingCraft.Gameplay.BossSculpts.BacteriaMob(vSeed);
             sculpt = BossSculpture.Build(transform, data, BossSculpture.SharedVoxelMaterial());
             head = sculpt.FindPart("head");
+            armL = sculpt.FindPart("arm_l");
+            armR = sculpt.FindPart("arm_r");
+            legL = sculpt.FindPart("leg_l");
+            legR = sculpt.FindPart("leg_r");
             swayPhase = (GetInstanceID() & 255) * 0.031f;
+            wanderAngle = swayPhase * 2.1f;
             var col = gameObject.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0f, data.Height * .5f, 0f);
             col.radius = 0.42f;
@@ -2243,13 +2398,10 @@ namespace LestingCraft.Runtime
 
         void Update()
         {
+            if (Dead) return;
             float t = Time.time * 0.9f + swayPhase;
-            transform.rotation *= Quaternion.Euler(0f, Mathf.Sin(t * 0.7f) * 14f * Time.deltaTime, 0f);
-            if (head) head.localRotation = Quaternion.Euler(Mathf.Sin(t * 1.3f) * 7f, Mathf.Sin(t * 0.53f) * 26f, 0f);
-            var p = transform.position;
-            p.y += Mathf.Sin(t * 2.1f) * 0.0016f;
-            transform.position = p;
-            if (sculpt) sculpt.SetEmissionBoost(1f + .3f * Mathf.Sin(t * 2.6f));
+            if (head) head.localRotation = Quaternion.Euler(Mathf.Sin(t * 1.9f) * 9f, Mathf.Sin(t * 0.73f) * 28f, Mathf.Sin(t * 2.7f) * 6f);
+            if (sculpt) sculpt.SetEmissionBoost(1f + .35f * Mathf.Sin(t * 3.1f));
         }
 
         void OnDestroy() { }
@@ -2300,8 +2452,25 @@ namespace LestingCraft.Runtime
 
             int bx = Mathf.RoundToInt(nearAnchor.x) + 34;
             int bz = Mathf.RoundToInt(nearAnchor.z) + 22;
-            int groundY = TerrainGenerator.Height(bx, bz, seed, dim);
-            Vector3 arena = new Vector3(bx + 0.5f, groundY + 1.1f, bz + 0.5f);
+            Vector3 arena;
+            if (dim == Dimension.Backrooms)
+            {
+                arena = BacteriaMobController.FindOpenCorridorSpawn(seed, bx, bz);
+            }
+            else
+            {
+                if (dim == Dimension.Inferno || dim == Dimension.Paradise)
+                {
+                    int minDry = dim == Dimension.Inferno ? InfernoTerrain.LavaLevel + 2 : ParadiseTerrain.SeaLevel + 2;
+                    for (int r = 0; r <= 20; r += 4)
+                    {
+                        int tx = bx + r, tz = bz + r / 2;
+                        if (TerrainGenerator.Height(tx, tz, seed, dim) >= minDry) { bx = tx; bz = tz; break; }
+                    }
+                }
+                int groundY = TerrainGenerator.Height(bx, bz, seed, dim);
+                arena = new Vector3(bx + 0.5f, groundY + 1.1f, bz + 0.5f);
+            }
 
             var go = new GameObject("PlanetaryGuardianBoss_" + dim);
             if (parent) go.transform.SetParent(parent, false);

@@ -43,11 +43,18 @@ namespace LestingCraft.Gameplay
 
         public IReadOnlyList<AnimalState> Animals => simulation != null ? (IReadOnlyList<AnimalState>)simulation.Animals : Array.Empty<AnimalState>();
 
+        Dimension activeDim = Dimension.Lestingia;
+
+        static bool SupportsWildlife(Dimension d)
+        {
+            return d == Dimension.Lestingia || d == Dimension.Radia || d == Dimension.Inferno || d == Dimension.Paradise;
+        }
+
         bool Enabled
         {
             get
             {
-                return session && ((int)session.World.Dimension == 0 || (int)session.World.Dimension == 14) &&
+                return session && SupportsWildlife(session.World.Dimension) &&
                     (!session.Game.Online || session.World.ContentVersion >= 2);
             }
         }
@@ -55,11 +62,32 @@ namespace LestingCraft.Gameplay
         public void Initialize(SurvivalSession s)
         {
             session = s;
-            simulation = new WildlifeSimulation(s.World.Seed, s.Data.wildlife, s.World.ContentVersion);
+            activeDim = s.World.Dimension;
+            simulation = new WildlifeSimulation(s.World.Seed, activeDim == Dimension.Lestingia ? s.Data.wildlife : null, s.World.ContentVersion);
             simulation.SurfaceAt = SurfaceAt;
             simulation.SkySurfaceAt = SkySurfaceAt;
             groundCallback = Ground;
             damageCallback = DealDamage;
+        }
+
+        void SyncActiveDimensionIfChanged()
+        {
+            if (!session || !session.World || session.World.Dimension == activeDim) return;
+            if (activeDim == Dimension.Lestingia && simulation != null)
+                session.Data.wildlife = simulation.Save();
+            foreach (var kv in visuals)
+                if (kv.Value) Destroy(kv.Value.gameObject);
+            visuals.Clear();
+            foreach (var v in pool)
+                if (v) Destroy(v.gameObject);
+            pool.Clear();
+            activeDim = session.World.Dimension;
+            simulation = new WildlifeSimulation(
+                session.World.Seed ^ ((int)activeDim * 7919),
+                activeDim == Dimension.Lestingia ? session.Data.wildlife : null,
+                session.World.ContentVersion);
+            simulation.SurfaceAt = SurfaceAt;
+            simulation.SkySurfaceAt = SkySurfaceAt;
         }
 
         int SkySurfaceAt(int x, int z)
@@ -72,6 +100,8 @@ namespace LestingCraft.Gameplay
 
         int SurfaceAt(int x, int z)
         {
+            if (session.World.Dimension == Dimension.Inferno) return -16;
+            if (session.World.Dimension == Dimension.Paradise) return -17;
             int y = TerrainGenerator.Height(x, z, session.World.Seed, session.World.Dimension);
             return session.World.GetBlock(x, y, z);
         }
@@ -278,7 +308,8 @@ namespace LestingCraft.Gameplay
         bool SpawnSurface(int block)
         {
             if (block == 3 || block == 2 || block == 14) return true;
-            if (session.World.ContentVersion >= 11 && (block == 65 || block == 12 || block == 41 || block == 42)) return true;
+            if (session.World.ContentVersion >= 11 && (block == 65 || block == 12 || block == 30 || block == 41 || block == 42 || block == 10 || block == 62 || block == 64 || block == 68 || block == 88)) return true;
+            if (session.World.ContentVersion >= 9 && (block == 78 || block == 79 || block == 80 || block == 83 || block == 88)) return true;
             return session.World.ContentVersion >= 7 &&
                 (block == 1 || block == 6 || block == 27 || block == 32 || block == 33 || block == 34 || block == 43);
         }
@@ -291,7 +322,8 @@ namespace LestingCraft.Gameplay
             int natural = TerrainGenerator.Height(ix, iz, w.Seed, w.Dimension) + 1;
             int hi = previousY < 0 ? (w.ContentVersion >= 11 ? natural + 17 : natural + 1) : Mathf.FloorToInt(previousY) + 2;
             int lo = previousY < 0 ? natural - 2 : Mathf.FloorToInt(previousY) - 2;
-            int maxY = w.ContentVersion >= 11 ? 230 : 100;
+            int minY = w.Dimension == Dimension.Inferno ? 33 : w.Dimension == Dimension.Paradise ? 39 : 42;
+            int maxY = w.Dimension == Dimension.Inferno ? InfernoTerrain.CeilingTop - 4 : (w.ContentVersion >= 11 ? 230 : 100);
             for (int y = hi; y >= lo; y--)
             {
                 bool valid = true, supported = false;
@@ -309,9 +341,12 @@ namespace LestingCraft.Gameplay
                     }
                     if (previousY < 0 && !SpawnSurface(below)) { valid = false; break; }
                     for (int cy = y; cy < Mathf.CeilToInt(y + height); cy++)
-                        if (w.GetBlock(ax, cy, az) != 0) { valid = false; break; }
+                    {
+                        ushort occ = w.GetBlock(ax, cy, az);
+                        if (occ != 0 && !BlockRegistry.IsFlower(occ)) { valid = false; break; }
+                    }
                 }
-                if (valid && supported && y > 41 && y < maxY) return y;
+                if (valid && supported && y >= minY && y < maxY) return y;
             }
             return float.NaN;
         }
@@ -358,6 +393,7 @@ namespace LestingCraft.Gameplay
 
         void Update()
         {
+            SyncActiveDimensionIfChanged();
             if (!Enabled || !session.World.Ready) { HideAll(); return; }
             if (!session.Game.Online && session.Game.Paused && !session.Game.InventoryOpen) return;
             if (session.Data.campaign.runEnded) { HideAll(); return; }

@@ -60,35 +60,103 @@ namespace LestingCraft.Tests
             Assert.IsTrue(sawCeiling, "Inferno must have an enclosed cavernous ceiling");
             Assert.IsTrue(sawFortress, "Inferno must generate Obsidian Citadels");
 
-            // Boss & Overworld Hellgate Shrine
+            // Boss & Twin-Tree Ritual Clearing wonder site
             var boss = BossCatalog.For(Dimension.Inferno);
             Assert.AreEqual("Владыка Преисподней", boss.Title);
             Assert.GreaterOrEqual(boss.MaxHealth, 450);
 
-            Assert.IsTrue(RealmWondersPlan.TryGetWonderSite(0, 1, seed, out int hx, out int hy, out int hz, out int hkind), "Guaranteed Obsidian Hellgate Shrine must exist in cell (0, 1)");
+            Assert.IsTrue(RealmWondersPlan.TryGetWonderSite(0, 1, seed, out int hx, out int hy, out int hz, out int hkind), "Guaranteed Twin-Tree Ritual Clearing must exist in cell (0, 1)");
             Assert.AreEqual(4, hkind);
-            Assert.IsTrue(RealmWondersPlan.IsInHellgateDoorway(hx, hy + 2, hz, seed), "Stepping into Hellgate doorway must trigger travel");
         }
 
         [Test]
-        public void CustomHellgateFrameDetectionRecognizesObsidianPortal()
+        public void TwinTreeHellRitualRequiresNoBoneMealSevenBlockSpacingAndBurning()
         {
             var blocks = new Dictionary<Vector3Int, ushort>();
-            // Build a 4x5 Obsidian frame along X at z = 10, base y = 50..54, x = 0..3
-            for (int x = 0; x <= 3; x++)
+            ushort GetB(int x, int y, int z) => blocks.TryGetValue(new Vector3Int(x, y, z), out var id) ? id : (ushort)0;
+            void SetB(int x, int y, int z, ushort id)
             {
-                blocks[new Vector3Int(x, 50, 10)] = 68;
-                blocks[new Vector3Int(x, 54, 10)] = 68;
+                if (id == 0) blocks.Remove(new Vector3Int(x, y, z));
+                else blocks[new Vector3Int(x, y, z)] = id;
             }
-            for (int y = 50; y <= 54; y++)
-            {
-                blocks[new Vector3Int(0, y, 10)] = 68;
-                blocks[new Vector3Int(3, y, 10)] = 68;
-            }
-            ushort Getter(int x, int y, int z) => blocks.TryGetValue(new Vector3Int(x, y, z), out var id) ? id : (ushort)0;
 
-            Assert.IsTrue(RealmFeaturesAndMarket.IsCustomPortalFrameReady(Getter, new Vector3Int(1, 50, 10)));
-            Assert.IsFalse(RealmFeaturesAndMarket.IsCustomPortalFrameReady(Getter, new Vector3Int(20, 50, 10)));
+            var rituals = new PortalRitualState();
+
+            // 1. Disqualified pair: bone meal used on one sapling -> NEVER forms a Hell Arch
+            SetB(0, 50, 0, BlockRegistry.OakSaplingId);
+            SetB(7, 50, 0, BlockRegistry.OakSaplingId);
+            rituals.RegisterSapling(0, 50, 0, BlockRegistry.OakSaplingId);
+            rituals.RegisterSapling(7, 50, 0, BlockRegistry.OakSaplingId);
+            Assert.IsTrue(rituals.TryApplyBoneMeal(0, 50, 0, GetB, SetB, out _));
+            for (int i = 0; i < 20; i++) rituals.Step(1f, GetB, SetB, out _);
+            Assert.IsTrue(rituals.TryIgniteTreeAt(0, 52, 0, GetB, SetB, out _));
+            Assert.IsTrue(rituals.TryIgniteTreeAt(7, 52, 0, GetB, SetB, out _));
+            for (int i = 0; i < 12; i++) rituals.Step(1f, GetB, SetB, out _);
+            Assert.AreEqual(0, rituals.HellArches.Count, "Bonemealed trees must never form a Hell Arch");
+
+            // 2. Valid pair: 2 saplings at 7 blocks distance (x=30 and x=37), grown WITHOUT bone meal, then burned!
+            SetB(30, 50, 20, BlockRegistry.OakSaplingId);
+            SetB(37, 50, 20, BlockRegistry.SakuraSaplingId);
+            rituals.RegisterSapling(30, 50, 20, BlockRegistry.OakSaplingId);
+            string pairMsg = rituals.RegisterSapling(37, 50, 20, BlockRegistry.SakuraSaplingId);
+            Assert.IsNotEmpty(pairMsg);
+
+            for (int i = 0; i < 18; i++) rituals.Step(1f, GetB, SetB, out _);
+            Assert.AreEqual(BlockRegistry.WoodId, GetB(30, 52, 20), "Natural sapling A must grow into a tree");
+            Assert.AreEqual(BlockRegistry.WoodId, GetB(37, 52, 20), "Natural sapling B must grow into a tree");
+            Assert.AreEqual(0, rituals.HellArches.Count, "Unburned trees must NOT open Hell");
+
+            Assert.IsTrue(rituals.TryIgniteTreeAt(30, 52, 20, GetB, SetB, out _));
+            Assert.IsTrue(rituals.TryIgniteTreeAt(37, 52, 20, GetB, SetB, out _));
+            Assert.AreEqual(0, rituals.HellArches.Count, "Freshly ignited trees must burn before forming an arch");
+
+            for (int i = 0; i < 8; i++) rituals.Step(0.6f, GetB, SetB, out _);
+            Assert.AreEqual(1, rituals.HellArches.Count, "Burned non-bonemealed twin trees at 7 blocks must fuse into a Hell Arch");
+            Assert.IsTrue(rituals.IsInsideActiveHellArch(new Vector3(34f, 51.5f, 20.5f)), "Walking under the charred arch must trigger Hell entry");
+        }
+
+        [Test]
+        public void ParadiseDimensionAndFlowerWaterDiamondWellRitualWorkExact()
+        {
+            Assert.AreEqual(17, (int)Dimension.Paradise);
+            Assert.AreEqual(17, (int)PlanetBody.Paradise);
+
+            int seed = 2506;
+            int h0 = ParadiseTerrain.Height(0, 0, seed);
+            Assert.Greater(h0, ParadiseTerrain.SeaLevel + 4);
+            Assert.IsTrue(ParadiseTerrain.IsExitThreshold(0, -8, seed), "Sacred Return Fountain must exist at (0, -8)");
+            var seraph = BossCatalog.For(Dimension.Paradise);
+            Assert.AreEqual("Серафим Эдема", seraph.Name);
+
+            var blocks = new Dictionary<Vector3Int, ushort>();
+            ushort GetB(int x, int y, int z) => blocks.TryGetValue(new Vector3Int(x, y, z), out var id) ? id : (ushort)0;
+            void SetB(int x, int y, int z, ushort id)
+            {
+                if (id == 0) blocks.Remove(new Vector3Int(x, y, z));
+                else blocks[new Vector3Int(x, y, z)] = id;
+            }
+
+            for (int y = 55; y <= 60; y++)
+            for (int z = 8; z <= 13; z++)
+            for (int x = 8; x <= 13; x++)
+                SetB(x, y, z, BlockRegistry.GrassId);
+
+            for (int y = 56; y <= 60; y++)
+            for (int z = 10; z <= 11; z++)
+            for (int x = 10; x <= 11; x++)
+                SetB(x, y, z, BlockRegistry.WaterId);
+
+            var rituals = new PortalRitualState();
+            Assert.IsFalse(rituals.TryActivateParadiseWellNear(new Vector3(10.5f, 61f, 10.5f), GetB, SetB, out _), "Well without flowers must NOT activate");
+
+            ushort[] flowers = { 94, 95, 96, 97, 94, 95, 96, 97 };
+            int[] fx = { 10, 11, 10, 11, 9, 9, 12, 12 };
+            int[] fz = { 9, 9, 12, 12, 10, 11, 10, 11 };
+            for (int i = 0; i < 8; i++) SetB(fx[i], 61, fz[i], flowers[i]);
+
+            Assert.IsTrue(rituals.TryActivateParadiseWellNear(new Vector3(10.5f, 61f, 10.5f), GetB, SetB, out _), "Throwing a diamond into the flower-ringed 2x2x5 water pit must open Paradise");
+            Assert.AreEqual(BlockRegistry.AndromedaCrystalId, GetB(10, 55, 10), "Pit floor must crystallize with celestial glow");
+            Assert.IsTrue(rituals.IsPlayerInsideActivatedParadiseWell(new Vector3(11.0f, 59.0f, 11.0f)), "Jumping into the activated well must trigger Paradise teleport");
         }
 
         [Test]
@@ -175,8 +243,8 @@ namespace LestingCraft.Tests
                         if (id != 0) placed[new Vector3Int(x, y, z)] = id;
                     });
                     Assert.Greater(count, 20, "Blueprint " + bp.Code + " must build a substantial 3D structure");
-                    if (bp.Code == "hellgate_arch")
-                        Assert.IsTrue(placed.ContainsValue(67), "Hellgate blueprint must include active portal crystal");
+                    if (bp.Code == "eden_pavilion")
+                        Assert.IsTrue(placed.ContainsValue(58), "Eden Pavilion blueprint must include golden columns");
                 }
 
                 // 4. Waypoints & Minimap rendering
@@ -215,6 +283,21 @@ namespace LestingCraft.Tests
             Assert.AreEqual("lan", ChatCommands.Execute("/lan", false, true, inv, 2506, Vector3.zero, 1).Action);
             Assert.AreEqual("market", ChatCommands.Execute("/market", false, true, inv, 2506, Vector3.zero, 1).Action);
             Assert.AreEqual("inferno", ChatCommands.Execute("/hell", true, true, inv, 2506, Vector3.zero, 1).Action);
+            Assert.AreEqual("paradise", ChatCommands.Execute("/paradise", true, true, inv, 2506, Vector3.zero, 1).Action);
+            Assert.AreEqual("paradise", ChatCommands.Execute("/рай", true, true, inv, 2506, Vector3.zero, 1).Action);
+            Assert.AreEqual("backrooms", ChatCommands.Execute("/backrooms", true, true, inv, 2506, Vector3.zero, 1).Action);
+            Assert.AreEqual("fly", ChatCommands.Execute("/fly", true, true, inv, 2506, Vector3.zero, 1).Action);
+            var gmCreative = ChatCommands.Execute("/gamemode creative", false, true, inv, 2506, Vector3.zero, 1);
+            Assert.AreEqual("gamemode", gmCreative.Action);
+            Assert.AreEqual((int)GameMode.Creative, gmCreative.Value);
+            var gmSurv = ChatCommands.Execute("/gm survival", true, true, inv, 2506, Vector3.zero, 1);
+            Assert.AreEqual("gamemode", gmSurv.Action);
+            Assert.AreEqual((int)GameMode.Survival, gmSurv.Value);
+            Assert.IsFalse(SurvivalSession.RequiresSpaceSuit(Dimension.Lestingia));
+            Assert.IsFalse(SurvivalSession.RequiresSpaceSuit(Dimension.Backrooms));
+            Assert.IsFalse(SurvivalSession.RequiresSpaceSuit(Dimension.Inferno));
+            Assert.IsFalse(SurvivalSession.RequiresSpaceSuit(Dimension.Paradise));
+            Assert.IsTrue(SurvivalSession.RequiresSpaceSuit(Dimension.Moon));
             var tp = ChatCommands.Execute("/tp 12 80 -35", true, true, inv, 2506, Vector3.zero, 1);
             Assert.AreEqual("tp:12:80:-35", tp.Action);
 
@@ -264,6 +347,44 @@ namespace LestingCraft.Tests
                 UnityEngine.Object.DestroyImmediate(owner);
                 if (!prevEventSystem && EventSystem.current)
                     UnityEngine.Object.DestroyImmediate(EventSystem.current.gameObject);
+            }
+        }
+
+        [Test]
+        public void BackroomsZonesAndAllModernizedMobSculptsAreValid()
+        {
+            int seed = 2506;
+            var zonesSeen = new HashSet<int>();
+            for (int z = -320; z <= 320; z += 40)
+            for (int x = -320; x <= 320; x += 40)
+                zonesSeen.Add(BackroomsTerrain.ZoneAt(x, z, seed));
+            Assert.GreaterOrEqual(zonesSeen.Count, 4, "Backrooms must span multiple distinct sublevels");
+
+            // 3 Backrooms horror entity sculpts + DreamWatcher + DomesticCat
+            for (int v = 0; v < 3; v++)
+            {
+                var bData = BossSculpts.BacteriaMob(v);
+                Assert.Greater(bData.CellCount, 300);
+                Assert.IsTrue(bData.HasPart("head") && bData.HasPart("arm_l"));
+            }
+            var dw = BossSculpts.DreamWatcher();
+            Assert.Greater(dw.CellCount, 1200);
+            Assert.IsTrue(dw.HasPart("head") && dw.HasPart("arm_l"));
+
+            for (int c = 0; c < 4; c++)
+            {
+                var cat = AnimalSculpts.DomesticCat(c);
+                Assert.Greater(cat.CellCount, 120);
+                Assert.IsTrue(cat.HasPart("head") && cat.HasPart("tail") && cat.HasPart("leg0"));
+            }
+
+            // Inferno (34..37) and Paradise (38..41) fauna sculpts & simulation
+            Assert.AreEqual(42, WildlifeSimulation.SpeciesCount);
+            Assert.AreEqual(42, AnimalSculpts.SpeciesNames.Length);
+            for (int sp = 34; sp <= 41; sp++)
+            {
+                var sc = AnimalSculpts.Build(sp);
+                Assert.Greater(sc.CellCount, 200, "Species " + sp + " must have a detailed fine-voxel sculpt");
             }
         }
 

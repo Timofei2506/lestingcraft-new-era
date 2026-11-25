@@ -499,7 +499,7 @@ namespace LestingCraft.Networking
                     int by = Mathf.RoundToInt(ExtractFloat(json, "y", -1f));
                     int bz = Mathf.RoundToInt(ExtractFloat(json, "z", 0f));
                     int bId = ExtractInt(json, "block", 0);
-                    if (by <= 0 || by >= 256 || bId < 0 || bId > 91) return;
+                    if (by <= 0 || by >= 256 || bId < 0 || bId > 97) return;
 
                     string editJson;
                     lock (roomLock)

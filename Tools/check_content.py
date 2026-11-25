@@ -5,11 +5,11 @@ import json,re
 from PIL import Image
 R=Path(__file__).resolve().parents[1]
 blocks=json.loads((R/'Assets/Resources/Models/ExpandedBlocks.json').read_text())['blocks']
-assert [b['id'] for b in blocks]==list(range(19,92))
+assert [b['id'] for b in blocks]==list(range(19,98))
 names=re.findall(r'"([a-z0-9-]+)"',(R/'Assets/Scripts/Presentation/SurfaceLayers.cs').read_text().split('Names={')[1].split('};')[0])
 assert len(names) in (63,72,88,112,114) and len(set(names))==len(names)
 rows=re.findall(r'new ExpandedBlock\((\d+),"([^"]+)","([^"]+)",([\d.]+)f,(true|false),(\d+)\)',(R/'Assets/Scripts/Gameplay/ExpandedContent.cs').read_text())
-assert len(rows)==73
+assert len(rows)==79
 # The legacy Era-v9 generator must preserve newer content and derive the registered maximum,
 # otherwise rerunning it silently removes Backrooms blocks 90/91 from the source catalog.
 builder=(R/'Tools/build_era_v9_assets.py').read_text()
@@ -21,8 +21,8 @@ for b,row in zip(blocks,rows):
  assert int(id)==b['id'] and name==b['name'] and surface==b['surface']
  assert float(hardness)==b['hardness'] and (pick=='true')==b['pick'] and names[int(layer)]==surface
 catalog=load_catalog(R)
-expected=set(range(1,18))|set(range(19,92))|set(range(100,109))|set(range(110,115))|set(range(120,124))|set(range(130,133))|{135,136,138,139,140,141,142,143,144,145,146,147,148}|set(range(149,166))|set(range(170,178))|set(range(190,196))|{666}
-assert len(expected)==156 and {m['id'] for m in catalog['models']}==expected
+expected=set(range(1,18))|set(range(19,98))|set(range(100,109))|set(range(110,115))|set(range(120,124))|set(range(130,133))|{135,136,138,139,140,141,142,143,144,145,146,147,148}|set(range(149,166))|set(range(170,178))|set(range(190,197))|{666}
+assert len(expected)==163 and {m['id'] for m in catalog['models']}==expected
 assert len(catalog['colors'])==len(catalog['layers']) and all(0<=x<len(names) for x in catalog['layers'])
 for m in catalog['models']:
  assert len(m['cells'])%4==0 and len(m['cells'])>(400 if m['id']==165 else 900)

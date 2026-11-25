@@ -19,7 +19,8 @@ namespace LestingCraft.World
         Dream = 13,
         Radia = 14,
         Backrooms = 15,
-        Inferno = 16
+        Inferno = 16,
+        Paradise = 17
     }
 
     public enum PlanetSurface : byte
@@ -35,7 +36,8 @@ namespace LestingCraft.World
         SomniaMarble, SomniaObsidianPillar,
         DreamPaleFloor, DreamMonolithPillar, DreamLampPost,
         RadiaBasinFloor, RadiaCherenkovStrip, RadiaDamWall, RadiaSlagBank,
-        InfernoCrimson, InfernoBasalt, InfernoSoulAsh, InfernoMagma
+        InfernoCrimson, InfernoBasalt, InfernoSoulAsh, InfernoMagma,
+        ParadiseGarden, ParadiseMarble, ParadiseCrystal, ParadiseCloud
     }
 
     public struct PlanetColumn
@@ -311,6 +313,13 @@ namespace LestingCraft.World
                               infBiome == 1 ? PlanetSurface.InfernoBasalt :
                               infBiome == 2 ? PlanetSurface.InfernoSoulAsh : PlanetSurface.InfernoMagma;
                     break;
+                case PlanetBody.Paradise:
+                    h = ParadiseTerrain.FloorTop(x, z, seed);
+                    int parBiome = ParadiseTerrain.BiomeAt(x, z, seed);
+                    surface = parBiome == 0 ? PlanetSurface.ParadiseGarden :
+                              parBiome == 1 ? PlanetSurface.ParadiseMarble :
+                              parBiome == 2 ? PlanetSurface.ParadiseCrystal : PlanetSurface.ParadiseCloud;
+                    break;
                 default:
                     h = 45 + (broad - .5f) * 18;
                     surface = PlanetSurface.Regolith;
@@ -330,6 +339,15 @@ namespace LestingCraft.World
                 if (column.Surface == PlanetSurface.InfernoMagma) return 64;
                 return 10;
             }
+            if (body == PlanetBody.Paradise)
+            {
+                if (y < 0 || y >= 256 || y > column.Height) return 0;
+                if (y == 0) return 9;
+                if (column.Surface == PlanetSurface.ParadiseGarden) return 3;
+                if (column.Surface == PlanetSurface.ParadiseCrystal) return 65;
+                if (column.Surface == PlanetSurface.ParadiseCloud) return 14;
+                return 42;
+            }
             if (body == PlanetBody.Radia)
             {
                 if (y < 0 || y >= 256 || y > column.Height) return 0;
@@ -347,7 +365,7 @@ namespace LestingCraft.World
         public static bool TrySamplePlanetaryStructure(int x, int y, int z, int seed, PlanetBody body, out ushort placed)
         {
             placed = 0;
-            if (body == PlanetBody.Radia || body == PlanetBody.Backrooms || body == PlanetBody.Inferno) return false;
+            if (body == PlanetBody.Radia || body == PlanetBody.Backrooms || body == PlanetBody.Inferno || body == PlanetBody.Paradise) return false;
             int cellX = Floor(x / 128f), cellZ = Floor(z / 128f);
             uint h = PlanetHash(cellX, (int)body * 13, cellZ, seed ^ 49157);
             if ((h % 10u) >= 7u) return false; // ~70% of outer cells host a landmark
@@ -713,6 +731,7 @@ namespace LestingCraft.World
             if (y == 0) return 9;
             if (body == PlanetBody.Backrooms) return BackroomsTerrain.Block(x, y, z, seed, column.Height);
             if (body == PlanetBody.Inferno) return InfernoTerrain.Block(x, y, z, seed, column.Height);
+            if (body == PlanetBody.Paradise) return ParadiseTerrain.Block(x, y, z, seed, column.Height);
 
             if (TrySamplePlanetaryStructure(x, y, z, seed, body, out ushort structBlock))
                 return structBlock;

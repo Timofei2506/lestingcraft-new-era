@@ -19,6 +19,7 @@ namespace LestingCraft.World
         Dream = 13,
         Radia = 14,
         Backrooms = 15,
-        Inferno = 16
+        Inferno = 16,
+        Paradise = 17
     }
 }
