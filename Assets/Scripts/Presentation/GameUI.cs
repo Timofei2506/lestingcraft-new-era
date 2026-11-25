@@ -941,7 +941,6 @@ namespace LestingCraft.Presentation
             if(game)game.PlayerName=p.username;
 
             string curAvatar=ProfileAvatar.ResolveId(p.avatar,p.username);
-            string bioShown=draftBio.Length>0?draftBio:(p.bio??"");
 
             // Left Hero Card: Avatar, @Nickname, Level/XP Bar, 12-Avatar Picker & Bio!
             var hero=Box(content.transform,64,142,684,638,Panel);
