@@ -126,7 +126,8 @@ namespace LestingCraft.Tests
             Assert.Greater(h0, ParadiseTerrain.SeaLevel + 4);
             Assert.IsTrue(ParadiseTerrain.IsExitThreshold(0, -8, seed), "Sacred Return Fountain must exist at (0, -8)");
             var seraph = BossCatalog.For(Dimension.Paradise);
-            Assert.AreEqual("Серафим Эдема", seraph.Name);
+            Assert.AreEqual("Seraph of Eden", seraph.Name);
+            Assert.AreEqual("Серафим Эдема", seraph.Title);
 
             var blocks = new Dictionary<Vector3Int, ushort>();
             ushort GetB(int x, int y, int z) => blocks.TryGetValue(new Vector3Int(x, y, z), out var id) ? id : (ushort)0;

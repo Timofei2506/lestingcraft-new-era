@@ -372,7 +372,7 @@ namespace LestingCraft.Gameplay
                         foreach (int sz in new[] { -3, 3 })
                         {
                             for (int ry = 1; ry <= 5; ry++)
-                                Set(sx, ry, sz, ry == 5 ? (ushort)22 : (ushort)42);
+                                Set(sx, ry, sz, ry == 5 ? (ushort)58 : (ushort)42);
                         }
                     for (int dz = -3; dz <= 3; dz++)
                         for (int dx = -3; dx <= 3; dx++)
