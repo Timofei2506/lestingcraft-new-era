@@ -214,10 +214,19 @@ namespace LestingCraft.Gameplay
             return new AnimalLoot { id = a.id, meat = Meat[Index(a.species)], hide = Hide[Index(a.species)] };
         }
 
+        static readonly int[] SomniaSpecies = { 19, 33, 38, 30, 31, 12 };
+        static readonly int[] LushExoSpecies = { 33, 19, 40, 39, 32, 31, 11 };
+        static readonly int[] CryoWorldSpecies = { 30, 31, 13, 12, 19 };
+        static readonly int[] VolcanicWorldSpecies = { 35, 36, 37 };
+
         public static int Habitat(int surface, int x, int z, int seed)
         {
-            if (surface == -16) return 7; // Dimension.Inferno sentinel
-            if (surface == -17) return 8; // Dimension.Paradise sentinel
+            if (surface == -16) return 7;  // Dimension.Inferno sentinel
+            if (surface == -17) return 8;  // Dimension.Paradise sentinel
+            if (surface == -12) return 9;  // Dimension.Somnia twilight sentinel
+            if (surface == -18) return 10; // Lush exoplanets (Kepler452b, Trappist1e, AndromedaPrime)
+            if (surface == -19) return 11; // Cryo moons & ice worlds (Titan, Oberon, Triton, ProximaB)
+            if (surface == -20) return 12; // Volcanic worlds (JupiterIo, Venus)
             if (surface == 78 || surface == 79 || surface == 80 || surface == 82 || surface == 88 || surface == 89) return 6;
             if (surface == 33 || surface == 34 || surface == 7 || surface == 61) return 4;
             if (surface == 6 || surface == 43 || surface == 62) return 3;
@@ -232,6 +241,14 @@ namespace LestingCraft.Gameplay
                 return 34 + (int)((hash >> 16) % 4u);
             if (habitat == 8 && contentVersion >= 11)
                 return 38 + (int)((hash >> 16) % 4u);
+            if (habitat == 9 && contentVersion >= 11)
+                return SomniaSpecies[(int)((hash >> 16) % (uint)SomniaSpecies.Length)];
+            if (habitat == 10 && contentVersion >= 11)
+                return LushExoSpecies[(int)((hash >> 16) % (uint)LushExoSpecies.Length)];
+            if (habitat == 11 && contentVersion >= 11)
+                return CryoWorldSpecies[(int)((hash >> 16) % (uint)CryoWorldSpecies.Length)];
+            if (habitat == 12 && contentVersion >= 11)
+                return VolcanicWorldSpecies[(int)((hash >> 16) % (uint)VolcanicWorldSpecies.Length)];
             if (habitat == 6 && contentVersion >= 9)
                 return 20 + (int)((hash >> 16) % 10u);
             int[][] table = contentVersion >= 9 ? HabitatSpeciesV9

@@ -249,8 +249,25 @@ namespace LestingCraft.Gameplay
 
                 var sample=pressurized||HasFullSpaceSuit()
                     ? new WeatherSample(WeatherKind.Clear,0,20,0,0)
-                    : WeatherSample.At(Data.seed,(int)World.Dimension,Data.clock);
-                Vitals.Step(elapsed,Mode,sample.Air+(World.ContentVersion>=7&&World.Dimension==Dimension.Lestingia?BiomeGenerator.TemperatureOffset(BiomeGenerator.At(Mathf.FloorToInt(Player.transform.position.x),Mathf.FloorToInt(Player.transform.position.z),Data.seed,World.ContentVersion)):0),sample.Precipitation,Sheltered,warm,Player.Sprinting,Equipment.Insulation(Inventory));
+                    : World.Dimension==Dimension.Paradise
+                        ? new WeatherSample(WeatherKind.Clear,0,23,0,0)
+                        : WeatherSample.At(Data.seed,(int)World.Dimension,Data.clock);
+                Vitals.Step(elapsed,Mode,sample.Air+(World.ContentVersion>=7&&World.Dimension==Dimension.Lestingia?BiomeGenerator.TemperatureOffset(BiomeGenerator.At(Mathf.FloorToInt(Player.transform.position.x),Mathf.FloorToInt(Player.transform.position.z),Data.seed,World.ContentVersion)):0),sample.Precipitation,Sheltered,warm||World.Dimension==Dimension.Paradise,Player.Sprinting,Equipment.Insulation(Inventory));
+
+                // Sacred Healing Aura of Eden (Paradise fountains & marble sanctuaries)
+                if(World.Dimension==Dimension.Paradise&&!Vitals.dead)
+                {
+                    int px=Mathf.RoundToInt(Player.transform.position.x),pz=Mathf.RoundToInt(Player.transform.position.z);
+                    bool nearSacred=ParadiseTerrain.IsExitThreshold(px,pz,Data.seed);
+                    if(!nearSacred&&ParadiseTerrain.TryGetSanctuary(Mathf.FloorToInt(px/192f),Mathf.FloorToInt(pz/192f),Data.seed,out int sx,out int sz))
+                        nearSacred=(px-sx)*(px-sx)+(pz-sz)*(pz-sz)<=16*16;
+                    if(nearSacred)
+                    {
+                        Vitals.health=Mathf.Min(100f,Vitals.health+elapsed*2.5f);
+                        Vitals.stamina=Mathf.Min(100f,Vitals.stamina+elapsed*8f);
+                        Vitals.temperature=Mathf.Lerp(Vitals.temperature,36.8f,0.3f);
+                    }
+                }
                 if(!Game.DockedAtOrbitalStation)
                 {
                     var feet=Vector3Int.FloorToInt(Player.transform.position+Vector3.up*.1f);
@@ -284,9 +301,14 @@ namespace LestingCraft.Gameplay
         void UpdateGrave()
         {
             if(grave)Destroy(grave);if(Data.player.grave==null||Data.player.grave.Length==0)return;
-            grave=GameObject.CreatePrimitive(PrimitiveType.Cube);grave.name="Your recoverable grave";grave.transform.SetParent(transform);grave.transform.position=new Vector3(Data.player.graveX,Data.player.graveY,Data.player.graveZ);grave.transform.localScale=new Vector3(.55f,.8f,.22f);
-            grave.GetComponent<MeshRenderer>().sharedMaterial=Resources.Load<Material>("Generated/Avatar");
-            var light=grave.AddComponent<Light>();light.type=LightType.Point;light.color=new Color(.55f,.72f,1);light.range=4;light.intensity=1;
+            grave=new GameObject("Your recoverable grave");
+            grave.transform.SetParent(transform);
+            grave.transform.position=new Vector3(Data.player.graveX,Data.player.graveY-.1f,Data.player.graveZ);
+            LestingCraft.Presentation.BossSculpture.Build(
+                grave.transform,
+                BossSculpts.MemorialGrave(Data.seed),
+                LestingCraft.Presentation.BossSculpture.SharedVoxelMaterial());
+            var light=grave.AddComponent<Light>();light.type=LightType.Point;light.color=new Color(.55f,.82f,1f);light.range=5f;light.intensity=1.25f;
         }
         public void Checkpoint()
         {

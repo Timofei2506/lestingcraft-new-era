@@ -136,7 +136,7 @@ namespace LestingCraft.Presentation
 
         public void ShowMarketTab(int tab)
         {
-            marketTab = Mathf.Clamp(tab, 0, 3);
+            marketTab = Mathf.Clamp(tab, 0, 4);
             ShowMarket();
         }
 
@@ -149,30 +149,34 @@ namespace LestingCraft.Presentation
             if (marketTab < 0) marketTab = logged ? 0 : 1;
             if (logged && marketTab == 0 && a.Board == null && !a.CloudBusy) a.CloudMarket(AfterCloud);
 
-            // Top Wallet + 4 Category Tabs Bar
+            // Top Wallet + 5 Category Tabs Bar
             var topBar = Box(content.transform, 64, 128, 1472, 66, Panel);
-            string tab0Name = "1. P2P-Скины Игроков";
+            string tab0Name = "1. P2P-Скины";
             string tab1Name = "2. Биржа Ресурсов";
-            string tab2Name = "3. Чертежи Построек [B]";
-            string tab3Name = "4. Контракты Гильдии";
+            string tab2Name = "3. Чертежи [B]";
+            string tab3Name = "4. Контракты";
+            string tab4Name = "5. Ритуалы и Миры";
 
-            var t0 = Button(tab0Name, 14, 9, 272, 48, () => { marketTab = 0; cloudNotice = ""; ShowMarket(); }, marketTab == 0, topBar.transform);
+            var t0 = Button(tab0Name, 12, 9, 206, 48, () => { marketTab = 0; cloudNotice = ""; ShowMarket(); }, marketTab == 0, topBar.transform);
             t0.name = "Market.Tab.0";
-            var t1 = Button(tab1Name, 294, 9, 258, 48, () => { marketTab = 1; cloudNotice = ""; ShowMarket(); }, marketTab == 1, topBar.transform);
+            var t1 = Button(tab1Name, 224, 9, 224, 48, () => { marketTab = 1; cloudNotice = ""; ShowMarket(); }, marketTab == 1, topBar.transform);
             t1.name = "Market.Tab.1";
-            var t2 = Button(tab2Name, 560, 9, 278, 48, () => { marketTab = 2; cloudNotice = ""; ShowMarket(); }, marketTab == 2, topBar.transform);
+            var t2 = Button(tab2Name, 454, 9, 214, 48, () => { marketTab = 2; cloudNotice = ""; ShowMarket(); }, marketTab == 2, topBar.transform);
             t2.name = "Market.Tab.2";
-            var t3 = Button(tab3Name, 846, 9, 266, 48, () => { marketTab = 3; cloudNotice = ""; ShowMarket(); }, marketTab == 3, topBar.transform);
+            var t3 = Button(tab3Name, 674, 9, 198, 48, () => { marketTab = 3; cloudNotice = ""; ShowMarket(); }, marketTab == 3, topBar.transform);
             t3.name = "Market.Tab.3";
+            var t4 = Button(tab4Name, 878, 9, 232, 48, () => { marketTab = 4; cloudNotice = ""; ShowMarket(); }, marketTab == 4, topBar.transform);
+            t4.name = "Market.Tab.4";
 
             string cloudCoinsText = logged && a.Wallet != null ? ("Облако: " + CloudFormat.Coins(a.Wallet.balance) + " м.  ·  ") : "";
             Label(topBar.transform, cloudCoinsText + "Монеты Гильдии: " + RealmFeaturesAndMarket.GuildCoins,
-                1124, 18, 330, 30, 15, SpringAccent, true, TextAnchor.MiddleRight);
+                1118, 18, 336, 30, 15, SpringAccent, true, TextAnchor.MiddleRight);
 
             if (marketTab == 0) DrawMarketCloudTab(a, logged);
             else if (marketTab == 1) DrawMarketResourcesTab();
             else if (marketTab == 2) DrawMarketBlueprintsTab();
-            else DrawMarketContractsTab();
+            else if (marketTab == 3) DrawMarketContractsTab();
+            else DrawMarketRitualsTab();
 
             // Bottom Navigation Bar
             Button(game && game.InWorld ? "← Вернуться в мир" : "← В главное меню", 64, 804, 290, 52, () =>
@@ -428,19 +432,19 @@ namespace LestingCraft.Presentation
                 int col = i % 2;
                 int rowIdx = i / 2;
                 float x = 24 + col * 720;
-                float y = 80 + rowIdx * 144;
+                float y = 74 + rowIdx * 112;
                 int prog = RealmFeaturesAndMarket.GetContractProgress(c.Id);
                 bool claimed = RealmFeaturesAndMarket.IsContractClaimed(c.Id);
                 bool ready = prog >= c.Target && !claimed;
 
-                var card = Box(panel.transform, x, y, 704, 130, claimed ? new Color(.05f, .18f, .16f, .86f) : new Color(.05f, .13f, .21f, .92f));
-                Label(card.transform, c.Title, 18, 10, 440, 26, 18, claimed ? SpringAccent : White, true);
-                Label(card.transform, c.Description, 18, 38, 450, 42, 13, Muted);
+                var card = Box(panel.transform, x, y, 704, 104, claimed ? new Color(.05f, .18f, .16f, .86f) : new Color(.05f, .13f, .21f, .92f));
+                Label(card.transform, c.Title, 18, 8, 440, 24, 17, claimed ? SpringAccent : White, true);
+                Label(card.transform, c.Description, 18, 34, 450, 36, 12, Muted);
                 Label(card.transform, "Прогресс: " + prog + " / " + c.Target + "   ·   Награда: +" + c.RewardCoins + " монет",
-                    18, 88, 450, 26, 14, ready ? SpringAccent : Accent, true);
+                    18, 72, 450, 24, 13, ready ? SpringAccent : Accent, true);
 
                 string btnText = claimed ? "✓ Получено" : (ready ? "Забрать +" + c.RewardCoins + " м.!" : "В процессе");
-                var claimBtn = Button(btnText, 488, 36, 198, 56, () =>
+                var claimBtn = Button(btnText, 488, 26, 198, 52, () =>
                 {
                     if (!ready) return;
                     RealmFeaturesAndMarket.TryClaimContract(c.Id, inv, out string msg);
@@ -449,6 +453,56 @@ namespace LestingCraft.Presentation
                 }, ready, card.transform);
                 claimBtn.name = "Market.Contract." + c.Id;
             }
+        }
+
+        void DrawMarketRitualsTab()
+        {
+            var panel = Box(content.transform, 64, 206, 1472, 538, Panel);
+            Label(panel.transform, "КОДЕКС РИТУАЛОВ, ИЗМЕРЕНИЙ И КОМАНД НОВОЙ ЭРЫ", 26, 14, 1080, 28, 17, SpringAccent, true);
+            Label(panel.transform, "Никаких чужих шаблонов: у каждого скрытого измерения в LestingCraft собственный авторский ритуал, экосистема и страж!",
+                26, 42, 1400, 24, 14, Muted);
+
+            // Card 1: Hell Twin-Tree Ritual
+            var cHell = Box(panel.transform, 24, 78, 704, 214, new Color(.18f, .06f, .05f, .92f));
+            Label(cHell.transform, "🔥 1. Ритуал Ада — Пылающая Арка Двух Деревьев", 18, 12, 668, 28, 18, new Color(1f, .62f, .28f), true);
+            Label(cHell.transform,
+                "• Посадите 2 саженца (дуба #92 или сакуры #93) на расстоянии РОВНО 7 блоков друг от друга.\n" +
+                "• Дождитесь их естественного роста БЕЗ костной муки (ускоренные мукой деревья не образуют арку!).\n" +
+                "• Подожгите оба дерева факелом (#148) или костром (#15) [ПКМ по стволу].\n" +
+                "• Когда кроны прогорят и стволы обуглятся, ветви сомкнутся в Огненную Арку — шагните под неё!",
+                18, 46, 668, 114, 13, White);
+            Button("Купить саженцы на Бирже →", 18, 162, 290, 40, () => { marketTab = 1; ShowMarket(); }, false, cHell.transform);
+
+            // Card 2: Paradise Flower-Water-Diamond Well Ritual
+            var cEden = Box(panel.transform, 744, 78, 704, 214, new Color(.06f, .16f, .24f, .92f));
+            Label(cEden.transform, "✨ 2. Ритуал Рая — Цветочный Колодец Эдема", 18, 12, 668, 28, 18, new Color(.62f, .94f, 1f), true);
+            Label(cEden.transform,
+                "• Выкопайте в земле квадратный колодец 2×2 шириной и 5 блоков глубиной.\n" +
+                "• Наполните колодец чистой водой (#7 — вода автоматически заполнит всю шахту 2×2×5).\n" +
+                "• Высадите любые цветы (#94 одуванчик, #95 мак, #96 василёк, #97 лаванда) вокруг кромки.\n" +
+                "• Бросьте в воду Алмаз (#149) клавишей [Q] (или ПКМ) и прыгните в засиявший колодец!",
+                18, 46, 668, 114, 13, White);
+            Button("Купить цветы Эдема на Бирже →", 18, 162, 290, 40, () => { marketTab = 1; ShowMarket(); }, false, cEden.transform);
+
+            // Card 3: Backrooms 5 Sublevels & 42 Wildlife Species
+            var cBack = Box(panel.transform, 24, 306, 704, 210, new Color(.14f, .13f, .06f, .92f));
+            Label(cBack.transform, "🚪 3. Закулисье (5 Подуровней) и 42 Вида Фауны", 18, 12, 668, 28, 18, Accent, true);
+            Label(cBack.transform,
+                "• Закулисье включает 5 секторов: Уровень 0 «Жёлтое лобби», Уровень 37 «Бассейны» (Poolrooms),\n" +
+                "  Уровень 1 «Обитаемый склад», Уровень 6 «Полная темнота» и Уровень «!» «Аварийный сектор».\n" +
+                "• Все миры заселены живой 3D-фауной (42 вида): гончие и страйдеры Ада, пегасы, лебеди\n" +
+                "  и жар-птицы Эдема, небесные левиафаны экзопланет и 3 подтипа сталкеров Закулисья.",
+                18, 46, 668, 146, 13, White);
+
+            // Card 4: Commands & Creative Flight
+            var cCmd = Box(panel.transform, 744, 306, 704, 210, new Color(.06f, .13f, .20f, .92f));
+            Label(cCmd.transform, "🕊 4. Полёт в Креативе и Чат-Команды", 18, 12, 668, 28, 18, SpringAccent, true);
+            Label(cCmd.transform,
+                "• /gamemode <creative | survival | hardcore | story> (или /gm 0..3) — смена режима на лету.\n" +
+                "• Двойной [Пробел] или /fly в Творческом режиме — свободный 3D-полёт ([Shift] — ускорение, [Ctrl/C] — вниз).\n" +
+                "• Быстрые переходы (в креативе/отладке): /paradise (/рай), /hell (/ад), /backrooms, /overworld.\n" +
+                "• Навигация и сеть: /sethome, /home, /wp <имя>, /lan (открыть локальный мир по Wi-Fi).",
+                18, 46, 668, 146, 13, White);
         }
 
         public void ShowFriends()

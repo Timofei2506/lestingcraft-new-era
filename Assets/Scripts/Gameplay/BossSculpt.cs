@@ -1578,5 +1578,37 @@ namespace LestingCraft.Gameplay
             }
             return s.Finish("Drone " + kind);
         }
+
+        /// <summary>
+        /// Sculpted 3D voxel Memorial Headstone &amp; Soul Lantern for player recoverable graves
+        /// (replaces raw PrimitiveType.Cube in SurvivalSession).
+        /// </summary>
+        public static SculptData MemorialGrave(int seed = 0)
+        {
+            var s = new Sculptor(.045f, 3301 + Math.Abs(seed % 997));
+            int granite = s.Pal("carved granite", "mossy-stone", .62f, .64f, .68f, 0);
+            int moss = s.Pal("crevice moss", "mossy-stone", .42f, .66f, .38f, 0);
+            int dark = s.Pal("iron bracket", "obsidian", .18f, .20f, .24f, 0);
+            int gold = s.Pal("epitaph relief", "ore-gold", .90f, .76f, .34f, 0);
+            int soul = s.Pal("soul lantern", "cherenkov-crystal", .52f, .82f, 1.00f, 2.2f);
+
+            s.Part("body", 0, 0, 0);
+            // Stepped stone plinth + mossy base
+            s.Box(0, .06f, 0, .38f, .06f, .24f, granite);
+            s.Box(0, .14f, 0, .32f, .05f, .19f, moss);
+            // Upright arched headstone tablet
+            s.Box(0, .52f, -.02f, .26f, .36f, .10f, granite);
+            s.Ellipsoid(0, .86f, -.02f, .26f, .14f, .10f, granite);
+            // Golden cross relief on front face
+            s.Box(0, .62f, .085f, .04f, .22f, .025f, gold);
+            s.Box(0, .68f, .085f, .13f, .04f, .025f, gold);
+            // Wrought-iron lantern post & glowing azure soul lantern beside tablet
+            s.Tube(.28f, .12f, .08f, .28f, .72f, .08f, .032f, .028f, dark);
+            s.Tube(.28f, .72f, .08f, .18f, .72f, .08f, .026f, .026f, dark);
+            s.Box(.18f, .58f, .08f, .065f, .085f, .065f, soul);
+            s.Box(.18f, .67f, .08f, .08f, .025f, .08f, dark);
+
+            return s.Finish("Memorial Grave");
+        }
     }
 }

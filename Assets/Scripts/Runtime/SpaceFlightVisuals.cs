@@ -1498,6 +1498,115 @@ namespace LestingCraft.Runtime
             }
         }
 
+        ParticleSystem realmAmbientParticles;
+        Material realmParticleMat;
+        Dimension realmParticleDim = Dimension.Lestingia;
+
+        public static void GetBackroomsZoneFog(int zone, float time, out Color fogColor, out float fogDensity)
+        {
+            switch (zone)
+            {
+                case 1: // Level 37 Poolrooms — sunlit porcelain aqua mist
+                    fogColor = new Color(0.68f, 0.90f, 0.96f);
+                    fogDensity = 0.0155f;
+                    break;
+                case 2: // Level 1 Habitable Warehouse — cool industrial concrete haze
+                    fogColor = new Color(0.30f, 0.35f, 0.42f);
+                    fogDensity = 0.0255f;
+                    break;
+                case 3: // Level 6 Lights Out — claustrophobic near-black gloom
+                    fogColor = new Color(0.035f, 0.038f, 0.055f);
+                    fogDensity = 0.0640f;
+                    break;
+                case 4: // Level "!" Red Emergency Sector — pulsing crimson alarm glow
+                    float pulse = 0.5f + 0.5f * Mathf.Sin(time * 4.2f);
+                    fogColor = new Color(0.38f + 0.22f * pulse, 0.05f, 0.05f);
+                    fogDensity = 0.0350f;
+                    break;
+                default: // Level 0 Classic Lobby — damp mustard wallpaper haze
+                    fogColor = new Color(0.46f, 0.41f, 0.18f);
+                    fogDensity = 0.0390f;
+                    break;
+            }
+        }
+
+        void UpdateRealmAmbientParticles(Dimension dim, Vector3 centerPos)
+        {
+            bool active = dim == Dimension.Paradise || dim == Dimension.Inferno;
+            if (!active)
+            {
+                if (realmAmbientParticles) realmAmbientParticles.gameObject.SetActive(false);
+                return;
+            }
+            if (!realmAmbientParticles)
+            {
+                var go = new GameObject("RealmAmbientParticles");
+                go.transform.SetParent(transform, false);
+                realmAmbientParticles = go.AddComponent<ParticleSystem>();
+                var renderer = go.GetComponent<ParticleSystemRenderer>();
+                Shader sh = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                            ?? Shader.Find("Particles/Standard Unlit")
+                            ?? Shader.Find("Sprites/Default");
+                if (sh)
+                {
+                    realmParticleMat = new Material(sh);
+                    renderer.sharedMaterial = realmParticleMat;
+                }
+                var shape = realmAmbientParticles.shape;
+                shape.shapeType = ParticleSystemShapeType.Box;
+                shape.scale = new Vector3(26f, 12f, 26f);
+                var emission = realmAmbientParticles.emission;
+                emission.rateOverTime = 24f;
+            }
+            if (!realmAmbientParticles.gameObject.activeSelf)
+                realmAmbientParticles.gameObject.SetActive(true);
+            realmAmbientParticles.transform.position = centerPos + Vector3.up * 3.5f;
+
+            if (realmParticleDim != dim)
+            {
+                realmParticleDim = dim;
+                var main = realmAmbientParticles.main;
+                main.loop = true;
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.maxParticles = 140;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(3.5f, 6.5f);
+                if (dim == Dimension.Paradise)
+                {
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.12f);
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(0.18f, 0.55f);
+                    main.gravityModifier = 0.02f;
+                    main.startColor = new ParticleSystem.MinMaxGradient(
+                        new Color(1.00f, 0.94f, 0.62f, 0.85f),
+                        new Color(1.00f, 0.78f, 0.90f, 0.80f));
+                }
+                else
+                {
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.10f);
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(0.45f, 1.35f);
+                    main.gravityModifier = -0.14f;
+                    main.startColor = new ParticleSystem.MinMaxGradient(
+                        new Color(1.00f, 0.46f, 0.08f, 0.90f),
+                        new Color(1.00f, 0.80f, 0.22f, 0.85f));
+                }
+                realmAmbientParticles.Clear();
+                realmAmbientParticles.Play();
+            }
+        }
+
+        public void UpdateRealmDynamicAtmosphere(Dimension dim, Vector3 playerPos, int seed, Camera cam)
+        {
+            UpdateRealmAmbientParticles(dim, playerPos);
+            if (dim != Dimension.Backrooms) return;
+            int zone = BackroomsTerrain.ZoneAt(Mathf.RoundToInt(playerPos.x), Mathf.RoundToInt(playerPos.z), seed);
+            GetBackroomsZoneFog(zone, Time.time, out Color targetColor, out float targetDensity);
+            float rate = Mathf.Clamp01(Time.deltaTime * 2.8f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = Color.Lerp(RenderSettings.fogColor, targetColor, rate);
+            RenderSettings.fogDensity = Mathf.Lerp(RenderSettings.fogDensity, targetDensity, rate);
+            if (cam) cam.backgroundColor = RenderSettings.fogColor;
+        }
+
         public void ApplyPlanetAtmosphereAndGravity(Dimension dim, FirstPersonController player, Camera cam, bool stationInterior = false)
         {
             BuildCelestialRig();
@@ -1523,6 +1632,7 @@ namespace LestingCraft.Runtime
                 RenderSettings.fogColor = heavyFog;
                 RenderSettings.fogDensity = dim == Dimension.Radia ? 0.0155f : dim == Dimension.Inferno ? 0.0195f : dim == Dimension.Backrooms ? 0.042f : 0.038f;
                 if (cam) cam.backgroundColor = heavyFog;
+                UpdateRealmAmbientParticles(dim, player ? player.transform.position : Vector3.zero);
                 return;
             }
 
@@ -1554,8 +1664,10 @@ namespace LestingCraft.Runtime
                 RenderSettings.fogColor = edenMist;
                 RenderSettings.fogDensity = 0.0040f;
                 if (cam) cam.backgroundColor = new Color(0.66f, 0.85f, 0.99f);
+                UpdateRealmAmbientParticles(dim, player ? player.transform.position : Vector3.zero);
                 return;
             }
+            UpdateRealmAmbientParticles(dim, player ? player.transform.position : Vector3.zero);
 
             if (dim == Dimension.Lestingia && !showStationSky)
             {
@@ -2691,13 +2803,46 @@ namespace LestingCraft.Runtime
                 Defeated = true;
                 defeatedNow = true;
                 LestingCraft.Gameplay.BossCatalog.LootFor(BossDimension, lootSeed, out int diamonds, out int crystals, out int shardsOut);
-                drops = new[]
+                if (BossDimension == Dimension.Paradise)
                 {
-                    new ItemStack { item = 142, count = diamonds }, // Алмазы
-                    new ItemStack { item = 11, count = crystals },  // Кристаллы
-                    new ItemStack { item = 123, count = shardsOut },   // Слитки металла
-                    new ItemStack { item = 111, count = 6 }         // Провизия
-                };
+                    drops = new[]
+                    {
+                        new ItemStack { item = 149, count = diamonds + 3 },
+                        new ItemStack { item = BlockRegistry.AndromedaCrystalId, count = crystals + 4 },
+                        new ItemStack { item = 58, count = 4 },
+                        new ItemStack { item = BlockRegistry.PoppyBlockId, count = 8 }
+                    };
+                }
+                else if (BossDimension == Dimension.Inferno)
+                {
+                    drops = new[]
+                    {
+                        new ItemStack { item = 149, count = diamonds + 2 },
+                        new ItemStack { item = 58, count = 4 },
+                        new ItemStack { item = 27, count = 16 },
+                        new ItemStack { item = 142, count = shardsOut }
+                    };
+                }
+                else if (BossDimension == Dimension.Backrooms)
+                {
+                    drops = new[]
+                    {
+                        new ItemStack { item = 149, count = diamonds + 2 },
+                        new ItemStack { item = BlockRegistry.LanternBlockId, count = 8 },
+                        new ItemStack { item = BlockRegistry.AndromedaCrystalId, count = crystals },
+                        new ItemStack { item = 111, count = 6 }
+                    };
+                }
+                else
+                {
+                    drops = new[]
+                    {
+                        new ItemStack { item = 149, count = Mathf.Max(2, diamonds) },
+                        new ItemStack { item = 142, count = diamonds },
+                        new ItemStack { item = 11, count = crystals },
+                        new ItemStack { item = 111, count = 6 }
+                    };
+                }
                 if (Application.isPlaying) Destroy(gameObject, 0.1f);
                 else DestroyImmediate(gameObject);
             }

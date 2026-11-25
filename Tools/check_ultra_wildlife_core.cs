@@ -137,6 +137,15 @@ class CheckUltraWildlifeCore
             assertions++;
         }
 
-        Console.WriteLine("PASS: " + assertions + " ultra-wildlife assertions across all 42 species (0..41), Inferno & Paradise habitats, legacy gate, soaring flyers, predator aggro, and 114 PBR surface layers.");
+        foreach (int offSentinel in new[] { -12, -18, -19, -20 })
+        {
+            var exoSim = new WildlifeSimulation(2506, null, 11);
+            exoSim.SurfaceAt = (x, z) => offSentinel;
+            exoSim.Spawn(new AnimalObserver { id = "p1", x = 0, y = 46, z = 0, alive = true }, flatGround);
+            Assert(exoSim.Animals.Count > 0, "Off-world sentinel " + offSentinel + " must spawn fauna");
+            assertions++;
+        }
+
+        Console.WriteLine("PASS: " + assertions + " ultra-wildlife assertions across all 42 species (0..41), Inferno, Paradise, Somnia & Exoplanet habitats, legacy gate, soaring flyers, predator aggro, and 114 PBR surface layers.");
     }
 }

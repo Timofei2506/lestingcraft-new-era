@@ -45,9 +45,28 @@ namespace LestingCraft.Gameplay
 
         Dimension activeDim = Dimension.Lestingia;
 
-        static bool SupportsWildlife(Dimension d)
+        public static bool SupportsWildlife(Dimension d)
         {
-            return d == Dimension.Lestingia || d == Dimension.Radia || d == Dimension.Inferno || d == Dimension.Paradise;
+            switch (d)
+            {
+                case Dimension.Lestingia:
+                case Dimension.Radia:
+                case Dimension.Inferno:
+                case Dimension.Paradise:
+                case Dimension.Somnia:
+                case Dimension.Kepler452b:
+                case Dimension.Trappist1e:
+                case Dimension.AndromedaPrime:
+                case Dimension.SaturnTitan:
+                case Dimension.UranusOberon:
+                case Dimension.NeptuneTriton:
+                case Dimension.ProximaB:
+                case Dimension.JupiterIo:
+                case Dimension.Venus:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         bool Enabled
@@ -100,9 +119,14 @@ namespace LestingCraft.Gameplay
 
         int SurfaceAt(int x, int z)
         {
-            if (session.World.Dimension == Dimension.Inferno) return -16;
-            if (session.World.Dimension == Dimension.Paradise) return -17;
-            int y = TerrainGenerator.Height(x, z, session.World.Seed, session.World.Dimension);
+            Dimension d = session.World.Dimension;
+            if (d == Dimension.Inferno) return -16;
+            if (d == Dimension.Paradise) return -17;
+            if (d == Dimension.Somnia) return -12;
+            if (d == Dimension.Kepler452b || d == Dimension.Trappist1e || d == Dimension.AndromedaPrime) return -18;
+            if (d == Dimension.SaturnTitan || d == Dimension.UranusOberon || d == Dimension.NeptuneTriton || d == Dimension.ProximaB) return -19;
+            if (d == Dimension.JupiterIo || d == Dimension.Venus) return -20;
+            int y = TerrainGenerator.Height(x, z, session.World.Seed, d);
             return session.World.GetBlock(x, y, z);
         }
 
@@ -137,7 +161,7 @@ namespace LestingCraft.Gameplay
             if (packet.animals != null)
             {
                 remote.Clear();
-                int limit = session.World.ContentVersion >= 9 ? 30 : session.World.ContentVersion >= 8 ? 20 : session.World.ContentVersion >= 7 ? 12 : 3;
+                int limit = session.World.ContentVersion >= 11 ? WildlifeSimulation.SpeciesCount : session.World.ContentVersion >= 10 ? 40 : session.World.ContentVersion >= 9 ? 30 : session.World.ContentVersion >= 8 ? 20 : session.World.ContentVersion >= 7 ? 12 : 3;
                 foreach (AnimalState a in packet.animals)
                     if (a != null && a.id != null && !a.dead && a.species >= 0 && a.species < limit &&
                         Finite(a.x) && Finite(a.y) && Finite(a.z) && Finite(a.yaw) && remote.Count < WildlifeSimulation.MaxAnimals)
@@ -298,8 +322,27 @@ namespace LestingCraft.Gameplay
             if (!session.Creative && !arrow) session.Inventory.WearTool();
             if (result != null)
             {
-                if (!session.Creative) AddLoot(result);
+                if (!session.Creative)
+                {
+                    AddLoot(result);
+                    AwardRealmBonusDrop(a.species);
+                }
                 session.Checkpoint();
+            }
+        }
+
+        void AwardRealmBonusDrop(int species)
+        {
+            if (WildlifeSimulation.IsInfernoBeast(species))
+            {
+                session.Inventory.Add(147, 2); // Каменный уголь / пепел
+                if (species == 35 || species == 37) session.Inventory.Add(142, 1); // Золотой слиток Преисподней
+            }
+            else if (WildlifeSimulation.IsParadiseCreature(species))
+            {
+                session.Inventory.Add(BlockRegistry.AndromedaCrystalId, 1);
+                ushort flower = (ushort)(94 + (species % 4));
+                session.Inventory.Add(flower, 2);
             }
         }
 
@@ -307,6 +350,8 @@ namespace LestingCraft.Gameplay
 
         bool SpawnSurface(int block)
         {
+            if (session.World.Dimension != Dimension.Lestingia && session.World.Dimension != Dimension.Radia)
+                return block > 0 && block != BlockRegistry.WaterId && block != BlockRegistry.LavaId && BlockRegistry.IsSolid((ushort)block);
             if (block == 3 || block == 2 || block == 14) return true;
             if (session.World.ContentVersion >= 11 && (block == 65 || block == 12 || block == 30 || block == 41 || block == 42 || block == 10 || block == 62 || block == 64 || block == 68 || block == 88)) return true;
             if (session.World.ContentVersion >= 9 && (block == 78 || block == 79 || block == 80 || block == 83 || block == 88)) return true;
@@ -322,7 +367,7 @@ namespace LestingCraft.Gameplay
             int natural = TerrainGenerator.Height(ix, iz, w.Seed, w.Dimension) + 1;
             int hi = previousY < 0 ? (w.ContentVersion >= 11 ? natural + 17 : natural + 1) : Mathf.FloorToInt(previousY) + 2;
             int lo = previousY < 0 ? natural - 2 : Mathf.FloorToInt(previousY) - 2;
-            int minY = w.Dimension == Dimension.Inferno ? 33 : w.Dimension == Dimension.Paradise ? 39 : 42;
+            int minY = w.Dimension == Dimension.Inferno ? 33 : w.Dimension == Dimension.Paradise ? 39 : w.Dimension == Dimension.Lestingia || w.Dimension == Dimension.Radia ? 42 : 6;
             int maxY = w.Dimension == Dimension.Inferno ? InfernoTerrain.CeilingTop - 4 : (w.ContentVersion >= 11 ? 230 : 100);
             for (int y = hi; y >= lo; y--)
             {

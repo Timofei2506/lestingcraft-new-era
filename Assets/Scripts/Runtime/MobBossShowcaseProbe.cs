@@ -193,13 +193,17 @@ namespace LestingCraft.Runtime
                 });
                 bi++;
             }
+            for (int bv = 0; bv < 3; bv++)
             {
-                string file = Path.Combine(bossesDir, Pad(bi) + "-BlackBacteria.png");
+                int capturedVariant = bv;
+                string[] bNames = { "BlackBacteria-Stalker", "BlackBacteria-Howler", "BlackBacteria-Weaver" };
+                string file = Path.Combine(bossesDir, Pad(bi) + "-" + bNames[bv] + ".png");
                 yield return CaptureModel(file, () =>
                 {
-                    var data = BossSculpts.BacteriaMob(4242);
+                    var data = BossSculpts.BacteriaMob(capturedVariant);
                     return BuildSculpt(stageRoot, data, 1.0f);
                 });
+                bi++;
             }
 
             DestroyImmediate(stageRoot);

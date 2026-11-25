@@ -82,6 +82,7 @@ namespace LestingCraft.Runtime
         bool dockedAtStation;
         int stationTradeRequestSeq = 1;
         float lastReadyAckSent;
+        int lastBackroomsZone = -1;
 
         public SpaceTargetKind SelectedSpaceTarget => TargetCycleOrder[selectedTargetIdx % TargetCycleOrder.Length];
         public bool DockedAtOrbitalStation => dockedAtStation;
@@ -89,6 +90,66 @@ namespace LestingCraft.Runtime
         public string CurrentPlanetTitle => world ? dimensions[Mathf.Clamp((int)world.Dimension, 0, dimensions.Length - 1)] : "Космос";
         public Vector3 PlayerWorldPos => player ? player.transform.position : Vector3.zero;
         public float PlayerYaw => player ? player.transform.eulerAngles.y : (Camera.main ? Camera.main.transform.eulerAngles.y : 0f);
+        public bool CreativeFlightActive => player && player.CreativeFlyActive;
+
+        public void QuickSetGameMode(GameMode targetGm)
+        {
+            if (online || !Session) return;
+            selectedMode = (int)targetGm;
+            Session.SetGameMode(targetGm);
+            Session.Notice = "Режим игры: " + GameRules.ModeNames[(int)targetGm];
+        }
+
+        public bool QuickToggleFlight()
+        {
+            if (!player || !Session || !Session.Creative) return false;
+            bool ok = player.ToggleCreativeFlight();
+            if (ok)
+                Session.Notice = player.CreativeFlyActive
+                    ? "🕊 Полёт ВКЛЮЧЁН (Пробел — вверх, C/Ctrl — вниз, Shift — рывок, 2×Пробел — выкл.)"
+                    : "Полёт выключен.";
+            return ok;
+        }
+
+        public string CurrentRealmBannerText()
+        {
+            if (!world || !player) return "";
+            int px = Mathf.RoundToInt(player.transform.position.x);
+            int pz = Mathf.RoundToInt(player.transform.position.z);
+            if (world.Dimension == Dimension.Backrooms)
+            {
+                int z = BackroomsTerrain.ZoneAt(px, pz, world.Seed);
+                BackroomsTerrain.ExitDoor(px, pz, world.Seed, out int ex, out int ez);
+                int dist = Mathf.RoundToInt(Vector2.Distance(new Vector2(px, pz), new Vector2(ex, ez)));
+                return $"🚪 ЗАКУЛИСЬЕ · {BackroomsTerrain.SublevelTitle(z)} · Выход ~{dist} м [M]";
+            }
+            if (world.Dimension == Dimension.Inferno)
+            {
+                int b = InfernoTerrain.BiomeAt(px, pz, world.Seed);
+                return $"🔥 ПРЕИСПОДНЯЯ · {InfernoTerrain.BiomeTitle(b)} · Врата и Цитадель отмечены на [M]";
+            }
+            if (world.Dimension == Dimension.Paradise)
+            {
+                int b = ParadiseTerrain.BiomeAt(px, pz, world.Seed);
+                return $"✨ РАЙ (ЭДЕМ) · {ParadiseTerrain.BiomeTitle(b)} · Святилища и Фонтан отмечены на [M]";
+            }
+            return "";
+        }
+
+        public string CurrentMinimapTag()
+        {
+            if (!world || !player) return "[B]";
+            int px = Mathf.RoundToInt(player.transform.position.x);
+            int pz = Mathf.RoundToInt(player.transform.position.z);
+            if (world.Dimension == Dimension.Backrooms)
+            {
+                int z = BackroomsTerrain.ZoneAt(px, pz, world.Seed);
+                return z == 1 ? "Ур.37" : z == 2 ? "Ур.1" : z == 3 ? "Ур.6" : z == 4 ? "Ур.! " : "Ур.0";
+            }
+            if (world.Dimension == Dimension.Inferno) return "Ад";
+            if (world.Dimension == Dimension.Paradise) return "Рай";
+            return "[B]";
+        }
 
         public void OpenChat()
         {
@@ -1805,9 +1866,26 @@ namespace LestingCraft.Runtime
                 }
             }
 
-            // Sky Island explorer contract check
+            // Sky Island & Eden explorer contract checks
             if(world.Dimension==Dimension.Lestingia&&player.transform.position.y>=130f)
                 RealmFeaturesAndMarket.AddContractProgress("sky_explorer",1);
+            if(world.Dimension==Dimension.Paradise)
+                RealmFeaturesAndMarket.AddContractProgress("eden_explorer",1);
+
+            if(spaceVisuals)
+                spaceVisuals.UpdateRealmDynamicAtmosphere(world.Dimension,player.transform.position,world.Seed,player.Camera);
+
+            if(world.Dimension==Dimension.Backrooms)
+            {
+                int curZone=BackroomsTerrain.ZoneAt(Mathf.RoundToInt(player.transform.position.x),Mathf.RoundToInt(player.transform.position.z),world.Seed);
+                if(curZone!=lastBackroomsZone)
+                {
+                    if(lastBackroomsZone>=0)
+                        Session.Notice="🚪 Переход в сектор: "+BackroomsTerrain.SublevelTitle(curZone);
+                    lastBackroomsZone=curZone;
+                }
+            }
+            else lastBackroomsZone=-1;
 
             if(online)return;
 
@@ -1819,6 +1897,8 @@ namespace LestingCraft.Runtime
                 if(!string.IsNullOrEmpty(ritualNotice))Session.Notice=ritualNotice;
                 if(portalRituals.HellArches.Count!=prevArches)
                 {
+                    if(portalRituals.HellArches.Count>prevArches)
+                        RealmFeaturesAndMarket.AddContractProgress("ritual_forester",1);
                     portalRituals.SaveToPrefs(world.Seed);
                     Session.Checkpoint();
                 }

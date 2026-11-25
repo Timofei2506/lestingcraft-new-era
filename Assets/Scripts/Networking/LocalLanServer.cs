@@ -71,6 +71,7 @@ namespace LestingCraft.Networking
         readonly object roomLock = new object();
         readonly Dictionary<string, LanPeer> peers = new Dictionary<string, LanPeer>();
         readonly Dictionary<long, NetBlock> worldEdits = new Dictionary<long, NetBlock>();
+        readonly List<SavedBlock> preservedOtherRealmEdits = new List<SavedBlock>();
         readonly Dictionary<string, string> savedPlayers = new Dictionary<string, string>();
         long revision;
         bool roomStarted = true;
@@ -164,7 +165,12 @@ namespace LestingCraft.Networking
                 {
                     foreach (var e in preloadEdits)
                     {
-                        if (e == null || e.realm != 0) continue;
+                        if (e == null) continue;
+                        if (e.realm != 0)
+                        {
+                            preservedOtherRealmEdits.Add(new SavedBlock { realm = e.realm, x = e.x, y = e.y, z = e.z, block = e.block });
+                            continue;
+                        }
                         revision++;
                         worldEdits[CellKey(e.x, e.y, e.z)] = new NetBlock { x = e.x, y = e.y, z = e.z, block = e.block, rev = revision };
                     }
@@ -217,6 +223,22 @@ namespace LestingCraft.Networking
         public int ConnectedPlayerCount
         {
             get { lock (roomLock) return peers.Count; }
+        }
+
+        public SavedBlock[] ExportAllSavedBlocks()
+        {
+            lock (roomLock)
+            {
+                var list = new List<SavedBlock>(worldEdits.Count + preservedOtherRealmEdits.Count);
+                foreach (var kv in worldEdits)
+                {
+                    var b = kv.Value;
+                    list.Add(new SavedBlock { realm = 0, x = b.x, y = b.y, z = b.z, block = b.block });
+                }
+                foreach (var other in preservedOtherRealmEdits)
+                    list.Add(new SavedBlock { realm = other.realm, x = other.x, y = other.y, z = other.z, block = other.block });
+                return list.ToArray();
+            }
         }
 
 #if !UNITY_WEBGL || UNITY_EDITOR

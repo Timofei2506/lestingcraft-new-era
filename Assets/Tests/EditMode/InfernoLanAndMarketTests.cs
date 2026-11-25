@@ -387,6 +387,68 @@ namespace LestingCraft.Tests
                 var sc = AnimalSculpts.Build(sp);
                 Assert.Greater(sc.CellCount, 200, "Species " + sp + " must have a detailed fine-voxel sculpt");
             }
+
+            // Memorial 3D voxel grave sculpt
+            var grave = BossSculpts.MemorialGrave(2506);
+            Assert.Greater(grave.CellCount, 120, "Player grave must be a sculpted 3D voxel headstone");
+            Assert.IsTrue(grave.HasPart("body"));
+
+            // Backrooms 5-zone dynamic fog profile & biome titles
+            SpaceFlightVisuals.GetBackroomsZoneFog(0, 0f, out Color fogLobby, out float densLobby);
+            SpaceFlightVisuals.GetBackroomsZoneFog(1, 0f, out Color fogPool, out float densPool);
+            SpaceFlightVisuals.GetBackroomsZoneFog(3, 0f, out Color fogDark, out float densDark);
+            SpaceFlightVisuals.GetBackroomsZoneFog(4, 0f, out Color fogRed, out _);
+            Assert.Less(densPool, densLobby, "Poolrooms must have cleaner sunlit mist than Level 0");
+            Assert.Greater(densDark, densLobby, "Level 6 Lights Out must have thicker dark fog");
+            Assert.Greater(fogPool.b, fogLobby.b, "Poolrooms fog must have porcelain-aqua tint");
+            Assert.Greater(fogRed.r, fogRed.g * 3f, "Emergency sector fog must glow crimson");
+            Assert.IsFalse(string.IsNullOrEmpty(InfernoTerrain.BiomeTitle(0)));
+            Assert.IsFalse(string.IsNullOrEmpty(ParadiseTerrain.BiomeTitle(0)));
+        }
+
+        [Test]
+        public void ExoplanetsSomniaBiospheresContractsAndMultiRealmLanPersistenceWork()
+        {
+            // 1. WildlifeManager supports Lestingia, Radia, Inferno, Paradise, Somnia, Lush Exoplanets, Cryo & Volcanic worlds
+            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Somnia));
+            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Kepler452b));
+            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Trappist1e));
+            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.SaturnTitan));
+            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.JupiterIo));
+
+            int[] offworldSentinels = { -12, -18, -19, -20 };
+            foreach (int sentinel in offworldSentinels)
+            {
+                var sim = new WildlifeSimulation(2506, null, 11) { SurfaceAt = (x, z) => sentinel };
+                sim.Spawn(new AnimalObserver { id = "p", x = 0f, y = 50f, z = 0f, alive = true }, (x, z, prev, r, h) => 48f);
+                Assert.Greater(sim.Animals.Count, 10, "Off-world sentinel " + sentinel + " must populate with matching fauna");
+            }
+
+            // 2. Guild Contracts include new ritual & Eden contracts (8 total)
+            Assert.AreEqual(8, RealmFeaturesAndMarket.Contracts.Length);
+            Assert.IsTrue(System.Array.Exists(RealmFeaturesAndMarket.Contracts, c => c.Id == "ritual_forester"));
+            Assert.IsTrue(System.Array.Exists(RealmFeaturesAndMarket.Contracts, c => c.Id == "eden_explorer"));
+
+            // 3. LocalLanServer preserves multi-realm blocks (Inferno=16 & Paradise=17) alongside Lestingia (0)
+            var multiEdits = new[]
+            {
+                new SavedBlock { realm = 0, x = 5, y = 65, z = 5, block = 42 },
+                new SavedBlock { realm = (int)Dimension.Inferno, x = 8, y = 44, z = -3, block = 27 },
+                new SavedBlock { realm = (int)Dimension.Paradise, x = -6, y = 55, z = 9, block = 95 }
+            };
+            var lan = LocalLanServer.StartOrReplace("MultiRealm LAN", "Host", 2506, 0, 4, multiEdits, 18821);
+            Assert.IsNotNull(lan);
+            try
+            {
+                var exported = lan.ExportAllSavedBlocks();
+                Assert.AreEqual(3, exported.Length);
+                Assert.IsTrue(System.Array.Exists(exported, b => b.realm == (int)Dimension.Inferno && b.block == 27));
+                Assert.IsTrue(System.Array.Exists(exported, b => b.realm == (int)Dimension.Paradise && b.block == 95));
+            }
+            finally
+            {
+                LocalLanServer.StopActive();
+            }
         }
 
         static Button FindBtn(GameUI ui, string name)

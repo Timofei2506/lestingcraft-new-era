@@ -132,7 +132,11 @@ namespace LestingCraft.Gameplay
             new GuildContractDef("coop_host", "Хозяин Сетевого Мира",
                 "Откройте локальный мир по LAN или создайте свой сервер", 1, 140, BlockRegistry.DreamMonolithId, 12),
             new GuildContractDef("market_trader", "Купец Маркетплейса",
-                "Совершите любую сделку на бирже ресурсов или чертежей", 1, 80, BlockRegistry.WoodId, 16)
+                "Совершите любую сделку на бирже ресурсов или чертежей", 1, 80, BlockRegistry.WoodId, 16),
+            new GuildContractDef("ritual_forester", "Хранитель Огненной Арки",
+                "Вырастите 2 дерева без костной муки в 7 блоках и сожгите их в Арку Ада", 1, 240, 149, 2),
+            new GuildContractDef("eden_explorer", "Вознесение в Рай",
+                "Откройте цветочный колодец (2×2×5) алмазом и ступите в мир «Рай»", 1, 260, BlockRegistry.AndromedaCrystalId, 8)
         };
 
         public static int GuildCoins

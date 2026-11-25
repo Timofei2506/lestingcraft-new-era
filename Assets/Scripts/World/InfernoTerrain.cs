@@ -89,6 +89,17 @@ namespace LestingCraft.World
             return n2 < 0.50f ? 2 : 3;
         }
 
+        public static string BiomeTitle(int biome)
+        {
+            switch (biome)
+            {
+                case 0: return "Багровый лес";
+                case 1: return "Базальтовые столпы";
+                case 2: return "Долина пепла душ";
+                default: return "Магматический разлом";
+            }
+        }
+
         public static bool IsSpawnSanctuary(int x, int z)
         {
             return x * x + z * z <= 14 * 14;

@@ -383,10 +383,24 @@ namespace LestingCraft.Presentation
             Label(content.transform,game.WorldLabel+"\n"+netDesc,67,248,680,76,19,Muted);
 
             // Quick In-Game Marketplace & Blueprints Banner on Left
-            var marketBtn=Button("⚖ Маркетплейс, чертежи построек [B] и контракты  →",64,344,680,64,ShowMarket,true);
+            var marketBtn=Button("⚖ Маркетплейс, чертежи построек [B], ритуалы и контракты  →",64,340,680,58,ShowMarket,true);
             marketBtn.name="Pause.Market";
-            Label(content.transform,"Горячие клавиши: [M] Миникарта · [N] Поставить метку · [B] Возвести чертёж · [Shift+B] Сменить чертёж · Чат: /sethome, /home, /lan, /hell",
-                66,418,680,68,14,Muted);
+            Label(content.transform,"Клавиши: [M] Миникарта · [N] Метка · [B] Чертёж · [Q] Бросить в колодец · [2×Пробел] Полёт · Чат: /gamemode, /fly, /paradise, /hell, /backrooms",
+                66,404,680,48,13,Muted);
+
+            if(!game.Online&&game.Session)
+            {
+                var curGm=game.Session.Mode;
+                Button("Выживание",64,460,132,48,()=>{game.QuickSetGameMode(GameMode.Survival);ShowPause();},curGm==GameMode.Survival);
+                Button("Творческий",202,460,138,48,()=>{game.QuickSetGameMode(GameMode.Creative);ShowPause();},curGm==GameMode.Creative);
+                Button("Хардкор",346,460,120,48,()=>{game.QuickSetGameMode(GameMode.Hardcore);ShowPause();},curGm==GameMode.Hardcore);
+                Button("Сюжет",472,460,110,48,()=>{game.QuickSetGameMode(GameMode.Story);ShowPause();},curGm==GameMode.Story);
+                Button(game.CreativeFlightActive?"🕊 Полёт: ВКЛ":"🕊 Полёт",588,460,156,48,()=>{
+                    if(!game.Session.Creative)game.QuickSetGameMode(GameMode.Creative);
+                    game.QuickToggleFlight();
+                    ShowPause();
+                },game.CreativeFlightActive);
+            }
 
             var storyCard=Box(content.transform,776,164,760,324,Panel);
             Label(storyCard.transform,"СЮЖЕТ И БОРТОВОЙ ЖУРНАЛ",28,20,704,34,21,Accent,true);
@@ -776,7 +790,10 @@ namespace LestingCraft.Presentation
                 if(game.Session)
                 {
                     var session=game.Session;var v=session.Vitals;
-                    healthBody.SetBody(v);healthHUD.text=session.Creative?"ТВОРЧЕСКИЙ РЕЖИМ":$"HP · {v.health:0} / 100";
+                    healthBody.SetBody(v);
+                    healthHUD.text=session.Creative
+                        ?(game.CreativeFlightActive?"🕊 ТВОРЧЕСКИЙ · ПОЛЁТ":"ТВОРЧЕСКИЙ [2×Пробел — полёт]")
+                        :$"HP · {v.health:0} / 100";
                     string extraTech="";
                     if(game.Tech)
                     {
@@ -821,7 +838,10 @@ namespace LestingCraft.Presentation
                             ?$"☢ СИРЕНА ПРОДУВКИ ШЛЮЗА · Продержитесь ещё {s.PurgeRemainingSeconds:0} сек!"
                             :$"☢ ЧЕРЕНКОВСКИЙ ЗАТОН · Ядра со дна: {s.HarvestedSubmergedCores}/6 · Боссы Спирали: {s.DefeatedBossCount}/3";
                 }
-                else loadingHUD.text="";
+                else
+                {
+                    loadingHUD.text=game.CurrentRealmBannerText();
+                }
             }
             if(minimapPanel&&game&&game.Session&&game.Session.World)
             {
@@ -836,7 +856,7 @@ namespace LestingCraft.Presentation
                         var w=game.Session.World;
                         var ppos=game.PlayerWorldPos;
                         RealmFeaturesAndMarket.RenderMinimap(minimapTex,w.Seed,w.Dimension,ppos,game.PlayerYaw,RealmFeaturesAndMarket.LoadWaypoints(w.Seed));
-                        if(minimapCoords)minimapCoords.text=$"{Mathf.RoundToInt(ppos.x)}, {Mathf.RoundToInt(ppos.y)}, {Mathf.RoundToInt(ppos.z)}  ·  [B]";
+                        if(minimapCoords)minimapCoords.text=$"{Mathf.RoundToInt(ppos.x)}, {Mathf.RoundToInt(ppos.y)}, {Mathf.RoundToInt(ppos.z)}  ·  {game.CurrentMinimapTag()}";
                     }
                 }
             }

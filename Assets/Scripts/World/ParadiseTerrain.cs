@@ -67,6 +67,17 @@ namespace LestingCraft.World
             return 3;
         }
 
+        public static string BiomeTitle(int biome)
+        {
+            switch (biome)
+            {
+                case 0: return "Изумрудные сады Эдема";
+                case 1: return "Мраморные террасы Света";
+                case 2: return "Небесные хрустальные рощи";
+                default: return "Лучезарные облачные луга";
+            }
+        }
+
         public static bool IsSpawnSanctuary(int x, int z) => x * x + z * z <= 15 * 15;
 
         /// <summary>Sacred Return Fountain threshold at (0, -8) or sanctuary portals.</summary>

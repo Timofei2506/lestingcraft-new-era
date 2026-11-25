@@ -263,7 +263,7 @@ namespace LestingCraft.Runtime
                 Session.Notice = "Открыть локальный мир по LAN можно на планете Лестингия — вернитесь через портал или шаттл";
                 return;
             }
-            var localEdits = world.ExportEdits();
+            var localEdits = world.ExportAllMergedEdits(Session.Data.blocks);
             int seed = world.Seed;
             int mode = (int)Session.Mode;
             string hostNick = Accounts != null && Accounts.Logged && Accounts.Profile != null
@@ -347,6 +347,15 @@ namespace LestingCraft.Runtime
 
         public void StopLocalLanServer()
         {
+            if (LocalLanServer.Active != null)
+            {
+                var existing = LocalSave.Load();
+                if (existing != null && existing.seed == LocalLanServer.Active.Seed)
+                {
+                    existing.blocks = LocalLanServer.Active.ExportAllSavedBlocks();
+                    LocalSave.Store(existing);
+                }
+            }
             LocalLanServer.StopActive();
         }
 
