@@ -88,7 +88,7 @@ namespace LestingCraft.Runtime
         public bool StationTradeOpen => ui && ui.IsStationTradeOpen;
         public string CurrentPlanetTitle => world ? dimensions[Mathf.Clamp((int)world.Dimension, 0, dimensions.Length - 1)] : "Космос";
         public Vector3 PlayerWorldPos => player ? player.transform.position : Vector3.zero;
-        public float PlayerYaw => cam ? cam.transform.eulerAngles.y : (player ? player.transform.eulerAngles.y : 0f);
+        public float PlayerYaw => player ? player.transform.eulerAngles.y : (Camera.main ? Camera.main.transform.eulerAngles.y : 0f);
 
         public void OpenChat()
         {

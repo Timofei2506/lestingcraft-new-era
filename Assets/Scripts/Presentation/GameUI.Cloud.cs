@@ -199,7 +199,7 @@ namespace LestingCraft.Presentation
                 Label(card.transform, "P2P-МАРКЕТПЛЕЙС КОСМЕТИКИ И СКИНОВ", 44, 34, 920, 36, 24, White, true);
                 Label(card.transform, "На вкладке P2P игроки торгуют редкими плащами, коронами и обликами через защищённый серверный эскроу.\n\nВойдите в облачный аккаунт, чтобы покупать и выставлять скины — или переключитесь на вкладки «Биржа Ресурсов», «Чертежи Построек [B]» и «Контракты Гильдии» сверху (они доступны мгновенно даже оффлайн!).",
                     44, 92, 952, 180, 17, Muted);
-                Button("Войти или создать аккаунт  →", 44, 310, 420, 62, () => { afterAuth = Page.Market; ShowAccount(); }, true, card.transform);
+                Button("Войти или создать аккаунт  →", 44, 310, 420, 62, ShowAccount, true, card.transform);
                 Button("Перейти к Бирже Ресурсов  →", 484, 310, 420, 62, () => ShowMarketTab(1), false, card.transform);
                 return;
             }
@@ -217,7 +217,7 @@ namespace LestingCraft.Presentation
             Button("Цена ↑", 694, 46, 104, 42, () => { marketSort = 1; ShowMarket(); }, marketSort == 1, left.transform);
             Button("Цена ↓", 804, 46, 108, 42, () => { marketSort = 2; ShowMarket(); }, marketSort == 2, left.transform);
 
-            var filtered = new List<MarketListing>();
+            var filtered = new List<CloudListing>();
             if (board != null && board.listings != null)
             {
                 string q = (marketSearch ?? "").Trim().ToLowerInvariant();

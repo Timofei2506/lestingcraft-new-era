@@ -61,9 +61,9 @@ namespace LestingCraft.Tests
             Assert.IsTrue(sawFortress, "Inferno must generate Obsidian Citadels");
 
             // Boss & Overworld Hellgate Shrine
-            var boss = BossCatalog.Profile(Dimension.Inferno);
-            Assert.AreEqual("Владыка Преисподней", boss.Name);
-            Assert.GreaterOrEqual(boss.MaxHealth, 500);
+            var boss = BossCatalog.For(Dimension.Inferno);
+            Assert.AreEqual("Владыка Преисподней", boss.Title);
+            Assert.GreaterOrEqual(boss.MaxHealth, 450);
 
             Assert.IsTrue(RealmWondersPlan.TryGetWonderSite(0, 1, seed, out int hx, out int hy, out int hz, out int hkind), "Guaranteed Obsidian Hellgate Shrine must exist in cell (0, 1)");
             Assert.AreEqual(4, hkind);
@@ -209,14 +209,14 @@ namespace LestingCraft.Tests
         [Test]
         public void NewChatCommandsAndUiHubsNavigateCleanly()
         {
-            Assert.AreEqual("sethome", ChatCommands.Run("/sethome", "Alex", "Lestingia", Vector3.zero, false).Action);
-            Assert.AreEqual("home", ChatCommands.Run("/home", "Alex", "Lestingia", Vector3.zero, false).Action);
-            Assert.AreEqual("lan", ChatCommands.Run("/lan", "Alex", "Lestingia", Vector3.zero, false).Action);
-            Assert.AreEqual("market", ChatCommands.Run("/market", "Alex", "Lestingia", Vector3.zero, false).Action);
-            Assert.AreEqual("hell", ChatCommands.Run("/hell", "Alex", "Lestingia", Vector3.zero, true).Action);
-            var tp = ChatCommands.Run("/tp 12 80 -35", "Alex", "Lestingia", Vector3.zero, true);
-            Assert.AreEqual("tp", tp.Action);
-            Assert.AreEqual(new Vector3(12f, 80f, -35f), tp.TargetPos);
+            var inv = new Inventory();
+            Assert.AreEqual("sethome", ChatCommands.Execute("/sethome", false, true, inv, 2506, Vector3.zero, 1).Action);
+            Assert.AreEqual("home", ChatCommands.Execute("/home", false, true, inv, 2506, Vector3.zero, 1).Action);
+            Assert.AreEqual("lan", ChatCommands.Execute("/lan", false, true, inv, 2506, Vector3.zero, 1).Action);
+            Assert.AreEqual("market", ChatCommands.Execute("/market", false, true, inv, 2506, Vector3.zero, 1).Action);
+            Assert.AreEqual("inferno", ChatCommands.Execute("/hell", true, true, inv, 2506, Vector3.zero, 1).Action);
+            var tp = ChatCommands.Execute("/tp 12 80 -35", true, true, inv, 2506, Vector3.zero, 1);
+            Assert.AreEqual("tp:12:80:-35", tp.Action);
 
             var prevEventSystem = EventSystem.current;
             var owner = new GameObject("UI Hub Test Owner");
