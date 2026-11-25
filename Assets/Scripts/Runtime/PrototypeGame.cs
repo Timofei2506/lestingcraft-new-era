@@ -82,7 +82,6 @@ namespace LestingCraft.Runtime
         bool dockedAtStation;
         int stationTradeRequestSeq = 1;
         float lastReadyAckSent;
-        int lastBackroomsZone = -1;
 
         public SpaceTargetKind SelectedSpaceTarget => TargetCycleOrder[selectedTargetIdx % TargetCycleOrder.Length];
         public bool DockedAtOrbitalStation => dockedAtStation;
