@@ -2,6 +2,25 @@
   "available": true,
   "releases": [
     {
+      "tag": "v0.8.0",
+      "name": "v0.8.0",
+      "date": "2026-11-25T16:21:42Z",
+      "prerelease": false,
+      "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/tag/v0.8.0",
+      "windows": {
+        "name": "build-StandaloneWindows64.zip",
+        "size": 719742427,
+        "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.8.0/build-StandaloneWindows64.zip",
+        "digest": "sha256:2008c2171e4ea9dc80fd4f466d0ba1f5e0e38c52e49b4d4070a72de3943d7001"
+      },
+      "android": {
+        "name": "LestingCraft-Android-arm64.apk",
+        "size": 715929195,
+        "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.8.0/LestingCraft-Android-arm64.apk",
+        "digest": "sha256:b74d63b8925c103ab094688c7e28c1aa70ad27246460554b86fa1c293f973ea8"
+      }
+    },
+    {
       "tag": "v0.7.1",
       "name": "v0.7.1",
       "date": "2026-11-17T19:38:42Z",
@@ -135,5 +154,5 @@
       }
     }
   ],
-  "checkedAt": "2026-11-17T21:10:43.460Z"
+  "checkedAt": "2026-11-25T16:22:47.256Z"
 }
