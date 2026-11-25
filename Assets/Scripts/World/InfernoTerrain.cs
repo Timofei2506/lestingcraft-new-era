@@ -38,6 +38,11 @@ namespace LestingCraft.World
         const ushort ObsidianMonolith = 68;
         const ushort SoulAsh = 88;
 
+        public const ushort LavaId = Lava;
+        public const ushort BedrockId = Bedrock;
+        public const ushort MagmaBasaltId = MagmaBasalt;
+        public const ushort ObsidianId = ObsidianMonolith;
+
         static uint Hash(int a, int b, int c, int seed)
         {
             unchecked

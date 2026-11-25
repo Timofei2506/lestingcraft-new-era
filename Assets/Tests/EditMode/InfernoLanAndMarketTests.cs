@@ -42,7 +42,7 @@ namespace LestingCraft.Tests
                 var col = PlanetTerrain.Column(x, z, seed, PlanetBody.Inferno);
                 ushort atLava = PlanetTerrain.Block(x, InfernoTerrain.LavaLevel, z, seed, col, PlanetBody.Inferno);
                 if (atLava == InfernoTerrain.LavaId) sawLavaSea = true;
-                ushort atRoof = PlanetTerrain.Block(x, 125, z, seed, col, PlanetBody.Inferno);
+                ushort atRoof = PlanetTerrain.Block(x, InfernoTerrain.CeilingTop, z, seed, col, PlanetBody.Inferno);
                 if (atRoof == InfernoTerrain.BedrockId) sawCeiling = true;
             }
             // Guaranteed Infernal Citadel near (68, 52)
