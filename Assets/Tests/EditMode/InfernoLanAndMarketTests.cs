@@ -413,8 +413,9 @@ namespace LestingCraft.Tests
             Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Somnia));
             Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Kepler452b));
             Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Trappist1e));
-            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.SaturnTitan));
-            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.JupiterIo));
+            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Titan));
+            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Europa));
+            Assert.IsTrue(WildlifeManager.SupportsWildlife(Dimension.Venus));
 
             int[] offworldSentinels = { -12, -18, -19, -20 };
             foreach (int sentinel in offworldSentinels)

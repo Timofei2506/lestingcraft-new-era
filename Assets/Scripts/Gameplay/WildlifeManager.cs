@@ -57,12 +57,12 @@ namespace LestingCraft.Gameplay
                 case Dimension.Kepler452b:
                 case Dimension.Trappist1e:
                 case Dimension.AndromedaPrime:
-                case Dimension.SaturnTitan:
-                case Dimension.UranusOberon:
-                case Dimension.NeptuneTriton:
+                case Dimension.Europa:
+                case Dimension.Titan:
+                case Dimension.Pluto:
                 case Dimension.ProximaB:
-                case Dimension.JupiterIo:
                 case Dimension.Venus:
+                case Dimension.Mercury:
                     return true;
                 default:
                     return false;
@@ -124,8 +124,8 @@ namespace LestingCraft.Gameplay
             if (d == Dimension.Paradise) return -17;
             if (d == Dimension.Somnia) return -12;
             if (d == Dimension.Kepler452b || d == Dimension.Trappist1e || d == Dimension.AndromedaPrime) return -18;
-            if (d == Dimension.SaturnTitan || d == Dimension.UranusOberon || d == Dimension.NeptuneTriton || d == Dimension.ProximaB) return -19;
-            if (d == Dimension.JupiterIo || d == Dimension.Venus) return -20;
+            if (d == Dimension.Europa || d == Dimension.Titan || d == Dimension.Pluto || d == Dimension.ProximaB) return -19;
+            if (d == Dimension.Venus || d == Dimension.Mercury) return -20;
             int y = TerrainGenerator.Height(x, z, session.World.Seed, d);
             return session.World.GetBlock(x, y, z);
         }
