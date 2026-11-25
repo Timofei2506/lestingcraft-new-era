@@ -7,6 +7,15 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      reuse_windows_run_id:
+        description: "Optional green build.yml run ID to reuse verified Windows x64 artifacts"
+        required: false
+        default: ""
+      release_tag:
+        description: "Optional tag (e.g. v0.8.0) to publish GitHub Release on workflow_dispatch"
+        required: false
+        default: ""
 
 env:
   PYTHONUTF8: '1'
@@ -14,6 +23,7 @@ env:
 
 permissions:
   contents: write
+  actions: read
 
 # Personal-лицензия имеет мало мест — не даём сборкам конкурировать за seat
 concurrency:
@@ -43,7 +53,7 @@ jobs:
   build:
     name: Build ${{ matrix.targetPlatform }}
     needs: check-secrets
-    if: needs.check-secrets.outputs.has == 'true'
+    if: needs.check-secrets.outputs.has == 'true' && inputs.reuse_windows_run_id == ''
     runs-on: ${{ matrix.os }}
     # A genuine 30-minute lunar smoke mission plus editor installation cannot fit in 60 minutes.
     timeout-minutes: 120
@@ -197,7 +207,7 @@ jobs:
   build-android:
     name: Build Android ARM64 APK (temporary debug signature)
     needs: [check-secrets, build]
-    if: needs.check-secrets.outputs.has == 'true'
+    if: always() && needs.check-secrets.outputs.has == 'true' && (needs.build.result == 'success' || inputs.reuse_windows_run_id != '')
     runs-on: ubuntu-22.04
     timeout-minutes: 120
     steps:
@@ -234,6 +244,33 @@ jobs:
           hub-version: 3.12.0
           cache-installation: true
           build-targets: Android
+
+      # buildalon/unity-action sets UNITY_THISISABUILDMACHINE=1, which causes Unity 6000.3.26f1+
+      # to expand **ARTIFACTORYREPOSITORY** in GradleTemplates to Unity's internal intranet
+      # host bfartifactory.bf.unity3d.com (NXDOMAIN outside Unity VPN), aborting AGP 9.1.1 lookup.
+      - name: Strip internal Unity Artifactory macro from Android Gradle templates
+        run: |
+          python3 - <<'PY'
+          import glob, os, pathlib
+          roots = glob.glob("/home/runner/Unity/Hub/Editor/*/Editor/Data/PlaybackEngines/AndroidPlayer")
+          patched = 0
+          for root in roots:
+              for dirpath, _, filenames in os.walk(root):
+                  for fn in filenames:
+                      if fn.endswith((".gradle", ".properties", ".template")):
+                          p = pathlib.Path(dirpath) / fn
+                          txt = p.read_text(encoding="utf-8", errors="ignore")
+                          new_txt = (
+                              txt.replace("**ARTIFACTORYREPOSITORY**", "")
+                                 .replace("https://bfartifactory.bf.unity3d.com/artifactory/maven-google", "https://dl.google.com/dl/android/maven2/")
+                                 .replace("https://bfartifactory.bf.unity3d.com/artifactory/jcenter", "https://repo.maven.apache.org/maven2/")
+                          )
+                          if new_txt != txt:
+                              p.write_text(new_txt, encoding="utf-8")
+                              patched += 1
+                              print("Sanitized:", p)
+          print(f"Sanitized {patched} Unity Android Gradle template file(s).")
+          PY
 
       - name: Activate Unity license (Personal)
         id: activate-android
@@ -284,14 +321,32 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/')
+    if: always() && needs.build-android.result == 'success' && (needs.build.result == 'success' || inputs.reuse_windows_run_id != '') && (startsWith(github.ref, 'refs/tags/') || inputs.release_tag != '')
     needs: [build, build-android]
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
+      - name: Download artifacts from current run
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Download verified Windows build from prior run
+        if: inputs.reuse_windows_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.reuse_windows_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: build-StandaloneWindows64
+          path: artifacts/build-StandaloneWindows64
+
+      - name: Download verified Windows smoke screenshots from prior run
+        if: inputs.reuse_windows_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.reuse_windows_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: Windows-visual-screenshots
+          path: artifacts/Windows-visual-screenshots
 
       - name: Package Windows ZIP and Android APK
         run: |
@@ -329,8 +384,9 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
           files: |
             artifacts/*.zip
             artifacts/LestingCraft-Android-arm64.apk
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(inputs.release_tag || github.ref_name, '-') }}

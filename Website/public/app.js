@@ -338,7 +338,8 @@
         const info = document.createElement('div');
         const b = document.createElement('b');
         b.textContent = rel.tag || rel.name || 'Релиз';
-        const date = rel.publishedAt ? ` · ${String(rel.publishedAt).slice(0, 10)}` : '';
+        const rawDate = rel.date || rel.publishedAt || '';
+        const date = rawDate ? ` · ${String(rawDate).slice(0, 10)}` : '';
         const span = document.createElement('span');
         span.className = 'muted';
         span.textContent = date;
