@@ -294,11 +294,47 @@ jobs:
           password: ${{ secrets.UNITY_PASSWORD }}
 
       - name: Build Android ARM64 APK
-        uses: buildalon/unity-action@v3
-        with:
-          log-name: build-android-arm64
-          build-target: Android
-          args: -quit -batchmode -nographics -executeMethod BuildScript.BuildAndroidArm64
+        run: |
+          set -euo pipefail
+          unset UNITY_THISISABUILDMACHINE
+          mkdir -p Builds/Logs Builds/Android
+          if ! "$UNITY_EDITOR_PATH" \
+            -projectPath "$PWD" \
+            -buildTarget Android \
+            -quit -batchmode -nographics \
+            -executeMethod BuildScript.BuildAndroidArm64 \
+            -logFile "$PWD/Builds/Logs/build-android-arm64.log"; then
+            echo "=== Unity exited non-zero; checking generated Gradle project for bfartifactory URLs ==="
+            if [ -d Library/Bee/Android/Prj/IL2CPP/Gradle ]; then
+              python3 - <<'PY'
+          import os, pathlib
+          for dp, _, fns in os.walk("Library/Bee/Android/Prj/IL2CPP/Gradle"):
+              for fn in fns:
+                  if fn.endswith((".gradle", ".properties")):
+                      p = pathlib.Path(dp) / fn
+                      t = p.read_text(encoding="utf-8", errors="ignore")
+                      nt = (
+                          t.replace("https://bfartifactory.bf.unity3d.com/artifactory/maven-google", "https://dl.google.com/dl/android/maven2/")
+                           .replace("https://bfartifactory.bf.unity3d.com/artifactory/jcenter", "https://repo.maven.apache.org/maven2/")
+                      )
+                      if nt != t:
+                          p.write_text(nt, encoding="utf-8")
+                          print("Rewrote bfartifactory URL in:", p)
+          PY
+              AP_DIR="$(dirname "$UNITY_EDITOR_PATH")/Data/PlaybackEngines/AndroidPlayer"
+              JAVA_HOME="$AP_DIR/OpenJDK"
+              export JAVA_HOME
+              GRADLE_JAR=$(ls "$AP_DIR"/Tools/gradle/lib/gradle-launcher-*.jar | head -n 1)
+              (cd Library/Bee/Android/Prj/IL2CPP/Gradle && "$JAVA_HOME/bin/java" -classpath "$GRADLE_JAR" org.gradle.launcher.GradleMain "-Dorg.gradle.jvmargs=-Xmx7168m" assembleRelease)
+              APK_OUT=$(find Library/Bee/Android/Prj/IL2CPP/Gradle/launcher/build/outputs/apk -name "*.apk" | head -n 1)
+              test -n "$APK_OUT"
+              cp -f "$APK_OUT" Builds/Android/LestingCraft-Android-arm64.apk
+            else
+              tail -n 150 "$PWD/Builds/Logs/build-android-arm64.log" || true
+              exit 1
+            fi
+          fi
+          ls -lh Builds/Android/LestingCraft-Android-arm64.apk
 
       - name: Verify APK output
         run: test -s Builds/Android/LestingCraft-Android-arm64.apk
