@@ -297,6 +297,9 @@ jobs:
         run: |
           set -euo pipefail
           unset UNITY_THISISABUILDMACHINE
+          if [ -f Assets/Plugins/Android/gradleTemplate.properties ] && ! grep -q '^unityStreamingAssets=' Assets/Plugins/Android/gradleTemplate.properties; then
+            sed -i '/^org\.gradle\.parallel=true/a unityStreamingAssets=**STREAMING_ASSETS**' Assets/Plugins/Android/gradleTemplate.properties
+          fi
           mkdir -p Builds/Logs Builds/Android
           if ! "$UNITY_EDITOR_PATH" \
             -projectPath "$PWD" \
