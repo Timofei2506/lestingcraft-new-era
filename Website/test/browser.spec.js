@@ -200,3 +200,36 @@ test('a ready download button says what it downloads and its line fits a phone',
   expect(overflow).toEqual([]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
 });
+
+test('interactive realms atlas, controls switcher, boss lightbox and SHA copy work',async({page,context})=>{
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
+  await page.goto('/');
+
+  // Realm tabs switch active panel
+  await page.locator('[data-realm="inferno"]').click();
+  await expect(page.locator('[data-realm-panel="inferno"]')).toBeVisible();
+  await expect(page.locator('[data-realm-panel="lestingia"]')).toBeHidden();
+  await page.locator('[data-realm="paradise"]').click();
+  await expect(page.locator('[data-realm-panel="paradise"]')).toBeVisible();
+
+  // Controls switcher toggles PC and Android panels
+  await page.locator('[data-ctrl-tab="pc"]').click();
+  await expect(page.locator('[data-ctrl-panel="pc"]')).toBeVisible();
+  await expect(page.locator('[data-ctrl-panel="android"]')).toBeHidden();
+
+  // Boss bestiary card opens lightbox
+  const boss=page.locator('[data-boss-shot]').first();
+  await boss.scrollIntoViewIfNeeded();
+  await boss.click();
+  await expect(page.locator('#lightbox')).toHaveJSProperty('open',true);
+  await expect(page.locator('#lb-img')).toHaveAttribute('src',/\/media\/boss-lestingia\.webp$/);
+  await page.keyboard.press('Escape');
+
+  // Android SHA-256 copy button copies digest
+  const shaBtn=page.locator('[data-copy-sha="android"]');
+  await expect(shaBtn).toBeVisible();
+  await shaBtn.click();
+  const copied=await page.evaluate(()=>navigator.clipboard.readText());
+  expect(copied).toBe('sha256:android');
+});
+

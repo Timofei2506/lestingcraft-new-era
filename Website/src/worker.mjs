@@ -12,7 +12,7 @@ export default {
     if(url.pathname.startsWith('/api/')) {
       if(request.method!=='GET')return Response.json({error:'Method not allowed'},{status:405});
       if(!['/api/releases','/api/status','/api/worlds'].includes(url.pathname))return Response.json({error:'Not found'},{status:404});
-      const key=new Request(url.origin+url.pathname+'?cache=v7-worlds');const cached=await caches.default.match(key);if(cached)return cached;
+      const key=new Request(url.origin+url.pathname+'?cache=v8-worlds');const cached=await caches.default.match(key);if(cached)return cached;
       try {
         const data=await api(url.pathname,env),ttl=url.pathname==='/api/releases'?300:url.pathname==='/api/worlds'?20:60;
         const response=Response.json(data,{headers:{...securityHeaders,'Cache-Control':`public, max-age=${ttl}`}});

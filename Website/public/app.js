@@ -1,12 +1,13 @@
-// LestingCraft: New Era site. No inline scripts (CSP script-src 'self').
+// LestingCraft: New Era — Flagship Site Behaviour (strict CSP: script-src 'self', zero dependencies)
 (() => {
+  'use strict';
+
   const root = document.documentElement;
   root.classList.remove('no-js');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = reduceMotion.matches;
 
   // ---------- Honest visit counter (aggregate only, no cookies) ----------
-  // One hit per tab per UTC day. The source tells us which channel actually works:
-  // a shared link (?ref=share), GitHub, a search engine, or a direct visit.
   (() => {
     const allowed = new Set(['direct', 'github', 'share', 'search', 'friend', 'press']);
     const pick = () => {
@@ -36,6 +37,186 @@
     }).catch(() => {});
   })();
 
+  // ---------- Sticky nav, scroll progress & mobile menu ----------
+  const nav = document.getElementById('nav');
+  const progressBar = document.getElementById('scroll-progress');
+  const toggle = document.getElementById('menu-toggle');
+  const links = document.getElementById('nav-links');
+
+  const updateScrollUI = () => {
+    if (nav) nav.classList.toggle('scrolled', window.scrollY > 18);
+    if (progressBar) {
+      const docH = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = docH > 20 ? Math.min(100, Math.max(0, (window.scrollY / docH) * 100)) : 0;
+      progressBar.style.width = `${pct.toFixed(1)}%`;
+    }
+  };
+  updateScrollUI();
+  window.addEventListener('scroll', updateScrollUI, { passive: true });
+
+  const setMenu = (open) => {
+    if (!links || !toggle) return;
+    links.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  if (toggle && links) {
+    toggle.addEventListener('click', () => setMenu(!links.classList.contains('open')));
+    links.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
+  }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+
+  // ---------- Active section highlight in nav ----------
+  if (links && 'IntersectionObserver' in window) {
+    const navAnchors = [...links.querySelectorAll('a[href^="#"]')];
+    const map = new Map();
+    for (const a of navAnchors) {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) map.set(target, a);
+    }
+    if (map.size) {
+      const navObs = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            for (const a of navAnchors) a.classList.remove('active');
+            const active = map.get(e.target);
+            if (active) active.classList.add('active');
+          }
+        }
+      }, { rootMargin: '-28% 0px -60% 0px' });
+      for (const section of map.keys()) navObs.observe(section);
+    }
+  }
+
+  // ---------- Reveal on scroll ----------
+  const revealItems = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && !reduced) {
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      }
+    }, { rootMargin: '0px 0px -7% 0px', threshold: 0.04 });
+    revealItems.forEach((el) => io.observe(el));
+  } else {
+    revealItems.forEach((el) => el.classList.add('in'));
+  }
+
+  // ---------- Pointer spotlight on glass cards ----------
+  if (!reduced) {
+    document.addEventListener('pointermove', (e) => {
+      const card = e.target && e.target.closest ? e.target.closest('.spot-card') : null;
+      if (!card) return;
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${Math.round(e.clientX - r.left)}px`);
+      card.style.setProperty('--my', `${Math.round(e.clientY - r.top)}px`);
+    }, { passive: true });
+  }
+
+  // ---------- Hero live engine scene switcher ----------
+  const heroShot = document.getElementById('hero-shot');
+  const heroImg = document.getElementById('hero-main-img');
+  const heroTag = document.getElementById('hero-scene-tag');
+  const heroCap = document.getElementById('hero-scene-caption');
+  const sceneTabs = [...document.querySelectorAll('.scene-tab[data-scene-img]')];
+  if (heroImg && sceneTabs.length) {
+    let sceneIdx = 0;
+    let paused = false;
+    const setScene = (idx) => {
+      sceneIdx = ((idx % sceneTabs.length) + sceneTabs.length) % sceneTabs.length;
+      const btn = sceneTabs[sceneIdx];
+      for (const b of sceneTabs) b.classList.toggle('active', b === btn);
+      const nextSrc = btn.dataset.sceneImg;
+      if (heroImg.getAttribute('src') !== nextSrc) {
+        if (!reduced) heroImg.classList.add('fading');
+        setTimeout(() => {
+          heroImg.src = nextSrc;
+          heroImg.classList.remove('fading');
+        }, reduced ? 0 : 120);
+      }
+      if (heroTag && btn.dataset.sceneTag) heroTag.textContent = btn.dataset.sceneTag;
+      if (heroCap && btn.dataset.sceneCap) heroCap.textContent = btn.dataset.sceneCap;
+    };
+    sceneTabs.forEach((btn, i) => btn.addEventListener('click', () => {
+      paused = true;
+      setScene(i);
+    }));
+    if (heroShot && !reduced) {
+      heroShot.addEventListener('pointerenter', () => { paused = true; });
+      heroShot.addEventListener('pointerleave', () => { paused = false; });
+      setInterval(() => {
+        if (!paused && !document.hidden) setScene(sceneIdx + 1);
+      }, 6500);
+    }
+  }
+
+  // ---------- Interactive 18-Realm Atlas ----------
+  const explorer = document.getElementById('realms-explorer');
+  if (explorer) {
+    const tabs = [...explorer.querySelectorAll('.realm-tab[data-realm]')];
+    const panels = [...explorer.querySelectorAll('[data-realm-panel]')];
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => {
+        const key = tab.dataset.realm;
+        explorer.dataset.activeRealm = key;
+        for (const t of tabs) {
+          const on = t === tab;
+          t.classList.toggle('active', on);
+          t.setAttribute('aria-selected', String(on));
+        }
+        for (const p of panels) {
+          const on = p.dataset.realmPanel === key;
+          p.classList.toggle('active', on);
+          p.hidden = !on;
+        }
+      });
+    }
+  }
+
+  // ---------- Controls platform switcher & smart device detection ----------
+  const ctrlBox = document.getElementById('controls-box');
+  const setCtrlPlatform = (mode) => {
+    if (!ctrlBox) return;
+    for (const t of ctrlBox.querySelectorAll('.ctrl-tab[data-ctrl-tab]')) {
+      const on = t.dataset.ctrlTab === mode;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', String(on));
+    }
+    for (const p of ctrlBox.querySelectorAll('[data-ctrl-panel]')) {
+      const on = p.dataset.ctrlPanel === mode;
+      p.classList.toggle('active', on);
+      p.hidden = !on;
+    }
+  };
+  if (ctrlBox) {
+    ctrlBox.querySelectorAll('.ctrl-tab[data-ctrl-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => setCtrlPlatform(btn.dataset.ctrlTab));
+    });
+  }
+
+  const ua = navigator.userAgent || '';
+  const isAndroid = /Android/i.test(ua);
+  const isWindows = /Windows/i.test(ua);
+  const deviceHint = document.getElementById('device-hint');
+  if (isAndroid) {
+    if (deviceHint) {
+      deviceHint.textContent = 'Обнаружен Android — рекомендуем сборку ARM64 APK с сенсорным HUD';
+      deviceHint.hidden = false;
+    }
+    const card = document.querySelector('[data-platform-card="android"]');
+    if (card) card.classList.add('recommended-device');
+    setCtrlPlatform('android');
+  } else if (isWindows) {
+    if (deviceHint) {
+      deviceHint.textContent = 'Обнаружена Windows — рекомендуем архив Windows x64 (или QR-код для смартфона)';
+      deviceHint.hidden = false;
+    }
+    const card = document.querySelector('[data-platform-card="windows"]');
+    if (card) card.classList.add('recommended-device');
+    setCtrlPlatform('pc');
+  }
+
   // ---------- Share ----------
   const shareButtons = document.querySelectorAll('[data-share]');
   if (shareButtons.length) {
@@ -47,9 +228,9 @@
     };
     shareButtons.forEach((button) => button.addEventListener('click', async () => {
       const url = `${location.origin}/?ref=share`;
-      const text = 'LestingCraft: New Era — воксельная песочница, Windows и Android, кооператив до 8 игроков.';
+      const text = 'LestingCraft: New Era — воксельная песочница, 18 миров, Windows и Android, кооператив до 8 игроков.';
       if (navigator.share) {
-        try { await navigator.share({ title: 'LestingCraft: New Era', text, url }); return; } catch { /* user cancelled */ }
+        try { await navigator.share({ title: 'LestingCraft: New Era', text, url }); return; } catch { /* cancelled */ }
       }
       try {
         await navigator.clipboard.writeText(`${text}\n${url}`);
@@ -60,71 +241,35 @@
     }));
   }
 
-  // ---------- Nav ----------
-  const nav = document.getElementById('nav');
-  if (nav) {
-    const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 24);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-  }
-  const toggle = document.getElementById('menu-toggle');
-  const links = document.getElementById('nav-links');
-  const setMenu = (open) => {
-    links.classList.toggle('open', open);
-    toggle.setAttribute('aria-expanded', String(open));
-  };
-  if (toggle && links) {
-    toggle.addEventListener('click', () => setMenu(!links.classList.contains('open')));
-    links.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
-  }
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && links) setMenu(false); });
-
-  // ---------- Reveal on scroll ----------
-  const revealItems = document.querySelectorAll('.reveal');
-  if ('IntersectionObserver' in window && !reduceMotion.matches) {
-    const io = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in');
-          io.unobserve(entry.target);
-        }
-      }
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
-    revealItems.forEach((el, i) => {
-      el.dataset.delay = String(i % 3 === 0 ? 0 : (i % 3));
-      io.observe(el);
-    });
-  } else {
-    revealItems.forEach((el) => el.classList.add('in'));
-  }
-
-  // ---------- Server status (honest: unknown until the API answers) ----------
+  // ---------- Server status ----------
   const status = document.getElementById('server-status');
   const statusText = status ? status.querySelector('span') : null;
-  if (status) fetch('/api/status', { headers: { Accept: 'application/json' } })
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-    .then((d) => {
-      if (d && d.online === true) {
-        status.dataset.state = 'online';
-        statusText.textContent = 'Кооператив доступен';
-      } else {
-        status.dataset.state = 'offline';
-        statusText.textContent = 'Кооператив недоступен';
-      }
-    })
-    .catch(() => {
-      status.dataset.state = 'unknown';
-      statusText.textContent = 'Статус кооператива недоступен';
-    });
+  if (status && statusText) {
+    fetch('/api/status', { headers: { Accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (d && d.online === true) {
+          status.dataset.state = 'online';
+          statusText.textContent = 'Кооператив доступен';
+        } else {
+          status.dataset.state = 'offline';
+          statusText.textContent = 'Кооператив недоступен';
+        }
+      })
+      .catch(() => {
+        status.dataset.state = 'unknown';
+        statusText.textContent = 'Статус кооператива недоступен';
+      });
+  }
 
-  // ---------- Open worlds (social proof, honest when empty) ----------
+  // ---------- Open worlds directory (/api/worlds) ----------
   const worlds = document.getElementById('worlds');
   const worldsList = document.getElementById('worlds-list');
   const worldsSummary = document.getElementById('worlds-summary');
   if (worlds && worldsList && worldsSummary) {
-    const render = (data) => {
+    const renderWorlds = (data) => {
       const list = Array.isArray(data && data.worlds) ? data.worlds : [];
-      worldsList.innerHTML = '';
+      worldsList.textContent = '';
       if (!list.length) {
         worlds.dataset.state = 'empty';
         worldsSummary.textContent = 'Сейчас никто не открыл мир. Откройте свой — и он появится здесь.';
@@ -156,17 +301,19 @@
     };
     fetch('/api/worlds', { headers: { Accept: 'application/json' } })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then(render)
+      .then(renderWorlds)
       .catch(() => {
         worlds.dataset.state = 'error';
         worldsSummary.textContent = 'Список миров сейчас недоступен — сервер не ответил.';
       });
   }
 
-  // ---------- Direct platform downloads ----------
+  // ---------- Direct platform downloads (/api/releases -> /releases.json fallback) ----------
   const downloadPanel = document.getElementById('download-builds');
   const downloadStatus = document.getElementById('download-status');
   if (downloadPanel && downloadStatus) {
+    const historyWrap = document.getElementById('release-history');
+    const historyList = document.getElementById('release-history-list');
     const linksByPlatform = Object.fromEntries(
       [...downloadPanel.querySelectorAll('[data-download]')].map((link) => [link.dataset.download, link])
     );
@@ -177,61 +324,135 @@
         ? `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`
         : `${(value / (1024 * 1024)).toFixed(1)} MB`;
     };
+
+    const renderReleaseArchive = (releases) => {
+      if (!historyWrap || !historyList) return;
+      historyList.textContent = '';
+      if (!Array.isArray(releases) || releases.length === 0) {
+        historyWrap.hidden = true;
+        return;
+      }
+      for (const rel of releases.slice(0, 8)) {
+        const row = document.createElement('div');
+        row.className = 'rel-row';
+        const info = document.createElement('div');
+        const b = document.createElement('b');
+        b.textContent = rel.tag || rel.name || 'Релиз';
+        const date = rel.publishedAt ? ` · ${String(rel.publishedAt).slice(0, 10)}` : '';
+        const span = document.createElement('span');
+        span.className = 'muted';
+        span.textContent = date;
+        info.append(b, span);
+
+        const rowLinks = document.createElement('div');
+        rowLinks.className = 'rel-row-links';
+        if (rel.android && rel.android.url) {
+          const a = document.createElement('a');
+          a.href = rel.android.url;
+          a.rel = 'noreferrer';
+          a.textContent = `Android APK (${formatSize(rel.android.size) || 'ARM64'})`;
+          rowLinks.append(a);
+        }
+        if (rel.windows && rel.windows.url) {
+          const w = document.createElement('a');
+          w.href = rel.windows.url;
+          w.rel = 'noreferrer';
+          w.textContent = `Windows ZIP (${formatSize(rel.windows.size) || 'x64'})`;
+          rowLinks.append(w);
+        }
+        row.append(info, rowLinks);
+        historyList.append(row);
+      }
+      historyWrap.hidden = false;
+    };
+
+    const applyReleaseData = (data) => {
+      const list = Array.isArray(data && data.releases) ? data.releases : [];
+      const release = list.find((item) => item.windows?.url && item.android?.url) || null;
+      if (!release) {
+        downloadPanel.dataset.state = 'empty';
+        downloadStatus.dataset.state = 'empty';
+        downloadStatus.textContent = 'Проверенные сборки ещё не опубликованы. Когда выйдет комплект для Windows и Android, загрузка начнётся по одной кнопке.';
+        return;
+      }
+      const labelTitle = release.name || release.tag || '';
+      for (const platform of ['windows', 'android']) {
+        const link = linksByPlatform[platform];
+        const asset = release[platform];
+        if (!link || !asset || typeof asset.url !== 'string') continue;
+        link.href = asset.url;
+        link.removeAttribute('aria-disabled');
+        link.removeAttribute('tabindex');
+        link.rel = 'noreferrer';
+        link.textContent = platform === 'windows' ? 'Скачать для Windows' : 'Скачать APK для Android';
+        const meta = downloadPanel.querySelector(`[data-build-meta="${platform}"]`);
+        const shaBtn = downloadPanel.querySelector(`[data-copy-sha="${platform}"]`);
+        const digest = asset.digest || (asset.sha256 ? `sha256:${asset.sha256}` : '');
+        if (meta) {
+          const details = [labelTitle, formatSize(asset.size)].filter(Boolean);
+          meta.textContent = details.join(' · ');
+          if (digest) meta.title = `Контрольная сумма: ${digest}`;
+        }
+        if (shaBtn && digest) {
+          shaBtn.hidden = false;
+          shaBtn.title = `Скопировать контрольную сумму: ${digest}`;
+          shaBtn.onclick = async () => {
+            try {
+              await navigator.clipboard.writeText(digest);
+              shaBtn.textContent = 'Скопировано';
+              setTimeout(() => { shaBtn.textContent = 'SHA-256'; }, 2000);
+            } catch {
+              window.prompt('Контрольная сумма:', digest);
+            }
+          };
+        }
+      }
+      renderReleaseArchive(list);
+      downloadPanel.dataset.state = 'ready';
+      downloadStatus.dataset.state = 'ready';
+      const releaseKind = release.prerelease ? 'Предварительная сборка' : 'Стабильная сборка';
+      downloadStatus.textContent = `${releaseKind} ${labelTitle}. Нажмите кнопку платформы — загрузка файла начнётся сразу.`;
+    };
+
     fetch('/api/releases', { headers: { Accept: 'application/json' } })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((data) => {
-        const release = Array.isArray(data.releases)
-          ? data.releases.find((item) => item.windows?.url && item.android?.url)
-          : null;
-        if (!release) {
-          downloadStatus.dataset.state = 'empty';
-          downloadStatus.textContent = 'Проверенные сборки ещё не опубликованы. Когда выйдет комплект для Windows и Android, загрузка начнётся по одной кнопке.';
-          return;
-        }
-        for (const platform of ['windows', 'android']) {
-          const link = linksByPlatform[platform];
-          const asset = release[platform];
-          if (!link || !asset || typeof asset.url !== 'string') continue;
-          link.href = asset.url;
-          link.removeAttribute('aria-disabled');
-          link.removeAttribute('tabindex');
-          link.rel = 'noreferrer';
-          // The template label says "Загрузка списка сборок…" — replace it, or the
-          // button looks broken right when it starts to work.
-          link.textContent = platform === 'windows' ? 'Скачать для Windows' : 'Скачать APK для Android';
-          const meta = downloadPanel.querySelector(`[data-build-meta="${platform}"]`);
-          if (meta) {
-            // Keep the visible line short: a full sha256 digest does not wrap on a phone.
-            const details = [release.name || release.tag, formatSize(asset.size)].filter(Boolean);
-            meta.textContent = details.join(' · ');
-            if (asset.digest) meta.title = `Контрольная сумма: ${asset.digest}`;
-          }
-        }
-        downloadStatus.dataset.state = 'ready';
-        const releaseKind = release.prerelease ? 'Предварительная сборка' : 'Стабильная сборка';
-        downloadStatus.textContent = `${releaseKind} ${release.name || release.tag}. Нажмите кнопку платформы — загрузка файла начнётся сразу.`;
-      })
+      .then(applyReleaseData)
       .catch(() => {
-        downloadStatus.dataset.state = 'error';
-        downloadStatus.textContent = 'Не удалось получить список сборок. Попробуйте обновить страницу позже.';
+        fetch('/releases.json', { headers: { Accept: 'application/json' } })
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then(applyReleaseData)
+          .catch(() => {
+            downloadPanel.dataset.state = 'error';
+            downloadStatus.dataset.state = 'error';
+            downloadStatus.textContent = 'Не удалось получить список сборок. Попробуйте обновить страницу позже.';
+          });
       });
   }
 
-  // ---------- Gallery lightbox ----------
+  // ---------- Lightbox (gallery [data-shot] + boss bestiary [data-boss-shot]) ----------
   const dialog = document.getElementById('lightbox');
   const lbImg = document.getElementById('lb-img');
   const lbCaption = document.getElementById('lb-caption');
-  if (dialog) document.querySelectorAll('[data-shot]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const img = btn.querySelector('img');
-      lbImg.src = btn.dataset.shot;
-      lbImg.alt = img ? img.alt : '';
-      lbCaption.textContent = btn.dataset.caption || '';
+  if (dialog && lbImg && lbCaption) {
+    const openShot = (src, caption, alt) => {
+      lbImg.src = src;
+      lbImg.alt = alt || '';
+      lbCaption.textContent = caption || '';
       if (typeof dialog.showModal === 'function') dialog.showModal();
+    };
+    document.querySelectorAll('[data-shot]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const img = btn.querySelector('img');
+        openShot(btn.dataset.shot, btn.dataset.caption, img ? img.alt : '');
+      });
     });
-  });
-  if (dialog) {
-    document.getElementById('lb-close').addEventListener('click', () => dialog.close());
+    document.querySelectorAll('[data-boss-shot]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const img = btn.querySelector('img');
+        openShot(btn.dataset.bossShot, btn.dataset.caption, img ? img.alt : '');
+      });
+    });
+    document.getElementById('lb-close')?.addEventListener('click', () => dialog.close());
     dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
     dialog.addEventListener('close', () => { lbImg.removeAttribute('src'); });
   }
@@ -241,10 +462,11 @@
   const message = document.getElementById('form-status');
   const submit = form ? form.querySelector('button[type="submit"]') : null;
   const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  const say = (text, kind) => { message.textContent = text; message.dataset.kind = kind; };
+  const say = (text, kind) => { if (!message) return; message.textContent = text; message.dataset.kind = kind; };
 
   if (form) form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (form.dataset.busy === 'true') return;
     const data = new FormData(form);
     const email = String(data.get('email') || '').trim();
     if (!EMAIL.test(email) || email.length > 254) {
@@ -257,7 +479,7 @@
       return;
     }
     form.dataset.busy = 'true';
-    submit.textContent = 'Отправляем…';
+    if (submit) submit.textContent = 'Отправляем…';
     say('', '');
     try {
       const res = await fetch('/api/waitlist', {
@@ -273,7 +495,7 @@
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.ok) {
-        say(body.message || 'Готово! Напишем, когда откроем тестовый доступ.', 'ok');
+        say(body.message || 'Готово! Напишем, когда выйдет крупное обновление.', 'ok');
         form.reset();
       } else if (res.status === 503) {
         say(body.message || 'Лист ожидания скоро откроется. Попробуйте позже.', 'soon');
@@ -284,13 +506,13 @@
       say('Нет связи с сервером. Проверьте соединение и попробуйте ещё раз.', 'error');
     } finally {
       form.dataset.busy = 'false';
-      submit.textContent = 'Записаться';
+      if (submit) submit.textContent = 'Записаться';
     }
   });
 
   // ---------- Voxel landscape background ----------
   const canvas = document.getElementById('voxel-bg');
-  if (canvas && canvas.getContext) {
+  if (canvas && canvas.getContext && !reduced && window.innerWidth > 820) {
     const ctx = canvas.getContext('2d');
     const COLS = 26, ROWS = 18;
     let width = 0, height = 0, dpr = 1, tw = 40, th = 20, hz = 16;
@@ -344,16 +566,16 @@
           const X = (c - r) * tw / 2 + ox;
           const Y = (c + r) * th / 2 + oy;
           const k = z / 6;
-          const hue = 96 - k * 30;
-          const sat = 34 + k * 20;
-          const light = 20 + k * 22 + hash(c, r) * 3;
+          const hue = 156 - k * 42;
+          const sat = 30 + k * 22;
+          const light = 17 + k * 22 + hash(c, r) * 3;
           const top = [hue, sat, light];
           const topPts = [[X, Y - z * hz], [X + tw / 2, Y + th / 2 - z * hz], [X, Y + th - z * hz], [X - tw / 2, Y + th / 2 - z * hz]];
           const left = [[X - tw / 2, Y + th / 2 - z * hz], [X, Y + th - z * hz], [X, Y + th], [X - tw / 2, Y + th / 2]];
           const right = [[X, Y + th - z * hz], [X + tw / 2, Y + th / 2 - z * hz], [X + tw / 2, Y + th / 2], [X, Y + th]];
-          const warm = k > 0.7 ? 'hsla(40 90% 62% / 0.18)' : null;
-          poly(left, shade(top, -12));
-          poly(right, shade(top, -6));
+          const warm = k > 0.72 ? 'hsla(38 92% 64% / 0.22)' : null;
+          poly(left, shade(top, -10));
+          poly(right, shade(top, -5));
           poly(topPts, shade(top, 0));
           if (warm) poly(topPts, warm);
         }

@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LestingCraft: New Era — открытая воксельная песочница и космос на Unity 6</title>
-<meta name="description" content="LestingCraft: New Era — открытая воксельная песочница на Unity 6 URP для Windows и Android: ремёсла, живые деревни, 34 вида фауны, 26 боссов, космодром, 3D-кабина шаттла, 16 миров Солнечной системы и кооператив до 8 игроков.">
-<meta name="theme-color" content="#080e16">
+<title>LestingCraft: New Era v0.8.0 — воксельная песочница, 18 миров и космос (Windows и Android)</title>
+<meta name="description" content="LestingCraft: New Era v0.8.0 — открытая воксельная песочница на Unity 6 URP для Windows x64 и Android ARM64: сенсорное управление на смартфонах, 18 миров и измерений, ритуалы Преисподней и Эдема, 5 зон Закулисья, 42 вида фауны, 28 боссов, 3D-шаттл и кооператив до 8 игроков.">
+<meta name="theme-color" content="#070d14">
 <link rel="canonical" href="https://lestingcraft.kroterallitir.workers.dev/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LestingCraft: New Era">
-<meta property="og:title" content="LestingCraft: New Era — воксельное выживание и межпланетные полёты (Unity 6)">
-<meta property="og:description" content="От каменной кирки и деревень Лестингии до собственного космодрома, 3D-кабины шаттла, 26 боссов и 16 миров Солнечной системы. Windows x64 и Android ARM64, кооператив до 8 игроков.">
+<meta property="og:title" content="LestingCraft: New Era v0.8.0 — воксельное выживание, 18 миров и космос (PC и Android)">
+<meta property="og:description" content="От ремёсел и деревень Лестингии до ритуальных врат Преисподней и Эдема, 5 секторов Закулисья, 3D-кабины шаттла и экзопланет. Сборки для Windows x64 и Android ARM64 с сенсорным HUD.">
 <meta property="og:image" content="https://lestingcraft.kroterallitir.workers.dev/media/menu-social.webp">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -22,30 +22,31 @@
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/style.css">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"VideoGame","name":"LestingCraft: New Era","softwareVersion":"0.7.1","description":"Открытая воксельная песочница на Unity 6 URP: выживание, крафт, деревни, 34 вида фауны, 26 боссов, космодром с пилотируемым шаттлом и кооператив до 8 игроков.","gamePlatform":["Windows","Android"],"operatingSystem":"Windows x64, Android ARM64 (Android 8.0+)","applicationCategory":"Game","playMode":["SinglePlayer","CoOp"],"author":{"@type":"Person","name":"Timofei (EHOT_EHOTbI4.music)"},"url":"https://lestingcraft.kroterallitir.workers.dev/"}
+{"@context":"https://schema.org","@type":"VideoGame","name":"LestingCraft: New Era","softwareVersion":"0.8.0","description":"Открытая воксельная песочница на Unity 6 URP для Windows и Android: выживание, крафт, деревни, 42 вида фауны, 28 боссов, 18 миров и измерений, пилотируемый 3D-шаттл и кооператив до 8 игроков.","gamePlatform":["Windows","Android"],"operatingSystem":"Windows x64, Android ARM64 (Android 8.0+)","applicationCategory":"Game","playMode":["SinglePlayer","CoOp"],"author":{"@type":"Person","name":"Timofei (EHOT_EHOTbI4.music)"},"url":"https://lestingcraft.kroterallitir.workers.dev/"}
 </script>
 </head>
 <body>
+<div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
 <a class="skip" href="#main">К содержимому</a>
 
 <header class="nav" id="nav">
   <a class="brand" href="#top" aria-label="LestingCraft, наверх">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19.5 7.5 12 11.5 4.5 7.5Z" fill="#fbe7b8"/><path d="M4.5 7.5 12 11.5V20.5L4.5 16.5Z" fill="#5b3d17"/><path d="M12 11.5 19.5 7.5V16.5L12 20.5Z" fill="#2b1c0a"/></svg>
-    <span>LESTINGCRAFT</span>
+    <span>LESTINGCRAFT<em class="brand-era">NEW ERA · v0.8</em></span>
   </a>
   <nav class="nav-links" id="nav-links" aria-label="Основное">
-    <a href="#game">Игра</a>
-    <a href="#ecosystem">Экосистема</a>
     <a href="#download">Скачать</a>
+    <a href="#realms">18 миров</a>
+    <a href="#game">Механики</a>
+    <a href="#bosses">Боссы</a>
+    <a href="#coop">Кооператив</a>
     <a href="#shots">Кадры</a>
     <a href="#progress">Прогресс</a>
-    <a href="#test">Обновления</a>
-    <a href="#faq">Вопросы</a>
-    <a href="/press/">Press / Пресса</a>
+    <a href="/press/">Пресса</a>
   </nav>
   <div class="nav-right">
     <span class="status" id="server-status" data-state="unknown"><i></i><span>Кооператив: проверка…</span></span>
-    <a class="btn small" href="#download">Скачать</a>
+    <a class="btn small" href="#download">Скачать APK / PC</a>
     <button class="menu-toggle" id="menu-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Меню">
       <span></span><span></span>
     </button>
@@ -56,79 +57,463 @@
 
 <!-- HERO -->
 <section class="hero" id="top">
+  <div class="hero-aurora" aria-hidden="true"></div>
   <canvas id="voxel-bg" aria-hidden="true"></canvas>
   <div class="hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow reveal">Публичная альфа v0.7.1 · Unity 6 URP · Windows x64 и Android ARM64</p>
+      <div class="hero-badges reveal">
+        <span class="release-pill"><i class="live-dot"></i>Сборка v0.8.0 · Unity 6 URP</span>
+        <span class="platform-pill">Android ARM64 Touch HUD + Windows x64</span>
+      </div>
       <h1 class="reveal">
         <span class="h1-main">LESTINGCRAFT</span>
         <span class="h1-sub">NEW ERA</span>
       </h1>
-      <p class="lead reveal">Воксельное приключение нового поколения: начни с каменного топора и лесных поселений Лестингии, построй действующий космодром, сядь за 3D-штурвал шаттла и отправься к 16 мирам Солнечной системы — в одиночку или с друзьями.</p>
+      <p class="lead reveal">Масштабная воксельная вселенная от первого лица: начни с каменной кирки и живых деревень Лестингии, проведи древние ритуалы перехода в Преисподнюю и Эдем, выберись из 5 секторов Закулисья и сядь за 3D-штурвал шаттла на пути к экзопланетам — на ПК или смартфоне Android.</p>
       <div class="cta reveal">
-        <a class="btn primary" href="#download">Скачать сборку v0.7.1</a>
-        <a class="btn ghost" href="#game">Что есть в игре</a>
+        <a class="btn primary" href="#download">Скачать для Android и Windows</a>
+        <a class="btn ghost" href="#realms">Атлас 18 миров</a>
         <a class="btn ghost" href="/press/">Press Kit (RU / EN)</a>
         <button class="btn ghost" type="button" data-share>Поделиться</button>
       </div>
       <ul class="facts reveal">
-        <li><b>34 и 26</b><span>вида фауны и боссов миров</span></li>
-        <li><b>16 миров</b><span>космодром, шаттл и станция 0g</span></li>
-        <li><b>до 8</b><span>игроков в кооперативе</span></li>
+        <li><b>18 миров</b><span>планеты, Эдем, Преисподняя, Закулисье</span></li>
+        <li><b>42 и 28</b><span>вида фауны и воксельных стражей</span></li>
+        <li><b>PC + APK</b><span>сенсорный HUD для смартфонов</span></li>
+        <li><b>до 8</b><span>игроков в сетевом кооперативе</span></li>
       </ul>
     </div>
+
     <figure class="hero-shot reveal" id="hero-shot">
       <div class="device">
-        <img src="/media/showcase-biomes.webp" width="1600" height="900" alt="Кадр из LestingCraft: New Era на Unity 6: цветущая роща, объёмные облака, дикие животные и интерфейс выживания">
+        <div class="device-bar" aria-hidden="true">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="device-tag" id="hero-scene-tag">Unity 6.3 URP · Реальный кадр из движка</span>
+        </div>
+        <img id="hero-main-img" src="/media/showcase-biomes.webp" width="1600" height="900" alt="Кадр из LestingCraft: New Era на Unity 6: цветущая роща, объёмные облака, дикие животные и интерфейс выживания">
       </div>
-      <figcaption>Реальный внутриигровой кадр сборки v0.7.1 на Unity 6 URP (объёмные облака, PBR-материалы, фауна и живой HUD).</figcaption>
+      <div class="scene-tabs" role="group" aria-label="Переключение сцен движка">
+        <button type="button" class="scene-tab active" data-scene-img="/media/showcase-biomes.webp" data-scene-tag="Лестингия · Биомы и фауна" data-scene-cap="Цветущие сакуровые рощи, PBR-материалы шерсти животных, объёмные облака и живой HUD выживания.">Лестингия</button>
+        <button type="button" class="scene-tab" data-scene-img="/media/showcase-cosmodrome.webp" data-scene-tag="Космодром · Стартовый стол" data-scene-cap="Возводимый космодром с 28-метровым подъёмным лифтом, шлюзом и многоразовым орбитальным шаттлом.">Космодром</button>
+        <button type="button" class="scene-tab" data-scene-img="/media/showcase-cockpit.webp" data-scene-tag="Шаттл · 3D-кабина пилота" data-scene-cap="Полноценная прогулочная 3D-кабина шаттла с живыми навигационными экранами MFD и ручным штурвалом.">3D-кабина</button>
+        <button type="button" class="scene-tab" data-scene-img="/media/showcase-saturn.webp" data-scene-tag="Экспедиция · Кольца Сатурна" data-scene-cap="Межпланетный перелёт к газовым гигантам, ледяным лунам и экзопланетам с расчётом орбиты.">Космос</button>
+      </div>
+      <figcaption id="hero-scene-caption">Цветущие сакуровые рощи, PBR-материалы шерсти животных, объёмные облака и живой HUD выживания.</figcaption>
     </figure>
   </div>
-  <a class="scroll-cue" href="#game" aria-label="Перейти к описанию"><span></span></a>
+  <a class="scroll-cue" href="#download" aria-label="Перейти к загрузке"><span></span></a>
 </section>
 
 <!-- ONE-CLICK PLATFORM DOWNLOADS -->
 <section class="section download-section" id="download" aria-labelledby="download-title">
   <header class="section-head reveal">
-    <p class="eyebrow">Официальные сборки</p>
-    <h2 id="download-title">Скачать игру</h2>
-    <p class="muted">Прямая загрузка последней проверенной версии с контрольной суммой SHA-256. Внешний лаунчер и регистрация для запуска не требуются.</p>
+    <p class="eyebrow">Официальный центр загрузок</p>
+    <h2 id="download-title">Скачать LestingCraft: New Era</h2>
+    <p class="muted">Прямая загрузка проверенных сборок с верификацией SHA-256 без регистрации, ключей и сторонних установщиков. Выберите свою платформу ниже.</p>
+    <p class="device-hint" id="device-hint" hidden></p>
   </header>
+
   <div class="download-grid" id="download-builds" data-state="loading">
-    <article class="download-card reveal">
-      <span class="tag">Windows x64</span>
-      <h3>Для ПК</h3>
-      <p>Автономный ZIP-архив с игрой. Распакуйте папку целиком и запустите <b>LestingCraft.exe</b>.</p>
-      <a class="btn primary wide download-link" data-download="windows" href="#download" aria-disabled="true" tabindex="-1">Загрузка списка сборок…</a>
-      <p class="download-meta" data-build-meta="windows">Сборка появится после публикации релиза.</p>
-    </article>
-    <article class="download-card reveal">
-      <span class="tag">Android · ARM64</span>
-      <h3>Для смартфона</h3>
-      <p>Установочный пакет APK (Android 8.0+). После загрузки подтвердите установку приложения.</p>
-      <a class="btn primary wide download-link" data-download="android" href="#download" aria-disabled="true" tabindex="-1">Загрузка списка сборок…</a>
-      <p class="download-meta" data-build-meta="android">Сборка появится после публикации релиза.</p>
+    <!-- ANDROID CARD -->
+    <article class="download-card android-card featured-card spot-card reveal" data-platform-card="android">
+      <div class="dl-card-top">
+        <span class="tag done">Android · ARM64</span>
+        <span class="dl-badge">Сенсорный HUD v0.8</span>
+      </div>
+      <div class="dl-title-row">
+        <div class="platform-icon android-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M7.5 9.5C7.5 7.01 9.51 5 12 5s4.5 2.01 4.5 4.5H7.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M9.2 3.2 10.3 5M14.8 3.2 13.7 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><rect x="6.5" y="10.5" width="11" height="8" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M4.2 11.2v4.6M19.8 11.2v4.6M9.8 18.5v2.3M14.2 18.5v2.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <h3>Для смартфона и планшета</h3>
+          <p class="dl-sub">Android 8.0+ · 64-бит ARM64 · Vulkan / OpenGL ES 3.2</p>
+        </div>
+      </div>
+      <p class="dl-desc">Автономный установочный пакет <b>APK</b> с адаптированным мобильным пресетом графики, экранным джойстиком, свайп-обзором 360°, быстрым хотбаром <code>1–9</code> и кнопками всех ритуалов и полёта.</p>
+      <ul class="dl-features">
+        <li>Экранный D-Pad, переключатель бега, прыжок и двойной тап для полёта</li>
+        <li>Удержание добычи, установка блоков, бросок предмета <code>[Q]</code> и Кодекс <code>[J]</code></li>
+        <li>Полная совместимость с сетевыми мирами игроков на ПК</li>
+      </ul>
+      <div class="dl-cta-stack">
+        <a class="btn primary wide download-link" data-download="android" href="#download" aria-disabled="true" tabindex="-1">Загрузка списка сборок…</a>
+        <div class="dl-meta-row">
+          <p class="download-meta" data-build-meta="android">Сборка появится после публикации релиза.</p>
+          <button type="button" class="sha-btn" data-copy-sha="android" hidden>SHA-256</button>
+        </div>
+      </div>
+      <div class="qr-box">
+        <img src="/media/qr-download.webp" width="92" height="92" loading="lazy" alt="QR-код страницы загрузки для смартфона">
+        <div>
+          <b>Открыли сайт с компьютера?</b>
+          <span>Наведите камеру телефона на QR-код, чтобы сразу открыть раздел загрузки APK на смартфоне, затем подтвердите установку пакета в проводнике Android.</span>
+        </div>
+      </div>
       <p class="download-warning fine">Тестовая APK использует временную подпись; перед установкой следующего крупного обновления может понадобиться удалить предыдущую версию.</p>
     </article>
+
+    <!-- WINDOWS CARD -->
+    <article class="download-card windows-card primary-card spot-card reveal" data-platform-card="windows">
+      <div class="dl-card-top">
+        <span class="tag progress">Windows x64</span>
+        <span class="dl-badge">PC Standalone · URP</span>
+      </div>
+      <div class="dl-title-row">
+        <div class="platform-icon win-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5 11 4.5v6.8H4V5.5ZM12.4 4.3 20 3.2v8.1h-7.6V4.3ZM4 12.7h7v6.8L4 18.5v-5.8ZM12.4 12.7H20v8.1l-7.6-1.1v-7Z" fill="currentColor"/></svg>
+        </div>
+        <div>
+          <h3>Для ПК на Windows</h3>
+          <p class="dl-sub">Windows 10 / 11 (x64) · Direct3D 11 · Не требует установки</p>
+        </div>
+      </div>
+      <p class="dl-desc">Портативный ZIP-архив со всеми шейдерами, PBR-текстурами и аудио. Распакуйте архив в любую папку целиком и запустите <b>LestingCraft.exe</b>.</p>
+      <ul class="dl-features">
+        <li>5 пресетов графики вплоть до <b>Ultra</b> и <b>Cinematic</b> (тени 4096px, SSAO, SSR воды)</li>
+        <li>Создание собственного кооперативного сервера до 8 игроков прямо из меню паузы</li>
+        <li>Быстрое переключение режимов игры, творческий полёт и консоль команд</li>
+      </ul>
+      <div class="dl-cta-stack">
+        <a class="btn primary wide download-link" data-download="windows" href="#download" aria-disabled="true" tabindex="-1">Загрузка списка сборок…</a>
+        <div class="dl-meta-row">
+          <p class="download-meta" data-build-meta="windows">Сборка появится после публикации релиза.</p>
+          <button type="button" class="sha-btn" data-copy-sha="windows" hidden>SHA-256</button>
+        </div>
+      </div>
+      <div class="install-steps-mini">
+        <b>Запуск за 3 шага на ПК:</b>
+        <ol>
+          <li>Скачайте <code>build-StandaloneWindows64.zip</code> по кнопке выше.</li>
+          <li>Извлеките все файлы архива в отдельную папку (не запускайте внутри архиватора).</li>
+          <li>Откройте <code>LestingCraft.exe</code> — сохранения хранятся локально и остаются при обновлениях.</li>
+        </ol>
+      </div>
+    </article>
   </div>
+
   <p class="download-status fine" id="download-status" role="status" aria-live="polite">Проверяем наличие сборок…</p>
+
+  <details class="release-history reveal" id="release-history" hidden>
+    <summary>Архив проверенных сборок и контрольные суммы</summary>
+    <div class="release-history-body" id="release-history-list"></div>
+  </details>
+
   <p class="fine">Исходный код открыт для ознакомления по source-available лицензии. <a href="/license/">Лицензия и условия использования</a>.</p>
+</section>
+
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span>Unity 6 URP</span><i></i><span>Android ARM64 Сенсорный HUD</span><i></i><span>18 миров и измерений</span><i></i><span>42 вида фауны</span><i></i><span>28 воксельных боссов</span><i></i><span>3D-кабина шаттла</span><i></i><span>Кооператив до 8 игроков</span><i></i>
+    <span>Unity 6 URP</span><i></i><span>Android ARM64 Сенсорный HUD</span><i></i><span>18 миров и измерений</span><i></i><span>42 вида фауны</span><i></i><span>28 воксельных боссов</span><i></i><span>3D-кабина шаттла</span><i></i><span>Кооператив до 8 игроков</span><i></i>
+  </div>
+</div>
+
+<!-- INTERACTIVE ATLAS OF 18 REALMS & RITUALS -->
+<section class="section realms-section" id="realms" aria-labelledby="realms-title">
+  <header class="section-head reveal">
+    <p class="eyebrow">Атлас измерений и экспедиций</p>
+    <h2 id="realms-title">18 миров с собственной физикой, биосферой и ритуалами</h2>
+    <p class="muted">Никаких шаблонных рамок из чужих игр: у каждого тайного измерения — свой авторский ритуал открытия врат, климат, частицы, фауна и хранитель.</p>
+  </header>
+
+  <div class="realms-explorer reveal" id="realms-explorer" data-active-realm="lestingia">
+    <div class="realm-tabs" role="tablist" aria-label="Выбор мира">
+      <button type="button" class="realm-tab active" role="tab" aria-selected="true" data-realm="lestingia">Лестингия</button>
+      <button type="button" class="realm-tab" role="tab" aria-selected="false" data-realm="inferno">Преисподняя</button>
+      <button type="button" class="realm-tab" role="tab" aria-selected="false" data-realm="paradise">Эдем (Рай)</button>
+      <button type="button" class="realm-tab" role="tab" aria-selected="false" data-realm="backrooms">Закулисье · 5 зон</button>
+      <button type="button" class="realm-tab" role="tab" aria-selected="false" data-realm="cosmos">Космос и Somnia</button>
+    </div>
+
+    <div class="realm-panels">
+      <article class="realm-panel active" data-realm-panel="lestingia">
+        <div class="realm-visual">
+          <img src="/media/showcase-biomes.webp" width="1600" height="900" loading="lazy" alt="Живые биомы Лестингии">
+          <div class="realm-telemetry">
+            <span>21 °C · 1.0g</span>
+            <span>Кислород O₂: норма</span>
+            <span>12 биомов</span>
+          </div>
+        </div>
+        <div class="realm-info">
+          <span class="tag done">Родной мир · База экспедиции</span>
+          <h3>Планета Лестингия</h3>
+          <p>Отправная точка путешествия: густые леса, сакуровые рощи, песчаные дюны, парящие небесные острова, средневековые замки, деревни ремесленников и аномальный Черенковский затон.</p>
+          <div class="realm-specs">
+            <div><b>Фауна и жизнь</b><span>Олени, кабаны, лисы, медведи, волки, верблюды, черепахи, совы, домашние коты у поселенцев и торговые караваны.</span></div>
+            <div><b>Инженерия</b><span>Верстак 3×3, плавильные печи, генераторы, железные дороги с локомотивами, FPV-дроны и постройка стартового стола космодрома.</span></div>
+            <div><b>Хранитель мира</b><span>Страж корней в древнем святилище с фазовыми корневыми ударами и сюжетной линией первых колонистов.</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="realm-panel" data-realm-panel="inferno" hidden>
+        <div class="realm-visual">
+          <img src="/media/boss-mars.webp" width="760" height="940" loading="lazy" alt="Воксельная скульптура огненного титана">
+          <div class="realm-telemetry">
+            <span>Пепельный шторм · Раскалённый воздух</span>
+            <span>Эффект: восходящие угли</span>
+            <span>4 вида адской фауны</span>
+          </div>
+        </div>
+        <div class="realm-info">
+          <span class="tag progress">Тайное измерение · Огненный ритуал</span>
+          <h3>Преисподняя (Inferno)</h3>
+          <p>Расколотые базальтовые своды, лавовые озёра, серные гейзеры и багровые крепости под дождём из раскалённого пепла.</p>
+          <div class="realm-specs">
+            <div><b>Авторский ритуал врат</b><span>Вырастите <b>2 саженца</b> естественным путём <b>без костной муки</b> ровно на расстоянии <b>7 блоков</b> друг от друга и подожгите кроны факелом или костром — обугливаясь, стволы срастутся в пылающую арку перехода.</span></div>
+            <div><b>Обитатели</b><span>Адская гончая, лавовый страйдер, крылатый пепельный бес и шестиногий адский скорпион с добычей угля и золотых слитков.</span></div>
+            <div><b>Хранитель мира</b><span><b>Владыка Преисподней</b> — гигантский рогатый архидемон с трофеями из алмазов, золотых блоков и магмового базальта.</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="realm-panel" data-realm-panel="paradise" hidden>
+        <div class="realm-visual">
+          <img src="/media/boss-andromeda.webp" width="760" height="940" loading="lazy" alt="Небесный хранитель с золотым нимбом">
+          <div class="realm-telemetry">
+            <span>23 °C · Мягкий зефир</span>
+            <span>Аура: +2.5 HP/с у фонтанов</span>
+            <span>Золотая и сакуровая пыльца</span>
+          </div>
+        </div>
+        <div class="realm-info">
+          <span class="tag done">Тайное измерение · Водный ритуал</span>
+          <h3>Эдем (Рай · Paradise)</h3>
+          <p>Архипелаг солнечных террас, белокаменных ротонд, целебных источников и цветущих садов над лазурным небом, где у священных фонтанов восстанавливаются здоровье и силы.</p>
+          <div class="realm-specs">
+            <div><b>Ритуал священного колодца</b><span>Выкопайте квадратную шахту <b>2×2</b> глубиной <b>5 блоков</b>, заполните её водой, высадите вокруг любые цветы, бросьте в воду <b>алмаз</b> клавишей <code>[Q]</code> и прыгните в сияющий источник.</span></div>
+            <div><b>Небесная фауна</b><span>Небесный лебедь, златорогий олень Эдема, крылатый пегас и огненная жар-птица с кристаллами Андромеды.</span></div>
+            <div><b>Хранитель мира</b><span><b>Серафим Эдема</b> — шестикрылый страж святилища с вращающимся золотым венцом.</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="realm-panel" data-realm-panel="backrooms" hidden>
+        <div class="realm-visual">
+          <img src="/media/boss-backrooms.webp" width="760" height="940" loading="lazy" alt="Сущность Закулисья">
+          <div class="realm-telemetry">
+            <span>5 секторов лабиринта</span>
+            <span>Динамическая смена тумана</span>
+            <span>3 подвида бактерии</span>
+          </div>
+        </div>
+        <div class="realm-info">
+          <span class="tag planned">Лиминальное измерение · 5 зон</span>
+          <h3>Закулисье (Backrooms)</h3>
+          <p>Бесконечная сеть неевклидовых залов, в которую можно провалиться сквозь нестабильную геометрию или войти через Кодекс измерений.</p>
+          <div class="realm-specs">
+            <div><b>5 атмосферных секторов</b><span><i>Level 0: Yellow Lobby</i>, <i>Habitable Zone</i> с припасами, затопленные <i>Poolrooms</i>, индустриальные <i>Pipe Dreams</i> и тревожный багровый коридор <i>Run!</i> с живой сменой густоты и оттенка тумана.</span></div>
+            <div><b>Угрозы лабиринта</b><span>Три уникальных подвида сущности (<i>Howler</i>, <i>Tiled Stalker</i> и скоростной <i>Crimson Sprinter</i>), реагирующие на дистанцию до игрока.</span></div>
+            <div><b>Точки выхода</b><span>Редкие мерцающие разломы возвращают исследователя обратно в Лестингию вместе с найденными трофеями.</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="realm-panel" data-realm-panel="cosmos" hidden>
+        <div class="realm-visual">
+          <img src="/media/showcase-saturn.webp" width="1600" height="900" loading="lazy" alt="Межпланетный перелёт к кольцам Сатурна">
+          <div class="realm-telemetry">
+            <span>0.16g – 1.4g · Орбитальная механика</span>
+            <span>Герметичный скафандр O₂</span>
+            <span>Орбитальная станция 0g</span>
+          </div>
+        </div>
+        <div class="realm-info">
+          <span class="tag done">Межпланетная навигация · 14 небесных тел</span>
+          <h3>Солнечная система, Экзопланеты и Somnia</h3>
+          <p>Поднимитесь на лифте космодрома в кабину шаттла, задайте курс на бортовом MFD-экране и совершите посадку на реальные воксельные поверхности планет и спутников.</p>
+          <div class="realm-specs">
+            <div><b>Маршруты Солнечной системы</b><span>Луна, Марс, Венера, Меркурий, ледяная Европа, метановый Титан, Плутон и стыковка с орбитальной станцией в режиме невесомости 0g.</span></div>
+            <div><b>Дальний космос и сны</b><span>Океанические и кристальные суперземли <i>Kepler-452b</i>, <i>Trappist-1e</i>, <i>Proxima b</i>, <i>Andromeda Prime</i> со своими биосферами, а также мир сновидений <i>Somnia</i>.</span></div>
+            <div><b>Реалистичная среда</b><span>На безатмосферных телах необходим заряженный кислородом скафандр, а гравитация влияет на высоту прыжка и баллистику.</span></div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT WORKS -->
+<section class="section" id="game" aria-labelledby="game-title">
+  <header class="section-head reveal">
+    <p class="eyebrow">Фундамент v0.8.0</p>
+    <h2 id="game-title">Глубокие системы в одной бесшовной игре</h2>
+    <p class="muted">Каждая механика ниже работает в актуальных сборках Windows и Android и проверяется автоматическим набором из сотен модульных и графических тестов.</p>
+  </header>
+
+  <div class="bento">
+    <article class="card card-wide spot-card reveal">
+      <div class="card-media"><img src="/media/showcase-cosmodrome.webp" width="1600" height="900" loading="lazy" alt="Стартовый комплекс космодрома и орбитальный шаттл в LestingCraft: New Era"></div>
+      <div class="card-body">
+        <span class="tag">Космос и инженерия</span>
+        <h3>Действующий космодром и 3D-кабина шаттла</h3>
+        <p>Постройте стартовый стол с 28-метровым подъёмным лифтом, войдите через шлюзовую камеру в двухпалубный шаттл и управляйте запуском с интерактивной приборной панели: выход на орбиту, стыковка со станцией в невесомости и посадка на планеты.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal">
+      <div class="card-media"><img src="/media/workbench-3x3.webp" width="1024" height="720" loading="lazy" alt="Верстак 3×3 с книгой рецептов"></div>
+      <div class="card-body">
+        <span class="tag">Ремёсла</span>
+        <h3>163 воксельных предмета, печь и топливо</h3>
+        <p>Сетка крафта 2×2 и 3×3 с мгновенным автозаполнением рецептов, выплавка слитков, перегонка ракетного топлива, костная мука для садоводства и чертежи построек.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal">
+      <div class="card-media"><img src="/media/showcase-biomes.webp" width="1600" height="900" loading="lazy" alt="Биомы Лестингии и дикая фауна"></div>
+      <div class="card-body">
+        <span class="tag">Живая биосфера</span>
+        <h3>42 вида фауны на 14 мирах</h3>
+        <p>Наземные звери, хищники, ночные светлячки Somnia, ледяная фауна Европы и Титана, крылатые пегасы Эдема и лавовые обитатели Преисподней с 30 PBR-материалами покровов.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal">
+      <div class="card-media"><img src="/media/showcase-cockpit.webp" width="1600" height="900" loading="lazy" alt="Интерактивная 3D-кабина шаттла с навигационным дисплеем"></div>
+      <div class="card-body">
+        <span class="tag">Режимы и полёт</span>
+        <h3>Творческий полёт и быстрые режимы</h3>
+        <p>Мгновенное переключение Выживания, Творческого режима, Хардкора и Сюжета прямо из меню паузы или командой <code>/gm</code>, плюс свободный полёт по двойному прыжку и <code>/fly</code>.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal">
+      <div class="card-body">
+        <span class="tag">Физиология</span>
+        <h3>Зоны тела, климат и 3D-мемориал</h3>
+        <p>Шесть зон здоровья персонажа, перевязка ран волокном, температура тела, радиационный фон с дозиметром, целебные источники Эдема и резное воксельное надгробие, бережно хранящее инвентарь.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal">
+      <div class="card-body">
+        <span class="tag">Unity 6 URP</span>
+        <h3>Собственные шейдеры света, воды и стекла</h3>
+        <p>114 слоёв тайловых PBR-текстур с картами нормалей, объёмные облака, преломляющее архитектурное стекло и кристаллы с хроматической дисперсией, экранные отражения воды и SSAO.</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- CONTROLS CHEATSHEET (PC & ANDROID) -->
+<section class="section controls-section" id="controls" aria-labelledby="controls-title">
+  <header class="section-head reveal">
+    <p class="eyebrow">Удобное управление на обеих платформах</p>
+    <h2 id="controls-title">Клавиатура на ПК и сенсорный HUD на Android</h2>
+    <p class="muted">Переключите вкладку, чтобы посмотреть раскладку клавиш и мобильных кнопок в сборке v0.8.0.</p>
+  </header>
+
+  <div class="controls-box reveal" id="controls-box">
+    <div class="ctrl-switch" role="tablist" aria-label="Платформа управления">
+      <button type="button" class="ctrl-tab active" data-ctrl-tab="android" role="tab" aria-selected="true">Android · Сенсорный экран</button>
+      <button type="button" class="ctrl-tab" data-ctrl-tab="pc" role="tab" aria-selected="false">Windows · Клавиатура и мышь</button>
+    </div>
+
+    <div class="ctrl-grid active" data-ctrl-panel="android">
+      <div class="ctrl-item"><kbd>D-Pad + БЕГ</kbd><span>Плавное движение левым большим пальцем и фиксация спринта в одно касание</span></div>
+      <div class="ctrl-item"><kbd>Свайп справа</kbd><span>Свободный обзор камеры на 360° без перекрытия кнопок интерфейса</span></div>
+      <div class="ctrl-item"><kbd>ЛОМАТЬ / СТАВИТЬ</kbd><span>Добыча руд удержанием, бой, установка блоков, розжиг ритуальных деревьев и станки</span></div>
+      <div class="ctrl-item"><kbd>2× ПРЫЖОК</kbd><span>Включение и выключение свободного полёта в Творческом режиме (<code>ВНИЗ</code> — снижение)</span></div>
+      <div class="ctrl-item"><kbd>БРОС [Q]</kbd><span>Бросок активного предмета или погружение алмаза в колодец Эдема</span></div>
+      <div class="ctrl-item"><kbd>СУМКА · МИРЫ · ЧАТ</kbd><span>Верхняя панель быстрого доступа к инвентарю, Кодексу ритуалов, командам и паузе</span></div>
+    </div>
+
+    <div class="ctrl-grid" data-ctrl-panel="pc" hidden>
+      <div class="ctrl-item"><kbd>W A S D · Shift</kbd><span>Передвижение, спринт и плавание; <code>C / Ctrl</code> — присед с защитой от падения с края</span></div>
+      <div class="ctrl-item"><kbd>2× Пробел · /fly</kbd><span>Творческий полёт (<code>Пробел</code> вверх, <code>Ctrl / C</code> вниз, <code>Shift</code> турбо-скорость)</span></div>
+      <div class="ctrl-item"><kbd>ЛКМ · ПКМ · СКМ</kbd><span>Добыча и удар, установка блока и торговля, пипетка блока в Творческом режиме</span></div>
+      <div class="ctrl-item"><kbd>Q · G · H</kbd><span>Бросок предмета (и ритуал колодца), факел во вторую руку, перевязка ран волокном</span></div>
+      <div class="ctrl-item"><kbd>E · J · M · N</kbd><span>Инвентарь и крафт, Кодекс ритуалов и контракты гильдии, миникарта и путевые метки</span></div>
+      <div class="ctrl-item"><kbd>Esc · T / Enter</kbd><span>Меню паузы с быстрой сменой режима игры и сетевым хостингом; чат и команды <code>/gm</code></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- VOXEL BOSS BESTIARY -->
+<section class="section" id="bosses" aria-labelledby="bosses-title">
+  <header class="section-head reveal">
+    <p class="eyebrow">Бестиарий хранителей</p>
+    <h2 id="bosses-title">28 составных воксельных боссов</h2>
+    <p class="muted">Каждый хранитель собран из многослойной PBR-геометрии со светящимся ядром, собственной ареной, фазами боя и гарантированным алмазным трофеем. Нажмите на карточку для увеличения.</p>
+  </header>
+
+  <div class="boss-grid">
+    <button type="button" class="boss-card spot-card reveal" data-boss-shot="/media/boss-lestingia.webp" data-caption="Страж корней (Лестингия) — древний лесной колосс с пылающим ядром">
+      <div class="boss-img-wrap"><img src="/media/boss-lestingia.webp" width="760" height="940" loading="lazy" alt="Страж корней — босс Лестингии"></div>
+      <div class="boss-meta">
+        <span class="tag done">Лестингия</span>
+        <h3>Страж корней</h3>
+        <p>Древний древесный исполин святилища с корневыми разломами и бронёй из мха.</p>
+      </div>
+    </button>
+
+    <button type="button" class="boss-card spot-card reveal" data-boss-shot="/media/boss-andromeda.webp" data-caption="Архонт Андромеды и Небесных святилищ — левитирующий страж с золотым венцом">
+      <div class="boss-img-wrap"><img src="/media/boss-andromeda.webp" width="760" height="940" loading="lazy" alt="Хранитель Андромеды"></div>
+      <div class="boss-meta">
+        <span class="tag progress">Дальний космос и Эдем</span>
+        <h3>Звёздный Серафим</h3>
+        <p>Парящий хранитель с кристальной короной, орбитальными кольцами и лучевыми атаками.</p>
+      </div>
+    </button>
+
+    <button type="button" class="boss-card spot-card reveal" data-boss-shot="/media/boss-mars.webp" data-caption="Владыка Базальта и Марса — закованный в раскалённую руду титан">
+      <div class="boss-img-wrap"><img src="/media/boss-mars.webp" width="760" height="940" loading="lazy" alt="Раскалённый рогатый титан Марса и Преисподней"></div>
+      <div class="boss-meta">
+        <span class="tag progress">Марс и Преисподняя</span>
+        <h3>Магмовый Архонт</h3>
+        <p>Тяжёлый четырёхрукий колосс с плазменным забралом и ударной огненной волной.</p>
+      </div>
+    </button>
+
+    <button type="button" class="boss-card spot-card reveal" data-boss-shot="/media/boss-kepler.webp" data-caption="Споровый Левиафан Kepler-452b — биолюминесцентный страж суперземли">
+      <div class="boss-img-wrap"><img src="/media/boss-kepler.webp" width="760" height="940" loading="lazy" alt="Биолюминесцентный босс Kepler-452b"></div>
+      <div class="boss-meta">
+        <span class="tag done">Kepler-452b</span>
+        <h3>Споровый Левиафан</h3>
+        <p>Многоногий страж цветущей экзопланеты со светящимся куполом и изумрудным сердцем.</p>
+      </div>
+    </button>
+
+    <button type="button" class="boss-card spot-card reveal" data-boss-shot="/media/boss-somnia.webp" data-caption="Ловец Снов (Somnia) — призрачный страж измерения грёз">
+      <div class="boss-img-wrap"><img src="/media/boss-somnia.webp" width="760" height="940" loading="lazy" alt="Босс измерения Somnia"></div>
+      <div class="boss-meta">
+        <span class="tag planned">Somnia</span>
+        <h3>Хранитель Грёз</h3>
+        <p>Безмолвная скульптура из лунного мрамора и ночного обсидиана в мире сновидений.</p>
+      </div>
+    </button>
+
+    <button type="button" class="boss-card spot-card reveal" data-boss-shot="/media/boss-backrooms.webp" data-caption="Хозяин Лабиринта (Закулисье) — высшая сущность дальних секторов">
+      <div class="boss-img-wrap"><img src="/media/boss-backrooms.webp" width="760" height="940" loading="lazy" alt="Сущность Закулисья"></div>
+      <div class="boss-meta">
+        <span class="tag planned">Закулисье</span>
+        <h3>Смотритель Секторов</h3>
+        <p>Искажённый силуэт с неоновым ликом, поджидающий исследователей в глубине коридоров.</p>
+      </div>
+    </button>
+  </div>
 </section>
 
 <!-- TEASER -->
 <section class="section" id="teaser" aria-labelledby="teaser-title">
   <header class="section-head reveal">
     <p class="eyebrow">Геймплей без рендеров</p>
-    <h2 id="teaser-title">Короткий тизер прямиком из движка</h2>
-    <p class="muted">Все кадры и видео записаны непосредственно в рабочей сборке игры — без пререндеров и постановочного монтажа.</p>
+    <h2 id="teaser-title">Живая запись прямиком из движка</h2>
+    <p class="muted">Все кадры и видео сняты непосредственно в рабочей сборке игры — без пререндеров и постановочной графики.</p>
   </header>
   <div class="teaser-wrap reveal">
     <video class="teaser" src="/media/teaser.mp4" poster="/media/teaser-poster.webp" width="1080" height="1350"
            controls muted loop playsinline preload="metadata" aria-label="Геймплейное видео LestingCraft: New Era"></video>
-    <div class="teaser-actions">
-      <a class="btn primary" href="#download">Скачать сборку</a>
-      <a class="btn ghost" href="/media/teaser.mp4" download="lestingcraft-teaser.mp4">Сохранить видео (.mp4)</a>
-      <a class="btn ghost" href="/press/">Открыть пресс-кит</a>
+    <div class="teaser-side">
+      <h3>От первого костра до орбитальной стыковки</h3>
+      <p class="muted">Посмотрите в динамике смену освещения, физику воды, строительство базы и пилотируемый выход в открытый космос.</p>
+      <div class="teaser-actions">
+        <a class="btn primary" href="#download">Скачать сборку v0.8.0</a>
+        <a class="btn ghost" href="/media/teaser.mp4" download="lestingcraft-teaser.mp4">Сохранить видео (.mp4)</a>
+        <a class="btn ghost" href="/press/">Открыть пресс-кит</a>
+      </div>
     </div>
   </div>
 </section>
@@ -136,30 +521,30 @@
 <!-- PLAY WITH A FRIEND -->
 <section class="section" id="coop" aria-labelledby="coop-title">
   <header class="section-head reveal">
-    <p class="eyebrow">Кооператив до 8 игроков</p>
-    <h2 id="coop-title">Совместная экспедиция за три шага</h2>
-    <p class="muted">Один игрок поднимает мир прямо из меню паузы, остальные подключаются по постоянному адресу — с общими постройками и синхронизацией блоков.</p>
+    <p class="eyebrow">Кроссплатформенный кооператив до 8 игроков</p>
+    <h2 id="coop-title">Совместная экспедиция с ПК и Android за три шага</h2>
+    <p class="muted">Один участник открывает мир прямо из меню паузы, остальные подключаются по постоянному адресу — с общими постройками и сохранением правок во всех измерениях.</p>
   </header>
   <div class="bento">
-    <article class="card reveal">
+    <article class="card spot-card reveal">
       <div class="card-body">
-        <span class="tag">1</span>
+        <span class="tag">Шаг 1</span>
         <h3>Скачать актуальную сборку</h3>
-        <p>Хост и участники запускают одну и ту же версию игры из раздела «Скачать» на Windows или Android.</p>
+        <p>Хост и друзья запускают свежую версию из раздела «Скачать» на Windows или смартфоне Android.</p>
       </div>
     </article>
-    <article class="card reveal">
+    <article class="card spot-card reveal">
       <div class="card-body">
-        <span class="tag">2</span>
+        <span class="tag">Шаг 2</span>
         <h3>Открыть мир из паузы</h3>
-        <p>Нажмите в игре <b>Esc → «Создать сервер»</b>, задайте название и режим — мир сразу станет доступен по HTTPS (порт 443).</p>
+        <p>Нажмите <b>Пауза → «Создать сервер»</b>, выберите режим и название — мир сразу станет доступен по защищённому HTTPS (порт 443).</p>
       </div>
     </article>
-    <article class="card reveal">
+    <article class="card spot-card reveal">
       <div class="card-body">
-        <span class="tag">3</span>
+        <span class="tag">Шаг 3</span>
         <h3>Отправить приглашение</h3>
-        <p>Кнопка <b>«Скопировать приглашение»</b> формирует готовое сообщение с адресом и ссылкой. Друзья вставляют адрес в разделе «Мультиплеер».</p>
+        <p>Кнопка <b>«Скопировать приглашение»</b> создаёт готовое сообщение с адресом мира. Друзья вставляют его в меню «Мультиплеер».</p>
       </div>
     </article>
   </div>
@@ -169,157 +554,86 @@
       <p class="worlds-summary" id="worlds-summary" role="status" aria-live="polite">Проверяем сервер…</p>
     </div>
     <ul class="worlds-list" id="worlds-list"></ul>
-    <p class="fine">Список обновляется автоматически. Скопируйте адрес понравившегося мира и добавьте его в разделе «Мультиплеер» → «Добавить сервер».</p>
+    <p class="fine">Список обновляется в реальном времени. Нажмите «Код мира» и добавьте его в игре в разделе «Мультиплеер» → «Добавить сервер».</p>
   </div>
-  <p class="fine">Изменения блоков подтверждаются сервером и видны всей команде, а инвентарь и экипировка сохраняются за каждым игроком. <a href="/play-with-friends/">Подробная инструкция по сети</a>.</p>
-</section>
-
-<div class="marquee" aria-hidden="true">
-  <div class="marquee-track">
-    <span>Unity 6 URP</span><i></i><span>Космодром и 3D-шаттл</span><i></i><span>34 вида фауны</span><i></i><span>26 воксельных боссов</span><i></i><span>Кооператив до 8 игроков</span><i></i>
-    <span>Unity 6 URP</span><i></i><span>Космодром и 3D-шаттл</span><i></i><span>34 вида фауны</span><i></i><span>26 воксельных боссов</span><i></i><span>Кооператив до 8 игроков</span><i></i>
-  </div>
-</div>
-
-<!-- WHAT WORKS -->
-<section class="section" id="game" aria-labelledby="game-title">
-  <header class="section-head reveal">
-    <p class="eyebrow">Ключевые механики v0.7.1</p>
-    <h2 id="game-title">От ремёсел Лестингии до орбиты Сатурна</h2>
-    <p class="muted">Каждая система ниже уже реализована в коде, покрыта автоматическими проверками и доступна в текущей сборке.</p>
-  </header>
-
-  <div class="bento">
-    <article class="card card-wide reveal">
-      <div class="card-media"><img src="/media/showcase-cosmodrome.webp" width="1600" height="900" loading="lazy" alt="Стартовый комплекс космодрома и орбитальный шаттл в LestingCraft: New Era"></div>
-      <div class="card-body">
-        <span class="tag">Космос</span>
-        <h3>Действующий космодром и 3D-кабина шаттла</h3>
-        <p>Возведите стартовый стол с подъёмным лифтом, зайдите в многоуровневый отсек шаттла и управляйте полётом с интерактивной приборной панели: выход на орбиту, стыковка со станцией в невесомости (0g) и посадка на Луну, Марс, Венеру, Меркурий, Сатурн и другие миры.</p>
-      </div>
-    </article>
-
-    <article class="card reveal">
-      <div class="card-media"><img src="/media/workbench-3x3.webp" width="1024" height="720" loading="lazy" alt="Верстак 3×3 с книгой рецептов"></div>
-      <div class="card-body">
-        <span class="tag">Ремёсла</span>
-        <h3>Крафт 2×2 и 3×3, печь и энергетика</h3>
-        <p>Более 150 трёхмерных предметов и блоков, интерактивная книга рецептов, плавка руд, синтез ракетного топлива, генераторы и промышленная энергосеть.</p>
-      </div>
-    </article>
-
-    <article class="card reveal">
-      <div class="card-media"><img src="/media/showcase-biomes.webp" width="1600" height="900" loading="lazy" alt="Биомы Лестингии и дикая фауна"></div>
-      <div class="card-body">
-        <span class="tag">Живой мир</span>
-        <h3>34 вида фауны, деревни и 26 боссов</h3>
-        <p>Леса, цветущие рощи, дюны, крепости и деревни с торговлей. В биомах обитают звери и птицы с PBR-текстурами шерсти и оперения, а ключевые миры охраняют 26 уникальных воксельных боссов.</p>
-      </div>
-    </article>
-
-    <article class="card reveal">
-      <div class="card-media"><img src="/media/showcase-cockpit.webp" width="1600" height="900" loading="lazy" alt="Интерактивная 3D-кабина шаттла с навигационным дисплеем"></div>
-      <div class="card-body">
-        <span class="tag">Навигация</span>
-        <h3>Бортовой компьютер и 16 небесных тел</h3>
-        <p>Живая телеметрия скорости и тяги прямо на 3D-консоли кабины, расчёт курса, гиперпрыжки и выход в открытый космос в герметичном скафандре.</p>
-      </div>
-    </article>
-
-    <article class="card reveal">
-      <div class="card-body">
-        <span class="tag">Выживание</span>
-        <h3>Физиология, климат и радиация</h3>
-        <p>Детальное состояние персонажа: голод, жажда, выносливость, температура тела, утепление бронёй, запас кислорода O₂ вне Лестингии и дозиметр в аномальных зонах Черенковского затона.</p>
-      </div>
-    </article>
-
-    <article class="card reveal">
-      <div class="card-body">
-        <span class="tag">Unity 6 URP</span>
-        <h3>Атмосферный свет и PBR-материалы</h3>
-        <p>Объёмные облака с серебряной каймой, динамическая смена суток и погоды, преломляющее стекло, SSAO и пять графических пресетов — от мобильного до кинематографичного.</p>
-      </div>
-    </article>
-  </div>
-</section>
-
-<!-- ECOSYSTEM: marketplace, friends, currency, skins -->
-<section class="section" id="ecosystem" aria-labelledby="ecosystem-title">
-  <header class="section-head reveal">
-    <p class="eyebrow">Сетевая экосистема</p>
-    <h2 id="ecosystem-title">Единый профиль, 200 достижений и друзья</h2>
-    <p class="muted">Необязательный игровой аккаунт открывает облачную синхронизацию прогресса, титулов, списка друзей и обмена косметикой без привязки электронной почты.</p>
-  </header>
-
-  <div class="bento">
-    <article class="card reveal" data-status="done">
-      <div class="card-body">
-        <span class="tag done">Готово</span>
-        <h3>Профиль и 200 достижений</h3>
-        <p>Система уровней, XP, открываемых титулов и подробной статистики охоты, строительства и экспедиций с защищённым кодом восстановления.</p>
-      </div>
-    </article>
-
-    <article class="card reveal" data-status="done">
-      <div class="card-body">
-        <span class="tag done">Готово</span>
-        <h3>Друзья по нику</h3>
-        <p>Добавление друзей по короткому @нику с копированием в один клик и быстрым переходом в открытые миры товарищей.</p>
-      </div>
-    </article>
-
-    <article class="card reveal" data-status="done">
-      <div class="card-body">
-        <span class="tag done">Готово</span>
-        <h3>Список серверов по адресу</h3>
-        <p>Привычная адресная книга серверов с проверкой онлайна и запуском собственного кооперативного мира прямо из меню паузы.</p>
-      </div>
-    </article>
-
-    <article class="card reveal" data-status="done">
-      <div class="card-body">
-        <span class="tag done">Готово</span>
-        <h3>Скины и витрина игрока</h3>
-        <p>Выбранный облик синхронизируется через сервер и отображается на 3D-модели персонажа у всех участников сессии.</p>
-      </div>
-    </article>
-
-    <article class="card reveal" data-status="done">
-      <div class="card-body">
-        <span class="tag done">Готово</span>
-        <h3>Торговая площадка с эскроу</h3>
-        <p>Обмен косметическими предметами между игроками на базе атомарных серверных транзакций в Supabase.</p>
-      </div>
-    </article>
-
-    <article class="card reveal" data-status="planned">
-      <div class="card-body">
-        <span class="tag planned">В планах</span>
-        <h3 data-planned>Внешний платёжный шлюз</h3>
-        <p data-planned>Подключение платёжного провайдера и финальной модели дистрибуции планируется совместно с издателем к релизу версии 1.0.</p>
-      </div>
-    </article>
-  </div>
-  <p class="fine">Серверная логика и схемы безопасности хранятся в каталогах <code>Server/</code> и <code>Supabase/</code>.</p>
+  <p class="fine">Все постройки на Лестингии, других планетах и в тайных измерениях бережно сохраняются за миром, а экипировка — за каждым участником. <a href="/play-with-friends/">Подробная инструкция по сети →</a></p>
 </section>
 
 <!-- GALLERY -->
 <section class="section" id="shots" aria-labelledby="shots-title">
   <header class="section-head reveal">
-    <p class="eyebrow">Галерея</p>
+    <p class="eyebrow">Галерея Unity 6 URP</p>
     <h2 id="shots-title">Внутриигровые кадры</h2>
-    <p class="muted">Нажмите на любой снимок, чтобы рассмотреть детали в полном разрешении.</p>
+    <p class="muted">Нажмите на любой снимок, чтобы открыть полноразмерный просмотр.</p>
   </header>
   <div class="gallery">
     <button class="shot reveal" data-shot="/media/showcase-cosmodrome.webp" data-caption="Стартовый комплекс космодрома и пилотируемый шаттл"><img src="/media/showcase-cosmodrome.webp" width="1600" height="900" loading="lazy" alt="Стартовый комплекс космодрома и шаттл"><span>Космодром и шаттл</span></button>
-    <button class="shot reveal" data-shot="/media/showcase-biomes.webp" data-caption="Цветущая роща, объёмные облака и дикая фауна Лестингии"><img src="/media/showcase-biomes.webp" width="1600" height="900" loading="lazy" alt="Биомы и фауна Лестингии"><span>Биомы и 34 вида фауны</span></button>
+    <button class="shot reveal" data-shot="/media/showcase-biomes.webp" data-caption="Цветущая роща, объёмные облака и дикая фауна Лестингии"><img src="/media/showcase-biomes.webp" width="1600" height="900" loading="lazy" alt="Биомы и фауна Лестингии"><span>Биомы и фауна</span></button>
     <button class="shot reveal" data-shot="/media/showcase-cockpit.webp" data-caption="Интерактивная 3D-кабина шаттла и навигационный экран"><img src="/media/showcase-cockpit.webp" width="1600" height="900" loading="lazy" alt="Интерактивная 3D-кабина шаттла"><span>3D-кабина шаттла</span></button>
     <button class="shot reveal" data-shot="/media/showcase-saturn.webp" data-caption="Межпланетный перелёт к кольцам Сатурна"><img src="/media/showcase-saturn.webp" width="1600" height="900" loading="lazy" alt="Полёт шаттла к Сатурну"><span>Открытый космос и Сатурн</span></button>
-    <button class="shot reveal" data-shot="/media/world-hud.webp" data-caption="Поселение, печь и обновлённая панель состояния"><img src="/media/world-hud.webp" width="1024" height="720" loading="lazy" alt="Дом, печь и панель состояния"><span>База и выживание</span></button>
+    <button class="shot reveal" data-shot="/media/world-hud.webp" data-caption="Поселение, печь и панель жизненных показателей"><img src="/media/world-hud.webp" width="1024" height="720" loading="lazy" alt="Дом, печь и панель состояния"><span>База и выживание</span></button>
     <button class="shot reveal" data-shot="/media/workbench-3x3.webp" data-caption="Верстак 3×3 и книга рецептов"><img src="/media/workbench-3x3.webp" width="1024" height="720" loading="lazy" alt="Верстак 3×3"><span>Верстак 3×3</span></button>
     <button class="shot reveal" data-shot="/media/villager-trade.webp" data-caption="Деревня поселенцев и окно обмена"><img src="/media/villager-trade.webp" width="1024" height="720" loading="lazy" alt="Торговля с жителем деревни"><span>Деревня и торговля</span></button>
-    <button class="shot reveal" data-shot="/media/world-window.webp" data-caption="Атмосферный свет и преломление через стекло"><img src="/media/world-window.webp" width="1024" height="720" loading="lazy" alt="Вид через стеклянное окно"><span>Свет и стекло</span></button>
+    <button class="shot reveal" data-shot="/media/world-window.webp" data-caption="Атмосферный свет и оптическое преломление через стекло"><img src="/media/world-window.webp" width="1024" height="720" loading="lazy" alt="Вид через стеклянное окно"><span>Свет и стекло</span></button>
+  </div>
+</section>
+
+<!-- ECOSYSTEM -->
+<section class="section" id="ecosystem" aria-labelledby="ecosystem-title">
+  <header class="section-head reveal">
+    <p class="eyebrow">Сетевая экосистема и гильдия</p>
+    <h2 id="ecosystem-title">Профиль, 200 достижений, контракты и друзья</h2>
+    <p class="muted">Необязательный облачный профиль синхронизирует титулы, достижения, друзей и обмен предметами без привязки почты и сторонних трекеров.</p>
+  </header>
+
+  <div class="bento">
+    <article class="card spot-card reveal" data-status="done">
+      <div class="card-body">
+        <span class="tag done">Готово</span>
+        <h3>Профиль и 200 достижений</h3>
+        <p>Система уровней, XP, открываемых титулов и подробной статистики строительства, охоты и межпланетных полётов.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal" data-status="done">
+      <div class="card-body">
+        <span class="tag done">Готово</span>
+        <h3>Контракты гильдии и Кодекс</h3>
+        <p>8 контрактов исследователя (небесные острова, ритуалы лесничего, открытие Эдема и охота), путевые точки миникарты и справочник миров по клавише <code>J</code>.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal" data-status="done">
+      <div class="card-body">
+        <span class="tag done">Готово</span>
+        <h3>Друзья по короткому @нику</h3>
+        <p>Добавление друзей в один клик и мгновенный переход в открытые кооперативные миры товарищей.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal" data-status="done">
+      <div class="card-body">
+        <span class="tag done">Готово</span>
+        <h3>Скины на 3D-персонаже</h3>
+        <p>Выбранный облик и все 8 слотов брони и одежды синхронизируются и видны каждому участнику экспедиции.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal" data-status="done">
+      <div class="card-body">
+        <span class="tag done">Готово</span>
+        <h3>Торговая площадка с эскроу</h3>
+        <p>Безопасный обмен косметическими предметами между игроками на базе атомарных серверных транзакций.</p>
+      </div>
+    </article>
+
+    <article class="card spot-card reveal" data-status="planned">
+      <div class="card-body">
+        <span class="tag planned">В планах</span>
+        <h3 data-planned>Коммерческая дистрибуция 1.0</h3>
+        <p data-planned>Подключение внешних магазинов и финальной модели издания планируется к релизу версии 1.0.</p>
+      </div>
+    </article>
   </div>
 </section>
 
@@ -328,32 +642,32 @@
   <header class="section-head reveal">
     <p class="eyebrow">Дорожная карта</p>
     <h2 id="progress-title">Статус разработки по этапам</h2>
-    <p class="muted">Прозрачное разделение между тем, во что можно играть прямо сейчас в v0.7.1, и тем, что готовится к версии 1.0.</p>
+    <p class="muted">Прозрачная сводка того, что уже доступно в сборке v0.8.0 сегодня, и что готовится к версии 1.0.</p>
   </header>
   <div class="timeline">
     <div class="stage reveal" data-status="done">
-      <div class="stage-head"><span class="pill done">Готово в v0.7.1</span></div>
+      <div class="stage-head"><span class="pill done">Доступно в v0.8.0</span></div>
       <ul>
-        <li>Воксельный мир с greedy-мешингом, пещерами, деревнями и замками</li>
-        <li>Крафт 2×2 и 3×3, печь, топливная цепочка и энергосеть</li>
-        <li>34 вида животных и 26 воксельных боссов с фазовыми атаками</li>
-        <li>Космодром, 3D-кабина шаттла, орбитальная станция (0g) и 16 миров</li>
-        <li>Графика Unity 6 URP: объёмное небо, PBR-текстуры, стекло и 5 пресетов</li>
-        <li>Кооператив до 8 игроков, бортовой журнал (3 главы) и 200 достижений</li>
+        <li>18 миров: Лестингия, планеты, экзопланеты, Somnia, 5 зон Закулисья, Преисподняя и Эдем</li>
+        <li>Авторские ритуалы двух живых деревьев (7 блоков, огонь) и водного колодца 2×2×5 с алмазом</li>
+        <li>Сенсорный HUD для Android ARM64, быстрые режимы в паузе и творческий полёт</li>
+        <li>42 вида PBR-фауны на 14 мирах и 28 воксельных боссов с алмазными трофеями</li>
+        <li>Космодром, 3D-кабина шаттла, орбитальная станция 0g и 163 трёхмерных предмета</li>
+        <li>Кооператив до 8 игроков с сохранением построек во всех измерениях и 200 достижений</li>
       </ul>
     </div>
     <div class="stage reveal" data-status="progress">
       <div class="stage-head"><span class="pill progress">В работе</span></div>
       <ul>
-        <li>Тонкая настройка баланса выживания, экипировки и наград за боссов</li>
-        <li>Расширенное звуковое оформление биомов, механизмов и полётов</li>
-        <li>Полировка пользовательского опыта на ПК и мобильных устройствах</li>
+        <li>Расширение квестовых линий поселенцев, подземных данжей и редких артефактов</li>
+        <li>Дополнительные звуковые ландшафты для экзопланет, Преисподней и Эдема</li>
+        <li>Расширенная кастомизация экранного управления на смартфонах и геймпадах</li>
       </ul>
     </div>
     <div class="stage reveal" data-status="planned">
       <div class="stage-head"><span class="pill planned">В планах к 1.0</span></div>
       <ul>
-        <li data-planned>Продолжение сюжетной кампании и новые измерения с порталами</li>
+        <li data-planned>Финальные главы сюжетной кампании и новые межзвёздные рубежи с порталами</li>
         <li data-planned>Полная мультиязычная локализация (EN, DE, FR, ES, ZH, JA)</li>
         <li data-planned>Оптимизация под стабильные 60 FPS на широком парке ПК и релиз на Steam</li>
       </ul>
@@ -365,25 +679,25 @@
 <section class="section section-test" id="test" aria-labelledby="test-title">
   <div class="test-grid">
     <div class="reveal">
-      <p class="eyebrow">Связь и обновления</p>
-      <h2 id="test-title">Подписка на крупные релизы и связь с автором</h2>
-      <p class="muted">Актуальные сборки Windows и Android уже открыты в разделе «Скачать». Оставьте адрес, чтобы получать уведомления о выходе новых глав или связаться по вопросам прессы и партнёрства.</p>
+      <p class="eyebrow">Связь и уведомления</p>
+      <h2 id="test-title">Узнавайте о крупных обновлениях первыми</h2>
+      <p class="muted">Сборки для Windows и Android открыты для прямой загрузки выше. Оставьте почту, чтобы получать письма о выходе крупных версий или связаться с автором по вопросам прессы и издания.</p>
       <ol class="steps">
-        <li><b>Без спама и трекеров</b><span>Мы не передаём адреса третьим лицам и пишем только по делу.</span></li>
-        <li><b>Для прессы и издателей</b><span>Укажите в заметке «Пресса» или «Publisher» для прямой обратной связи.</span></li>
-        <li><b>Мгновенный доступ к сборке</b><span>Скачать и протестировать текущую версию можно прямо сейчас выше на странице.</span></li>
+        <li><b>Никакого спама и рекламы</b><span>Адрес используется исключительно для редких анонсов релизов и прямой связи.</span></li>
+        <li><b>Для прессы, стримеров и издателей</b><span>Укажите в заметке «Пресса» или «Publisher» — мы ответим напрямую.</span></li>
+        <li><b>Мгновенная загрузка</b><span>Играть в актуальную версию v0.8.0 можно сразу, без ожидания письма.</span></li>
       </ol>
     </div>
 
     <form class="waitlist reveal" id="waitlist" novalidate>
-      <h3>Лист уведомлений</h3>
+      <h3>Подписка на релизы</h3>
       <label class="field">
         <span>Email</span>
         <input type="email" name="email" autocomplete="email" required placeholder="you@example.com" maxlength="254" inputmode="email">
       </label>
       <label class="field">
         <span>Заметка для автора <em class="opt">необязательно</em></span>
-        <textarea name="note" rows="3" maxlength="500" placeholder="Например: «Пресса», «Publisher» или «Удалить адрес»"></textarea>
+        <textarea name="note" rows="3" maxlength="500" placeholder="Например: «Пресса», «Publisher», отзыв по Android-сборке или «Удалить адрес»"></textarea>
       </label>
       <label class="check">
         <input type="checkbox" name="consent" required>
@@ -400,67 +714,84 @@
 <!-- FAQ -->
 <section class="section" id="faq" aria-labelledby="faq-title">
   <header class="section-head reveal">
-    <p class="eyebrow">Вопросы и ответы</p>
+    <p class="eyebrow">Справка игрока</p>
     <h2 id="faq-title">Частые вопросы</h2>
   </header>
   <div class="faq reveal">
     <details open>
-      <summary>На каком этапе сейчас проект?</summary>
-      <p>Игра находится на стадии открытой функциональной альфы (v0.7.1): в сборке уже работают выживание, крафт, деревни, 34 вида фауны, 26 боссов, строительство космодрома, пилотируемый шаттл, орбитальные станции и кооператив до 8 игроков. Сейчас идёт балансировка контента и подготовка к полноценному релизу 1.0.</p>
+      <summary>Как установить и запустить игру на смартфоне Android?</summary>
+      <p>Нажмите кнопку <b>«Скачать APK для Android»</b> в разделе «Скачать» с телефона (или отсканируйте QR-код на карточке камерой смартфона). Откройте загруженный файл <code>LestingCraft-Android-arm64.apk</code> и подтвердите установку. Поддерживаются устройства с Android 8.0+ и 64-битным процессором ARM64; экранное сенсорное управление включается автоматически при входе в мир.</p>
     </details>
     <details>
-      <summary>Как запустить игру на ПК или Android?</summary>
-      <p>Откройте раздел «Скачать» и выберите свою платформу. На Windows достаточно распаковать ZIP-архив целиком и запустить <code>LestingCraft.exe</code> (установка Unity или .NET не нужна). На Android установите скачанный APK-файл.</p>
+      <summary>Как попасть в Преисподнюю и Эдем?</summary>
+      <p>Для <b>Преисподней</b> посадите два обычных саженца на расстоянии ровно 7 блоков друг от друга, дождитесь их естественного роста (без костной муки!) и подожгите факелом или костром — обгоревшие деревья образуют огненную арку перехода. Для <b>Эдема</b> выкопайте яму 2×2 глубиной 5 блоков, заполните её водой, поставьте вокруг цветы, бросьте в воду алмаз кнопкой <code>[Q]</code> и прыгните внутрь. Полная памятка всегда доступна в игре во вкладке <code>J → 5. Ритуалы и Миры</code>.</p>
     </details>
     <details>
-      <summary>Как устроен полёт в космос?</summary>
-      <p>В мире можно развернуть стартовый комплекс космодрома (в выживании через прогрессию ресурсов или сразу через чертёж / клавишу F9 в творческом режиме), подняться на лифте в кабину шаттла, выбрать планету на 3D-навигационном экране (G) и выполнить запуск на орбиту.</p>
+      <summary>Как переключить режим игры и включить полёт?</summary>
+      <p>В одиночной игре откройте меню паузы (<code>Esc</code> или кнопка <code>II ПАУЗА</code> на Android) — прямо на экране доступны кнопки переключения между Выживанием, Творческим режимом, Хардкором и Сюжетом, а также переключатель полёта. В чате также работают команды <code>/gamemode 1</code> (<code>/gm c</code>) и <code>/fly</code>.</p>
     </details>
     <details>
-      <summary>Зачем нужен отдельный десктопный лаунчер в репозитории?</summary>
-      <p>Лаунчер докачивает только изменившиеся блоки файлов, сверяет SHA-256 каждого пакета и поддерживает безопасный откат версии без затрагивания ваших локальных сохранений. При этом игру всегда можно скачать и обычным ZIP-архивом.</p>
+      <summary>Можно ли играть вместе с друзьями на ПК и Android?</summary>
+      <p>Да! Сетевой протокол един для обеих платформ: один игрок открывает мир через меню паузы («Создать сервер»), копирует приглашение и отправляет адрес друзьям — до 8 участников в одной экспедиции.</p>
     </details>
     <details>
       <summary>Собирает ли сайт или игра скрытую аналитику?</summary>
-      <p>Нет. На сайте и в клиенте нет рекламных SDK, сторонних пикселей и скрытой телеметрии. Подробнее описано в разделе <a href="/privacy/">конфиденциальности</a>.</p>
+      <p>Нет. В клиенте и на сайте отсутствуют рекламные SDK, сторонние трекеры и скрытая телеметрия. Все подробности описаны в <a href="/privacy/">политике конфиденциальности</a>.</p>
     </details>
     <details>
       <summary>Кому принадлежат права на код и ассеты?</summary>
-      <p>Все оригинальные механики, код, текстуры и воксельные модели созданы специально для LestingCraft: New Era. Исходный код открыт для ознакомления на <a href="https://github.com/Timofei2506/lestingcraft-new-era" rel="noopener">GitHub</a> на условиях <a href="/license/">source-available лицензии</a>.</p>
+      <p>Все оригинальные механики, код, шейдеры, текстуры и воксельные скульптуры созданы специально для LestingCraft: New Era. Исходный код открыт для ознакомления на <a href="https://github.com/Timofei2506/lestingcraft-new-era" rel="noopener">GitHub</a> на условиях <a href="/license/">source-available лицензии</a>.</p>
     </details>
   </div>
 </section>
 
 <!-- AUTHOR -->
 <section class="section section-author reveal" aria-labelledby="author-title">
-  <div class="author">
-    <div class="author-mark" aria-hidden="true">L</div>
-    <div>
-      <p class="eyebrow">Разработка и издание</p>
-      <h2 id="author-title">Timofei · EHOT_EHOTbI4.music</h2>
-      <p class="muted">Оригинальная разработка, архитектура мира, графика и сетевая платформа LestingCraft: New Era.</p>
-      <p><a class="link" href="/press/">Пресс-кит и материалы для издателей (RU / EN) →</a></p>
-    </div>
+  <div class="author-mark" aria-hidden="true">LC</div>
+  <div>
+    <p class="eyebrow">Разработка и арт-дирекшн</p>
+    <h2 id="author-title">Timofei · EHOT_EHOTbI4.music</h2>
+    <p class="muted">Оригинальная вселенная, архитектура движка, процедурные воксельные скульптуры, шейдеры и сетевая платформа LestingCraft: New Era.</p>
+    <p style="margin-top:10px"><a class="link" href="/press/">Открыть пресс-кит и материалы для издателей (RU / EN) →</a></p>
   </div>
 </section>
 
 </main>
 
 <footer class="footer">
-  <div class="footer-brand">
-    <span class="brand-small">LESTINGCRAFT · NEW ERA</span>
-    <p class="muted">Публичная альфа v0.7.1 · Unity 6 URP · Windows x64 и Android ARM64.</p>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19.5 7.5 12 11.5 4.5 7.5Z" fill="#fbe7b8"/><path d="M4.5 7.5 12 11.5V20.5L4.5 16.5Z" fill="#5b3d17"/><path d="M12 11.5 19.5 7.5V16.5L12 20.5Z" fill="#2b1c0a"/></svg>
+        <span>LESTINGCRAFT · NEW ERA</span>
+      </div>
+      <p>Публичная сборка v0.8.0 на Unity 6 URP для Windows x64 и Android ARM64. Воксельное выживание, 18 миров, космос и кооператив.</p>
+    </div>
+    <div>
+      <h4>Навигация</h4>
+      <nav class="footer-links" aria-label="Разделы">
+        <a href="#download">Скачать Windows / APK</a>
+        <a href="#realms">Атлас 18 миров</a>
+        <a href="#bosses">Бестиарий боссов</a>
+        <a href="#controls">Управление ПК и Android</a>
+        <a href="#shots">Галерея кадров</a>
+      </nav>
+    </div>
+    <div>
+      <h4>Материалы и право</h4>
+      <nav class="footer-links" aria-label="Документы">
+        <a href="/press/">Пресса / Press Kit</a>
+        <a href="/play-with-friends/">Инструкция по сети</a>
+        <a href="/privacy/">Конфиденциальность</a>
+        <a href="/license/">Лицензия</a>
+        <a href="https://github.com/Timofei2506/lestingcraft-new-era" rel="noopener">GitHub репозиторий</a>
+      </nav>
+    </div>
   </div>
-  <nav class="footer-links" aria-label="Подвал">
-    <a href="#download">Скачать</a>
-    <a href="/press/">Пресса / Press Kit</a>
-    <a href="/play-with-friends/">Кооператив</a>
-    <a href="/privacy/">Конфиденциальность</a>
-    <a href="/license/">Лицензия</a>
-    <a href="https://github.com/Timofei2506/lestingcraft-new-era" rel="noopener">GitHub</a>
-    <a href="#top">Наверх</a>
-  </nav>
-  <p class="copy">© 2026 Timofei (EHOT_EHOTbI4.music). Все права защищены.</p>
+  <div class="copy">
+    <span>© 2026 Timofei (EHOT_EHOTbI4.music). Все права защищены.</span>
+    <a class="link" href="#top">Наверх ↑</a>
+  </div>
 </footer>
 
 <dialog class="lightbox" id="lightbox" aria-label="Кадр из игры">
