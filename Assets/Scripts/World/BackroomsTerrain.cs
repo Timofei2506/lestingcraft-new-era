@@ -270,10 +270,15 @@ namespace LestingCraft.World
             return 0;
         }
 
-        public static bool ShouldNoclip(int seed, int step, float hunger, float stamina)
+        public static ushort SampleBlock(int x, int y, int z, int seed)
         {
-            if (hunger > 45f && stamina > 35f) return false;
-            return (Hash(step, 99, 0, seed) % 64u) == 0u;
+            return Block(x, y, z, seed, FloorTop(x, z, seed));
+        }
+
+        public static bool ShouldNoclip(int seed, int dayIdx, float stamina, float hunger, float wetness = 0f)
+        {
+            uint roll = Hash(seed, dayIdx, 13, 0x5C1D);
+            return (stamina < 55f || hunger < 50f || wetness > 0.25f) && roll % 100u < 18u;
         }
     }
 }

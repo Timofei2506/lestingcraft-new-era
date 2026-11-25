@@ -23,7 +23,7 @@ namespace LestingCraft.Gameplay
             "ash-hound-hide","cherenkov-leech-skin","rad-scorpion-carapace","mutant-boar-hide","slag-carapace",
             "fallout-crow-plumage","gamma-ray-membrane","bone-stalker-hide","vitrified-golem-crust","wraith-shroud",
             "wolf-fur","scorpion-chitin","turtle-shell","voidray-skin",
-            "ash-hound-hide","magma-basalt","slag-carapace","rad-scorpion-carapace",
+            "ash-hound-hide","slag-carapace","slag-carapace","rad-scorpion-carapace",
             "owl-feathers","deer-fur","owl-feathers","eagle-feathers"
         };
 

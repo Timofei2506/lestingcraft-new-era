@@ -44,9 +44,9 @@ namespace LestingCraft.Tests
         [Test]
         public void ExpandedWildlifeSpawnsAllTwentySpeciesWithDedicatedPbrCoatsAndRigs()
         {
-            Assert.AreEqual(34, AnimalVisual.SpeciesFurNames.Length);
+            Assert.AreEqual(42, AnimalVisual.SpeciesFurNames.Length);
             var coatLayers = new HashSet<int>();
-            for (int kind = 0; kind < 34; kind++)
+            for (int kind = 0; kind < 42; kind++)
             {
                 int layer = AnimalVisual.FurLayerForSpecies(kind);
                 coatLayers.Add(layer);
@@ -60,10 +60,13 @@ namespace LestingCraft.Tests
                     Assert.IsNotNull(visual.Head);
                     if (kind < 20 || kind >= 30)
                     {
-                        bool winged = kind == 11 || kind == 12 || kind == 13 || kind == 19 || kind == 33;
-                        int expectedLegs = (kind == 19 || kind == 33) ? 0 : kind == 15 ? 6 : (kind == 11 || kind == 12 || kind == 13) ? 2 : 4;
-                        Assert.AreEqual(expectedLegs, visual.Legs.Count);
-                        if (winged) Assert.AreEqual(2, visual.Wings.Count);
+                        bool winged = kind == 11 || kind == 12 || kind == 13 || kind == 19 || kind == 33 || kind == 36 || kind == 38 || kind == 40 || kind == 41;
+                        int expectedLegs = (kind == 19 || kind == 33) ? 0
+                            : (kind == 15 || kind == 37) ? 6
+                            : (kind == 11 || kind == 12 || kind == 13 || kind == 36 || kind == 38 || kind == 41) ? 2
+                            : 4;
+                        Assert.AreEqual(expectedLegs, visual.Legs.Count, "Legs mismatch for species " + kind);
+                        if (winged) Assert.AreEqual(2, visual.Wings.Count, "Wings mismatch for species " + kind);
                     }
                     else
                     {
@@ -75,7 +78,7 @@ namespace LestingCraft.Tests
                     Object.DestroyImmediate(obj);
                 }
             }
-            // 34 species, but the four newest ones intentionally share existing coats (no new PBR layers).
+            // 42 species, with realm/extra variants sharing the 30 dedicated PBR animal coat layers.
             Assert.AreEqual(30, coatLayers.Count);
 
             var found = new HashSet<int>();

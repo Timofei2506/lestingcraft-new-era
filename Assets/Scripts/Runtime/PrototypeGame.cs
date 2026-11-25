@@ -138,21 +138,22 @@ namespace LestingCraft.Runtime
                 return;
             }
             var result=ChatCommands.Execute(text,Session.Creative,!Online,Session.Inventory,world.Seed,player.transform.position,PlayerCount);
+            string chatNotice=result.Message;
             if(result.Action=="clear"){chatLog.Clear();ChatRevision++;}
             else if(result.Action=="save")Session.Checkpoint();
             else if(result.Action=="time")Session.Data.clock=result.Value;
             else if(result.Action=="gamemode")
             {
                 var targetGm=(GameMode)Mathf.Clamp(result.Value,0,3);
-                selectedMode=targetGm;
+                selectedMode=(int)targetGm;
                 Session.SetGameMode(targetGm);
             }
             else if(result.Action=="fly")
             {
                 if(!player.ToggleCreativeFlight())
-                    result.Message="Полёт доступен только в Творческом режиме — введите /gamemode creative";
+                    chatNotice="Полёт доступен только в Творческом режиме — введите /gamemode creative";
                 else
-                    result.Message=player.CreativeFlyActive
+                    chatNotice=player.CreativeFlyActive
                         ?"🕊 Полёт ВКЛЮЧЁН (Пробел — вверх, C/Ctrl — вниз, Shift — ускорение, 2×Пробел — выкл.)"
                         :"Полёт выключен.";
             }
@@ -202,7 +203,7 @@ namespace LestingCraft.Runtime
                 if(sp.Length==4&&float.TryParse(sp[1],out float tx)&&float.TryParse(sp[2],out float ty)&&float.TryParse(sp[3],out float tz))
                     player.TeleportTo(new Vector3(tx,ty,tz),false);
             }
-            AddChat(new NetPacket{name="Система",message=result.Message});
+            AddChat(new NetPacket{name="Система",message=chatNotice});
         }
         void AddChat(NetPacket packet)
         {

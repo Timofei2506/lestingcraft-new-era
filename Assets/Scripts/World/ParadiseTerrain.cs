@@ -112,6 +112,11 @@ namespace LestingCraft.World
             return true;
         }
 
+        public static int Height(int x, int z, int seed)
+        {
+            return FloorTop(x, z, seed);
+        }
+
         public static int FloorTop(int x, int z, int seed)
         {
             int r2 = x * x + z * z;

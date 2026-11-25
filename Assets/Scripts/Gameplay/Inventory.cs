@@ -146,6 +146,16 @@ namespace LestingCraft.Gameplay
         }
         public ItemStack[] ExtraStacks()
         {NormalizeNulls();var all=new ItemStack[13+Equipment.Count+(offhand.count>0?1:0)];if(offhand.count>0)all[21]=offhand.Clone();for(int i=0;i<Equipment.Count;i++)all[13+i]=equipment[i].Clone();for(int i=0;i<9;i++)all[i]=grid[i].Clone();all[9]=cursor.Clone();all[10]=furnace.input.Clone();all[11]=furnace.fuel.Clone();all[12]=furnace.output.Clone();return all;}
+        public bool ConsumeActive(int amount = 1)
+        {
+            NormalizeNulls();
+            if(amount<=0)return true;
+            if(Active.count<amount)return false;
+            Active.count-=amount;
+            if(Active.count<=0){Active.count=0;Active.item=0;Active.durability=0;}
+            revision++;
+            return true;
+        }
         public void WearTool()
         {if(Active.count>0&&Items.Get(Active.item).Durability>0){Active.durability--;if(Active.durability<=0){Active.count=0;Active.item=0;Active.durability=0;}revision++;}}
         public void Normalize()
