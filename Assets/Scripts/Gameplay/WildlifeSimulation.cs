@@ -48,6 +48,7 @@ namespace LestingCraft.Gameplay
         // The surface callback is deliberately engine-independent. It returns the
         // natural surface block at a spawn location, before clearance is tested.
         public Func<int, int, int> SurfaceAt;
+        public Func<int, int, int> SkySurfaceAt;
 
         public delegate float Ground(float x, float z, float previousY, float radius, float height);
 
@@ -180,7 +181,7 @@ namespace LestingCraft.Gameplay
         bool ValidSpecies(int s) { return s >= 0 && s < (contentVersion >= 9 ? SpeciesCount : contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3); }
         static bool Finite(float v) { return !float.IsNaN(v) && !float.IsInfinity(v) && Math.Abs(v) < 32000; }
         static int Index(int s) { return s >= 0 && s < SpeciesCount ? s : 2; }
-        static float ClampFlight(float h) { return Finite(h) && h >= 2.8f && h <= 6.5f ? h : 4.5f; }
+        static float ClampFlight(float h) { return Finite(h) && h >= 2.8f && h <= 8.5f ? h : 4.5f; }
 
         public static uint Hash(int x, int z, int seed)
         {
@@ -233,8 +234,9 @@ namespace LestingCraft.Gameplay
         {
             if (!p.alive || !Finite(p.x) || !Finite(p.z)) return;
             bool abundantV8 = contentVersion >= 8;
-            int cellSize = abundantV8 ? 18 : 24;
-            int radiusCells = abundantV8 ? 3 : 2;
+            bool vibrantV11 = contentVersion >= 11;
+            int cellSize = vibrantV11 ? 15 : abundantV8 ? 18 : 24;
+            int radiusCells = vibrantV11 ? 5 : abundantV8 ? 3 : 2;
             int maxTotal = abundantV8 ? MaxAnimals : 256;
             int cx = (int)Math.Floor(p.x / cellSize), cz = (int)Math.Floor(p.z / cellSize);
             for (int dz = -radiusCells; dz <= radiusCells; dz++)
@@ -247,11 +249,11 @@ namespace LestingCraft.Gameplay
                     float ax = sx * cellSize + 3 + h % (uint)(cellSize - 6) + .5f;
                     float az = sz * cellSize + 3 + (h >> 8) % (uint)(cellSize - 6) + .5f;
                     float distance = (ax - p.x) * (ax - p.x) + (az - p.z) * (az - p.z);
-                    float minSq = abundantV8 ? 100f : 144f;
-                    float maxSq = abundantV8 ? 5625f : 3600f;
+                    float minSq = vibrantV11 ? 64f : abundantV8 ? 100f : 144f;
+                    float maxSq = vibrantV11 ? 7225f : abundantV8 ? 5625f : 3600f;
                     if (distance < minSq || distance > maxSq) continue;
                     sites.Add(key);
-                    if (abundantV8 ? (h % 6 == 0) : (h % 2 != 0)) continue;
+                    if (vibrantV11 ? (h % 9 == 0) : abundantV8 ? (h % 6 == 0) : (h % 2 != 0)) continue;
                     int species = (int)((h >> 16) % 3);
                     if (contentVersion >= 7)
                     {
@@ -259,7 +261,8 @@ namespace LestingCraft.Gameplay
                         int surface = SurfaceAt == null ? 3 : SurfaceAt(ix, iz);
                         species = SpeciesForHabitat(h, Habitat(surface, ix, iz, seed), contentVersion);
                     }
-                    int herdCount = abundantV8 ? (IsFlyer(species) ? 2 : 2 + (int)(h % 2)) : 1;
+                    int herdCount = vibrantV11 ? (IsFlyer(species) ? 2 + (int)(h % 2) : 3 + (int)(h % 3))
+                                  : abundantV8 ? (IsFlyer(species) ? 2 : 2 + (int)(h % 2)) : 1;
                     for (int m = 0; m < herdCount && Animals.Count < maxTotal; m++)
                     {
                         float ox = m == 0 ? 0f : ((int)((h >> (m * 5)) % 7) - 3) * 1.45f;
@@ -268,7 +271,7 @@ namespace LestingCraft.Gameplay
                         bool flyer = IsFlyer(species);
                         float ay = ground(mx, mz, -1, Radius(species), Height(species) + (flyer ? 6 : 0));
                         if (!Finite(ay)) continue;
-                        float flight = species == 11 ? 4.75f : species == 12 || species == 25 ? 3.65f : species == 19 || species == 26 ? 4.25f : 0;
+                        float flight = species == 33 ? 6.4f : species == 11 ? 4.75f : species == 12 || species == 25 ? 3.65f : species == 19 || species == 26 ? 4.25f : 0;
                         Animals.Add(new AnimalState
                         {
                             id = m == 0 ? ("a:" + key) : ("a:" + key + ":" + m),
@@ -277,6 +280,33 @@ namespace LestingCraft.Gameplay
                             goalX = mx, goalZ = mz, yaw = (h + (uint)(m * 97)) % 360,
                             timer = 1, flightHeight = flight, flightPhase = m * 1.7f
                         });
+                    }
+
+                    // Sky-Island wildlife & soaring SkyWhales / Golden Eagles (contentVersion >= 11)
+                    int skyY = vibrantV11 && SkySurfaceAt != null ? SkySurfaceAt((int)Math.Floor(ax), (int)Math.Floor(az)) : -1;
+                    if (vibrantV11 && skyY > 40 && Animals.Count < maxTotal - 3)
+                    {
+                        string skyKey = "sky:" + key;
+                        if (!sites.Contains(skyKey) && sites.Count < MaxSites)
+                        {
+                            sites.Add(skyKey);
+                            int[] skyChoices = { 33, 11, 19, 0, 1, 12 };
+                            int skySpecies = skyChoices[(int)((h >> 11) % (uint)skyChoices.Length)];
+                            bool skyFlyer = IsFlyer(skySpecies);
+                            float say = ground(ax, az, skyY + 1f, Radius(skySpecies), Height(skySpecies) + (skyFlyer ? 6f : 0f));
+                            if (Finite(say))
+                            {
+                                float sFlight = skySpecies == 33 ? 7.2f : skySpecies == 11 ? 5.0f : skySpecies == 19 ? 4.5f : skySpecies == 12 ? 3.8f : 0f;
+                                Animals.Add(new AnimalState
+                                {
+                                    id = "a:" + skyKey,
+                                    species = skySpecies, health = MaxHealth(skySpecies),
+                                    x = ax, y = say + sFlight, z = az, homeX = ax, homeZ = az,
+                                    goalX = ax, goalZ = az, yaw = (h * 53u) % 360,
+                                    timer = 1, flightHeight = sFlight, flightPhase = 0.8f
+                                });
+                            }
+                        }
                     }
                 }
         }

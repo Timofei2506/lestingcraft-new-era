@@ -268,7 +268,7 @@ create or replace function public._friend_decline(p_me uuid, p_request bigint)
 returns text
 language plpgsql security definer set search_path = public, pg_temp as $$
 begin
-  delete from public.friend_requests where id = p_request and to_id = p_me;
+  delete from public.friend_requests where id = p_request and (to_id = p_me or from_id = p_me);
   return 'declined';
 end $$;
 

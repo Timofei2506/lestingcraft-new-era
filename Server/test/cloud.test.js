@@ -239,3 +239,20 @@ test('a nickname with forbidden characters is rejected before any lookup', async
     error => error instanceof CloudError && error.status === 400,
   );
 });
+
+test('friend request accepts leading @ prefix on @nickname and trims message', async () => {
+  const calls = [];
+  const service = new CloudService('https://example.supabase.co', 'service-key', async (url, init) => {
+    calls.push({ url: String(url), body: init?.body ? JSON.parse(init.body) : null });
+    return new Response(JSON.stringify({ result: 'sent' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+  const out = await CLOUD_ACTIONS['friend/request'](
+    service,
+    'a'.repeat(32),
+    { username: '  @Sky_Explorer  ', message: '  Пошли на парящий остров!  ' },
+    { resolveUsername: async name => ({ uid: 'c'.repeat(32), username: name.toLowerCase() }) },
+  );
+  assert.equal(out.result, 'sent');
+  assert.equal(calls[0].body.p_display_name, 'sky_explorer');
+  assert.equal(calls[1].body.p_message, 'Пошли на парящий остров!');
+});

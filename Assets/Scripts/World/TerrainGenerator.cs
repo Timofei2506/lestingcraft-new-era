@@ -101,6 +101,9 @@ namespace LestingCraft.World
             if (contentVersion >= 11 && d == Dimension.Lestingia &&
                 LestingCraft.World.KingdomPlan.TrySample(x, y, z, seed, out ushort crowned))
                 return crowned;
+            if (contentVersion >= 11 && d == Dimension.Lestingia &&
+                LestingCraft.World.RealmWondersPlan.TrySample(x, y, z, seed, out ushort wonder))
+                return wonder;
             if (contentVersion >= 3 && d == Dimension.Lestingia)
             {
                 ushort raw = contentVersion >= 7 ? BiomeGenerator.Sample(x, y, z, seed, contentVersion) : NatureGenerator.Sample(x, y, z, seed);
@@ -151,6 +154,7 @@ namespace LestingCraft.World
                 var trees = ContentVersion >= 7 ? BiomeGenerator.Trees(wx, wz, Seed, h, ContentVersion) : NatureGenerator.Trees(wx, wz, Seed, h);
                 var biome = ContentVersion >= 7 ? BiomeGenerator.At(wx, wz, Seed, ContentVersion) : BiomeKind.MixedForest;
                 var extra = ContentVersion >= 5 ? ExpeditionGenerator.At(wx, wz, Seed, ContentVersion) : default(ExpeditionGenerator.Column);
+                var wonders = ContentVersion >= 11 ? RealmWondersPlan.PrepareColumn(wx, wz, Seed, h, extra.Surface) : default(RealmWondersPlan.ColumnPlan);
                 for (int y = 0; y < ChunkData.SizeY; y++)
                     Blocks[ChunkData.IndexOf(x, y, z)] = ContentVersion >= 4 &&
                         LestingCraft.Story.StoryWorld.TrySample(wx, y, wz, Seed, out ushort placed, ContentVersion)
@@ -158,6 +162,9 @@ namespace LestingCraft.World
                         : ContentVersion >= 11 &&
                             LestingCraft.World.KingdomPlan.TrySample(wx, y, wz, Seed, out ushort crowned)
                             ? crowned
+                        : ContentVersion >= 11 &&
+                            wonders.TrySampleY(wx, y, wz, Seed, out ushort wonder)
+                            ? wonder
                         : ContentVersion >= 5
                             ? extra.Apply(ContentVersion >= 7 ? BiomeGenerator.Column(wx, y, wz, Seed, h, trees, biome) : NatureGenerator.Column(wx, y, wz, Seed, h, trees), y, Seed, ContentVersion)
                             : NatureGenerator.Column(wx, y, wz, Seed, h, trees);

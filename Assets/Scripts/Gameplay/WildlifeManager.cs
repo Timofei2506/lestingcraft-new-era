@@ -19,7 +19,7 @@ namespace LestingCraft.Gameplay
 
     public sealed class WildlifeManager : MonoBehaviour
     {
-        const int VisualLimit = 32, PoolLimit = 24;
+        const int VisualLimit = 64, PoolLimit = 48;
         SurvivalSession session;
         WildlifeSimulation simulation;
         readonly Dictionary<string, AnimalState> remote = new Dictionary<string, AnimalState>();
@@ -57,8 +57,17 @@ namespace LestingCraft.Gameplay
             session = s;
             simulation = new WildlifeSimulation(s.World.Seed, s.Data.wildlife, s.World.ContentVersion);
             simulation.SurfaceAt = SurfaceAt;
+            simulation.SkySurfaceAt = SkySurfaceAt;
             groundCallback = Ground;
             damageCallback = DealDamage;
+        }
+
+        int SkySurfaceAt(int x, int z)
+        {
+            if (session.World.ContentVersion < 11 || session.World.Dimension != Dimension.Lestingia)
+                return -1;
+            int skyY;
+            return RealmWondersPlan.TryGetSkySurface(x, z, session.World.Seed, out skyY) ? skyY : -1;
         }
 
         int SurfaceAt(int x, int z)
@@ -269,6 +278,7 @@ namespace LestingCraft.Gameplay
         bool SpawnSurface(int block)
         {
             if (block == 3 || block == 2 || block == 14) return true;
+            if (session.World.ContentVersion >= 11 && (block == 65 || block == 12 || block == 41 || block == 42)) return true;
             return session.World.ContentVersion >= 7 &&
                 (block == 1 || block == 6 || block == 27 || block == 32 || block == 33 || block == 34 || block == 43);
         }
@@ -279,8 +289,9 @@ namespace LestingCraft.Gameplay
             int ix = Mathf.FloorToInt(x), iz = Mathf.FloorToInt(z);
             if (!w.Contains(ix, 1, iz)) return float.NaN;
             int natural = TerrainGenerator.Height(ix, iz, w.Seed, w.Dimension) + 1;
-            int hi = previousY < 0 ? natural + 1 : Mathf.FloorToInt(previousY) + 1;
-            int lo = previousY < 0 ? natural - 2 : Mathf.FloorToInt(previousY) - 1;
+            int hi = previousY < 0 ? (w.ContentVersion >= 11 ? natural + 17 : natural + 1) : Mathf.FloorToInt(previousY) + 2;
+            int lo = previousY < 0 ? natural - 2 : Mathf.FloorToInt(previousY) - 2;
+            int maxY = w.ContentVersion >= 11 ? 230 : 100;
             for (int y = hi; y >= lo; y--)
             {
                 bool valid = true, supported = false;
@@ -300,7 +311,7 @@ namespace LestingCraft.Gameplay
                     for (int cy = y; cy < Mathf.CeilToInt(y + height); cy++)
                         if (w.GetBlock(ax, cy, az) != 0) { valid = false; break; }
                 }
-                if (valid && supported && y > 41 && y < 100) return y;
+                if (valid && supported && y > 41 && y < maxY) return y;
             }
             return float.NaN;
         }
@@ -393,7 +404,8 @@ namespace LestingCraft.Gameplay
             {
                 if (a.dead) continue;
                 float d = (new Vector3(a.x, a.y, a.z) - p).sqrMagnitude;
-                if (d >= 3136) continue;
+                float maxViewSq = WildlifeSimulation.IsFlyer(a.species) ? 16900f : 7225f;
+                if (d >= maxViewSq) continue;
                 float score = d * (visuals.ContainsKey(a.id) ? .9f : 1);
                 int at = count;
                 while (at > 0 && distances[at - 1] > score) at--;

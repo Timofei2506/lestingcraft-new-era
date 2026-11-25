@@ -168,89 +168,148 @@ namespace LestingCraft.Presentation
             if(back)Button("←  Назад",64,798,150,48,()=>{if(game.InWorld)ShowPause();else ShowHome();});
             Label(content.transform,"v"+Application.version+"  ·  LestingCraft: New Era",64,866,1472,22,12,Muted,false,TextAnchor.MiddleRight);
         }
+        Image AvatarPortrait(Transform parent,string avatarId,string fallbackSeed,float x,float y,float size)
+        {
+            var rt=Rect("Avatar",parent,x,y,size,size);
+            var img=rt.gameObject.AddComponent<Image>();
+            img.sprite=ProfileAvatar.GetSprite(avatarId,fallbackSeed);
+            img.type=Image.Type.Simple;
+            img.preserveAspect=true;
+            img.raycastTarget=false;
+            return img;
+        }
+        InputField InputIn(Transform parent,string label,string value,string placeholder,float x,float y,float w,Action<string> changed,int maxChars=64)
+        {
+            Label(parent,label,x,y,w,22,13,Muted,true);
+            var image=Box(parent,x,y+26,w,50,new Color(.07f,.18f,.28f,.92f));image.raycastTarget=true;
+            var field=image.gameObject.AddComponent<InputField>();field.targetGraphic=image;field.characterLimit=maxChars;
+            field.textComponent=Label(image.transform,"",16,0,w-32,50,17,White,false,TextAnchor.MiddleLeft);
+            field.placeholder=Label(image.transform,placeholder,16,0,w-32,50,17,Muted,false,TextAnchor.MiddleLeft);
+            field.text=value??"";field.onValueChanged.AddListener(v=>changed(v));return field;
+        }
+        void OpenFriendsHub()
+        {
+            var a=game?game.Accounts:null;
+            if(a!=null&&a.Logged)a.CloudFriends(AfterCloud);
+            ShowFriends();
+        }
         public void ShowHome()
         {
             Clear(Page.Home);
-            // Bright, joyful Minecraft-inspired 3D panorama layout: open vista on the right, sunlit glass expedition card on the left.
-            // All action names below are stable: the executable smoke test clicks them by name.
-            var brandPill=Box(content.transform,64,38,446,46,new Color(.065f,.175f,.275f,.72f));
+            var a=game?game.Accounts:null;
+            bool logged=a!=null&&a.Logged&&a.Profile!=null;
+            if(logged&&a.Wallet==null&&!a.CloudBusy)a.CloudState(()=>{if(page==Page.Home)ShowHome();});
+            if(logged&&a.Friends==null&&!a.CloudBusy)a.CloudFriends(()=>{if(page==Page.Home)ShowHome();});
+
+            string displayNick=logged?a.Profile.username:ProfileAvatar.LocalNickname;
+            string heroAvatar=logged?ProfileAvatar.ResolveId(a.Profile.avatar,displayNick):ProfileAvatar.LocalAvatar;
+            if(game)game.PlayerName=displayNick;
+
+            // 1. Top-Left Sunlit Emblem & Hero Title (leaves center vista open for Sky Islands & Waterfalls!)
+            var brandPill=Box(content.transform,56,34,474,44,new Color(.060f,.165f,.265f,.76f));
             brandPill.raycastTarget=false;
-            Box(brandPill.transform,0,9,4,28,SpringAccent,false);
-            Box(brandPill.transform,18,17,12,12,SpringAccent);
-            Label(brandPill.transform,"L / C",38,0,68,46,19,Accent,true,TextAnchor.MiddleLeft);
-            Label(brandPill.transform,"ЖИВОЙ СОЛНЕЧНЫЙ МИР  ·  NEW ERA",108,0,326,46,12,White,true,TextAnchor.MiddleLeft);
+            Box(brandPill.transform,0,8,4,28,SpringAccent,false);
+            Box(brandPill.transform,16,16,12,12,SpringAccent);
+            Label(brandPill.transform,"L / C",36,0,66,44,18,Accent,true,TextAnchor.MiddleLeft);
+            Label(brandPill.transform,"ПАРЯЩИЕ ОСТРОВА  ·  ЖИВОЙ МИР  ·  NEW ERA",104,0,356,44,11,White,true,TextAnchor.MiddleLeft);
 
-            var version=Box(content.transform,1208,38,328,44,new Color(.065f,.175f,.275f,.72f));
-            version.raycastTarget=false;
-            Label(version.transform,(VisualSettings.IsMobile?"ANDROID":"DESKTOP")+"  ·  v"+Application.version,14,0,300,44,12,Muted,false,TextAnchor.MiddleCenter);
-            var account=Button("Аккаунт · достижения",1208,94,328,50,ShowAccount);account.name="Home.Account";
-            if(game.Accounts!=null&&game.Accounts.Logged){var walletEntry=Button("Кошелёк и друзья",1208,154,328,48,ShowStore);walletEntry.name="Home.Store";}
+            ShadowLabel(content.transform,"LESTINGCRAFT",56,92,540,62,44,true);
+            Label(content.transform,"LESTINGCRAFT",56,92,540,62,44,White,true);
+            ShadowLabel(content.transform,"N E W   E R A",58,154,290,32,20,true);
+            Label(content.transform,"N E W   E R A",58,154,290,32,20,Accent,true);
 
-            float cardH=game.HasSave?574:492;
-            var panel=Box(content.transform,64,146,556,cardH,new Color(.065f,.170f,.268f,.68f));
-            panel.raycastTarget=false;
-            var panelBorder=Rect("Hero border",panel.transform,0,0,0,0);Stretch(panelBorder);
-            var pbImg=panelBorder.gameObject.AddComponent<Image>();pbImg.sprite=MenuArtwork.Outline;pbImg.type=Image.Type.Sliced;pbImg.raycastTarget=false;pbImg.color=new Color(Accent.r,Accent.g,Accent.b,.44f);
-            Box(panel.transform,0,22,5,cardH-44,Accent,false);
-
-            Label(content.transform,"ЯРКОЕ ВОКСЕЛЬНОЕ ПРИКЛЮЧЕНИЕ",96,174,492,24,12,SpringAccent,true);
-            ShadowLabel(content.transform,"LESTINGCRAFT",94,204,504,66,46,true);
-            Label(content.transform,"LESTINGCRAFT",94,204,504,66,46,White,true);
-            ShadowLabel(content.transform,"N E W   E R A",96,272,320,34,22,true);
-            Label(content.transform,"N E W   E R A",96,272,320,34,22,Accent,true);
-
-            // Cheerful pulsing golden splash badge (Minecraft-inspired lively menu energy)
             string splashLine=JoySplashes[Mathf.Abs((int)(Time.realtimeSinceStartup/8f))%JoySplashes.Length];
-            var splashBadge=Box(content.transform,342,268,256,34,new Color(1f,.80f,.22f,.95f));
+            var splashBadge=Box(content.transform,292,150,254,32,new Color(1f,.80f,.22f,.95f));
             splashBadge.raycastTarget=false;
             splashRect=splashBadge.rectTransform;
             splashRect.pivot=new Vector2(.5f,.5f);
-            splashRect.anchoredPosition=new Vector2(342+128,-(268+17));
-            Label(splashBadge.transform,splashLine,10,0,236,34,12,Ink,true,TextAnchor.MiddleCenter);
+            splashRect.anchoredPosition=new Vector2(292+127,-(150+16));
+            Label(splashBadge.transform,splashLine,10,0,234,32,12,Ink,true,TextAnchor.MiddleCenter);
 
-            Box(content.transform,96,320,104,3,Accent,false);
-            Box(content.transform,208,321,382,1,new Color(1f,1f,1f,.20f),false);
+            var vistaPill=Box(content.transform,56,812,516,52,new Color(.060f,.165f,.265f,.72f));
+            vistaPill.raycastTarget=false;
+            Box(vistaPill.transform,0,10,4,32,Accent,false);
+            Label(vistaPill.transform,"v"+Application.version+"  ·  Города, водопады, небесные острова и 16 миров",18,0,486,52,13,Muted,false,TextAnchor.MiddleLeft);
 
-            Label(content.transform,"Исследуй. Строй. Радуйся жизни!",96,340,492,34,20,White,true);
-            Label(content.transform,"Цветущие луга Лестингии, тёплые деревни, живая природа и полёты к далёким мирам — соло или с друзьями.",96,380,492,52,15,Muted);
+            // 2. Top-Right Corner: Player Balance Widget (opens Wallet & Skins)
+            long coins=logged&&a.Wallet!=null?a.Wallet.balance:0;
+            string balanceValue=CloudFormat.Coins(coins)+" монет";
+            var balanceBtn=Button("",1228,32,316,64,ShowStore);
+            balanceBtn.name="Home.Balance";
+            var coinBadge=Box(balanceBtn.transform,14,12,40,40,Accent);
+            Label(coinBadge.transform,"◈",0,0,40,40,20,Ink,true,TextAnchor.MiddleCenter);
+            Label(balanceBtn.transform,"БАЛАНС",66,10,180,18,11,Accent,true,TextAnchor.MiddleLeft);
+            Label(balanceBtn.transform,balanceValue,66,28,196,26,19,White,true,TextAnchor.MiddleLeft);
+            Label(balanceBtn.transform,logged?"кошелёк →":"войти →",224,22,78,20,12,Muted,false,TextAnchor.MiddleRight);
 
-            if(game.HasSave)
+            // 3. Right-Side Vertical Menu Backdrop
+            bool hasSave=game!=null&&game.HasSave;
+            var menuFrame=Box(content.transform,1024,110,520,572,new Color(.055f,.155f,.252f,.76f));
+            menuFrame.raycastTarget=false;
+            var mfBorder=Rect("Menu border",menuFrame.transform,0,0,0,0);Stretch(mfBorder);
+            var mfImg=mfBorder.gameObject.AddComponent<Image>();mfImg.sprite=MenuArtwork.Outline;mfImg.type=Image.Type.Sliced;mfImg.raycastTarget=false;mfImg.color=new Color(Accent.r,Accent.g,Accent.b,.42f);
+            Box(menuFrame.transform,0,20,4,532,Accent,false);
+
+            // 4. Directly ABOVE all buttons: Avatar + Nickname Profile Card!
+            var profileCard=Button("",1044,126,480,106,ShowAccount);
+            profileCard.name="Home.Account";
+            AvatarPortrait(profileCard.transform,heroAvatar,displayNick,14,13,80);
+            var dot=Box(profileCard.transform,80,79,14,14,logged?SpringAccent:Accent);
+            dot.raycastTarget=false;
+            Label(profileCard.transform,"@"+displayNick,110,13,320,32,23,White,true,TextAnchor.MiddleLeft);
+            string roleLine=logged
+                ?("Уровень "+a.Profile.level+"  ·  "+(string.IsNullOrEmpty(a.Profile.titleName)?"Странник":a.Profile.titleName))
+                :(ProfileAvatar.TitleOf(heroAvatar)+"  ·  локальный профиль");
+            Label(profileCard.transform,roleLine,110,47,334,22,14,Accent,false,TextAnchor.MiddleLeft);
+            string bioLine=logged&&!string.IsNullOrEmpty(a.Profile.bio)
+                ?a.Profile.bio
+                :(logged?"Открыть профиль, аватар и 200 достижений  →":"Настроить аватар, никнейм или войти в аккаунт  →");
+            Label(profileCard.transform,bioLine,110,71,350,20,12,Muted,false,TextAnchor.MiddleLeft);
+
+            Box(content.transform,1048,242,472,1,new Color(1f,1f,1f,.16f),false);
+
+            // 5. The 4 Requested Main Menu Buttons directly below Avatar + Nickname!
+            string singleSub=hasSave
+                ?"Продолжить сохранённый мир или начать новую экспедицию"
+                :"Выживание, сюжет, живые города и парящие острова";
+            string friendsSub="Профили друзей, поиск по @нику и совместная игра";
+            if(logged&&a.Friends!=null)
             {
-                HomeAction("Продолжить экспедицию","Вернуться в свой солнечный мир",454,game.ContinueOffline,true,"Home.Continue");
-                HomeAction("Новая экспедиция","Выбрать режим и создать яркий мир",536,ShowWorld,false,"Home.Play");
-                HomeAction("Мультиплеер","Играть вместе с друзьями по сети",618,ShowRooms,false,"Home.Coop");
+                int fTotal=a.Friends.friends!=null?a.Friends.friends.Length:0;
+                int fOnline=0;if(a.Friends.friends!=null)foreach(var f in a.Friends.friends)if(f!=null&&f.online)fOnline++;
+                int fInc=a.Friends.incoming!=null?a.Friends.incoming.Length:0;
+                friendsSub=fInc>0
+                    ?("В сети: "+fOnline+" из "+fTotal+"  ·  Новых заявок: "+fInc)
+                    :("Друзей: "+fTotal+" (в сети: "+fOnline+")  ·  открыть список");
+            }
+
+            HomeAction("Одиночная игра",singleSub,254,ShowWorld,true,"Home.Play");
+            HomeAction("Многопользовательская игра","Сервера игроков и кооператив до 8 человек",340,ShowRooms,false,"Home.Coop");
+            HomeAction("Настройки","Графика, дальность прорисовки, звук и управление",426,()=>ShowSettings(Page.Home),false,"Home.Settings");
+            HomeAction("Друзья",friendsSub,512,OpenFriendsHub,false,"Home.Friends");
+
+            if(hasSave)
+            {
+                var cont=Button("Продолжить мир  →",1044,606,286,52,game.ContinueOffline);cont.name="Home.Continue";
+                var quit=Button("Выход",1342,606,182,52,()=>Application.Quit());quit.name="Home.Quit";
             }
             else
             {
-                HomeAction("Начать экспедицию","Выбрать режим и создать свой мир",458,ShowWorld,true,"Home.Play");
-                HomeAction("Мультиплеер","Играть вместе с друзьями по сети",542,ShowRooms,false,"Home.Coop");
+                var quit=Button("Выход из игры",1044,606,480,52,()=>Application.Quit());quit.name="Home.Quit";
             }
-
-            float bottomY=game.HasSave?742:660;
-            var settings=Button("Настройки",64,bottomY,270,52,()=>ShowSettings(Page.Home));settings.name="Home.Settings";
-            var quit=Button("Выйти",350,bottomY,270,52,()=>Application.Quit());quit.name="Home.Quit";
-
-            var card=Box(content.transform,1124,724,412,114,new Color(.065f,.170f,.268f,.68f));
-            card.raycastTarget=false;
-            var cardBorder=Rect("Chapter border",card.transform,0,0,0,0);Stretch(cardBorder);
-            var cbImg=cardBorder.gameObject.AddComponent<Image>();cbImg.sprite=MenuArtwork.Outline;cbImg.type=Image.Type.Sliced;cbImg.raycastTarget=false;cbImg.color=new Color(Accent.r,Accent.g,Accent.b,.38f);
-            Box(card.transform,0,18,4,78,SpringAccent,false);
-            Label(card.transform,"ПАНОРАМА ЛЕСТИНГИИ  ·  360°",22,16,368,22,12,Accent,true);
-            Label(card.transform,"Уютный дом и далёкие орбиты",22,42,368,28,18,White,true);
-            Label(card.transform,"Цветущая сакура, мельницы, водопады и 16 планет.",22,74,368,24,13,Muted);
         }
         void HomeAction(string title,string subtitle,float y,Action action,bool primary,string objectName)
         {
-            var button=Button("",92,y,496,72,action,primary);button.name=objectName;
-            Label(button.transform,title,22,13,416,26,18,primary?Ink:White,true);
-            Label(button.transform,subtitle,22,42,416,20,12,primary?new Color(.22f,.15f,.03f):Muted);
-            Label(button.transform,"→",446,0,34,72,22,primary?Ink:Accent,false,TextAnchor.MiddleCenter);
+            var button=Button("",1044,y,480,76,action,primary);button.name=objectName;
+            Label(button.transform,title,22,13,404,28,19,primary?Ink:White,true);
+            Label(button.transform,subtitle,22,44,404,20,12,primary?new Color(.22f,.15f,.03f):Muted);
+            Label(button.transform,"→",434,0,34,76,22,primary?Ink:Accent,false,TextAnchor.MiddleCenter);
         }
         public void ShowWorld()
         {
-            Clear(Page.World);Header("Режим новой экспедиции");
+            Clear(Page.World);Header("Одиночная игра");
             Label(content.transform,"КАК НАЧНЁТСЯ ТВОЯ ЭРА?",64,171,1400,67,36,White,true);
-            Label(content.transform,"Старт экспедиции — на живой планете Лестингия: от первых ремёсел и поселений до космодрома и полётов к другим мирам.",66,247,1440,42,19,Muted);
+            Label(content.transform,"Старт экспедиции — на живой планете Лестингия: цветущие долины, шумные города, водопады, парящие острова и полёты к далёким мирам.",66,247,1440,42,19,Muted);
             for(int i=0;i<4;i++)
             {
                 int mode=i;bool chosen=game.SelectedMode==i;var button=Button("",64+i*368,331,352,254,()=>{game.SelectedMode=mode;ShowWorld();},chosen);
@@ -260,10 +319,24 @@ namespace LestingCraft.Presentation
             }
             Label(content.transform,"СТАРТ: ЛЕСТИНГИЯ",64,628,470,37,19,Accent,true);
             Label(content.transform,"Мир генерируется автоматически.\nВыбирается только режим экспедиции.",64,678,465,80,18,Muted);
-            Label(content.transform,"Локальная экспедиция",542,626,640,34,20,White);
-            Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nНовый мир заменяет предыдущее локальное сохранение.",542,675,650,72,16,Muted);
-            Button("Начать  →",1227,668,309,64,game.PlayOffline,true);
-            status=Label(content.transform,"Бортовой архив экспедиции (3 главы), 26 боссов миров и межпланетные полёты доступны во всех режимах.",542,784,940,66,14,Muted);
+            bool hasSave=game!=null&&game.HasSave;
+            if(hasSave)
+            {
+                Label(content.transform,"Сохранённый мир найден",542,626,330,34,20,SpringAccent,true);
+                Label(content.transform,"Вернитесь в текущую экспедицию\nили создайте новый мир справа.",542,670,330,68,15,Muted);
+                var resumeBtn=Button("Продолжить мир  →",886,668,322,64,game.ContinueOffline,true);
+                resumeBtn.name="World.Continue";
+                var newBtn=Button("Новый мир  →",1224,668,312,64,game.PlayOffline,false);
+                newBtn.name="World.New";
+            }
+            else
+            {
+                Label(content.transform,"Локальная экспедиция",542,626,640,34,20,White);
+                Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nНовый мир заменяет предыдущее локальное сохранение.",542,675,650,72,16,Muted);
+                var startBtn=Button("Начать  →",1227,668,309,64,game.PlayOffline,true);
+                startBtn.name="World.New";
+            }
+            status=Label(content.transform,"Бортовой архив экспедиции (3 главы), живые города, парящие острова, 26 боссов миров и межпланетные полёты доступны во всех режимах.",542,784,940,66,14,Muted);
         }
         int lobbyRevision=-1;
         public void ShowLobby()
@@ -293,12 +366,13 @@ namespace LestingCraft.Presentation
             Button("Открыть все 3 главы сюжета  →",28,254,704,56,ShowStoryJournal,true,storyCard.transform);
             Button("Продолжить  →",64,534,395,64,game.Resume,true);
             Button("Сюжет и журнал",505,534,420,64,ShowStoryJournal);
-            Button("Аккаунт / достижения",505,698,420,58,ShowAccount);
+            Button("Профиль и достижения",505,698,420,58,ShowAccount);
             Button("Настройки",64,619,395,58,()=>ShowSettings(Page.Pause));
             Button("В главное меню",64,698,395,58,game.ReturnToMenu);
             Label(content.transform,"ESC — продолжить · E — инвентарь · Шаттл: SHIFT/CTRL — тяга, X — тормоз, G — цель, J — прыжок, L — посадка",952,535,584,84,15,Muted);
             if(game.Online)Button("Скопировать адрес сервера",505,619,420,58,()=>GUIUtility.systemCopyBuffer=game.EndpointAddress);
-            else {var hostServer=Button("Создать сервер",952,630,584,62,()=>game.OpenWorldAsServer("Мир "+game.PlayerName),true);hostServer.name="Pause.HostServer";
+            else {Button("Друзья и команда",505,619,420,58,OpenFriendsHub);
+                  var hostServer=Button("Создать сервер",952,630,584,62,()=>game.OpenWorldAsServer("Мир "+game.PlayerName),true);hostServer.name="Pause.HostServer";
                   Label(content.transform,"Мир откроется для друзей по адресу "+game.EndpointAddress+".",952,696,584,54,14,Muted);}
         }
         public void ShowStoryJournal()
@@ -746,62 +820,275 @@ namespace LestingCraft.Presentation
         }
         void OnDestroy(){if(rounded)Destroy(rounded);}
         int achievementPage;bool achievementOnlyEarned;
+        int authTab; // 0=login, 1=register, 2=recover
+        int accountRightTab; // 0=showcase & stats, 1=security
+        string draftBio="",draftLocalNick="",localProfileNotice="";
         void RefreshAccountIfOpen(){if(page==Page.Account)ShowAccount();}
-        void ShowAccount()
+        public void ShowAccount()
         {
-            Clear(Page.Account);Header("Игровой аккаунт",false);var a=game.Accounts;
-            Button("← Назад",64,806,205,52,()=>{if(game.InWorld)ShowPause();else ShowHome();});
-            if(!a.Logged)
+            Clear(Page.Account);Header("Профиль игрока",false);
+            var a=game?game.Accounts:null;
+            var backBtn=Button("← Назад",64,804,210,50,()=>{if(game&&game.InWorld)ShowPause();else ShowHome();});
+            backBtn.name="Account.Back";
+
+            if(a==null||!a.Logged)
             {
-                string username="",password="",recovery="";
-                Label(content.transform,"Аккаунт необязателен для игры. Войдите до экспедиции, чтобы сохранять прогресс между устройствами.",64,214,1450,52,20,White);
-                Input("ЛОГИН · 3–24 латинских символа",username,"Explorer_01",64,285,590,v=>username=v);
-                var pw=Input("ПАРОЛЬ · минимум 12 символов",password,"Не отправляйте пароль в чат",64,398,590,v=>password=v);pw.contentType=InputField.ContentType.Password;pw.characterLimit=128;
-                var rc=Input("КОД ВОССТАНОВЛЕНИЯ · только для восстановления",recovery,"Получается один раз при регистрации",64,510,590,v=>recovery=v);rc.contentType=InputField.ContentType.Password;
-                Action<string> submit=action=>{string capturedPassword=password,r=recovery;pw.text="";rc.text="";a.Authenticate(action,username,capturedPassword,r,RefreshAccountIfOpen);};
-                Button("Войти",64,636,280,58,()=>submit("login"),true);Button("Регистрация",364,636,290,58,()=>submit("register"));Button("Восстановить доступ",64,711,590,52,()=>submit("recover"));
-                Label(content.transform,"Без электронной почты\n\nПри регистрации вы получите личный код восстановления. Сохраните его вне игры и никому не показывайте. При восстановлении старый код заменяется.\n\nПароль и токен входа не записываются в PlayerPrefs. Вход действует в памяти текущего запуска игры. Без сервиса аккаунтов локальное выживание остаётся доступным.",800,285,650,390,20,Muted);
-                status=Label(content.transform,a.Message,800,705,650,90,18,Accent);return;
+                if(string.IsNullOrEmpty(draftLocalNick))draftLocalNick=ProfileAvatar.LocalNickname;
+                if(string.IsNullOrEmpty(draftBio))draftBio=ProfileAvatar.LocalBio;
+                string curLocalAv=ProfileAvatar.LocalAvatar;
+
+                // Left Card: Local Customizable Hero Profile (works even offline!)
+                var left=Box(content.transform,64,142,664,638,Panel);
+                Label(left.transform,"ЛОКАЛЬНЫЙ ПРОФИЛЬ ГЕРОЯ",24,18,500,24,14,Accent,true);
+                AvatarPortrait(left.transform,curLocalAv,draftLocalNick,24,52,108);
+                Label(left.transform,"@"+ProfileAvatar.LocalNickname,150,56,480,34,26,White,true);
+                Label(left.transform,ProfileAvatar.TitleOf(curLocalAv)+"  ·  Одиночная и LAN-игра",150,94,480,24,15,Accent);
+                Label(left.transform,string.IsNullOrEmpty(ProfileAvatar.LocalBio)?"Добавьте девиз героя ниже":ProfileAvatar.LocalBio,150,122,490,38,13,Muted);
+
+                Label(left.transform,"ВЫБЕРИТЕ АВАТАР (12 ГЕРОЕВ)",24,178,600,22,13,Accent,true);
+                for(int i=0;i<ProfileAvatar.Catalog.Length;i++)
+                {
+                    var arch=ProfileAvatar.Catalog[i];
+                    bool selected=arch.Id==curLocalAv;
+                    float sx=24+(i%6)*104,sy=206+(i/6)*82;
+                    var sw=Button("",sx,sy,94,72,()=>{ProfileAvatar.LocalAvatar=arch.Id;localProfileNotice="Выбран аватар: "+arch.Title;ShowAccount();},selected,left.transform);
+                    AvatarPortrait(sw.transform,arch.Id,null,21,6,52);
+                }
+
+                InputIn(left.transform,"ВАШ НИКНЕЙМ (3–24 латинских символа)",draftLocalNick,"Explorer_01",24,382,616,v=>draftLocalNick=v,24);
+                InputIn(left.transform,"ДЕВИЗ ПРОФИЛЯ (до 80 символов)",draftBio,"Исследую парящие острова Лестингии!",24,470,616,v=>draftBio=v,80);
+                var saveLocal=Button("Сохранить локальный профиль",24,562,360,52,()=>
+                {
+                    string cleanNick=ProfileAvatar.SanitizeLocalNick(draftLocalNick);
+                    if(string.IsNullOrEmpty(cleanNick)){localProfileNotice="Никнейм: 3–24 латинские буквы, цифры или _.";ShowAccount();return;}
+                    ProfileAvatar.LocalNickname=cleanNick;
+                    ProfileAvatar.LocalBio=draftBio;
+                    if(game)game.PlayerName=cleanNick;
+                    localProfileNotice="Профиль обновлён: @"+cleanNick;
+                    ShowAccount();
+                },true,left.transform);
+                saveLocal.name="Account.SaveLocal";
+                Button("Скопировать @ник",398,562,242,52,()=>{GUIUtility.systemCopyBuffer=ProfileAvatar.LocalNickname;localProfileNotice="Ник @"+ProfileAvatar.LocalNickname+" скопирован!";ShowAccount();},false,left.transform);
+
+                // Right Card: Clean Tabbed Cloud Sign-In / Registration / Recovery
+                var right=Box(content.transform,752,142,784,638,Panel);
+                Label(right.transform,"ЕДИНЫЙ АККАУНТ LESTINGCRAFT",28,18,720,26,15,Accent,true);
+                Label(right.transform,"Войдите или создайте аккаунт, чтобы добавлять друзей по @нику, открыть кошелёк, скины и синхронизировать 200 достижений.",28,46,728,44,14,Muted);
+
+                string[] tabs={"Вход","Регистрация","Восстановление"};
+                for(int t=0;t<3;t++)
+                {
+                    int tabIdx=t;
+                    Button(tabs[t],28+t*246,102,234,46,()=>{authTab=tabIdx;ShowAccount();},authTab==t,right.transform);
+                }
+
+                string username=ProfileAvatar.LocalNickname=="Explorer"?"":ProfileAvatar.LocalNickname,password="",recovery="";
+                InputIn(right.transform,"ЛОГИН АККАУНТА · 3–24 латинских символа",username,"Explorer_01",28,168,728,v=>username=v,24);
+                var pw=InputIn(right.transform,authTab==2?"НОВЫЙ ПАРОЛЬ · минимум 12 символов":"ПАРОЛЬ · минимум 12 символов",password,"Минимум 12 символов",28,258,728,v=>password=v,128);
+                pw.contentType=InputField.ContentType.Password;
+                InputField rc=null;
+                if(authTab==2)
+                {
+                    rc=InputIn(right.transform,"ЛИЧНЫЙ КОД ВОССТАНОВЛЕНИЯ",recovery,"64-символьный код, выданный при регистрации",28,348,728,v=>recovery=v,128);
+                    rc.contentType=InputField.ContentType.Password;
+                }
+
+                float actionY=authTab==2?444:362;
+                string actionVerb=authTab==0?"login":authTab==1?"register":"recover";
+                string actionLabel=authTab==0?"Войти в аккаунт  →":authTab==1?"Создать аккаунт и получить код  →":"Восстановить доступ  →";
+                Button(actionLabel,28,actionY,460,56,()=>
+                {
+                    if(a==null)return;
+                    string capturedPw=password,capturedRc=recovery,capturedUser=username;
+                    pw.text="";if(rc)rc.text="";
+                    a.Authenticate(actionVerb,capturedUser,capturedPw,capturedRc,()=>
+                    {
+                        if(a.Logged&&a.Profile!=null)
+                        {
+                            ProfileAvatar.LocalNickname=a.Profile.username;
+                            if(game)game.PlayerName=a.Profile.username;
+                            draftBio=a.Profile.bio??"";
+                        }
+                        RefreshAccountIfOpen();
+                    });
+                },true,right.transform);
+
+                var infoBox=Box(right.transform,28,518,728,96,new Color(.05f,.13f,.21f,.88f));
+                Label(infoBox.transform,"Безопасность без почты и спама",18,10,690,22,14,SpringAccent,true);
+                Label(infoBox.transform,"При регистрации выдаётся одноразовый код восстановления. Пароль и сессия живут только в оперативной памяти и никогда не сохраняются в открытом виде.",18,34,692,52,13,Muted);
+
+                string msg=!string.IsNullOrEmpty(localProfileNotice)?localProfileNotice:(a!=null?a.Message:"Локальный профиль готов к игре.");
+                status=Label(content.transform,msg,300,808,1236,44,15,Accent,false,TextAnchor.MiddleRight);
+                return;
             }
+
             var p=a.Profile;
             if(!string.IsNullOrEmpty(a.RecoveryCode))
             {
-                Label(content.transform,"СОХРАНИТЕ КОД ВОССТАНОВЛЕНИЯ. Он не будет храниться в игре. Не отправляйте его в чат.",64,340,1410,90,23,White);
-                Label(content.transform,a.RecoveryCode,64,465,1400,100,23,Accent);
-                Button("Скопировать код",64,620,450,64,()=>GUIUtility.systemCopyBuffer=a.RecoveryCode);Button("Код сохранён →",550,620,450,64,()=>{a.DismissRecovery();ShowAccount();},true);return;
+                var card=Box(content.transform,180,180,1240,540,Panel);
+                Label(card.transform,"СОХРАНИТЕ КОД ВОССТАНОВЛЕНИЯ",40,36,1160,44,28,Accent,true);
+                Label(card.transform,"Этот код показывается только один раз и не хранится на устройстве.\nСохраните его в надёжном месте — он заменяет электронную почту при смене пароля.",40,92,1160,64,18,White);
+                var codeBox=Box(card.transform,40,182,1160,92,new Color(.04f,.10f,.16f,.96f));
+                Label(codeBox.transform,a.RecoveryCode,24,0,1112,92,21,SpringAccent,true,TextAnchor.MiddleCenter);
+                Button("Скопировать код в буфер",40,316,460,62,()=>{GUIUtility.systemCopyBuffer=a.RecoveryCode;a.Message="Код восстановления скопирован в буфер обмена.";},false,card.transform);
+                Button("Я сохранил код — перейти в профиль  →",528,316,672,62,()=>{a.DismissRecovery();ShowAccount();},true,card.transform);
+                status=Label(content.transform,a.Message,300,808,1236,44,15,Accent,false,TextAnchor.MiddleRight);
+                return;
             }
-            Label(content.transform,"@"+p.username+"  ·  уровень "+p.level+"  ·  "+p.xp+" XP",64,196,1450,44,26,White,true);
-            Label(content.transform,p.titleName+"  ·  "+p.achievements.Length+" / 200 достижений",64,246,1450,32,19,Accent);
-            Label(content.transform,"Охота: "+a.Counter("kills")+" · Страж: "+a.Counter("bosses")+" · Добыто: "+a.Counter("mined")+" · Построено: "+a.Counter("placed")+" · Создано: "+a.Counter("crafted")+" · Смертей: "+a.Counter("deaths")+" · В игре: "+(a.Counter("alive_s")/60)+" мин",64,284,1460,40,17,White);
-            if(a.Wallet==null)a.CloudState(()=>{if(page==Page.Account)ShowAccount();});
-            string walletLine=a.Wallet==null?"Кошелёк: загружается…":"Кошелёк: "+CloudFormat.Coins(a.Wallet.balance)+" монет"+(a.Wallet.profile!=null&&!string.IsNullOrEmpty(a.Wallet.profile.avatar_skin)?" · скин "+a.Wallet.profile.avatar_skin:" · скин не выбран");
-            Label(content.transform,walletLine,64,330,1460,28,17,Accent);
-            // Friends are added by nickname, so the nickname is the visible identity:
-            // one compact card with the name and a copy button, nothing technical.
-            var nick=Box(content.transform,64,372,760,92,new Color(.055f,.085f,.10f,.98f));
-            Label(nick.transform,"ВАШ НИК",22,10,300,22,13,Accent,true);
-            Label(nick.transform,"@"+a.Profile.username,22,32,520,42,26,White,true);
-            Label(nick.transform,"Друзья находят вас по этому нику",22,76,560,14,12,Muted);
-            Button("Скопировать",600,26,140,42,()=>GUIUtility.systemCopyBuffer=a.Profile.username,false,nick.transform);
-            Button("200 достижений  →",64,486,440,50,()=>{achievementPage=0;ShowAchievements();},true);
-            Button("Синхронизировать",530,486,440,50,()=>a.Sync(RefreshAccountIfOpen));
-            Button("Сменить титул",996,486,440,50,()=>{var titles=new List<string>{""};foreach(var d in a.Achievements)if(!string.IsNullOrEmpty(d.title)&&Array.IndexOf(p.achievements,d.id)>=0)titles.Add(d.id);a.ChangeTitle(titles[(titles.IndexOf(p.title)+1)%titles.Count],RefreshAccountIfOpen);});
-            string current="",next="";var old=Input("ТЕКУЩИЙ ПАРОЛЬ",current,"Для смены пароля / удаления",64,556,660,v=>current=v);old.contentType=InputField.ContentType.Password;old.characterLimit=128;
-            var fresh=Input("НОВЫЙ ПАРОЛЬ",next,"Минимум 12 символов",780,556,660,v=>next=v);fresh.contentType=InputField.ContentType.Password;fresh.characterLimit=128;
-            Button("Изменить пароль",64,664,440,52,()=>{string c=current,n=next;old.text="";fresh.text="";a.ChangePassword(c,n,RefreshAccountIfOpen);});
-            bool confirm=false;Button("Удалить аккаунт (двойное подтверждение)",530,664,660,52,()=>{if(!confirm){confirm=true;a.Message="Повторное нажатие удалит профиль, достижения и статистику. Нужен текущий пароль.";if(status)status.text=a.Message;return;}string c=current;old.text="";a.Delete(c,RefreshAccountIfOpen);});
-            var walletButton=Button("Кошелёк и скины  →",64,732,440,50,ShowStore,true);walletButton.name="Account.Store";
-            var friendsButton=Button("Друзья  →",530,732,440,50,()=>{a.CloudFriends(AfterCloud);ShowFriends();});friendsButton.name="Account.Friends";
-            Button("Выйти из аккаунта",64,798,440,44,()=>a.Logout(RefreshAccountIfOpen));
-            status=Label(content.transform,a.Message,996,732,440,110,16,Accent);
+
+            if(a.Wallet==null&&!a.CloudBusy)a.CloudState(()=>{if(page==Page.Account)ShowAccount();});
+            if(a.Friends==null&&!a.CloudBusy)a.CloudFriends(()=>{if(page==Page.Account)ShowAccount();});
+            if(game)game.PlayerName=p.username;
+
+            string curAvatar=ProfileAvatar.ResolveId(p.avatar,p.username);
+            string bioShown=draftBio.Length>0?draftBio:(p.bio??"");
+
+            // Left Hero Card: Avatar, @Nickname, Level/XP Bar, 12-Avatar Picker & Bio!
+            var hero=Box(content.transform,64,142,684,638,Panel);
+            AvatarPortrait(hero.transform,curAvatar,p.username,24,22,116);
+            var onlineBadge=Box(hero.transform,122,120,18,18,SpringAccent);onlineBadge.raycastTarget=false;
+
+            Label(hero.transform,"@"+p.username,158,20,330,36,27,White,true);
+            Button("Копировать @ник",496,20,164,38,()=>
+            {
+                GUIUtility.systemCopyBuffer=p.username;
+                a.Message="Ник @"+p.username+" скопирован — отправьте его другу!";
+                if(status)status.text=a.Message;
+            },false,hero.transform);
+
+            string titleName=string.IsNullOrEmpty(p.titleName)?"Странник":p.titleName;
+            Label(hero.transform,"Титул: "+titleName+"  ·  "+ProfileAvatar.TitleOf(curAvatar),158,60,330,24,15,Accent);
+            Button("Сменить титул ↻",496,64,164,34,()=>
+            {
+                var titles=new List<string>{""};
+                if(a.Achievements!=null&&p.achievements!=null)
+                    foreach(var d in a.Achievements)
+                        if(!string.IsNullOrEmpty(d.title)&&Array.IndexOf(p.achievements,d.id)>=0)titles.Add(d.id);
+                string nextTitle=titles[(titles.IndexOf(p.title??"")+1)%titles.Count];
+                a.UpdateProfile(nextTitle,null,null,RefreshAccountIfOpen);
+            },false,hero.transform);
+
+            // XP & Level Progress Bar
+            int nextXp=AccountClient.XpFloorForLevel(p.level+1);
+            float xpFill=AccountClient.XpProgress01(p.xp,p.level);
+            Label(hero.transform,"Уровень "+p.level+"   ·   "+p.xp+" / "+nextXp+" XP",158,98,490,22,14,White,true);
+            var xpBg=Box(hero.transform,158,124,502,14,new Color(.04f,.10f,.16f,.95f));
+            if(xpFill>0.01f)Box(xpBg.transform,0,0,Mathf.Max(12f,502f*xpFill),14,Accent);
+
+            Label(hero.transform,"ВЫБОР АВАТАРА ПРОФИЛЯ",24,160,620,22,13,Accent,true);
+            for(int i=0;i<ProfileAvatar.Catalog.Length;i++)
+            {
+                var arch=ProfileAvatar.Catalog[i];
+                bool selected=arch.Id==curAvatar;
+                float sx=24+(i%6)*107,sy=188+(i/6)*82;
+                var sw=Button("",sx,sy,98,74,()=>
+                {
+                    ProfileAvatar.LocalAvatar=arch.Id;
+                    a.UpdateProfile(null,arch.Id,null,RefreshAccountIfOpen);
+                },selected,hero.transform);
+                AvatarPortrait(sw.transform,arch.Id,null,23,6,52);
+            }
+
+            string initialBio=p.bio??"";
+            string currentBioInput=string.IsNullOrEmpty(draftBio)?initialBio:draftBio;
+            InputIn(hero.transform,"ДЕВИЗ ИГРОКА (виден друзьям в карточке профиля)",currentBioInput,"Например: Строю замок на парящем острове!",24,366,636,v=>draftBio=v,80);
+            Button("Сохранить девиз",24,454,260,46,()=>
+            {
+                string clean=(draftBio??"").Trim();
+                ProfileAvatar.LocalBio=clean;
+                a.UpdateProfile(null,null,clean,()=>{draftBio="";RefreshAccountIfOpen();});
+            },true,hero.transform);
+
+            // Bottom quick economy & friends strip inside Hero Card
+            long balance=a.Wallet!=null?a.Wallet.balance:0;
+            int friendCount=a.Friends!=null&&a.Friends.friends!=null?a.Friends.friends.Length:0;
+            int incomingCount=a.Friends!=null&&a.Friends.incoming!=null?a.Friends.incoming.Length:0;
+            var walletButton=Button("Кошелёк: "+CloudFormat.Coins(balance)+" монет  →",24,564,310,54,ShowStore,true,hero.transform);
+            walletButton.name="Account.Store";
+            string fBtnText=incomingCount>0?("Друзья ("+friendCount+") · +"+incomingCount+"  →"):("Друзья ("+friendCount+")  →");
+            var friendsButton=Button(fBtnText,350,564,310,54,()=>{a.CloudFriends(AfterCloud);ShowFriends();},false,hero.transform);
+            friendsButton.name="Account.Friends";
+
+            // Right Panel: Showcase Stats + Achievements OR Account Security
+            var showcase=Box(content.transform,772,142,764,638,Panel);
+            Button("Витрина и достижения",24,18,350,44,()=>{accountRightTab=0;ShowAccount();},accountRightTab==0,showcase.transform);
+            Button("Безопасность и вход",390,18,350,44,()=>{accountRightTab=1;ShowAccount();},accountRightTab==1,showcase.transform);
+
+            if(accountRightTab==0)
+            {
+                Label(showcase.transform,"СТАТИСТИКА ЭКСПЕДИЦИЙ",24,80,500,24,14,Accent,true);
+                string[] sTitles={"ВРЕМЯ В МИРЕ","ДОБЫТО БЛОКОВ","ПОСТРОЕНО","СОЗДАНО","ОХОТА И БОССЫ","ПРОЙДЕНО ПЕШКОМ"};
+                string[] sVals={
+                    (a.Counter("alive_s")/60)+" мин",
+                    CloudFormat.Coins(a.Counter("mined")),
+                    CloudFormat.Coins(a.Counter("placed")),
+                    CloudFormat.Coins(a.Counter("crafted")),
+                    a.Counter("kills")+" / "+a.Counter("bosses"),
+                    CloudFormat.Coins(a.Counter("walk_m"))+" м"
+                };
+                for(int i=0;i<6;i++)
+                {
+                    float tx=24+(i%3)*242,ty=112+(i/3)*102;
+                    var tile=Box(showcase.transform,tx,ty,230,90,new Color(.05f,.13f,.21f,.90f));
+                    Label(tile.transform,sTitles[i],16,12,198,20,11,Accent,true);
+                    Label(tile.transform,sVals[i],16,38,198,38,24,White,true);
+                }
+
+                int earnedCount=p.achievements!=null?p.achievements.Length:0;
+                float achRatio=Mathf.Clamp01(earnedCount/200f);
+                Label(showcase.transform,"ПРОГРЕСС ДОСТИЖЕНИЙ: "+earnedCount+" / 200",24,332,600,24,14,Accent,true);
+                var achBar=Box(showcase.transform,24,360,716,16,new Color(.04f,.10f,.16f,.95f));
+                if(achRatio>0f)Box(achBar.transform,0,0,Mathf.Max(12f,716f*achRatio),16,SpringAccent);
+
+                // Show 2 featured achievements (most recent unlocked or next closest targets!)
+                if(a.Achievements!=null)
+                {
+                    int shown=0;
+                    for(int i=0;i<a.Achievements.Length&&shown<2;i++)
+                    {
+                        var d=a.Achievements[i];
+                        bool unlocked=p.achievements!=null&&Array.IndexOf(p.achievements,d.id)>=0;
+                        if(shown==0&&!unlocked&&earnedCount>0)continue;
+                        var ac=Box(showcase.transform,24,392+shown*78,716,68,new Color(.05f,.13f,.21f,.90f));
+                        Label(ac.transform,(unlocked?"★ ":"○ ")+d.name,18,8,520,24,16,unlocked?Accent:White,true);
+                        Label(ac.transform,d.description,18,34,540,24,12,Muted);
+                        Label(ac.transform,"+"+d.xp+" XP",580,20,118,28,15,SpringAccent,true,TextAnchor.MiddleRight);
+                        shown++;
+                    }
+                }
+
+                Button("Все 200 достижений  →",24,564,436,54,()=>{achievementPage=0;ShowAchievements();},true,showcase.transform);
+                Button("Синхронизировать",476,564,264,54,()=>a.Sync(RefreshAccountIfOpen),false,showcase.transform);
+            }
+            else
+            {
+                Label(showcase.transform,"УПРАВЛЕНИЕ ПАРОЛЕМ И СЕССИЕЙ",24,82,680,24,14,Accent,true);
+                string current="",next="";
+                var old=InputIn(showcase.transform,"ТЕКУЩИЙ ПАРОЛЬ",current,"Введите текущий пароль",24,118,716,v=>current=v,128);
+                old.contentType=InputField.ContentType.Password;
+                var fresh=InputIn(showcase.transform,"НОВЫЙ ПАРОЛЬ (минимум 12 символов)",next,"Минимум 12 символов",24,210,716,v=>next=v,128);
+                fresh.contentType=InputField.ContentType.Password;
+
+                Button("Изменить пароль",24,308,348,52,()=>{string c=current,n=next;old.text="";fresh.text="";a.ChangePassword(c,n,RefreshAccountIfOpen);},true,showcase.transform);
+                Button("Выйти из аккаунта",392,308,348,52,()=>a.Logout(RefreshAccountIfOpen),false,showcase.transform);
+
+                var warnBox=Box(showcase.transform,24,392,716,148,new Color(.18f,.06f,.08f,.78f));
+                Label(warnBox.transform,"ОПАСНАЯ ЗОНА · УДАЛЕНИЕ АККАУНТА",20,14,676,22,13,Danger,true);
+                Label(warnBox.transform,"Удаление необратимо стирает облачный профиль, статистику и достижения.\nДля подтверждения введите текущий пароль выше и нажмите кнопку дважды.",20,42,676,56,13,White);
+                bool confirm=false;
+                Button("Удалить аккаунт (двойное подтверждение)",20,96,676,42,()=>{if(!confirm){confirm=true;a.Message="Нажмите ещё раз для полного удаления профиля (требуется текущий пароль).";if(status)status.text=a.Message;return;}string c=current;old.text="";a.Delete(c,RefreshAccountIfOpen);},false,warnBox.transform);
+            }
+
+            status=Label(content.transform,a.Message,290,808,1246,44,15,Accent,false,TextAnchor.MiddleRight);
         }
         void ShowAchievements()
         {
-            Clear(Page.Achievements);Header("Достижения · 200",false);var a=game.Accounts;if(!a.Logged){ShowAccount();return;}
+            Clear(Page.Achievements);Header("Достижения · 200",false);var a=game?game.Accounts:null;if(a==null||!a.Logged){ShowAccount();return;}
             var list=new List<AchievementDefinition>();foreach(var d in a.Achievements)if(!achievementOnlyEarned||Array.IndexOf(a.Profile.achievements,d.id)>=0)list.Add(d);
             int pages=Math.Max(1,(list.Count+7)/8);achievementPage=Math.Max(0,Math.Min(pages-1,achievementPage));
-            for(int i=0;i<8;i++){int index=achievementPage*8+i;if(index>=list.Count)break;var d=list[index];bool earned=Array.IndexOf(a.Profile.achievements,d.id)>=0;float x=64+i%2*746,y=230+i/2*133;var card=Box(content.transform,x,y,718,118,Panel);Label(card.transform,(earned?"✓ ":"")+d.name,16,10,680,30,19,earned?Accent:White);Label(card.transform,d.description,16,44,680,42,14,Muted);Label(card.transform,d.category+" · "+Math.Min(d.target,a.Counter(d.counter))+" / "+d.target+" · "+d.xp+" XP",16,90,680,22,13,Muted);}
-            Button("← Профиль",64,807,230,52,ShowAccount);Button("←",600,807,90,52,()=>{achievementPage--;ShowAchievements();});Label(content.transform,(achievementPage+1)+" / "+pages,715,821,150,35,21,White);Button("→",865,807,90,52,()=>{achievementPage++;ShowAchievements();});Button(achievementOnlyEarned?"Только полученные":"Все достижения",1110,807,375,52,()=>{achievementOnlyEarned=!achievementOnlyEarned;achievementPage=0;ShowAchievements();});
+            Label(content.transform,"Открыто: "+a.Profile.achievements.Length+" из 200  ·  Уровень "+a.Profile.level+" ("+a.Profile.xp+" XP)",64,148,900,32,18,Accent,true);
+            for(int i=0;i<8;i++){int index=achievementPage*8+i;if(index>=list.Count)break;var d=list[index];bool earned=Array.IndexOf(a.Profile.achievements,d.id)>=0;float x=64+i%2*746,y=196+i/2*142;var card=Box(content.transform,x,y,718,126,Panel);Label(card.transform,(earned?"★ ":"○ ")+d.name+(!string.IsNullOrEmpty(d.title)?"  ·  титул «"+d.title+"»":""),18,10,680,30,18,earned?Accent:White,true);Label(card.transform,d.description,18,44,680,44,14,Muted);Label(card.transform,d.category+" · "+Math.Min(d.target,a.Counter(d.counter))+" / "+d.target+" · +"+d.xp+" XP",18,94,680,22,13,earned?SpringAccent:Muted);}
+            Button("← Профиль",64,807,230,52,ShowAccount);Button("←",600,807,90,52,()=>{achievementPage--;ShowAchievements();});Label(content.transform,(achievementPage+1)+" / "+pages,715,821,150,35,21,White,false,TextAnchor.MiddleCenter);Button("→",865,807,90,52,()=>{achievementPage++;ShowAchievements();});Button(achievementOnlyEarned?"Показать все 200":"Только открытые",1110,807,426,52,()=>{achievementOnlyEarned=!achievementOnlyEarned;achievementPage=0;ShowAchievements();});
         }
     }
 }

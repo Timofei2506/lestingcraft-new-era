@@ -9,7 +9,11 @@ const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status
 const nameOf=v=>{if(typeof v!=='string'||! /^[a-zA-Z0-9_]{3,24}$/.test(v))fail('Логин: 3–24 латинские буквы, цифры или _.');return v.toLowerCase();};
 const passwordOf=v=>{if(typeof v!=='string'||v.length<12||v.length>128||Buffer.byteLength(v)>512)fail('Пароль: от 12 до 128 символов.');return v;};
 const statKeys=new Set([...counterKeys,'deaths','damage_taken']);
-export function publicProfile(u){return {uid:u.uid,username:u.username,title:u.title||'',titleName:achievements.find(a=>a.id===u.title)?.title||'Странник',xp:u.xp,level:levelFor(u.xp),achievements:u.earned,stats:Object.entries(u.stats).sort().map(([key,value])=>({key,value})),integrity:'local-and-friends',revision:u.revision};}
+export const AVATAR_IDS=['pioneer','sakura','knight','alchemist','skycaptain','fox','astronaut','smith','druid','monarch','shadow','cat'];
+const avatarOf=v=>{if(typeof v!=='string'||!AVATAR_IDS.includes(v))fail('Неизвестный аватар профиля.');return v;};
+const bioOf=v=>{if(typeof v!=='string')fail('Описание профиля должно быть строкой.');const clean=v.replace(/[\u0000-\u001f\u007f]+/g,' ').replace(/\s+/g,' ').trim();if(clean.length>80)fail('Девиз профиля: не длиннее 80 символов.');return clean;};
+export function publicProfile(u){return {uid:u.uid,username:u.username,avatar:AVATAR_IDS.includes(u.avatar)?u.avatar:'pioneer',bio:typeof u.bio==='string'?u.bio:'',title:u.title||'',titleName:achievements.find(a=>a.id===u.title)?.title||'Странник',xp:u.xp,level:levelFor(u.xp),achievements:u.earned,stats:Object.entries(u.stats).sort().map(([key,value])=>({key,value})),integrity:'local-and-friends',revision:u.revision};}
+export function publicCard(u){return {username:u.username,avatar:AVATAR_IDS.includes(u.avatar)?u.avatar:'pioneer',bio:typeof u.bio==='string'?u.bio:'',title:u.title||'',titleName:achievements.find(a=>a.id===u.title)?.title||'Странник',xp:u.xp,level:levelFor(u.xp),achievementCount:(u.earned||[]).length,stats:Object.entries(u.stats||{}).sort().map(([key,value])=>({key,value}))};}
 export class AccountService {
  constructor(store,clock=()=>Date.now()){this.store=store;this.clock=clock;this.tail=Promise.resolve();}
  handle(path,method,body={},token='',ip='local'){const work=this.tail.then(()=>this.run(path,method,body,token,ip));this.tail=work.catch(()=>{});return work;}
@@ -25,7 +29,7 @@ export class AccountService {
    if(!s.limit('registration:'+digest(ip),now,20,3600000))fail('Лимит регистраций: попробуйте позже.',429);
    if(s.user(username))fail('Этот логин недоступен.',409);
    const salt=random(),hash=await derive(password,salt,PASSWORD_KDF),recoveryCode=random();
-   const u={username,uid:randomBytes(16).toString('hex'),salt,hash,kdf:PASSWORD_KDF,recovery:digest(recoveryCode),stats:{},earned:[],xp:0,title:'',revision:0,batches:[],created:now};s.putUser(u);return issue(u,recoveryCode);
+   const u={username,uid:randomBytes(16).toString('hex'),salt,hash,kdf:PASSWORD_KDF,recovery:digest(recoveryCode),avatar:'pioneer',bio:'',stats:{},earned:[],xp:0,title:'',revision:0,batches:[],created:now};s.putUser(u);return issue(u,recoveryCode);
   }
   if(path==='login'&&method==='POST'){
    const username=nameOf(b.username);passwordOf(b.password);
@@ -55,7 +59,18 @@ export class AccountService {
   }
   if(path==='delete'&&method==='POST'){passwordOf(b.password);if(!equal(await derive(b.password,u.salt,u.kdf),u.hash))fail('Неверный пароль.',401);s.deleteSessions(u.uid);s.deleteUser(u.username);await s.flush();return {ok:true};}
   if(path==='profile'&&method==='POST'){
-   if(typeof b.title!=='string'||b.title!==''&&!u.earned.includes(b.title)||b.title!==''&&!achievements.find(a=>a.id===b.title)?.title)fail('Этот титул ещё не открыт.');u.title=b.title;u.revision++;s.putUser(u);await s.flush();return {ok:true,profile:publicProfile(u)};
+   let changed=false;
+   if(b.title!==undefined){if(typeof b.title!=='string'||b.title!==''&&!u.earned.includes(b.title)||b.title!==''&&!achievements.find(a=>a.id===b.title)?.title)fail('Этот титул ещё не открыт.');u.title=b.title;changed=true;}
+   if(b.avatar!==undefined&&b.avatar!==''){u.avatar=avatarOf(b.avatar);changed=true;}
+   if(b.bio!==undefined){u.bio=bioOf(b.bio);changed=true;}
+   if(!changed)fail('Нет данных для обновления профиля.');
+   u.revision++;s.putUser(u);await s.flush();return {ok:true,profile:publicProfile(u)};
+  }
+  if(path==='card'&&method==='POST'){
+   if(!s.limit('card:'+u.uid,now,60,60000))fail('Слишком частый просмотр профилей.',429);
+   const username=nameOf(b.username);const found=s.user(username);
+   if(!found)fail('Игрок с таким ником не найден.',404);
+   return {ok:true,card:publicCard(found)};
   }
   if(path==='progress'&&method==='POST'){
    if('xp' in b||'level' in b||'uid' in b||'achievements' in b)fail('XP, уровень и награды вычисляет сервер.');

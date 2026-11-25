@@ -39,7 +39,7 @@ export default {
   async fetch(request,env,ctx) {
     const url=new URL(request.url);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
-    if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){
+    if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress|card)$/.test(url.pathname)){
       const response=await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts-v1')).fetch(request);
       // Best effort: give the new account an economy profile right away. Without it
       // a friend request to a player who never opened the wallet is dropped silently.

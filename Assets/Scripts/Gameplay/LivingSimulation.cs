@@ -14,7 +14,9 @@ namespace LestingCraft.Gameplay
   readonly Dictionary<Vector3Int,LivingCell> cells=new Dictionary<Vector3Int,LivingCell>();readonly HashSet<string> sites=new HashSet<string>();readonly Queue<Vector3Int> queue=new Queue<Vector3Int>();readonly HashSet<Vector3Int> queued=new HashSet<Vector3Int>();
   readonly Func<int,int,int,ushort> get;readonly Action<int,int,int,ushort> set;readonly int seed,contentVersion;int serial,fluidPass;float fluidClock;
   static readonly Vector3Int[] D={Vector3Int.down,Vector3Int.right,Vector3Int.left,new Vector3Int(0,0,1),new Vector3Int(0,0,-1),Vector3Int.up};
-  public LivingSimulation(int seed,LivingSave save,Func<int,int,int,ushort> get,Action<int,int,int,ushort> set,int contentVersion=6){this.seed=seed;this.contentVersion=contentVersion;this.get=get;this.set=set;if(save==null)save=new LivingSave();serial=save.serial;if(save.actors!=null)foreach(var a in save.actors)if(a!=null&&Actors.Count<96)Actors.Add(a);if(save.drops!=null)foreach(var d in save.drops)if(d!=null&&Drops.Count<128)Drops.Add(d);if(save.sites!=null)foreach(var s in save.sites)if(s!=null&&sites.Count<256)sites.Add(s);if(save.cells!=null)foreach(var c in save.cells)if(c!=null&&cells.Count<768){var p=new Vector3Int(c.x,c.y,c.z);cells[p]=c;set(c.x,c.y,c.z,(ushort)c.block);Wake(p);}}
+  int MaxActors => contentVersion >= 11 ? 168 : 96;
+  int MaxSites => contentVersion >= 11 ? 512 : 256;
+  public LivingSimulation(int seed,LivingSave save,Func<int,int,int,ushort> get,Action<int,int,int,ushort> set,int contentVersion=6){this.seed=seed;this.contentVersion=contentVersion;this.get=get;this.set=set;if(save==null)save=new LivingSave();serial=save.serial;if(save.actors!=null)foreach(var a in save.actors)if(a!=null&&Actors.Count<MaxActors)Actors.Add(a);if(save.drops!=null)foreach(var d in save.drops)if(d!=null&&Drops.Count<128)Drops.Add(d);if(save.sites!=null)foreach(var s in save.sites)if(s!=null&&sites.Count<MaxSites)sites.Add(s);if(save.cells!=null)foreach(var c in save.cells)if(c!=null&&cells.Count<768){var p=new Vector3Int(c.x,c.y,c.z);cells[p]=c;set(c.x,c.y,c.z,(ushort)c.block);Wake(p);}}
   public LivingSave Save()=>new LivingSave{actors=Actors.ToArray(),drops=Drops.ToArray(),cells=new List<LivingCell>(cells.Values).ToArray(),sites=new List<string>(sites).ToArray(),serial=serial};
   public float Height(int x,int y,int z){return cells.TryGetValue(new Vector3Int(x,y,z),out var c)&&c.level>0?Mathf.Max(.125f,1-c.level/8f):1;}
   public void Wake(Vector3Int p){Enqueue(p);foreach(var d in D)Enqueue(p+d);}
@@ -39,8 +41,9 @@ namespace LestingCraft.Gameplay
       Actors.Add(new LivingActor{id="v:story:"+i,kind=isCat?1:0,job=job,x=x,y=y,z=z,hx=x,hy=y,hz=z});
     }
    }
-   if(contentVersion>=11&&Vector2.Distance(new Vector2(px,pz),new Vector2(KingdomPlan.CenterX,KingdomPlan.CenterZ))<170)
+   if(contentVersion>=11&&!sites.Contains("kingdom-capital")&&Vector2.Distance(new Vector2(px,pz),new Vector2(KingdomPlan.CenterX,KingdomPlan.CenterZ))<170)
    {
+    sites.Add("kingdom-capital");
     int ky=LestingCraft.World.KingdomPlan.BaseY(seed)+1;
     int[] kx={0,79,-70,0,-24,22,52,-52,74,-74,96,-96,16,-16};
     int[] kz={38,-2,54,-74,-18,-18,0,0,-40,-40,-20,-20,72,72};
@@ -48,15 +51,81 @@ namespace LestingCraft.Gameplay
     {
      bool isCat=i>=12;
      float x=KingdomPlan.CenterX+kx[i]+.5f,z=KingdomPlan.CenterZ+kz[i]+.5f;
-     if(Actors.Count<96&&Clear(x,ky,z,isCat?.19f:.29f,isCat?.5f:1.8f))
+     if(Actors.Count<MaxActors&&Clear(x,ky,z,isCat?.19f:.29f,isCat?.5f:1.8f))
       Actors.Add(new LivingActor{id="v:kingdom:"+i,kind=isCat?1:0,job=i%TradeOffer.ProfessionCount,x=x,y=ky,z=z,hx=x,hy=ky,hz=z});
+    }
+   }
+   if(contentVersion>=11)
+   {
+    // Bustling Procedural Towns (14 citizens + town cats per town)
+    int tcx=Mathf.FloorToInt(px/RealmWondersPlan.TownCellSize),tcz=Mathf.FloorToInt(pz/RealmWondersPlan.TownCellSize);
+    int[] txOff={0,5,-5,0,0,12,-12,12,-12,24,-24,0,6,-6};
+    int[] tzOff={6,0,0,-6,14,4,4,-4,-4,10,10,24,-6,6};
+    for(int oz=-1;oz<=1;oz++)for(int ox=-1;ox<=1;ox++)
+    {
+     int ax=tcx+ox,az=tcz+oz;
+     string tkey="town:"+ax+":"+az;
+     if(sites.Contains(tkey)||sites.Count>=MaxSites||Actors.Count>=MaxActors-4)continue;
+     if(!RealmWondersPlan.TryGetTownCenter(ax,az,seed,out int centerX,out int baseY,out int centerZ,out _))continue;
+     if(Vector2.Distance(new Vector2(px,pz),new Vector2(centerX,centerZ))>145)continue;
+     sites.Add(tkey);
+     int ty=baseY+1;
+     for(int i=0;i<txOff.Length&&Actors.Count<MaxActors;i++)
+     {
+      bool isCat=i>=12;
+      float fx=centerX+txOff[i]+.5f,fz=centerZ+tzOff[i]+.5f;
+      if(!Clear(fx,ty,fz,isCat?.19f:.29f,isCat?.5f:1.8f))continue;
+      int job=(i+Math.Abs(ax*3+az*5))%TradeOffer.ProfessionCount;
+      Actors.Add(new LivingActor{id="v:"+tkey+":"+i,kind=isCat?1:0,job=job,x=fx,y=ty,z=fz,hx=fx,hy=ty,hz=fz});
+     }
+    }
+    // Travelers & Keepers at Scenic Waterfalls, Windmills & Stone Arch Camps
+    int wcx=Mathf.FloorToInt(px/RealmWondersPlan.WonderCellSize),wcz=Mathf.FloorToInt(pz/RealmWondersPlan.WonderCellSize);
+    for(int oz=-1;oz<=1;oz++)for(int ox=-1;ox<=1;ox++)
+    {
+     int ax=wcx+ox,az=wcz+oz;
+     string wkey="wonder:"+ax+":"+az;
+     if(sites.Contains(wkey)||sites.Count>=MaxSites||Actors.Count>=MaxActors-3)continue;
+     if(!RealmWondersPlan.TryGetWonderSite(ax,az,seed,out int wx0,out int wy0,out int wz0,out int wkind))continue;
+     if(Vector2.Distance(new Vector2(px,pz),new Vector2(wx0,wz0))>110)continue;
+     sites.Add(wkey);
+     int[] lx=wkind==1?new[]{-7,7,0}:wkind==2?new[]{-3,3,0}:new[]{-3,3,1};
+     int[] lz=wkind==1?new[]{6,6,9}:wkind==2?new[]{7,7,8}:new[]{4,4,5};
+     for(int i=0;i<3&&Actors.Count<MaxActors;i++)
+     {
+      bool isCat=i==2;
+      float fx=wx0+lx[i]+.5f,fz=wz0+lz[i]+.5f;
+      int sy=TerrainGenerator.Height((int)fx,(int)fz,seed,Dimension.Lestingia)+1;
+      if(wkind!=1)sy=wy0+1;
+      if(!Clear(fx,sy,fz,isCat?.19f:.29f,isCat?.5f:1.8f))continue;
+      Actors.Add(new LivingActor{id="v:"+wkey+":"+i,kind=isCat?1:0,job=(ax+az+i)&3,x=fx,y=sy,z=fz,hx=fx,hy=sy,hz=fz});
+     }
+    }
+    // Sky-Shrine Keepers on Floating Sky Islands
+    int scx=Mathf.FloorToInt(px/RealmWondersPlan.SkyCellSize),scz=Mathf.FloorToInt(pz/RealmWondersPlan.SkyCellSize);
+    for(int oz=-1;oz<=1;oz++)for(int ox=-1;ox<=1;ox++)
+    {
+     int ax=scx+ox,az=scz+oz;
+     string skey="sky:"+ax+":"+az;
+     if(sites.Contains(skey)||sites.Count>=MaxSites||Actors.Count>=MaxActors-3)continue;
+     if(!RealmWondersPlan.TryGetSkyIslandCenter(ax,az,seed,out int sx0,out int deckY,out int sz0,out _))continue;
+     if(Vector2.Distance(new Vector2(px,pz),new Vector2(sx0,sz0))>125)continue;
+     sites.Add(skey);
+     int[] slx={4,-4,3};int[] slz={4,-4,-4};
+     for(int i=0;i<3&&Actors.Count<MaxActors;i++)
+     {
+      bool isCat=i==2;
+      float fx=sx0+slx[i]+.5f,fz=sz0+slz[i]+.5f,fy=deckY+1;
+      if(!Clear(fx,fy,fz,isCat?.19f:.29f,isCat?.5f:1.8f))continue;
+      Actors.Add(new LivingActor{id="v:"+skey+":"+i,kind=isCat?1:0,job=(i+2)%TradeOffer.ProfessionCount,x=fx,y=fy,z=fz,hx=fx,hy=fy,hz=fz});
+     }
     }
    }
    int cx=Mathf.FloorToInt(px/192),cz=Mathf.FloorToInt(pz/192);
    for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++)
    {
     int a=cx+dx,b=cz+dz;uint hash=TerrainGenerator.Hash(a,0,b,seed^71839);int x=a*192+64+(int)(hash%64),z=b*192+64+(int)((hash>>8)%64);string key=a+":"+b;
-    if(sites.Contains(key)||sites.Count>=256||Actors.Count>86||Vector2.Distance(new Vector2(px,pz),new Vector2(x,z))>92)continue;
+    if(sites.Contains(key)||sites.Count>=MaxSites||Actors.Count>MaxActors-10||Vector2.Distance(new Vector2(px,pz),new Vector2(x,z))>92)continue;
     var col=ExpeditionGenerator.At(x,z,seed,contentVersion);if(!col.Surface||col.Kind!=0)continue;sites.Add(key);int rot=(int)((hash>>26)%4);
     int[] lxs={-15,14,-15,14,6,-6,0,0};
     int[] lzs={-15,-15,14,14,-5,5,-10,10};

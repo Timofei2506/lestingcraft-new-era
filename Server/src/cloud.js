@@ -124,9 +124,9 @@ export const CLOUD_ACTIONS = {
   // internal key. The nickname path answers honestly when nobody has it; the key
   // path keeps the old indistinguishability rule.
   'friend/request': (s, p, b, ctx) => {
-    const message = typeof b?.message === 'string' ? b.message : null;
+    const message = typeof b?.message === 'string' ? b.message.trim().slice(0, 120) : null;
     if (typeof b?.username === 'string' && b.username.trim()) {
-      const name = b.username.trim();
+      const name = b.username.trim().replace(/^@+/, '');
       if (!/^[a-zA-Z0-9_]{3,24}$/.test(name)) throw new CloudError('Ник: 3–24 латинские буквы, цифры или _.', 400, 'username');
       return s.friendRequestByName(p, name, message, ctx.resolveUsername);
     }

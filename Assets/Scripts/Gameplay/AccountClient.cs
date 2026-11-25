@@ -4,19 +4,57 @@ namespace LestingCraft.Gameplay
  [Serializable] public sealed class AchievementDefinition {public string id,name,category,counter,description,title;public int target,xp;}
  [Serializable] public sealed class AchievementCatalog {public AchievementDefinition[] achievements;}
  [Serializable] public sealed class ProfileStat {public string key;public int value;}
- [Serializable] public sealed class AccountProfile {public string uid,username,title,titleName,integrity;public int xp,level,revision;public string[] achievements;public ProfileStat[] stats;}
- [Serializable] public sealed class AccountReply {public bool ok;public string token,recoveryCode,message,batchId;public AccountProfile profile;}
- [Serializable] public sealed class AccountRequest {public string username,password,newPassword,recoveryCode,title;}
+ [Serializable] public sealed class AccountProfile {public string uid,username,avatar,bio,title,titleName,integrity;public int xp,level,revision;public string[] achievements;public ProfileStat[] stats;}
+ [Serializable] public sealed class AccountCard {public string username,avatar,bio,title,titleName;public int xp,level,achievementCount;public ProfileStat[] stats;}
+ [Serializable] public sealed class AccountReply {public bool ok;public string token,recoveryCode,message,batchId;public AccountProfile profile;public AccountCard card;}
+ [Serializable] public sealed class AccountRequest {public string username,password,newPassword,recoveryCode,title,avatar,bio;}
  [Serializable] public sealed class ProfileEvent {public string key,mode;public int value;}
  [Serializable] public sealed class ProfileBatch {public string batchId,deviceId;public int sequence;public ProfileEvent[] events;}
  [Serializable] public sealed class ProfileQueue {public int sequence;public ProfileEvent[] active;public ProfileBatch pending;}
  public sealed class AccountClient:MonoBehaviour
  {
   public string Endpoint {get;private set;}public AccountProfile Profile {get;private set;}public string Message="Войдите до экспедиции, чтобы сохранять достижения в аккаунт.";public string RecoveryCode {get;private set;}public bool Busy {get;private set;}public bool Logged=>Profile!=null;public AchievementDefinition[] Achievements {get;private set;}
+  public readonly Dictionary<string,AccountCard> Cards=new Dictionary<string,AccountCard>(StringComparer.OrdinalIgnoreCase);
   string token,device;float nextSync,nextSave;ProfileQueue queue=new ProfileQueue();readonly Dictionary<string,ProfileEvent> active=new Dictionary<string,ProfileEvent>();
+  public static int XpFloorForLevel(int level){int l=Math.Max(1,level);return 100*l*(l-1);}
+  public static float XpProgress01(int xp,int level){int lo=XpFloorForLevel(level),hi=XpFloorForLevel(level+1);return hi>lo?Mathf.Clamp01((xp-lo)/(float)(hi-lo)):1f;}
   public void Initialize(string endpoint){Endpoint=(endpoint??"").TrimEnd('/');Achievements=JsonUtility.FromJson<AchievementCatalog>(Resources.Load<TextAsset>("Achievements").text).achievements;}
-  public void Authenticate(string action,string username,string password,string recovery,Action done){if(Busy)return;SaveQueue();StartCoroutine(Request(action,new AccountRequest{username=username,password=password,recoveryCode=recovery},()=>{if(Logged){active.Clear();string key="LC.ProfileQueue."+Profile.uid;try{queue=JsonUtility.FromJson<ProfileQueue>(PlayerPrefs.GetString(key,""))??new ProfileQueue();}catch{queue=new ProfileQueue();}if(queue.active!=null)foreach(var e in queue.active)active[e.key]=e;device=PlayerPrefs.GetString("LC.ProfileDevice."+Profile.uid,"");if(device.Length!=32){device=Guid.NewGuid().ToString("N");PlayerPrefs.SetString("LC.ProfileDevice."+Profile.uid,device);}SaveQueue();}done?.Invoke();}));}
-  public void ChangeTitle(string id,Action done){if(Logged&&!Busy)StartCoroutine(Request("profile",new AccountRequest{title=id},done));}
+  public void Authenticate(string action,string username,string password,string recovery,Action done){if(Busy)return;SaveQueue();StartCoroutine(Request(action,new AccountRequest{username=(username??"").Trim().TrimStart('@'),password=password,recoveryCode=recovery},()=>{if(Logged){active.Clear();string key="LC.ProfileQueue."+Profile.uid;try{queue=JsonUtility.FromJson<ProfileQueue>(PlayerPrefs.GetString(key,""))??new ProfileQueue();}catch{queue=new ProfileQueue();}if(queue.active!=null)foreach(var e in queue.active)active[e.key]=e;device=PlayerPrefs.GetString("LC.ProfileDevice."+Profile.uid,"");if(device.Length!=32){device=Guid.NewGuid().ToString("N");PlayerPrefs.SetString("LC.ProfileDevice."+Profile.uid,device);}SaveQueue();CloudRefreshQuiet();}done?.Invoke();}));}
+  public void ChangeTitle(string id,Action done){UpdateProfile(id,null,null,done);}
+  public void UpdateProfile(string title,string avatar,string bio,Action done)
+  {
+   if(!Logged||Busy){done?.Invoke();return;}
+   var req=new AccountRequest{
+    title=title??(Profile.title??""),
+    avatar=string.IsNullOrEmpty(avatar)?(string.IsNullOrEmpty(Profile.avatar)?"pioneer":Profile.avatar):avatar,
+    bio=bio??(Profile.bio??"")
+   };
+   StartCoroutine(Request("profile",req,done));
+  }
+  public void LookupCard(string username,Action<AccountCard,string> done)
+  {
+   string clean=(username??"").Trim().TrimStart('@');
+   if(!Logged||string.IsNullOrEmpty(clean)){done?.Invoke(null,"Войдите в аккаунт для просмотра карточки игрока.");return;}
+   StartCoroutine(LookupCardRoutine(clean,done));
+  }
+  IEnumerator LookupCardRoutine(string username,Action<AccountCard,string> done)
+  {
+   Uri address;if(!Uri.TryCreate(Endpoint,UriKind.Absolute,out address)||(address.Scheme!="https"&&!address.IsLoopback)){done?.Invoke(null,"Для аккаунта нужен HTTPS-сервис.");yield break;}
+   string body="{\"username\":\""+Esc(username)+"\"}";
+   using(var request=new UnityWebRequest(Endpoint+"/api/accounts/card","POST"))
+   {
+    request.uploadHandler=new UploadHandlerRaw(Encoding.UTF8.GetBytes(body));request.downloadHandler=new DownloadHandlerBuffer();
+    request.SetRequestHeader("Content-Type","application/json");if(!string.IsNullOrEmpty(token))request.SetRequestHeader("Authorization","Bearer "+token);request.timeout=15;
+    yield return request.SendWebRequest();
+    AccountReply reply=null;try{reply=JsonUtility.FromJson<AccountReply>(request.downloadHandler.text);}catch{}
+    if(request.result==UnityWebRequest.Result.Success&&reply!=null&&reply.ok&&reply.card!=null)
+    {
+     Cards[reply.card.username]=reply.card;
+     done?.Invoke(reply.card,null);
+    }
+    else done?.Invoke(null,reply?.message??"Профиль игрока пока недоступен.");
+   }
+  }
   public void ChangePassword(string current,string next,Action done){if(Logged&&!Busy)StartCoroutine(Request("password",new AccountRequest{password=current,newPassword=next},done));}
   public void Delete(string password,Action done){if(Logged&&!Busy)StartCoroutine(Request("delete",new AccountRequest{password=password},()=>{if(Message=="Готово"){PlayerPrefs.DeleteKey("LC.ProfileQueue."+Profile.uid);PlayerPrefs.DeleteKey("LC.ProfileDevice."+Profile.uid);token=null;Profile=null;active.Clear();}done?.Invoke();}));}
   public void DismissRecovery(){RecoveryCode=null;}
@@ -35,7 +73,12 @@ namespace LestingCraft.Gameplay
   public void CloudPurchase(string id,Action done=null)=>Cloud("purchase","{\"id\":\""+Esc(id)+"\"}",json=>{Wallet=JsonUtility.FromJson<CloudState>(json);},done,true);
   public void CloudFriendRequest(string key,Action done=null)=>Cloud("friend/request","{\"key\":\""+Esc(key)+"\"}",null,done,true);
   /// <summary>Adds a friend by the nickname shown in the profile — no keys for players.</summary>
-  public void CloudFriendRequestByName(string username,Action done=null)=>Cloud("friend/request","{\"username\":\""+Esc(username)+"\"}",null,done,true);
+  public void CloudFriendRequestByName(string username,Action done=null,string message=null)
+  {
+   string clean=(username??"").Trim().TrimStart('@');
+   string msg=string.IsNullOrWhiteSpace(message)?"":",\"message\":\""+Esc(message.Trim())+"\"";
+   Cloud("friend/request","{\"username\":\""+Esc(clean)+"\""+msg+"}",null,done,true);
+  }
   public void CloudFriendAccept(long id,Action done=null)=>Cloud("friend/accept","{\"id\":"+id+"}",null,done,true);
   public void CloudFriendDecline(long id,Action done=null)=>Cloud("friend/decline","{\"id\":"+id+"}",null,done,true);
   public void CloudFriendRemove(string key,Action done=null)=>Cloud("friend/remove","{\"key\":\""+Esc(key)+"\"}",null,done,true);

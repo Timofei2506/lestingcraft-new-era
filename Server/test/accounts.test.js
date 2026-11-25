@@ -21,3 +21,23 @@ test('production-compatible Argon2id, versioned legacy hashes, and explicit Buff
 test('a group behind one address can register: the per-IP cap is 20 per hour, not 3',async()=>{const store=new MemoryAccountStore(),s=new AccountService(store);const ip='203.0.113.7';for(let i=0;i<20;i++){const r=await s.handle('register','POST',{username:'friend'+i,password:pw},'',ip);assert.equal(r.ok,true);}await assert.rejects(()=>s.handle('register','POST',{username:'friend20',password:pw},'',ip),/Лимит регистраций/);const other=await s.handle('register','POST',{username:'friend20',password:pw},'','198.51.100.9');assert.equal(other.ok,true);});
 test('the Unity client posts to /me: both GET and POST return the profile',async()=>{const store=new MemoryAccountStore(),s=new AccountService(store);const a=await s.handle('register','POST',{username:'me_post',password:pw});const viaGet=await s.handle('me','GET',{},a.token);const viaPost=await s.handle('me','POST',{},a.token);assert.equal(viaGet.profile.uid,viaPost.profile.uid);assert.equal(viaPost.profile.username,'me_post');});
 test('internal lookup resolves a nickname to a player id and hides unknown names',async()=>{const store=new MemoryAccountStore(),s=new AccountService(store);const a=await s.handle('register','POST',{username:'FindMe',password:pw});const found=await s.handle('lookup','POST',{username:'findme'},'','10.0.0.1');assert.equal(found.ok,true);assert.equal(found.found,true);assert.equal(found.uid,a.profile.uid);assert.equal(found.username,'findme');const missing=await s.handle('lookup','POST',{username:'no_such_player'},'','10.0.0.1');assert.equal(missing.found,false);assert.equal(missing.uid,null);await assert.rejects(()=>s.handle('lookup','POST',{username:'a'},'','10.0.0.1'),/Логин/);});
+test('profile avatar, bio customization, and public-safe friend card inspection',async()=>{
+ const store=new MemoryAccountStore(),s=new AccountService(store);
+ const alice=await s.handle('register','POST',{username:'Alice_Sky',password:pw});
+ const bob=await s.handle('register','POST',{username:'Bob_Valley',password:pw});
+ assert.equal(alice.profile.avatar,'pioneer');
+ assert.equal(alice.profile.bio,'');
+ const updated=await s.handle('profile','POST',{avatar:'sakura',bio:'  Строю парящие острова\nи водопады!  '},alice.token);
+ assert.equal(updated.profile.avatar,'sakura');
+ assert.equal(updated.profile.bio,'Строю парящие острова и водопады!');
+ await assert.rejects(()=>s.handle('profile','POST',{avatar:'invalid_avatar'},alice.token),/аватар/);
+ await assert.rejects(()=>s.handle('profile','POST',{bio:'x'.repeat(81)},alice.token),/80/);
+ const card=await s.handle('card','POST',{username:'ALICE_SKY'},bob.token);
+ assert.equal(card.ok,true);
+ assert.equal(card.card.username,'alice_sky');
+ assert.equal(card.card.avatar,'sakura');
+ assert.equal(card.card.bio,'Строю парящие острова и водопады!');
+ assert.equal(card.card.uid,undefined);
+ assert(!JSON.stringify(card).includes(alice.profile.uid));
+ await assert.rejects(()=>s.handle('card','POST',{username:'nobody_at_all'},bob.token),/не найден/);
+});

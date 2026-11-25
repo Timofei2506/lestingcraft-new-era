@@ -21,6 +21,11 @@ async function resolvePlayer(token){
   const result=await accounts.handle('me','GET',{},token,'cloud');
   return result?.ok&&typeof result.profile?.uid==='string'?result.profile.uid.toLowerCase():null;
 }
+async function resolveUsername(username){
+  if(!/^[a-zA-Z0-9_]{3,24}$/.test(String(username||'')))return null;
+  const result=await accounts.handle('lookup','POST',{username},'','cloud').catch(()=>null);
+  return result?.ok&&result.found&&typeof result.uid==='string'?{uid:result.uid.toLowerCase(),username:String(result.username||username).toLowerCase()}:null;
+}
 function load(code) {
   if(rooms.has(code))return rooms.get(code);const file=path.join(dataDir,code+'.json');if(!fs.existsSync(file))return null;
   const stored=JSON.parse(fs.readFileSync(file,'utf8')),room=new RoomState(stored.config,stored.edits,stored.players||[]);rooms.set(code,room);return room;
@@ -32,12 +37,12 @@ function broadcast(code,message,except) {const raw=JSON.stringify(message);for(c
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://server');
   if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'});res.end();return;}
-  if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress)$/.test(url.pathname)){try{let parts=[],bytes=0;for await(const part of req){bytes+=part.length;if(bytes>24576)return reply(res,413,{message:'Body too large'});parts.push(part);}const raw=Buffer.concat(parts).toString('utf8');const result=await accounts.handle(url.pathname.split('/').pop(),req.method,raw?JSON.parse(raw):{},req.headers.authorization?.replace(/^Bearer /,'')||'',req.socket.remoteAddress);return reply(res,200,result);}catch(e){await accountStore.flush().catch(()=>{});return reply(res,e.status||503,{ok:false,message:e.status?e.message:'Сервис аккаунтов временно недоступен.'});}}
+  if(/^\/api\/accounts\/(register|login|recover|me|logout|password|delete|profile|progress|card)$/.test(url.pathname)){try{let parts=[],bytes=0;for await(const part of req){bytes+=part.length;if(bytes>24576)return reply(res,413,{message:'Body too large'});parts.push(part);}const raw=Buffer.concat(parts).toString('utf8');const action=url.pathname.split('/').pop();const result=await accounts.handle(action,req.method,raw?JSON.parse(raw):{},req.headers.authorization?.replace(/^Bearer /,'')||'',req.socket.remoteAddress);if((action==='register'||action==='login')&&cloudService&&result?.profile?.uid)cloudService.ensureProfile(result.profile.uid.toLowerCase(),result.profile.username).catch(()=>{});return reply(res,200,result);}catch(e){await accountStore.flush().catch(()=>{});return reply(res,e.status||503,{ok:false,message:e.status?e.message:'Сервис аккаунтов временно недоступен.'});}}
   if(url.pathname.startsWith('/api/cloud/')){
     if(!cloudService)return reply(res,503,{ok:false,message:'Экономика не настроена: нужны SUPABASE_URL и SUPABASE_SERVICE_KEY'});
     let body='';for await(const chunk of req){body+=chunk;if(body.length>2048)return reply(res,413,{ok:false,message:'Body too large'});}
     const proxy=new Request('http://local'+url.pathname+url.search,{method:req.method,headers:{authorization:req.headers.authorization||'',...(body?{'content-type':'application/json'}:{})},body:req.method==='POST'?(body||'{}'):undefined});
-    const response=await handleCloudRequest(proxy,{service:cloudService,resolvePlayer,cors:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'}});
+    const response=await handleCloudRequest(proxy,{service:cloudService,resolvePlayer,resolveUsername,cors:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'}});
     res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));return;
   }
   if(url.pathname==='/health')return reply(res,200,{ok:true,game:'LestingCraft',version:1,rulesVersion:RULES_VERSION,contentVersion:CONTENT_VERSION,transport:'websocket',storage:'local-json',maxPlayers:8,commit:process.env.GIT_SHA||'dev',serverNow:Date.now()});

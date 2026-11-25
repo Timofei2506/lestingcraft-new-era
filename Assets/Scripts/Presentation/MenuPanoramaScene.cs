@@ -161,7 +161,7 @@ namespace LestingCraft.Presentation
                     var data = chunks[key];
                     int ox = cx * 16, oz = cz * 16;
 
-                    for (int y = 8; y < 48; y++)
+                    for (int y = 8; y < 64; y++)
                         for (int z = 0; z < 16; z++)
                             for (int x = 0; x < 16; x++)
                             {
@@ -407,6 +407,83 @@ namespace LestingCraft.Presentation
                 if (gy >= WaterLevel && gy < 24 && get(cr.X, gy + 1, cr.Z) == 0)
                     set(cr.X, gy + 1, cr.Z, BlockRegistry.CrystalId);
             }
+
+            // 9. Second village house on South-East terrace + Floating Sky Islands & Cascading Sky Waterfalls!
+            BuildCottage(set, 9, 16, 8);
+            BuildSkyIsland(set, get, -15, 39, 15, 9, true, 1, 0);   // Grand Sakura Sky-Shrine Island + cascading sky waterfall into lagoon!
+            BuildSkyIsland(set, get, 17, 44, -20, 7, false, -1, 1); // Sunlit Northern Sky Islet + twin waterfall into alpine river!
+        }
+
+        static void BuildSkyIsland(Action<int, int, int, ushort> set, Func<int, int, int, ushort> get, int cx, int deckY, int cz, int rad, bool withShrine, int lipDirX, int lipDirZ)
+        {
+            for (int dz = -rad - 1; dz <= rad + 1; dz++)
+                for (int dx = -rad - 1; dx <= rad + 1; dx++)
+                {
+                    float dist = Mathf.Sqrt(dx * dx + dz * dz);
+                    float effR = rad + Mathf.Sin(dx * 0.5f + cz) * 0.8f + Mathf.Cos(dz * 0.5f - cx) * 0.7f;
+                    if (dist > effR) continue;
+                    float norm = dist / Mathf.Max(1f, effR);
+                    int depth = Mathf.Max(2, Mathf.RoundToInt((1f - norm * norm) * (rad * 1.15f)));
+                    for (int y = deckY - depth; y <= deckY; y++)
+                    {
+                        ushort block;
+                        if (y == deckY)
+                            block = (ushort)(((dx + dz) & 3) == 0 ? 65 : 3); // LavenderTurf & EmeraldGrass
+                        else if (y == deckY - 1)
+                            block = 2;
+                        else if (y == deckY - depth && dist < effR * 0.48f)
+                            block = (ushort)(((dx + dz) & 1) == 0 ? 67 : 12); // Glowing AndromedaCrystal & AetherStone tip!
+                        else
+                            block = (ushort)(y <= deckY - depth + 2 ? 12 : 28);
+                        set(cx + dx, y, cz + dz, block);
+                    }
+                }
+
+            if (withShrine)
+            {
+                for (int dz = -3; dz <= 3; dz++)
+                    for (int dx = -3; dx <= 3; dx++)
+                    {
+                        set(cx + dx, deckY, cz + dz, (ushort)(Mathf.Abs(dx) <= 1 && Mathf.Abs(dz) <= 1 ? BlockRegistry.WaterId : 41));
+                        if (Mathf.Abs(dx) == 3 && Mathf.Abs(dz) == 3)
+                        {
+                            for (int py = 1; py <= 4; py++)
+                                set(cx + dx, deckY + py, cz + dz, 42);
+                            set(cx + dx, deckY + 5, cz + dz, 56); // Warm glowing lantern
+                        }
+                        if (Mathf.Abs(dx) <= 3 && Mathf.Abs(dz) <= 3)
+                            set(cx + dx, deckY + 5, cz + dz, (ushort)(Mathf.Abs(dx) <= 1 && Mathf.Abs(dz) <= 1 ? 47 : 41));
+                    }
+                set(cx, deckY + 1, cz, 67);
+                set(cx, deckY + 2, cz, 11);
+                PlantTree(set, get, cx - 5, deckY + 1, cz - 3, 6, 60);
+                PlantTree(set, get, cx + 4, deckY + 1, cz + 4, 5, 5);
+            }
+            else
+            {
+                PlantTree(set, get, cx, deckY + 1, cz, 6, 60);
+                set(cx + 2, deckY + 1, cz - 2, 67);
+                set(cx - 2, deckY + 1, cz + 2, 56);
+            }
+
+            // Cascading Sky Waterfall from spring to island lip and all the way into the valley!
+            int lipX = cx + lipDirX * (rad - 1);
+            int lipZ = cz + lipDirZ * (rad - 1);
+            int steps = Mathf.Max(Mathf.Abs(lipX - cx), Mathf.Abs(lipZ - cz));
+            for (int s = 0; s <= steps; s++)
+            {
+                int sx = Mathf.RoundToInt(Mathf.Lerp(cx, lipX, s / (float)Mathf.Max(1, steps)));
+                int sz = Mathf.RoundToInt(Mathf.Lerp(cz, lipZ, s / (float)Mathf.Max(1, steps)));
+                set(sx, deckY, sz, BlockRegistry.WaterId);
+            }
+            for (int oz = 0; oz <= 1; oz++)
+                for (int ox = 0; ox <= 1; ox++)
+                {
+                    int wx = lipX + ox, wz = lipZ + oz;
+                    int groundY = FindSurfaceY(get, wx, wz);
+                    for (int y = Mathf.Max(WaterLevel, groundY); y <= deckY; y++)
+                        set(wx, y, wz, BlockRegistry.WaterId);
+                }
         }
 
         static int FindSurfaceY(Func<int, int, int, ushort> get, int wx, int wz)
@@ -639,15 +716,23 @@ namespace LestingCraft.Presentation
         {
             try
             {
-                // Cozy villagers & cat near homestead and bridge
+                // Bustling villagers & town cats across homestead, plaza, bridge, and floating Sky-Shrine!
                 SpawnSettler(0, 1, "menu:farmer", new Vector3(8.8f, FindSurfaceY(get, 9, 0) + 1f, 0.3f), -110f);
                 SpawnSettler(0, 3, "menu:architect", new Vector3(1.5f, WaterLevel + 4.1f, -0.5f), 165f);
+                SpawnSettler(0, 0, "menu:smith", new Vector3(7.6f, FindSurfaceY(get, 8, 9) + 1f, 9.4f), -82f);
+                SpawnSettler(0, 2, "menu:alchemist", new Vector3(-4.5f, FindSurfaceY(get, -5, -4) + 1f, -4.2f), 38f);
+                SpawnSettler(0, 3, "menu:skykeeper", new Vector3(-12.5f, 40f, 15.5f), 130f);
                 SpawnSettler(1, 0, "menu:cat", new Vector3(9.4f, FindSurfaceY(get, 9, -4) + 1f, -3.8f), -45f);
+                SpawnSettler(1, 0, "menu:skycat", new Vector3(-14.2f, 40f, 17.5f), 60f);
 
-                // Peaceful grazing deer & hares in the sunlit sakura meadow
+                // Abundant wildlife herds in the sunlit meadow + soaring SkyWhale & Golden Eagles overhead!
                 SpawnAnimal(0, new Vector3(-11.5f, FindSurfaceY(get, -11, 9) + 1f, 9.2f), 48f);
                 SpawnAnimal(0, new Vector3(-8.2f, FindSurfaceY(get, -8, 12) + 1f, 12.4f), 115f);
+                SpawnAnimal(6, new Vector3(-13.4f, FindSurfaceY(get, -13, 6) + 1f, 6.1f), 22f);
+                SpawnAnimal(14, new Vector3(-5.8f, FindSurfaceY(get, -6, 14) + 1f, 14.2f), -35f);
                 SpawnAnimal(1, new Vector3(-14.2f, FindSurfaceY(get, -14, 2) + 1f, 2.5f), 80f);
+                SpawnAnimal(33, new Vector3(-4.0f, 46.5f, -8.0f), 125f); // Majestic SkyWhale gliding past sky islands!
+                SpawnAnimal(11, new Vector3(9.5f, 38.5f, -11.0f), -145f); // Golden Eagle soaring above waterfall!
             }
             catch (Exception e)
             {
@@ -748,13 +833,13 @@ namespace LestingCraft.Presentation
         {
             if (!targetCamera) return;
             float rad = orbitAngle * Mathf.Deg2Rad;
-            const float radius = 23.5f;
-            float camY = 23.4f + Mathf.Sin(t * 0.35f) * 0.65f;
+            const float radius = 25.5f;
+            float camY = 24.2f + Mathf.Sin(t * 0.35f) * 0.85f;
             Vector3 camPos = new Vector3(Mathf.Cos(rad) * radius, camY, Mathf.Sin(rad) * radius);
-            // Look slightly ahead along the gentle orbit curve across the sunlit valley & village
+            // Sweep across both the sunlit village/lagoon AND the majestic floating Sky Islands & waterfalls!
             Vector3 lookTarget = new Vector3(
                 Mathf.Cos(rad + 0.35f) * 3.2f,
-                17.6f + Mathf.Sin(t * 0.27f) * 0.35f,
+                21.2f + Mathf.Sin(t * 0.24f) * 1.6f,
                 Mathf.Sin(rad + 0.35f) * 3.2f);
             targetCamera.transform.SetPositionAndRotation(camPos, Quaternion.LookRotation(lookTarget - camPos, Vector3.up));
         }
