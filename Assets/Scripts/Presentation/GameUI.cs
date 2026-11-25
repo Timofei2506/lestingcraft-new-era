@@ -1073,7 +1073,7 @@ namespace LestingCraft.Presentation
                 Button("Выйти из аккаунта",392,308,348,52,()=>a.Logout(RefreshAccountIfOpen),false,showcase.transform);
 
                 var warnBox=Box(showcase.transform,24,392,716,148,new Color(.18f,.06f,.08f,.78f));
-                Label(warnBox.transform,"ОПАСНАЯ ЗОНА · УДАЛЕНИЕ АККАУНТА",20,14,676,22,13,Danger,true);
+                Label(warnBox.transform,"ОПАСНАЯ ЗОНА · УДАЛЕНИЕ АККАУНТА",20,14,676,22,13,new Color(1f,.46f,.48f),true);
                 Label(warnBox.transform,"Удаление необратимо стирает облачный профиль, статистику и достижения.\nДля подтверждения введите текущий пароль выше и нажмите кнопку дважды.",20,42,676,56,13,White);
                 bool confirm=false;
                 Button("Удалить аккаунт (двойное подтверждение)",20,96,676,42,()=>{if(!confirm){confirm=true;a.Message="Нажмите ещё раз для полного удаления профиля (требуется текущий пароль).";if(status)status.text=a.Message;return;}string c=current;old.text="";a.Delete(c,RefreshAccountIfOpen);},false,warnBox.transform);
