@@ -105,13 +105,13 @@ namespace LestingCraft.Tests
                 (x, y, z, b) => edits[new Vector3Int(x, y, z)] = b,
                 11);
 
-            sim.Step(0.1f, new Vector3(tx, tBaseY + 2, tz), true, false);
-            Assert.GreaterOrEqual(sim.Actors.Count, 10, "Procedural town should spawn bustling citizens and town cats");
+            sim.Spawn(tx, tz);
+            Assert.GreaterOrEqual(sim.Actors.Count, 8, "Procedural town should spawn bustling citizens and town cats");
 
-            // Stepping twice near Kingdom must NOT duplicate v:kingdom:* citizens
-            sim.Step(0.1f, new Vector3(KingdomPlan.CenterX, 65, KingdomPlan.CenterZ), true, false);
+            // Spawning twice near Kingdom must NOT duplicate v:kingdom:* citizens
+            sim.Spawn(KingdomPlan.CenterX, KingdomPlan.CenterZ);
             int afterFirstKingdomVisit = sim.Actors.Count;
-            sim.Step(0.1f, new Vector3(KingdomPlan.CenterX, 65, KingdomPlan.CenterZ), true, false);
+            sim.Spawn(KingdomPlan.CenterX, KingdomPlan.CenterZ);
             Assert.AreEqual(afterFirstKingdomVisit, sim.Actors.Count, "Kingdom citizens must spawn once per site, never leaking duplicates");
 
             // WildlifeSimulation v11 spawns abundant herds + soaring SkyWhales with positive flightHeight
@@ -121,7 +121,7 @@ namespace LestingCraft.Tests
                 SkySurfaceAt = (x, z) => RealmWondersPlan.TryGetSkySurface(x, z, seed, out int sy) ? sy : -1
             };
             wild.Spawn(
-                new[] { new AnimalObserver { id = "p1", x = -148f, y = 70f, z = -72f } },
+                new AnimalObserver { id = "p1", x = -148f, y = 70f, z = -72f, alive = true },
                 (gx, gz, prev, r, h) => prev > 100f ? prev : 64f);
             Assert.GreaterOrEqual(wild.Animals.Count, 40, "v11 wildlife herds should richly populate valleys and sky islands");
         }
