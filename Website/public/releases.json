@@ -3,7 +3,7 @@
   "releases": [
     {
       "tag": "v0.8.0",
-      "name": "v0.8.0",
+      "name": "LestingCraft: New Era v0.8.0 — 18 Worlds, Imperial Capital, Vulkan-Heavy & Android ARM64",
       "date": "2026-11-25T16:21:42Z",
       "prerelease": false,
       "url": "https://github.com/Timofei2506/lestingcraft-new-era/releases/tag/v0.8.0",
@@ -154,5 +154,5 @@
       }
     }
   ],
-  "checkedAt": "2026-11-25T16:22:47.256Z"
+  "checkedAt": "2026-11-26T08:43:12.566Z"
 }
