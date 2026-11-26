@@ -225,16 +225,16 @@ namespace LestingCraft.Runtime
             yield return null;
             var launchVis = game.LaunchComplexVisual;
             Vector3 shuttleBase = launchVis ? launchVis.ShuttleRoot.position : new Vector3(padX, 68f, padZ);
-            Vector3 shot3Cam = shuttleBase + new Vector3(-25f, 10.5f, -31f);
-            Vector3 shot3Look = shuttleBase + new Vector3(0.5f, 22.5f, 1.5f);
-            ClearSightCorridor(game.Session.World, shot3Cam, shot3Look, 6);
+            Vector3 shot3Cam = shuttleBase + new Vector3(-36f, 17.5f, -43f);
+            Vector3 shot3Look = shuttleBase + new Vector3(0f, 24.5f, 0f);
+            ClearSightCorridor(game.Session.World, shot3Cam, shot3Look, 9);
             MoveBoth(player, cam, shot3Cam, shot3Look);
             yield return WaitWorldMeshed(game.Session.World, 35f);
             yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "03-cosmodrome-orbiter-launch-complex.png"), () =>
             {
                 game.Session.Data.clock = 570.0;
                 game.Session.Notice = "";
-                cam.fieldOfView = 68f;
+                cam.fieldOfView = 72f;
                 MoveBoth(player, cam, shot3Cam, shot3Look);
             });
 
@@ -922,8 +922,115 @@ namespace LestingCraft.Runtime
                 game.Session.Notice = "УРОВЕНЬ 0 · ЖЁЛТЫЕ КОМНАТЫ: влажный ковёр, гудящие лампы, бесконечные проёмы";
             });
 
+            // =========================================================================
+            // SHOT 14: Inferno (Dimension.Inferno = 16) — Boiling Lava Sea, Basalt
+            //          Pillars, Crimson Hellfire Forest & Vaulted Magma Ceiling
+            // =========================================================================
+            SetCamerasActive(cam, hands, false);
+            radiaWorld.SwitchPlanet(Dimension.Inferno, Array.Empty<SavedBlock>());
+            game.Tech.Sim.RadiationDose01 = 0f;
+            game.Session.Data.clock = 600.0;
+            WorldAtmosphere.Configure(cam, (int)Dimension.Inferno, 600.0);
+            spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Inferno, player, cam);
+            player.TeleportTo(new Vector3(0f, 44f, 0f), false);
+            yield return WaitWorldMeshed(radiaWorld, 35f);
+            player.TeleportTo(new Vector3(24f, 46f, 28f), false);
+            yield return WaitWorldMeshed(radiaWorld, 25f);
+            Vector3 infEye = new Vector3(-8.5f, 49.5f, -9.5f);
+            Vector3 infLook = new Vector3(26f, 38f, 32f);
+            player.TeleportTo(infEye, true);
+            yield return WaitWorldMeshed(radiaWorld, 20f);
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "14-inferno-basalt-pillars-and-lava.png"), () =>
+            {
+                var sunObj = GameObject.Find("Sun");
+                var sunLamp = sunObj ? sunObj.GetComponent<Light>() : null;
+                if (sunLamp)
+                {
+                    sunLamp.color = new Color(1.0f, 0.48f, 0.24f);
+                    sunLamp.intensity = 1.35f;
+                    sunLamp.transform.rotation = Quaternion.Euler(38f, 35f, 0f);
+                }
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = new Color(0.46f, 0.17f, 0.11f);
+                RenderSettings.fog = true;
+                RenderSettings.fogMode = FogMode.Exponential;
+                RenderSettings.fogColor = new Color(0.38f, 0.11f, 0.06f);
+                RenderSettings.fogDensity = 0.012f;
+                cam.fieldOfView = 72f;
+                cam.farClipPlane = 260f;
+                MoveBoth(player, cam, infEye, infLook);
+                game.Session.Notice = "ПРЕИСПОДНЯЯ · Кипящие лавовые моря, базальтовые колонны и обсидиановые цитадели";
+            });
+
+            // =========================================================================
+            // SHOT 15: Paradise / Celestial Eden (Dimension.Paradise = 17) — Marble
+            //          Sanctuaries, Sakura & Golden Groves, Crystal Ambrosia Seas
+            // =========================================================================
+            SetCamerasActive(cam, hands, false);
+            radiaWorld.SwitchPlanet(Dimension.Paradise, Array.Empty<SavedBlock>());
+            game.Session.Data.clock = 640.0;
+            WorldAtmosphere.Configure(cam, (int)Dimension.Paradise, 640.0);
+            spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Paradise, player, cam);
+            player.TeleportTo(new Vector3(0f, ParadiseTerrain.SpawnY + 4f, 0f), false);
+            yield return WaitWorldMeshed(radiaWorld, 35f);
+            player.TeleportTo(new Vector3(24f, ParadiseTerrain.SpawnY + 6f, 24f), false);
+            yield return WaitWorldMeshed(radiaWorld, 25f);
+            int parGround = FindSurfaceY(radiaWorld, -16, -20);
+            Vector3 parEye = new Vector3(-16f, Mathf.Max(parGround + 7.5f, ParadiseTerrain.SpawnY + 6.5f), -20f);
+            Vector3 parLook = new Vector3(14f, ParadiseTerrain.SpawnY + 2.5f, 18f);
+            player.TeleportTo(parEye, true);
+            yield return WaitWorldMeshed(radiaWorld, 20f);
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "15-paradise-eden-sky-sanctuary.png"), () =>
+            {
+                game.Session.Data.clock = 640.0;
+                WorldAtmosphere.Configure(cam, (int)Dimension.Paradise, 640.0);
+                RenderSettings.fog = true;
+                RenderSettings.fogMode = FogMode.Exponential;
+                RenderSettings.fogColor = new Color(0.78f, 0.90f, 0.98f);
+                RenderSettings.fogDensity = 0.0045f;
+                cam.fieldOfView = 70f;
+                cam.farClipPlane = 380f;
+                MoveBoth(player, cam, parEye, parLook);
+                game.Session.Notice = "НЕБЕСНЫЙ ЭДЕМ · Мраморные террасы света, цветущие рощи и лазурные воды";
+            });
+
+            // =========================================================================
+            // SHOT 16: Imperial Capital & 45m Cathedral-Keep (KingdomPlan 244x244)
+            // =========================================================================
+            SetCamerasActive(cam, hands, false);
+            radiaWorld.SwitchPlanet(Dimension.Lestingia, Array.Empty<SavedBlock>());
+            game.Session.Data.clock = 595.0;
+            WorldAtmosphere.Configure(cam, (int)Dimension.Lestingia, 595.0);
+            spaceVisV9.ApplyPlanetAtmosphereAndGravity(Dimension.Lestingia, player, cam);
+            int capBaseY = KingdomPlan.BaseY(radiaWorld.Seed);
+            Vector3[] capAnchors =
+            {
+                new Vector3(KingdomPlan.CenterX, capBaseY + 24f, KingdomPlan.CenterZ),
+                new Vector3(KingdomPlan.CenterX - 42f, capBaseY + 20f, KingdomPlan.CenterZ + 42f),
+                new Vector3(KingdomPlan.CenterX + 42f, capBaseY + 20f, KingdomPlan.CenterZ + 42f),
+                new Vector3(KingdomPlan.CenterX - 28f, capBaseY + 26f, KingdomPlan.CenterZ + 78f)
+            };
+            foreach (var anchor in capAnchors)
+            {
+                player.TeleportTo(anchor, false);
+                yield return WaitWorldMeshed(radiaWorld, 30f);
+            }
+            Vector3 capEye = new Vector3(KingdomPlan.CenterX - 28f, capBaseY + 26.5f, KingdomPlan.CenterZ + 78f);
+            Vector3 capLook = new Vector3(KingdomPlan.CenterX, capBaseY + 18.5f, KingdomPlan.CenterZ);
+            player.TeleportTo(capEye, true);
+            yield return WaitWorldMeshed(radiaWorld, 25f);
+            yield return RenderAndCapture(cam, hands, true, Path.Combine(outDir, "16-imperial-capital-and-cathedral.png"), () =>
+            {
+                game.Session.Data.clock = 595.0;
+                WorldAtmosphere.Configure(cam, (int)Dimension.Lestingia, 595.0);
+                cam.fieldOfView = 68f;
+                cam.farClipPlane = 450f;
+                MoveBoth(player, cam, capEye, capLook);
+                game.Session.Notice = "ЦАРСКАЯ СТОЛИЦА · Имперский собор-дворец (45 м), крепостные стены и посад";
+            });
+
             finishing = true;
-            Debug.Log("[Showcase] PASS: 15 authentic 1920x1080 URP screenshots saved to " + outDir);
+            Debug.Log("[Showcase] PASS: 18 authentic 1920x1080 URP screenshots saved to " + outDir);
             Application.Quit(0);
             yield return null;
             Environment.Exit(0);
