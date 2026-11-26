@@ -14,7 +14,9 @@ namespace LestingCraft.Presentation
     public sealed partial class GameUI : MonoBehaviour
     {
         enum Page{Account,Achievements,Home,World,Rooms,AddServer,Settings,Pause,Inventory,Creative,Trade,Death,HUD,Lobby,Journal,Store,Market,Friends}
-        static readonly Color Ink=new Color(.11f,.07f,.015f), Panel=new Color(.075f,.185f,.285f,.78f), Muted=new Color(.84f,.92f,.97f), White=new Color(.99f,.99f,.97f), Accent=new Color(1.00f,.78f,.20f), SpringAccent=new Color(.34f,.90f,.48f);
+        // Panels sit on top of a live bright world: the alpha is high enough that body text
+        // stays readable over clouds and sunlit grass (player report: "плохо видно меню на ESC").
+        static readonly Color Ink=new Color(.11f,.07f,.015f), Panel=new Color(.055f,.145f,.235f,.90f), Muted=new Color(.84f,.92f,.97f), White=new Color(.99f,.99f,.97f), Accent=new Color(1.00f,.78f,.20f), SpringAccent=new Color(.34f,.90f,.48f);
         static readonly string[] JoySplashes={"Солнечный живой мир!","Строй уютно, летай к звёздам!","Цветущие долины ждут!","Вместе веселее!"};
         PrototypeGame game;Canvas canvas;RectTransform frame,splashRect;GameObject content,background;RawImage backdropRaw;Font body,display;Sprite rounded;
         readonly List<GameObject> transient=new List<GameObject>();readonly List<Button> actions=new List<Button>();
@@ -111,8 +113,9 @@ namespace LestingCraft.Presentation
             if(game.InWorld&&next!=Page.HUD)
             {
                 background.SetActive(false);
-                float veilAlpha=next==Page.Pause?.44f:.64f;
-                var veil=Box(content.transform,0,0,1600,900,new Color(.04f,.10f,.16f,veilAlpha),false);
+                // A pause screen drawn over a sunlit world needs a real veil, not a tint.
+                float veilAlpha=next==Page.Pause?.78f:.82f;
+                var veil=Box(content.transform,0,0,1600,900,new Color(.03f,.075f,.125f,veilAlpha),false);
                 veil.raycastTarget=true;
             }
         }
@@ -163,6 +166,8 @@ namespace LestingCraft.Presentation
             }
             Label(content.transform,"LESTINGCRAFT",64,42,400,32,19,White,true);
             Label(content.transform,"N E W  E R A",66,81,280,24,12,Accent);
+            // Section caption used to be drawn straight onto the bright sky; a small plate keeps it legible.
+            Box(content.transform,1050,40,486,42,new Color(.03f,.08f,.13f,.62f));
             Label(content.transform,section.ToUpperInvariant(),1060,48,470,40,14,Accent,false,TextAnchor.MiddleRight);
             Box(content.transform,64,119,1472,1,new Color(.8f,.9f,.8f,.13f),false);
             Box(content.transform,64,119,96,2,Accent,false);
@@ -314,47 +319,56 @@ namespace LestingCraft.Presentation
         public void ShowWorld()
         {
             Clear(Page.World);Header("Одиночная игра");
-            Label(content.transform,"КАК НАЧНЁТСЯ ТВОЯ ЭРА?",64,171,1400,67,36,White,true);
-            Label(content.transform,"Старт экспедиции — на живой планете Лестингия: цветущие долины, шумные города, водопады, парящие острова и полёты к далёким мирам.",66,247,1440,42,19,Muted);
-            for(int i=0;i<4;i++)
-            {
-                int mode=i;bool chosen=game.SelectedMode==i;var button=Button("",64+i*368,331,352,254,()=>{game.SelectedMode=mode;ShowWorld();},chosen);
-                Label(button.transform,"0"+(i+1),22,20,305,39,25,chosen?Ink:Accent,true);
-                Label(button.transform,GameRules.ModeNames[i],22,85,305,55,24,chosen?Ink:White,true);
-                Label(button.transform,GameRules.ModeDescriptions[i],22,164,305,79,17,chosen?Ink:Muted);
-            }
-            Label(content.transform,"СТАРТ: ЛЕСТИНГИЯ",64,628,470,37,19,Accent,true);
-            Label(content.transform,"Мир генерируется автоматически.\nВыбирается только режим экспедиции.",64,678,465,80,18,Muted);
+            Label(content.transform,"ВЫБЕРИ МИР И РЕЖИМ",64,146,900,54,34,White,true);
+            Label(content.transform,"Слева — сохранённые миры этого ПК, справа — режим новой экспедиции на Лестингии.",66,202,1240,30,17,Muted);
             bool hasSave=game!=null&&game.HasSave;
+
+            // Saved worlds live in their own left-hand list with the actions on the bottom row,
+            // the way the mode screen is expected to read (player report on the old layout).
+            var worldsCard=Box(content.transform,64,248,700,424,Panel);
+            Label(worldsCard.transform,"МИРЫ",24,18,652,28,17,Accent,true);
+            Box(worldsCard.transform,24,52,652,1,new Color(.8f,.9f,.8f,.18f),false);
             if(hasSave)
             {
-                Label(content.transform,"Сохранённый мир найден",542,616,330,34,20,SpringAccent,true);
-                Label(content.transform,"Вернитесь в экспедицию, создайте новый мир\nили сразу откройте его друзьям по LAN!",542,654,330,68,14,Muted);
-                var resumeBtn=Button("Продолжить мир  →",886,634,322,58,game.ContinueOffline,true);
+                var row=Box(worldsCard.transform,24,66,652,106,new Color(.10f,.235f,.335f,.66f));
+                Label(row.transform,"Лестингия · SEED "+(game!=null?game.WorldSeed:""),18,14,616,28,20,White,true);
+                Label(row.transform,"Локальный мир · персонаж, постройки и прогресс",18,46,616,24,13,Muted);
+                Label(row.transform,"Сохранён · готов к продолжению",18,72,616,24,13,SpringAccent);
+                var resumeBtn=Button("Продолжить мир  →",24,190,652,58,game.ContinueOffline,true,worldsCard.transform);
                 resumeBtn.name="World.Continue";
-                var newBtn=Button("Новый мир  →",1224,634,312,58,game.PlayOffline,false);
-                newBtn.name="World.New";
-                var lanBtn=Button("📡 Продолжить и сразу открыть мир по локальной сети (LAN)  →",886,704,650,54,()=>
-                {
-                    game.ContinueOffline();
-                    game.OpenLocalWorldToLan("Мир "+game.PlayerName);
-                },false);
-                lanBtn.name="World.OpenLan";
+                Label(worldsCard.transform,"Продолжение идёт с последнего автосохранения.",26,258,648,26,13,Muted);
             }
             else
             {
-                Label(content.transform,"Локальная экспедиция",542,616,640,34,20,White);
-                Label(content.transform,"Персонаж и изменённые блоки сохраняются локально.\nМожно играть одному или сразу открыть мир по LAN.",542,654,650,68,15,Muted);
-                var startBtn=Button("Начать одиночную игру  →",886,634,650,58,game.PlayOffline,true);
-                startBtn.name="World.New";
-                var lanBtn=Button("📡 Начать и сразу открыть мир по локальной сети (LAN)  →",886,704,650,54,()=>
-                {
-                    game.PlayOffline();
-                    game.OpenLocalWorldToLan("Мир "+game.PlayerName);
-                },false);
-                lanBtn.name="World.OpenLan";
+                Label(worldsCard.transform,"Сохранённых миров пока нет",24,70,652,30,19,White,true);
+                Label(worldsCard.transform,"Создайте мир справа — персонаж, постройки и прогресс будут храниться на этом ПК.",24,106,652,62,14,Muted);
             }
-            status=Label(content.transform,"Бортовой архив (3 главы), живые города, парящие острова, врата Ада, миникарта [M] и чертежи [B] доступны во всех режимах.",542,784,994,66,14,Muted);
+            Label(worldsCard.transform,"Новый мир заменяет предыдущий локальный. Открыть друзьям — кнопкой LAN внизу.",26,340,648,54,13,Muted);
+
+            // Mode of the next expedition (right).
+            var modeCard=Box(content.transform,792,248,744,424,Panel);
+            Label(modeCard.transform,"РЕЖИМ НОВОГО МИРА",24,18,696,28,17,Accent,true);
+            Box(modeCard.transform,24,52,696,1,new Color(.8f,.9f,.8f,.18f),false);
+            for(int i=0;i<4;i++)
+            {
+                int mode=i;bool chosen=game.SelectedMode==i;
+                var button=Button("",24+(i%2)*352,66+(i/2)*116,344,104,()=>{game.SelectedMode=mode;ShowWorld();},chosen,modeCard.transform);
+                Label(button.transform,"0"+(i+1)+"   "+GameRules.ModeNames[i],14,10,316,26,17,chosen?Ink:White,true);
+                Label(button.transform,GameRules.ModeDescriptions[i],14,40,316,58,12,chosen?Ink:Muted);
+            }
+            Label(modeCard.transform,"Seed создаётся автоматически. Старт всегда в Лестингии.",26,306,696,28,13,Muted);
+
+            // Bottom action row.
+            var newBtn=Button("▶  Создать мир",64,700,420,64,game.PlayOffline,true);
+            newBtn.name="World.New";
+            var lanBtn=Button("📡  Открыть мир по LAN",500,700,420,64,()=>{
+                if(game.HasSave)game.ContinueOffline();else game.PlayOffline();
+                game.OpenLocalWorldToLan("Мир "+game.PlayerName);
+            });
+            lanBtn.name="World.OpenLan";
+            Button("Настройки",936,700,300,64,()=>ShowSettings(Page.World));
+            Button("←  Назад",1252,700,284,64,ShowHome);
+            status=Label(content.transform,"LAN открывает текущий мир друзьям в одной сети Wi-Fi / LAN. Единственный локальный профиль — один мир за раз.",64,780,1220,60,14,Muted);
         }
         int lobbyRevision=-1;
         public void ShowLobby()
@@ -658,7 +672,9 @@ namespace LestingCraft.Presentation
         }
         void Slider(string title,float x,float y,float w,float value,float min,float max,bool integer,Action<float> changed,Func<float,string> format)
         {
-            Label(content.transform,title,x,y,w-160,30,18,White);var output=Label(content.transform,format(value),x+w-190,y,190,30,15,Accent,false,TextAnchor.MiddleRight);
+            // The title and the value used to share the same pixels on the narrow sliders
+            // ("Звуки 80%" ran into the next caption); each now owns its own box.
+            Label(content.transform,title,x,y,w-125,30,18,White);var output=Label(content.transform,format(value),x+w-112,y,112,30,15,Accent,false,TextAnchor.MiddleRight);
             var track=Box(content.transform,x,y+58,w,6,new Color(.17f,.23f,.24f));
             var slider=Rect("Slider",content.transform,x,y+42,w,40).gameObject.AddComponent<Slider>();slider.minValue=min;slider.maxValue=max;slider.wholeNumbers=integer;
             var fill=Box(slider.transform,0,16,w,6,Accent);fill.rectTransform.anchorMin=new Vector2(0,.5f);fill.rectTransform.anchorMax=new Vector2(1,.5f);fill.rectTransform.offsetMin=new Vector2(0,-3);fill.rectTransform.offsetMax=new Vector2(0,3);
