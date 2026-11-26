@@ -145,12 +145,14 @@ namespace LestingCraft.Gameplay
         // 30:FrostWolf, 31:GlassSpider, 32:FungusBeetle, 33:SkyWhale
         static readonly int[][] HabitatSpeciesV9 =
         {
-            new[] { 0, 1, 5, 6, 11, 12, 16, 18, 30, 32, 33, 33 },
-            new[] { 0, 1, 2, 3, 4, 5, 8, 11, 12, 17, 30, 31, 32, 33 },
+            // SkyWhale (33) is not a ground-meadow animal: it spawns only from the soaring
+            // sky-island pass below, so it no longer appears in a forest glade.
+            new[] { 0, 1, 5, 6, 11, 12, 16, 18, 30, 32 },
+            new[] { 0, 1, 2, 3, 4, 5, 8, 11, 12, 17, 30, 31, 32 },
             new[] { 0, 1, 3, 4, 6, 8, 12, 13, 13, 17, 17, 30, 30, 31 },
             new[] { 1, 5, 7, 11, 14, 14, 15, 15, 31, 32 },
             new[] { 2, 9, 10, 11, 16, 16, 18, 18, 19, 31, 32, 32 },
-            new[] { 1, 3, 7, 8, 11, 12, 15, 17, 19, 31, 33 },
+            new[] { 1, 3, 7, 8, 11, 12, 15, 17, 19, 31 },
             new[] { 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 }
         };
 
@@ -419,7 +421,8 @@ namespace LestingCraft.Gameplay
                 a.timer -= dt;
                 int s = a.species;
                 bool hostile = IsRadiaMutant(s) && (a.anger > 0 || best < 676f) ||
-                               (s == 2 || s == 6 || s == 8 || s == 17) && a.anger > 0 ||
+                               s == 6 && (a.anger > 0 || best < 196f) ||
+                               (s == 2 || s == 8 || s == 17) && a.anger > 0 ||
                                (s == 3 || s == 15) && (a.anger > 0 || best < 81) ||
                                s == 4 && (a.anger > 0 || best < 36);
                 bool defending = hostile && best < (IsRadiaMutant(s) ? 676f : 196f) && Math.Abs(a.y - nearest.y) < 10;
@@ -429,7 +432,7 @@ namespace LestingCraft.Gameplay
                 if (defending)
                 {
                     a.goalX = nearest.x; a.goalZ = nearest.z;
-                    speed = s == 2 ? 3.1f : Run[s];
+                    speed = s == 6 ? 4.7f : s == 2 ? 3.1f : Run[s];
                     if (best < (s == 4 || s == 6 || s == 17 || s == 28 ? 5.2f : IsRadiaMutant(s) ? 3.8f : 2.4f) &&
                         Math.Abs(nearest.y - (a.y + 1.5f)) < 3.6f && a.bite <= 0)
                     {

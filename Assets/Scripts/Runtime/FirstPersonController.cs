@@ -29,7 +29,10 @@ namespace LestingCraft.Runtime
         // ground), jump buffer (queue a jump pressed slightly before landing) and a
         // variable jump height (release space early to cut the ascent).
         const float CoyoteTime = .12f, JumpBuffer = .12f;
-        float coyoteTimer, jumpBufferTimer;
+        // A single hit must never turn into a cross-map flight: the horizontal impulse is
+        // hard-clamped and the upward part is folded into the ordinary vertical velocity.
+        const float MaxKnockbackSpeed = 4.6f;
+        float coyoteTimer, jumpBufferTimer, waterExitTimer;
         bool wasGrounded, jumpCutApplied, wasSwimming;
         float eyeOffsetCurrent = PlayerCapsule.EyeHeight;
         float landDip, stepAccum, bobPhase;
@@ -78,7 +81,14 @@ namespace LestingCraft.Runtime
             return new Vector3(dx, 0f, dz);
         }
 
-        public void Knockback(Vector3 force){impulse=Vector3.ClampMagnitude(impulse+force,12);}
+        /// <summary>Hit reaction: bounded horizontal push plus a short lift, never a launch.</summary>
+        public void Knockback(Vector3 force)
+        {
+            impulse=Vector3.ClampMagnitude(impulse+new Vector3(force.x,0f,force.z),MaxKnockbackSpeed);
+            float lift=Mathf.Clamp(force.y,0f,2.2f);
+            if(lift>0f&&!SwimmingNow)vertical=Mathf.Max(vertical,lift);
+        }
+        public bool SwimmingNow{get;private set;}
 
         /// <summary>Move together with a physical lift; performs CharacterController collision checks every frame.</summary>
         public void CarryByPlatform(Vector3 delta)
@@ -307,9 +317,16 @@ namespace LestingCraft.Runtime
             }
             else
             {
-            bool swimming=!Game.DockedAtOrbitalStation&&World.InFluid(transform.position+Vector3.up*.8f,7);
+            // Water is sampled at the eyes and at the waist: an ocean must not count as solid
+            // ground, and the player has to be able to float with the head above the surface
+            // and hop out onto the shore (player report: "из воды вообще нельзя выйти").
+            bool headInWater=!Game.DockedAtOrbitalStation&&World.InFluid(transform.position+Vector3.up*1.5f,7);
+            bool bodyInWater=!Game.DockedAtOrbitalStation&&World.InFluid(transform.position+Vector3.up*.55f,7);
+            bool swimming=headInWater||bodyInWater;
             if(swimming&&!wasSwimming)GameAudio.PlayLand(6f,true);
             wasSwimming=swimming;
+            SwimmingNow=swimming;
+            waterExitTimer=Mathf.Max(0f,waterExitTimer-Time.deltaTime);
             Crouching=!swimming&&!Game.DockedAtOrbitalStation&&(cHeld||ctrlHeld);
             Sprinting=Game.Session.Vitals.body.CanSprint&&!swimming&&!Crouching&&shiftHeld&&move.sqrMagnitude>0&&Game.Session&&Game.Session.Vitals.stamina>5;
             float speed=swimming?2.6f:Crouching?2.65f:Sprinting?8:5;
@@ -327,12 +344,25 @@ namespace LestingCraft.Runtime
             float swimBob=0f;
             if(swimming)
             {
-                // Buoyancy: vertical velocity eases toward a neutral band; space rises,
-                // ctrl dives, otherwise settle with a gentle frame-rate-independent surface bob.
-                float buoyTarget=spaceHeld?2.8f:ctrlHeld?-2.8f:-.18f;
-                vertical=Mathf.MoveTowards(vertical,buoyTarget,Time.deltaTime*8f);
+                // Buoyancy holds the body at the surface: while the head is submerged the player
+                // rises, with the head above water he only treads water slightly below the line,
+                // so the old sink/rise oscillation that trapped the player is gone.
+                float buoyTarget=headInWater?1.25f:-.30f;
+                if(spaceHeld)buoyTarget=3.4f;
+                else if(ctrlHeld)buoyTarget=-3.2f;
+                vertical=Mathf.MoveTowards(vertical,buoyTarget,Time.deltaTime*(spaceHeld||ctrlHeld?14f:7f));
+                // Shore exit: at the surface Space becomes a real jump, high enough to clear a
+                // 1–2 block bank instead of being cancelled by the water.
+                if(spacePressed&&!headInWater&&!ctrlHeld&&waterExitTimer<=0f)
+                {
+                    vertical=7.6f*Mathf.Lerp(1f,1.14f,1f-Mathf.Clamp01(grav));
+                    waterExitTimer=.55f;
+                    jumpBufferTimer=0f;coyoteTimer=0f;wasGrounded=false;jumpCutApplied=true;
+                    GameAudio.PlayJump(true);
+                }
                 if(!spaceHeld&&!ctrlHeld)
-                    swimBob=Mathf.Sin(Time.time*2.4f)*.18f;
+                    swimBob=Mathf.Sin(Time.time*2.4f)*.14f;
+                if(spaceHeld)speed*=1.18f;
             }
             else
             {
@@ -358,7 +388,11 @@ namespace LestingCraft.Runtime
             float impact=vertical;bool groundedBefore=controller.isGrounded;
             Vector3 posBefore=transform.position;
             PlayerCapsule.UpdateStep(controller,velocity);
-            controller.Move((velocity+Vector3.up*(vertical+swimBob)+impulse)*Time.deltaTime);impulse=Vector3.MoveTowards(impulse,Vector3.zero,Time.deltaTime*15);
+            // Never let a hit carry the player into a chunk that is not streamed in: that was the
+            // path that dropped the player out of the world and teleported him back to spawn.
+            if(!Game.DockedAtOrbitalStation&&impulse.sqrMagnitude>.0001f&&
+               !World.Loaded(transform.position+new Vector3(impulse.x,0f,impulse.z)*(Time.deltaTime*12f)))impulse=Vector3.zero;
+            controller.Move((velocity+Vector3.up*(vertical+swimBob)+impulse)*Time.deltaTime);impulse=Vector3.MoveTowards(impulse,Vector3.zero,Time.deltaTime*22);
             if(!groundedBefore&&controller.isGrounded&&impact<-3.2f)
             {
                 landDip=Mathf.Clamp(-impact*0.013f,0.035f,0.17f);

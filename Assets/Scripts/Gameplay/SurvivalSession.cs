@@ -200,7 +200,14 @@ namespace LestingCraft.Gameplay
         public void Transfer(int from,int to){if(CanInteract)Inventory.Transfer(from,to);}
         public void DamagePart(float amount,BodyPart part){if(amount<=0||Vitals.dead||Creative)return;float protection=Equipment.Protection(Inventory,part);Vitals.DamagePart(amount*(1-protection),Mode,part);Equipment.Wear(Inventory,amount,part);if(amount>=2f)GameAudio.PlayPlayerHurt();}
         public void Damage(float amount){DamagePart(amount,BodyPart.Torso);}
-        public void Impact(float amount,BodyPart part,Vector3 direction){DamagePart(amount,part);if(!Creative)Player.Knockback(direction.normalized*Mathf.Min(7,amount*.4f)+Vector3.up*1.4f);}
+        public void Impact(float amount,BodyPart part,Vector3 direction)
+        {
+            DamagePart(amount,part);
+            if(Creative)return;
+            Vector3 dir=direction.sqrMagnitude>.0001f?direction.normalized:-(Player?Player.transform.forward:Vector3.forward);
+            // Bounded reaction: a 15-damage bite nudges the player, it does not launch him.
+            Player.Knockback(Vector3.ClampMagnitude(dir,1f)*Mathf.Min(3.4f,amount*.22f)+Vector3.up*.9f);
+        }
         public void Respawn()
         {
             if(Mode==GameMode.Hardcore||Data.campaign.runEnded||Living&&Living.Pending)return;

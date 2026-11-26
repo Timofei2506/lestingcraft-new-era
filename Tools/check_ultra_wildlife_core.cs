@@ -146,6 +146,33 @@ class CheckUltraWildlifeCore
             assertions++;
         }
 
-        Console.WriteLine("PASS: " + assertions + " ultra-wildlife assertions across all 42 species (0..41), Inferno, Paradise, Somnia & Exoplanet habitats, legacy gate, soaring flyers, predator aggro, and 114 PBR surface layers.");
+        // Bison (species 6) is territorial: an unprovoked approach is answered with a charge,
+        // not with flight (player report: "почему зубр убегает, а не нападает").
+        WildlifeSimulation.Ground bisonGround = (x, z, prevY, radius, height) => 50f;
+        var bisonSim = new WildlifeSimulation(4242, null, 7);
+        bisonSim.Animals.Add(new AnimalState
+        {
+            id = "a:bison", species = 6, health = 95, x = 0f, y = 50f, z = 0f,
+            homeX = 0f, homeZ = 0f, goalX = 0f, goalZ = 0f, timer = 5f
+        });
+        float bisonBites = 0f;
+        var bisonObserver = new[] { new AnimalObserver { id = "p1", x = 0, y = 50, z = 3, alive = true } };
+        for (int i = 0; i < 40; i++) bisonSim.Step(.1f, bisonObserver, bisonGround, (id, d) => bisonBites += d);
+        Assert(bisonBites > 0f, "Bison must charge and bite an unprovoked player who walks up to it");
+        Assert(bisonSim.Animals[0].z > .4f, "Bison must close in on the player instead of fleeing");
+        assertions += 2;
+
+        // A ground meadow habitat never spawns a SkyWhale on foot (player report: whale in a forest).
+        var meadowSim = new WildlifeSimulation(9091, null, 9);
+        meadowSim.SurfaceAt = (x, z) => 3;
+        for (int ring = -600; ring <= 600; ring += 48)
+            meadowSim.Spawn(new AnimalObserver { id = "p1", x = ring, y = 46, z = -ring, alive = true }, flatGround);
+        foreach (var a in meadowSim.Animals)
+        {
+            Assert(a.species != 33, "SkyWhale must not spawn as ground meadow wildlife");
+            assertions++;
+        }
+
+        Console.WriteLine("PASS: " + assertions + " ultra-wildlife assertions across all 42 species (0..41), Inferno, Paradise, Somnia & Exoplanet habitats, legacy gate, soaring flyers, predator aggro, territorial bison, sky-only whales and 114 PBR surface layers.");
     }
 }
