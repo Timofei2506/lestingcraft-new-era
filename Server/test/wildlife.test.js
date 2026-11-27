@@ -21,3 +21,32 @@ test('new edits accepted only by expanded rooms; old rooms keep ID ceiling',()=>
 test('boars defend on hit; damage uses fresh monotonic IDs, no initial hostility',()=>{const f=new Fauna(1);f.ground=()=>50;f.lineClear=()=>true;const a={id:'a:0:0',species:2,health:40,x:0,y:50,z:0,homeX:0,homeZ:0,goalX:0,goalZ:0,timer:2,anger:0,bite:0};f.animals=[a];let p={id:'p',playerKey:'a'.repeat(32),x:1,y:51.62,z:0,positioned:true};assert.equal(f.tick(10000,[p]).damageEvents.length,0);p.x=a.x+1;p.z=a.z;f.hit(p,a.id,0,11000,false);const t=f.tick(11500,[p]);assert.equal(t.damageEvents.length,1);assert.equal(t.damageEvents[0].amount,8);assert.ok(t.damageEvents[0].seq>11500);assert.equal(f.tick(12000,[p]).damageEvents.length,0);});
 test('creative kills pay no resources and hardcore end disables wildlife actions',()=>{const r=new RoomState(config(2)),p=newPeer('p','P','a'.repeat(32));send(r,p,{type:'position',x:0,y:46.62,z:0,yaw:0});const a=r.fauna.animals.find(a=>a.species===1);closeTo(r,p,a);assert.equal(hit(r,p,a).loot.length,0);r.config.runEnded=true;assert.throws(()=>hit(r,p,a,13000),/unavailable/);});
 test('dormant AI has no timers, honors tick throttle and stale observers expire',()=>{const {r,p}=populated();assert.equal(r.fauna.tick(10100,[]),null);assert.equal(send(r,p,{type:'position',x:0,y:46.62,z:0,yaw:0},10200).animals,undefined);const q=newPeer('q','Q','b'.repeat(32));send(r,q,{type:'position',x:0,y:46.62,z:0,yaw:0},17000);assert.equal(r.observers.has(p.id),false);});
+
+test('deep frontier species round-trip and are not clamped on the server',()=>{
+    // Client knows 48 species (0..47); the server must accept the same ladder or frontier fauna
+    // silently disappears in co-op. Values must match WildlifeSimulation tables.
+    const frontier=[42,43,44,45,46,47];
+    const fauna=new Fauna(2506,{},new Map(),12);
+    const saved={sites:[],animals:frontier.map((species,i)=>({id:'f:'+i,species,health:1,x:i,y:60,z:0,yaw:0}))};
+    const loaded=new Fauna(2506,saved,new Map(),12);
+    assert.equal(loaded.animals.length,frontier.length);
+    for(const a of loaded.animals) assert.ok(frontier.includes(a.species),'species '+a.species+' preserved');
+    // Content 11 must still reject them, so old worlds keep their exact fauna.
+    const old=new Fauna(2506,saved,new Map(),11);
+    assert.equal(old.animals.length,0);
+    // Health ladder: 42..47 mirror the client (88,115,58,92,36,95).
+    const expected={42:96,43:240,44:42,45:110,46:60,47:150};
+    // A saved damaged frontier animal keeps its damage; it is only clamped to its own maximum.
+    assert.equal(loaded.animals.find(a=>a.species===42).health,1,'saved damage survives the load');
+    // A full health value on load must survive the per-species cap unchanged.
+    const fresh=new Fauna(2506,{sites:[],animals:frontier.map((species,i)=>({id:'g:'+i,species,health:expected[species],x:i,y:60,z:0,yaw:0}))},new Map(),12);
+    for(const a of fresh.animals) assert.equal(a.health,expected[a.species],'species '+a.species+' health');
+    // Over-large saved health is capped at the species maximum, so a hacked client cannot inflate it.
+    const cheat=new Fauna(2506,{sites:[],animals:[{id:'c:0',species:47,health:99999,x:0,y:60,z:0,yaw:0}]},new Map(),12);
+    assert.equal(cheat.animals[0].health,expected[47],'health is capped at the species maximum');
+    // Flying frontier species must fly like the client says they do.
+    const flyers=fresh.animals.filter(a=>a.species===44||a.species===47);
+    for(const a of flyers) assert.ok(a.flightHeight>=3.5&&a.flightHeight<=6,'frontier flyer '+a.species+' keeps a flight height');
+    assert.equal(fresh.animals.find(a=>a.species===42).flightHeight,0,'a ground frontier species stays on the ground');
+    assert.ok(fauna.animals.length===0);
+});

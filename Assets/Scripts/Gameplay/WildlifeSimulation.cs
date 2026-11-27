@@ -38,7 +38,7 @@ namespace LestingCraft.Gameplay
 
     public sealed class WildlifeSimulation
     {
-        public const int SpeciesCount = 42;
+        public const int SpeciesCount = 48;
         public const int MaxAnimals = 384, MaxSites = 8192, ActiveLimit = 32, ActiveLimitV8 = 96;
         public readonly List<AnimalState> Animals = new List<AnimalState>();
         readonly HashSet<string> sites = new HashSet<string>();
@@ -60,21 +60,25 @@ namespace LestingCraft.Gameplay
             30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55,
             65, 48, 85, 115, 95, 42, 90, 130, 175, 140,
             70, 24, 16, 150,
-            88, 115, 58, 92, 36, 95, 120, 28
+            88, 115, 58, 92, 36, 95, 120, 28,
+            // 42:PrismLynx 43:GeodeLeviathan 44:AshFlicker 45:StormWyrm 46:SporeStag 47:VoidWraith
+            96, 240, 42, 110, 60, 150
         };
         static readonly int[] Meat =
         {
             3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2,
             2, 1, 2, 5, 2, 1, 3, 2, 0, 1,
             4, 1, 1, 9,
-            3, 4, 2, 2, 2, 5, 6, 2
+            3, 4, 2, 2, 2, 5, 6, 2,
+            2, 6, 1, 3, 3, 4
         };
         static readonly int[] Hide =
         {
             2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3,
             3, 2, 4, 4, 4, 2, 4, 5, 6, 5,
             5, 2, 2, 7,
-            4, 5, 3, 4, 3, 5, 6, 3
+            4, 5, 3, 4, 3, 5, 6, 3,
+            2, 7, 1, 4, 3, 5
         };
         static readonly int[] AttackDamage =
         {
@@ -89,35 +93,40 @@ namespace LestingCraft.Gameplay
             2.10f, .45f, 1.05f, .96f, 1.72f, .55f, 2.06f, 1.16f, .78f, .40f, .24f, .72f, .57f, .75f, 2.53f, .38f, .34f, 2.78f, .60f, .58f,
             1.35f, .34f, 1.31f, 1.52f, 1.02f, .48f, .58f, 2.73f, 3.14f, 2.70f,
             1.34f, .74f, .60f, 2.50f,
-            1.38f, 2.25f, .95f, 1.28f, .86f, 2.20f, 2.15f, .68f
+            1.38f, 2.25f, .95f, 1.28f, .86f, 2.20f, 2.15f, .68f,
+            1.38f, 2.25f, .95f, 1.28f, .86f, 2.20f
         };
         static readonly float[] Radii =
         {
             .34f, .15f, .36f, .26f, .56f, .16f, .64f, .24f, .22f, .22f, .18f, .48f, .28f, .24f, .50f, .26f, .28f, .82f, .26f, 1.25f,
             .36f, .36f, .82f, .54f, .95f, .28f, 1.25f, .58f, 1.12f, .65f,
             .32f, .70f, .42f, 2.10f,
-            .38f, .52f, .42f, .78f, .36f, .38f, .48f, .30f
+            .38f, .52f, .42f, .78f, .36f, .38f, .48f, .30f,
+            .38f, .52f, .42f, .78f, .36f, .38f
         };
         static readonly float[] Lengths =
         {
             1.65f, .48f, 1.80f, 1.52f, 2.50f, .98f, 2.62f, .98f, .88f, .98f, .38f, .95f, .42f, .46f, 2.79f, .72f, .78f, 2.70f, .97f, 3.45f,
             2.18f, 1.52f, 2.48f, 2.51f, 1.92f, .68f, 3.45f, 1.95f, 1.30f, 1.10f,
             2.11f, 1.52f, 1.02f, 6.40f,
-            2.15f, 1.85f, 1.15f, 2.35f, 1.10f, 1.75f, 2.05f, .82f
+            2.15f, 1.85f, 1.15f, 2.35f, 1.10f, 1.75f, 2.05f, .82f,
+            2.15f, 1.85f, 1.15f, 2.35f, 1.10f, 1.75f
         };
         static readonly float[] Walk =
         {
             .65f, .75f, .65f, 1.15f, .65f, 1.25f, .55f, .9f, 1.05f, .55f, .5f, 2.8f, 2.4f, .62f, .72f, .95f, .35f, .60f, .58f, 2.6f,
             1.45f, 1.15f, 1.10f, 1.05f, .85f, 2.9f, 2.7f, 1.35f, .75f, 1.55f,
             1.40f, 1.55f, .45f, .55f,
-            1.55f, 1.05f, 2.85f, 1.15f, 2.15f, .95f, 2.65f, 2.75f
+            1.55f, 1.05f, 2.85f, 1.15f, 2.15f, .95f, 2.65f, 2.75f,
+            1.55f, .95f, 2.85f, 1.15f, 2.15f, .95f
         };
         static readonly float[] Run =
         {
             3.8f, 4.2f, 3.8f, 4.6f, 3.3f, 4.8f, 3.4f, 3.6f, 4.4f, 2.1f, 2.7f, 4.5f, 4.1f, 2.4f, 3.5f, 3.6f, 1.2f, 3.9f, 2.8f, 4.6f,
             5.4f, 4.2f, 4.4f, 4.9f, 3.4f, 5.6f, 5.1f, 5.5f, 3.5f, 5.8f,
             5.9f, 4.6f, 1.4f, 2.6f,
-            5.8f, 3.8f, 5.4f, 4.5f, 4.2f, 4.6f, 5.2f, 4.8f
+            5.8f, 3.8f, 5.4f, 4.5f, 4.2f, 4.6f, 5.2f, 4.8f,
+            5.8f, 3.4f, 5.4f, 4.5f, 4.2f, 4.6f
         };
 
         static readonly int[][] HabitatSpeciesV7 =

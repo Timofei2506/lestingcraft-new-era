@@ -20,6 +20,8 @@ namespace LestingCraft.Gameplay
     public sealed class WildlifeManager : MonoBehaviour
     {
         const int VisualLimit = 64, PoolLimit = 48;
+        // Shared cooldown for ambient creature calls: at most one call every few frames per manager.
+        float callClock;
         SurvivalSession session;
         WildlifeSimulation simulation;
         readonly Dictionary<string, AnimalState> remote = new Dictionary<string, AnimalState>();
@@ -521,6 +523,24 @@ namespace LestingCraft.Gameplay
                 float distance = Vector3.Distance(target, p);
                 visual.SetViewDistance(distance);
                 visual.Animate(Time.deltaTime, distance);
+                // Ambient calls: only for nearby, visible creatures, at a slow per-animal rate so
+                // a herd never turns into a chorus. Angry animals voice a threat instead.
+                if (distance < 26f && !a.dead)
+                {
+                    callClock -= Time.deltaTime;
+                    if (callClock <= 0f)
+                    {
+                        // Deterministic jitter, no allocation: the manager is GC-sensitive.
+                        int h = (a.GetHashCode() * 7919) ^ (int)(Time.time * 7f);
+                        callClock = .18f + (h & 1023) / 1023f * .30f;
+                        if (FaunaVoices.IsFrontier(a.species))
+                        {
+                            if (a.anger > 0f) GameAudio.PlayFaunaThreat(a.species);
+                            else GameAudio.PlayFaunaCall(a.species, .38f);
+                        }
+                        else if (a.anger > 0f) GameAudio.PlayFaunaThreat(a.species);
+                    }
+                }
                 candidates[i] = null;
             }
         }

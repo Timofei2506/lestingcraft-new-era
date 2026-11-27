@@ -168,6 +168,18 @@ namespace LestingCraft.Presentation
             clips["boss_hit_void"]      = SynthVoidPulse();
             clips["boss_death_void"]    = SynthVoidCollapse();
 
+            // Fauna calls (FaunaVoices table): frontier species must not share the deer grunt.
+            clips["fauna_mammal"]    = SynthMammalCall();
+            clips["fauna_reptile"]   = SynthReptileHiss();
+            clips["fauna_chitin"]    = SynthCricketTrill();
+            clips["fauna_mutant"]    = SynthMutantWail();
+            clips["fauna_crystal"]   = SynthCrystalCall();
+            clips["fauna_leviathan"] = SynthLeviathanCall();
+            clips["fauna_ember"]     = SynthEmberFlicker();
+            clips["fauna_storm"]     = SynthStormBeast();
+            clips["fauna_spore"]     = SynthSporeCall();
+            clips["fauna_void"]      = SynthVoidWhisper();
+
             clips["ice_tick"]    = SynthIceTick();
             clips["ember_pop"]   = SynthEmberPop();
             clips["wave_crash"]  = SynthWaveCrash();
@@ -444,6 +456,156 @@ namespace LestingCraft.Presentation
                 outBuf[n - fade + i] = Mathf.Lerp(raw[n - fade + i], raw[i], 1f - w);
             }
             return MakeClip(name, outBuf);
+        }
+
+        /// <summary>Generic peaceful mammal: a soft two-note low call.</summary>
+        AudioClip SynthMammalCall()
+        {
+            int n = Mathf.RoundToInt(0.44f * SampleRate);
+            var buf = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float env = Mathf.Sin(Mathf.Clamp01(t / 0.44f) * Mathf.PI);
+                float f = 220f + 40f * Mathf.Sin(t * 18f * 6.2831853f);
+                buf[i] = (Mathf.Sin(t * f * 6.2831853f) + Mathf.Sin(t * f * 2f * 6.2831853f) * .25f) * env * .22f;
+            }
+            return MakeClip("fauna_mammal", buf);
+        }
+
+        AudioClip SynthReptileHiss()
+        {
+            int n = Mathf.RoundToInt(0.38f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f, hp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 0.38f;
+                lp += 0.45f * (NextRand() - lp);
+                hp += 0.05f * (lp - hp);
+                buf[i] = (lp - hp) * Mathf.Sin(u * Mathf.PI) * .34f;
+            }
+            return MakeClip("fauna_reptile", buf);
+        }
+
+        /// <summary>Mutant wail: detuned, slightly broken pitch.</summary>
+        AudioClip SynthMutantWail()
+        {
+            int n = Mathf.RoundToInt(0.70f * SampleRate);
+            var buf = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 0.70f;
+                float wobble = Mathf.Sin(t * 6.3f * 6.2831853f) * .18f;
+                float f = 180f * (1f + wobble) * (1f - u * .25f);
+                float env = Mathf.Sin(Mathf.Clamp01(u) * Mathf.PI);
+                buf[i] = (Mathf.Sin(t * f * 6.2831853f) + Mathf.Sin(t * f * 1.51f * 6.2831853f) * .5f) * env * .20f;
+            }
+            return MakeClip("fauna_mutant", buf);
+        }
+
+        /// <summary>Crystal creature: two high partials with a glassy beat.</summary>
+        AudioClip SynthCrystalCall()
+        {
+            int n = Mathf.RoundToInt(0.55f * SampleRate);
+            var buf = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float env = Mathf.Exp(-t * 5.5f);
+                float a = Mathf.Sin(t * 1320f * 6.2831853f);
+                float b = Mathf.Sin(t * 1980f * 6.2831853f) * .45f;
+                float beat = .7f + .3f * Mathf.Sin(t * 11f * 6.2831853f);
+                buf[i] = (a + b) * env * beat * .16f;
+            }
+            return MakeClip("fauna_crystal", buf);
+        }
+
+        /// <summary>Leviathan: sub-bass hum with a slow swell - felt more than heard.</summary>
+        AudioClip SynthLeviathanCall()
+        {
+            int n = Mathf.RoundToInt(1.5f * SampleRate);
+            var buf = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 1.5f;
+                float env = Mathf.Sin(Mathf.Clamp01(u) * Mathf.PI);
+                float f = 46f + 10f * Mathf.Sin(t * 1.4f * 6.2831853f);
+                buf[i] = (Mathf.Sin(t * f * 6.2831853f) + Mathf.Sin(t * f * 2.01f * 6.2831853f) * .4f) * env * .30f;
+            }
+            return MakeClip("fauna_leviathan", buf);
+        }
+
+        /// <summary>Ember flicker: tiny crackles over a dying hum.</summary>
+        AudioClip SynthEmberFlicker()
+        {
+            int n = Mathf.RoundToInt(0.52f * SampleRate);
+            var buf = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float hum = Mathf.Sin(t * 140f * 6.2831853f) * Mathf.Exp(-t * 6f) * .14f;
+                float pop = NextRand() * Mathf.Exp(-t * 40f) * .18f;
+                buf[i] = hum + pop;
+            }
+            return MakeClip("fauna_ember", buf);
+        }
+
+        /// <summary>Storm beast: a filtered growl with static on top.</summary>
+        AudioClip SynthStormBeast()
+        {
+            int n = Mathf.RoundToInt(0.60f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 0.60f;
+                lp += 0.16f * (NextRand() - lp);
+                float growl = Mathf.Sin(t * (110f - 30f * u) * 6.2831853f) * .22f;
+                float crackle = ((i % 977) == 0 ? .55f : 0f) * NextRand();
+                buf[i] = (growl + lp * .8f) * Mathf.Sin(u * Mathf.PI) + crackle * .2f;
+            }
+            return MakeClip("fauna_storm", buf);
+        }
+
+        /// <summary>Spore deer: hollow, breathy, slightly detuned.</summary>
+        AudioClip SynthSporeCall()
+        {
+            int n = Mathf.RoundToInt(0.66f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 0.66f;
+                lp += 0.06f * (NextRand() - lp);
+                float tone = Mathf.Sin(t * (300f + 26f * Mathf.Sin(t * 5f * 6.2831853f)) * 6.2831853f);
+                buf[i] = (tone * .13f + lp * .55f) * Mathf.Sin(u * Mathf.PI);
+            }
+            return MakeClip("fauna_spore", buf);
+        }
+
+        /// <summary>Void wraith: a whisper that fades out of existence.</summary>
+        AudioClip SynthVoidWhisper()
+        {
+            int n = Mathf.RoundToInt(0.90f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f, hp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 0.90f;
+                lp += 0.09f * (NextRand() - lp);
+                hp += 0.30f * (lp - hp);
+                float air = (lp - hp) * Mathf.Exp(-u * 2.2f);
+                float tone = Mathf.Sin(t * (420f - 260f * u) * 6.2831853f) * Mathf.Exp(-u * 3.4f) * .10f;
+                buf[i] = air * .9f + tone;
+            }
+            return MakeClip("fauna_void", buf);
         }
 
         /// <summary>Abyss guardian hit: wet, heavy slap with a low body.</summary>
@@ -775,6 +937,25 @@ namespace LestingCraft.Presentation
             var voice = BossVoices.For(realm);
             Instance.PlaySfx(killed ? voice.Death : voice.Hit, killed ? .86f * voice.Gain : .74f * voice.Gain,
                 voice.Pitch * .97f, voice.Pitch * 1.03f);
+        }
+
+        /// <summary>
+        /// One ambient creature call. Frontier species voice their own call (FaunaVoices), the
+        /// legacy species keep the generic mammal/reptile/bird sounds.
+        /// </summary>
+        public static void PlayFaunaCall(int species, float volume)
+        {
+            if (!Instance) return;
+            var voice = FaunaVoices.For(species);
+            Instance.PlaySfx(FaunaVoices.Key(voice), Mathf.Clamp01(volume), .90f, 1.12f);
+        }
+
+        /// <summary>Angry/alarmed variant: same voice, higher and louder.</summary>
+        public static void PlayFaunaThreat(int species)
+        {
+            if (!Instance) return;
+            var voice = FaunaVoices.For(species);
+            Instance.PlaySfx(FaunaVoices.Key(voice), .46f, 1.04f, 1.22f);
         }
 
         public static void PlayMobHit(bool killed)

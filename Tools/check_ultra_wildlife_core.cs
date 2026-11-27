@@ -108,7 +108,7 @@ class CheckUltraWildlifeCore
         assertions++;
 
         // 5. Verify Inferno (species 34..37) and Paradise (species 38..41) dimension fauna habitats & stats
-        Assert(WildlifeSimulation.SpeciesCount == 42, "Expected 42 species, got " + WildlifeSimulation.SpeciesCount);
+        Assert(WildlifeSimulation.SpeciesCount == 48, "Expected 48 species, got " + WildlifeSimulation.SpeciesCount);
         assertions++;
 
         var infernoSim = new WildlifeSimulation(2506, null, 11);

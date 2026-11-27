@@ -23,22 +23,23 @@ export function sample(x, y, z, seed, edits, contentVersion = 2) {
 
 // Indices 0..29 are the historical species and must keep their order and values.
 // 30..39 are content 10 additions: nocturnal hostiles, mountain and bog fauna.
-const HEALTH = [30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55, 78, 130, 64, 58, 145, 72, 118, 66, 96, 84,
-    60, 140, 70, 45, 120, 12, 95, 35, 85, 220];
+const HEALTH = [
+    30, 8, 40, 34, 85, 14, 95, 26, 30, 18, 10, 20, 16, 18, 68, 22, 32, 110, 28, 55, 78, 130, 64, 58, 145, 72, 118, 66, 96, 84, 60, 140, 70, 45, 120, 12, 95, 35, 85, 220, 88, 115, 96, 240, 42, 110, 60, 150];
 const HEIGHT = [2.2, .8, .95, 1.25, 1.95, .9, 2.05, 1.65, 1.05, .7, .55, .9, .75, .95, 2.35, .55, .62, 2.45, .82, .85, 1.45, 2.55, 1.15, 1.25, 2.65, 1.35, 2.30, 1.40, 1.85, 2.10,
-    .85, 2.50, 1.20, .70, 2.20, .40, 1.50, .50, 1.60, 2.70];
+    .85, 2.50, 1.20, .70, 2.20, .40, 1.50, .50, 1.60, 2.70, 1.38, 2.25, .95, 1.28, .86, 2.20, 2.15, .68];
 const RADIUS = [.43, .21, .45, .38, .72, .27, .76, .32, .34, .35, .38, .36, .30, .28, .58, .36, .40, .74, .36, .55, .48, .66, .62, .45, .82, .52, .72, .46, .64, .54,
-    .50, .60, .45, .45, .80, .20, .50, .30, .50, .85];
+    .50, .60, .45, .45, .80, .20, .50, .30, .50, .85, .38, .52, .42, .78, .36, .38, .48, .30];
 const MEAT = [3, 1, 4, 2, 6, 1, 7, 3, 2, 2, 1, 2, 1, 2, 5, 1, 2, 8, 3, 2, 3, 5, 2, 2, 6, 3, 5, 3, 4, 3,
-    1, 2, 2, 1, 7, 1, 4, 1, 2, 4];
+    1, 2, 2, 1, 7, 1, 4, 1, 2, 4, 3, 4, 2, 2, 2, 5, 6, 2];
 const HIDE = [2, 1, 2, 2, 4, 2, 4, 2, 3, 2, 1, 1, 2, 2, 3, 2, 3, 5, 2, 3, 3, 5, 3, 2, 6, 3, 4, 3, 4, 4,
-    1, 4, 2, 1, 5, 1, 4, 1, 2, 6];
-const ATTACK = [0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0, 14, 18, 12, 11, 20, 13, 17, 15, 16, 14,
-    9, 16, 11, 6, 0, 0, 0, 8, 10, 22];
+    1, 4, 2, 1, 5, 1, 4, 1, 2, 6, 4, 5, 3, 4, 3, 5, 6, 3];
+const ATTACK = [
+    0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0, 14, 18, 12, 11, 20, 13, 17, 15, 16, 14, 9, 16, 11, 6, 0, 0, 0, 8, 10, 22, 13, 21, 9, 16, 8, 22];
 const WALK = [.65, .75, .65, 1.15, .65, 1.25, .55, .9, 1.05, .55, .5, 2.8, 2.4, .62, .72, .95, .35, .60, .58, 2.6, 1.45, 1.05, 1.55, 3.1, 0.95, 1.35, 1.15, 3.0, 1.25, 1.30,
-    .90, .80, 1.20, .50, .60, 1.40, .90, 1.60, .70, .55];
+    .90, .80, 1.20, .50, .60, 1.40, .90, 1.60, .70, .55, 1.40, 1.55, .45, .55,
+    1.55, 1.05, 2.85, 1.15];
 const RUN = [3.8, 4.2, 3.8, 4.6, 3.3, 4.8, 3.4, 3.6, 4.4, 2.1, 2.7, 4.5, 4.1, 2.4, 3.5, 3.6, 1.2, 3.9, 2.8, 4.6, 5.4, 4.2, 5.1, 5.5, 3.9, 4.9, 4.4, 5.6, 4.6, 4.8,
-    3.4, 3.9, 5.2, 2.2, 3.2, 3.0, 4.4, 4.2, 3.6, 2.9];
+    3.4, 3.9, 5.2, 2.2, 3.2, 3.0, 4.4, 4.2, 3.6, 2.9, 5.8, 3.8, 5.4, 4.5, 4.2, 4.6, 5.2, 4.8];
 const HABITATS = [
     [0, 0, 1, 1, 5, 6, 6, 11],
     [0, 0, 1, 2, 2, 3, 4, 5, 8, 11],
@@ -70,11 +71,23 @@ const HABITATS_V10 = HABITATS_V8.map((pool, i) => {
     return [...pool, ...extra];
 }).concat([[35, 37, 38]]);
 const NOCTURNAL = new Set([30, 31, 32, 33, 37, 39]);
-const FLYING = new Set([11, 12, 19, 23, 27, 35, 37]);
-const SPECIES_LIMIT = contentVersion => contentVersion >= 10 ? 40 : contentVersion >= 9 ? 30 : contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3;
+// 42:PrismLynx 43:GeodeLeviathan 44:EmberWisp 45:StormRaptor 46:SporeStag 47:VoidWraith
+// Must match WildlifeSimulation.FrontierSpecies.
+const FRONTIER = [
+    [42, 42, 31, 30, 19],
+    [35, 36, 34, 44, 44, 25],
+    [43, 43, 16, 18, 19, 21],
+    [45, 45, 26, 11, 27],
+    [46, 46, 32, 10, 31, 2],
+    [47, 47, 29, 28, 19]
+];
+// Frontier deep realms are only spawned client-side from authored samplers, so the server keeps
+// their pools for validation and save round-trips rather than generating them.
+const FLYING = new Set([11, 12, 19, 23, 27, 33, 36, 38, 40, 41, 44, 47]);
+const SPECIES_LIMIT = contentVersion => contentVersion >= 12 ? 48 : contentVersion >= 10 ? 40 : contentVersion >= 9 ? 30 : contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3;
 const EMPTY_EDITS = new Map();
 const solid = id => id > 0 && id !== 7 && id !== 8;
-const index = s => Number.isInteger(s) && s >= 0 && s < 40 ? s : 2;
+const index = s => Number.isInteger(s) && s >= 0 && s < 48 ? s : 2;
 const flyingSpecies = s => FLYING.has(s);
 const health = s => HEALTH[index(s)];
 export const animalHeight = s => HEIGHT[index(s)];
