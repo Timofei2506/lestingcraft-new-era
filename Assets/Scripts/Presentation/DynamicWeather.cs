@@ -13,7 +13,7 @@ namespace LestingCraft.Presentation
         Camera cameraView;Material fog;GameObject fogPlane;ParticleSystem rain,snow,motes;float timer;Light sunlight;Material sky;
         MoteKind lastMoteKind=MoteKind.None;
         float clouds,precipitation,wind,wetness,snowAmount,submerged;
-        int lastSkyMode=-1;float lastSkyStrength=-1f;
+        int lastSkyMode=-1;float lastSkyStrength=-1f;float lastStormStrike=-1f;
         readonly float[] lastGlow=new float[8];
         readonly Dictionary<Vector3,GameObject> fires=new Dictionary<Vector3,GameObject>();
         public WeatherSample Sample {get;private set;}
@@ -136,6 +136,13 @@ namespace LestingCraft.Presentation
             // SkyEffects table so the skybox shader keeps a single branch and the choice of
             // effect per realm is unit-testable without Unity.
             SkyEffects.Resolve(Session.World.Dimension,Session.Data.clock,light.Daylight,out int skyMode,out float skyStrength,out float skyTime,out float skySeed);
+            // Live strike envelope for surfaces that should react to a bolt (water sheen, and any
+            // future material reading _LCStormGleam). Same clock + same realm seed as the sky, so
+            // the sea lights up on the beat of the visible flash instead of a generic pulse.
+            float stormStrike=SkyEffects.For(Session.World.Dimension).Effect==SkyEffect.Lightning
+                ?RealmSoundscape.StrikeAt(Session.Data.clock,skySeed):0f;
+            if(Mathf.Abs(stormStrike-lastStormStrike)>.004f)Shader.SetGlobalVector("_LCStormGleam",new Vector4(stormStrike,1f,0f,0f));
+            lastStormStrike=stormStrike;
             if(skyMode!=lastSkyMode||skyStrength>0f||lastSkyStrength>0f)
             {
                 Shader.SetGlobalFloat("_LCSkyEffect",skyMode);

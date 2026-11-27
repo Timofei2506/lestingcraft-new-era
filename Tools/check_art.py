@@ -131,3 +131,26 @@ assert 'ParticleMaterial("Precipitation", false)' in build and 'ParticleMaterial
 for realm in ('Crystalia', 'Emberfall', 'Aquaria', 'Stormreach', 'Verdant', 'Nihility'):
     assert f'case Dimension.{realm}:' in motes.split('MoteProfile For(Dimension realm)')[1], f'MoteField needs an explicit row for {realm}'
 print('PASS ground motes:', len(kinds), 'kinds, table-driven driver, generated material')
+
+
+# ---------------------------------------------------------------------------
+# Storm gleam on water: a lightning realm must read on the sea, not only in the sky. The water
+# shader has to consume the strike envelope DynamicWeather publishes, from the same engine-free
+# window the thunder uses - otherwise the flash, the thunder and the water drift apart.
+# ---------------------------------------------------------------------------
+water = (root / 'Assets/Resources/Water.shader').read_text()
+soundscape = (root / 'Assets/Scripts/Presentation/RealmSoundscape.cs').read_text()
+assert 'float2 _LCStormGleam;' in water, 'Water.shader must declare the strike gleam packet'
+assert water.count('_LCStormGleam') >= 2, 'Water.shader must use the strike gleam, not just declare it'
+assert 'strike=' in water.replace(' ', '') and 'foam=saturate(foam+strike' in water.replace(' ', ''), \
+    'the gleam must reach both the colour and the foam line'
+assert 'top*sky' in water.replace(' ', ''), 'the gleam must stay off vertical water faces'
+assert '_LCStormGleam' in weather, 'DynamicWeather must publish _LCStormGleam'
+assert 'RealmSoundscape.StrikeAt(' in weather, 'the gleam must come from the same strike window as the thunder'
+gleam_block = weather[weather.index('float stormStrike='):weather.index('_LCStormGleam",')]
+assert 'SkyEffect.Lightning' in gleam_block, 'only lightning realms may gleam'
+assert 'StrikeAt(' in soundscape and 'Math.Sin' in soundscape, 'StrikeAt must stay the shader formula'
+shader_sky = (root / 'Assets/Resources/AtmosphericSky.shader').read_text()
+for token in ('sin(_LCSkyParams.x * 1.35 + _LCSkyParams.w)', '14.0'):
+    assert token in shader_sky, f'sky strike window changed ({token}) - update RealmSoundscape.StrikeAt to match'
+print('PASS storm gleam: water reacts to the shared strike window, thunder and flash stay in sync')

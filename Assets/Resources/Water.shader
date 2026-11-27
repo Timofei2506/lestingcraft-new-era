@@ -27,6 +27,10 @@ Shader "LestingCraft/Water"
             float _EnvironmentWaterReflection;
             float _LCWaterSteps, _LCWaterReflectionProbe;
             float _LCWaterRain;
+            // Live lightning gleam: x strike envelope 0..1, y flash-tint weight. Published every
+            // frame by DynamicWeather from the engine-free RealmSoundscape.StrikeAt window, so the
+            // water brightens on exactly the same beat as the bolts in AtmosphericSky.
+            float2 _LCStormGleam;
             struct A { float4 p:POSITION; float3 n:NORMAL; float4 t:TANGENT; };
             struct V
             {
@@ -227,6 +231,12 @@ Shader "LestingCraft/Water"
                 half foam=shore*crest*top;
                 // Rain-driven chop raises the foam line and adds a fine spray sheen.
                 foam=saturate(foam+saturate(_LCWaterRain)*.18*top*crest);
+                // A strike over storm water lifts the whole surface, not just the horizon: cold
+                // sheen across the wave faces plus a brief crest highlight. top keeps it off the
+                // vertical faces so a flash never reads as a lit wall.
+                float strike=_LCStormGleam.x;
+                color+=half3(.62,.74,1.0)*strike*(.34+.28*saturate(-view.y))*top*sky;
+                foam=saturate(foam+strike*.30*top*crest);
                 color=lerp(color,half3(.93,.97,.98)*lerp(.18,1,_EnvironmentDaylight),foam*.64*sky);
                 // Aerial perspective: the far sea dissolves into the lit horizon haze exactly as
                 // in the reference seascape, without touching near-field readability.
