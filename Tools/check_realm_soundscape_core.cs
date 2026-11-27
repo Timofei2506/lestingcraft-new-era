@@ -72,6 +72,15 @@ static class CheckRealmSoundscape {
   A(mismatch>10&&mismatch<1990,"different realms strike at different times ("+mismatch+" of 2000)");
   A(RealmSoundscape.ThunderLag>.3f&&RealmSoundscape.ThunderLag<2f,"thunder lag is audible but short");
 
+  // Precipitation only reaches realms that can actually have weather: an airless rock, a sealed
+  // interior or a lightning-only storm must never report rain to the audio or the achievements.
+  foreach(var d in new[]{Dimension.Moon,Dimension.Mercury,Dimension.Dream,Dimension.Crystalia,Dimension.Stormreach,Dimension.Nihility,Dimension.Backrooms})
+   A(!RealmSoundscape.WeatherReaches(d),"no falling weather in "+d);
+  foreach(var d in new[]{Dimension.Lestingia,Dimension.Emberfall,Dimension.Aquaria,Dimension.Verdant,Dimension.Paradise,Dimension.Titan})
+   A(RealmSoundscape.WeatherReaches(d),"weather reaches "+d);
+  // A lightning realm still has an ambience layer, it just has no rain to mask it.
+  A(RealmSoundscape.For(Dimension.Stormreach).HasSecondary,"storm realm still mixes two loops");
+
   // Space ambience is a valid profile too.
   var space=RealmSoundscape.Space;
   A(loops.Contains(space.Primary)&&space.Primary=="amb_space","space uses the space loop");

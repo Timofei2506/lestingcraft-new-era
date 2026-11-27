@@ -730,7 +730,7 @@ namespace LestingCraft.Presentation
 
             Dimension dim = world.Dimension;
             bool inSpace = game.DockedAtOrbitalStation || game.InMoonFlight || (game.SpaceHelm != null && game.SpaceHelm.Active);
-            bool raining = !inSpace && dim == Dimension.Lestingia && session.Data != null &&
+            bool raining = !inSpace && session.Data != null && RealmSoundscape.WeatherReaches(dim) &&
                            WeatherSample.At(session.Data.seed, (int)dim, session.Data.clock).Precipitation > 0.15f;
 
             // Ambience is table-driven: RealmSoundscape owns which layers a world uses and how

@@ -107,6 +107,29 @@ namespace LestingCraft.Presentation
         };
 
         /// <summary>
+        /// True when falling precipitation can actually reach the player in this realm. Airless,
+        /// sealed and lightning worlds never rain, yet WeatherSample.At still returns wet weather
+        /// for them (it only special-cases the Solar System ladder), so every consumer has to ask
+        /// this before believing the sample.
+        /// </summary>
+        public static bool WeatherReaches(Dimension realm)
+        {
+            switch (realm)
+            {
+                case Dimension.Moon:
+                case Dimension.Mercury:
+                case Dimension.Dream:
+                case Dimension.Crystalia:   // vacuum: frost, not weather
+                case Dimension.Stormreach: // the storm is lightning, not rain
+                case Dimension.Nihility:   // broken reality, no atmosphere
+                case Dimension.Backrooms:  // sealed interior
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
+        /// <summary>
         /// True on the frame a lightning strike begins. Mirrors the sky shader exactly
         /// (time = clock * .05, strike = pow(saturate(sin(t*1.35 + seed)*.5+.5), 14)) using the
         /// same realm seed, so thunder and the visible flash cannot drift apart.
