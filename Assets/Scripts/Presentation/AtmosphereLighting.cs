@@ -11,6 +11,7 @@ namespace LestingCraft.Presentation
         public readonly Color Zenith, Horizon, SunColor, AmbientSky, AmbientEquator, AmbientGround, ShallowWater, DeepWater;
         public readonly float Daylight, DirectIntensity, SolarAngle, WaterReflection;
         public readonly bool MoonIsPrimary;
+        readonly Dimension lastRealm;
 
         public static float CloudCoverageForRealm(Dimension realm, float baseClouds)
         {
@@ -112,6 +113,7 @@ namespace LestingCraft.Presentation
 
         AtmosphereLighting(double clock, Dimension realm, float clouds, float precipitation)
         {
+            lastRealm = realm;
             float hour = (float)((clock / 1200 - Math.Floor(clock / 1200)) * 24);
             SolarAngle = hour * 15 - 90;
             SunDirection = -(Quaternion.Euler(SolarAngle, -32, 0) * Vector3.forward);
@@ -449,6 +451,16 @@ namespace LestingCraft.Presentation
             Shader.SetGlobalColor("_EnvironmentShallowWater", ShallowWater);
             Shader.SetGlobalColor("_EnvironmentDeepWater", DeepWater);
             Shader.SetGlobalFloat("_EnvironmentWaterReflection", WaterReflection);
+            // Point light the sky effect at the realm's own horizon colour: lightning, aurora and
+            // void seams all pick up the atmosphere instead of staying a fixed tint.
+            var skyTint = Horizon * .55f + AmbientEquator * .45f;
+            Shader.SetGlobalColor("_LCSkyTint", skyTint);
+            // Realms whose sky carries a lightning effect get the flash flag for shaders that want
+            // to react to a strike (water highlights, boss telegraphs); everything else gets 0.
+            Shader.SetGlobalFloat("_LCStormFlash", SkyEffects.For(lastRealm).Effect == SkyEffect.Lightning ? 1f : 0f);
         }
+
+        /// <summary>Realm of the last applied sample, so per-realm globals can be refreshed.</summary>
+        public Dimension LastRealm { get { return lastRealm; } }
     }
 }

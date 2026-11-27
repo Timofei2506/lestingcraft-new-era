@@ -12,6 +12,7 @@ namespace LestingCraft.Presentation
         public SurvivalSession Session;
         Camera cameraView;Material fog;GameObject fogPlane;ParticleSystem rain,snow;float timer;Light sunlight;Material sky;
         float clouds,precipitation,wind,wetness,snowAmount,submerged;
+        int lastSkyMode=-1;float lastSkyStrength=-1f;
         readonly Dictionary<Vector3,GameObject> fires=new Dictionary<Vector3,GameObject>();
         public WeatherSample Sample {get;private set;}
         public void Initialize(SurvivalSession session,Camera view)
@@ -67,6 +68,17 @@ namespace LestingCraft.Presentation
             var light=AtmosphereLighting.At(Session.Data.clock,Session.World.Dimension,clouds,precipitation);light.Apply(sunlight,Session.Data.clock);
             sky.SetVector("_CloudOffset",CloudField.Offset(Session.Data.clock,Session.Data.seed,wind));sky.SetFloat("_CloudCoverage",realmClouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.CloudSteps);
             Shader.SetGlobalFloat("_LCSunGlareWeather",1-Mathf.SmoothStep(0,1,Mathf.InverseLerp(.3f,.9f,realmClouds))*.95f);
+            // Frontier sky effects: one global packet per frame, resolved from the pure
+            // SkyEffects table so the skybox shader keeps a single branch and the choice of
+            // effect per realm is unit-testable without Unity.
+            SkyEffects.Resolve(Session.World.Dimension,Session.Data.clock,light.Daylight,out int skyMode,out float skyStrength,out float skyTime,out float skySeed);
+            if(skyMode!=lastSkyMode||skyStrength>0f||lastSkyStrength>0f)
+            {
+                Shader.SetGlobalFloat("_LCSkyEffect",skyMode);
+                Shader.SetGlobalFloat("_LCSkyStrength",skyStrength);
+                Shader.SetGlobalVector("_LCSkyParams",new Vector4(skyTime+skySeed,1f,0f,skySeed));
+                lastSkyMode=skyMode;lastSkyStrength=skyStrength;
+            }
             fog.SetFloat("_Density",AtmosphereProfile.Density(effPrecip,submerged)*AtmosphereLighting.FogDensityMultiplierForRealm(Session.World.Dimension));
             fog.SetFloat("_Steps",VisualSettings.Current.FogSteps);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);
@@ -98,6 +110,7 @@ namespace LestingCraft.Presentation
         void OnDestroy()
         {
             Shader.SetGlobalFloat("_GlobalWetness",0);Shader.SetGlobalFloat("_GlobalSnow",0);Shader.SetGlobalFloat("_GlobalWindStrength",0);Shader.SetGlobalFloat("_LCWaterRain",0);
+            Shader.SetGlobalFloat("_LCSkyEffect",0);Shader.SetGlobalFloat("_LCSkyStrength",0);
             if(fogPlane)Destroy(fogPlane);if(fog)Destroy(fog);
         }
     }

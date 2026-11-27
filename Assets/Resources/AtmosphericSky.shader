@@ -8,6 +8,11 @@ Shader "LestingCraft/AtmosphericSky"
         _CloudBase("Base",Float)=144
         _CloudSteps("Cloud steps",Float)=22
         _HorizonGlow("Horizon glow",Float)=1.0
+        // Frontier sky effects (0 none, 1 aurora, 2 lightning, 3 spores, 4 void fractures,
+        // 5 ember updraft). Set globally per realm; the skybox shader stays one draw call.
+        _LCSkyEffect("Sky effect",Float)=0
+        _LCSkyStrength("Sky effect strength",Float)=0
+        _LCSkyParams("Sky effect params (time,freq,height,seed)",Vector)=(0,1,0,0)
     }
     SubShader
     {
@@ -83,10 +88,155 @@ Shader "LestingCraft/AtmosphericSky"
                 return saturate((shape - threshold) * 5.2) * profile;
             }
 
+            // ------------------------------------------------------------------
+            // Frontier sky effects. One global block (_LCSkyEffect picks the mode,
+            // _LCSkyParams carries timing and strength) so every realm reuses the same
+            // skybox draw and the mode is switched by the presets instead of by a new
+            // material per world.
+            //   0 none · 1 aurora curtains · 2 lightning · 3 spore drift
+            //   4 void fractures · 5 ember updraft · 6 sea haze
+            // ------------------------------------------------------------------
+            float _LCSkyEffect, _LCSkyStrength;
+            float4 _LCSkyParams;   // x time, y frequency, z height, w seed
+            float _LCStormFlash;   // 1 while the realm is a lightning realm
+            float4 _LCSkyTint;     // realm horizon/equator tint, set by AtmosphereLighting
+
+            float Hash21(float2 p)
+            {
+                p = frac(p * float2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return frac(p.x * p.y);
+            }
+
+            float ValueNoise(float2 p)
+            {
+                float2 i = floor(p), f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float a = Hash21(i), b = Hash21(i + float2(1, 0));
+                float c = Hash21(i + float2(0, 1)), d = Hash21(i + float2(1, 1));
+                return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+            }
+
+            // Aurora: vertical curtains whose X coordinate is warped by time and by noise, with a
+            // soft top and bottom edge so the band reads as light in the atmosphere, not a decal.
+            half3 Aurora(float3 ray)
+            {
+                float t = _LCSkyParams.x * .045;
+                float band = saturate((ray.y - .03) * 3.4) * saturate((.92 - ray.y) * 2.1);
+                float2 uv = float2(ray.x / max(.16, ray.y + .35), ray.z / max(.16, ray.y + .35));
+                float warp = ValueNoise(uv * 1.4 + float2(t * .35, t * .12)) * 1.5;
+                float curtain = ValueNoise(float2(uv.x * 2.1 + warp, uv.y * .55 - t * .20));
+                float ridge = pow(saturate(curtain * 1.35 - .22), 2.1);
+                float veins = pow(saturate(ValueNoise(float2(uv.x * 7.0 + warp * 2.0, uv.y * 1.2 + t)) * 1.5 - .35), 3.0);
+                float gy = saturate((ray.y - .10) * 1.6);
+                half3 green = half3(.16, 1.00, .62);
+                half3 teal  = half3(.10, .74, 1.00);
+                half3 violet= half3(.52, .18, .96);
+                half3 tint = lerp(green, teal, gy) + violet * pow(gy, 2.4) * .8;
+                tint = lerp(tint, tint * .60 + _LCSkyTint.rgb * 1.10, .35);
+                return tint * (ridge * .70 + veins * .55) * band * _LCSkyStrength;
+            }
+
+            // Lightning: a fixed few-cell branch network, gated by a pulsing strike window so the
+            // sky flashes on a beat instead of strobing every frame. Cheap enough on mobile.
+            half3 Lightning(float3 ray)
+            {
+                float strike = pow(saturate(sin(_LCSkyParams.x * 1.35 + _LCSkyParams.w) * .5 + .5), 14.0);
+                if (strike < .01) return 0;
+                float2 uv = float2(ray.x, ray.z) / max(.10, ray.y + .22);
+                float2 cell = floor(uv * 3.0 + _LCSkyParams.w);
+                float bolt = 0;
+                for (int k = 0; k < 3; k++)
+                {
+                    float2 c = cell + float2(k * 3.7, k * -5.1);
+                    float h = Hash21(c);
+                    if (h > .58) continue;
+                    float2 centre = float2(h, frac(h * 7.13)) * 2.0 - 1.0;
+                    float2 d = uv - centre;
+                    float line = saturate(1.0 - abs(d.x * 1.4 + d.y * .22) * 46.0);
+                    bolt += line * (1.0 - saturate(abs(d.y) * 1.4));
+                }
+                half3 cold = lerp(half3(.82, .90, 1.0), _LCSkyTint.rgb + .55, .35);
+                return cold * bolt * strike * _LCSkyStrength * 1.7 * max(.35, _LCStormFlash);
+            }
+
+            // Spore drift: slow luminous motes rising through the canopy light.
+            half3 Spores(float3 ray)
+            {
+                float t = _LCSkyParams.x * .08;
+                float2 uv = float2(ray.x, ray.z) / max(.25, ray.y + .5);
+                float2 p = uv * 5.0 + float2(t * .6, -t * .9);
+                float2 cell = floor(p);
+                float h = Hash21(cell + _LCSkyParams.w);
+                float2 centre = float2(h, frac(h * 5.7));
+                float d = length(frac(p) - centre);
+                float mote = saturate(1.0 - d * 7.0);
+                half3 spore = lerp(half3(.72, 1.0, .46), _LCSkyTint.rgb * .8 + .30, .25);
+                return spore * mote * (0.35 + h * .65) * _LCSkyStrength * saturate((ray.y - .05) * 2.2);
+            }
+
+            // Void fractures: thin bright seams across the black sky, like cracks in the world shell.
+            half3 Fractures(float3 ray)
+            {
+                float t = _LCSkyParams.x * .02;
+                float2 uv = float2(ray.x, ray.z) / max(.12, ray.y + .30);
+                float2 warp = float2(ValueNoise(uv * 1.7 + t), ValueNoise(uv * 1.7 - t + 11.3));
+                float n = ValueNoise(uv * 2.6 + warp * 2.2 + t * .4);
+                float seam = pow(saturate(1.0 - abs(n - .5) * 12.0), 2.4);
+                half3 violet = lerp(half3(.62, .34, 1.0), _LCSkyTint.rgb * 1.6 + .18, .30);
+                return violet * seam * _LCSkyStrength;
+            }
+
+            // Ember updraft: warm sparks and heat shimmer against the ash horizon.
+            half3 EmberUpdraft(float3 ray)
+            {
+                float t = _LCSkyParams.x * .16;
+                float2 uv = float2(ray.x, ray.z) / max(.20, ray.y + .40);
+                float2 p = uv * 4.0 + float2(t * .18, -t * 1.7);
+                float2 cell = floor(p);
+                float h = Hash21(cell + _LCSkyParams.w);
+                float2 centre = float2(h, frac(h * 3.9));
+                float d = length((frac(p) - centre) * float2(1.0, .6));
+                float spark = saturate(1.0 - d * 6.0);
+                float horizonBias = saturate(1.0 - ray.y * 2.4);
+                half3 ember = lerp(half3(1.0, .46, .12), _LCSkyTint.rgb * 1.3 + .25, .30);
+                return ember * spark * horizonBias * _LCSkyStrength;
+            }
+
+            // Sea haze: slow, wide veils of humid air stacked toward the horizon, with a faint
+            // bioluminescent shimmer riding on them. Deliberately low-contrast: it must read as
+            // air, not as clouds.
+            half3 SeaHaze(float3 ray)
+            {
+                float t = _LCSkyParams.x * .05;
+                float2 uv = float2(ray.x, ray.z) / max(.22, ray.y + .46);
+                float veil = ValueNoise(uv * 1.15 + float2(t * .30, t * .07));
+                veil += ValueNoise(uv * 2.7 - float2(t * .18, t * .05)) * .5;
+                float horizonBias = saturate(1.0 - ray.y * 1.9);
+                float shimmer = pow(saturate(ValueNoise(uv * 9.0 + float2(-t * .7, t * .3)) * 1.4 - .30), 3.0);
+                half3 salt = lerp(half3(.66, .96, .98), _LCSkyTint.rgb + .22, .45);
+                half3 glow = half3(.36, 1.0, .88);
+                return (salt * veil * .55 + glow * shimmer * .45) * horizonBias * _LCSkyStrength;
+            }
+
+            half3 SkyEffects(float3 ray)
+            {
+                int mode = (int)clamp(_LCSkyEffect, 0.0, 6.0);
+                if (mode == 0 || _LCSkyStrength <= 0.001) return 0;
+                if (mode == 1) return Aurora(ray);
+                if (mode == 2) return Lightning(ray);
+                if (mode == 3) return Spores(ray);
+                if (mode == 4) return Fractures(ray);
+                if (mode == 5) return EmberUpdraft(ray);
+                if (mode == 6) return SeaHaze(ray);
+                return 0;
+            }
+
             half4 Frag(V i):SV_Target
             {
                 float3 ray = normalize(i.ray);
                 half3 background = LC_SkyRadiance(ray);
+                background += SkyEffects(ray);
                 float dither = (LC_IGN(i.vertex.xy) + LC_IGN(i.vertex.yx + 17.3) - 1.0) * (0.8 / 255.0);
                 if (ray.y < 0)
                 {
