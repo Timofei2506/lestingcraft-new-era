@@ -7,17 +7,6 @@ using LestingCraft.Runtime;
 
 namespace LestingCraft.Presentation
 {
-    public enum SurfaceSoundKind
-    {
-        Stone = 0,
-        Grass = 1,
-        Dirt = 2,
-        Wood = 3,
-        Snow = 4,
-        Water = 5,
-        Metal = 6
-    }
-
     /// <summary>
     /// Zero-asset procedural foley & dynamic biome soundscape synthesizer.
     /// Generates organic multi-layered AudioClips once at 22.05 kHz and plays them with zero runtime GC.
@@ -101,18 +90,7 @@ namespace LestingCraft.Presentation
 
         public static SurfaceSoundKind ClassifyBlock(ushort blockId)
         {
-            if (blockId == 7 || blockId == 8) return SurfaceSoundKind.Water;
-            if (blockId == 3 || blockId == 5 || blockId == 44 || blockId == 23 || blockId == 24)
-                return SurfaceSoundKind.Grass;
-            if (blockId == 2 || blockId == 6 || blockId == 13 || blockId == 27 || blockId == 34)
-                return SurfaceSoundKind.Dirt;
-            if (blockId == 4 || blockId == 12 || blockId == 16 || blockId == 18)
-                return SurfaceSoundKind.Wood;
-            if (blockId == 14 || blockId == 32 || blockId == 33)
-                return SurfaceSoundKind.Snow;
-            if (blockId >= 54 && blockId <= 69)
-                return SurfaceSoundKind.Metal;
-            return SurfaceSoundKind.Stone;
+            return SurfaceSounds.Classify(blockId);
         }
 
         void BuildClipBank()
