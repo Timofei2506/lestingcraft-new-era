@@ -114,6 +114,12 @@ namespace LestingCraft.Gameplay
                 case Dimension.Radia: return new[] { For(DroneKind.Heavy), For(DroneKind.Ground) };
                 case Dimension.Inferno: return new[] { For(DroneKind.Heavy), For(DroneKind.Combat) };
                 case Dimension.Paradise: return new[] { For(DroneKind.Guard), For(DroneKind.Repair) };
+                case Dimension.Crystalia: return new[] { For(DroneKind.Scout), For(DroneKind.Repair) };
+                case Dimension.Emberfall: return new[] { For(DroneKind.Heavy), For(DroneKind.Ground) };
+                case Dimension.Aquaria: return new[] { For(DroneKind.Builder), For(DroneKind.Repair) };
+                case Dimension.Stormreach: return new[] { For(DroneKind.Combat), For(DroneKind.Guard) };
+                case Dimension.Verdant: return new[] { For(DroneKind.Builder), For(DroneKind.Scout) };
+                case Dimension.Nihility: return new[] { For(DroneKind.Guard), For(DroneKind.Heavy) };
                 default: return new[] { For(DroneKind.Guard), For(DroneKind.Scout) };
             }
         }
@@ -158,7 +164,21 @@ namespace LestingCraft.Gameplay
             new BossProfile(Dimension.Inferno, "Infernal Archfiend", "Владыка Преисподней", BossArchetype.Colossus,
                 480, .18f, .10f, .10f, .86f, .28f, .12f, 1.00f, .48f, .12f, 1.18f, 9, 14, 15, 3),
             new BossProfile(Dimension.Paradise, "Seraph of Eden", "Серафим Эдема", BossArchetype.Archon,
-                460, .48f, .45f, .36f, .92f, .78f, .32f, 1.00f, .96f, .72f, 1.12f, 10, 14, 12, 4)
+                460, .48f, .45f, .36f, .92f, .78f, .32f, 1.00f, .96f, .72f, 1.12f, 10, 14, 12, 4),
+
+            // ---- Deep Frontier guardians (2.0) ----
+            new BossProfile(Dimension.Crystalia, "Prism Sovereign", "Владыка Призм", BossArchetype.Archon,
+                470, .62f, .82f, .94f, .86f, .94f, 1.00f, .48f, 1.00f, .96f, 1.14f, 12, 16, 11, 3),
+            new BossProfile(Dimension.Emberfall, "Cinder Titan", "Пепельный Титан", BossArchetype.Colossus,
+                540, .24f, .20f, .19f, .92f, .44f, .16f, 1.00f, .62f, .18f, 1.22f, 9, 13, 18, 3),
+            new BossProfile(Dimension.Aquaria, "Abyssal Maw", "Пасть Бездны", BossArchetype.Titan,
+                500, .30f, .52f, .56f, .42f, .80f, .58f, .70f, 1.00f, .94f, 1.20f, 10, 15, 16, 4),
+            new BossProfile(Dimension.Stormreach, "Thunder Archon", "Громовый Архонт", BossArchetype.Archon,
+                480, .42f, .48f, .58f, .74f, .88f, 1.00f, .86f, 1.00f, .70f, 1.10f, 11, 14, 12, 3),
+            new BossProfile(Dimension.Verdant, "Mycelium Queen", "Королева Мицелия", BossArchetype.Warden,
+                510, .44f, .32f, .38f, .80f, .62f, .30f, .86f, 1.00f, .72f, 1.16f, 9, 16, 14, 4),
+            new BossProfile(Dimension.Nihility, "Null Devourer", "Пожиратель Ничто", BossArchetype.Archon,
+                580, .12f, .10f, .18f, .58f, .40f, 1.00f, .70f, .44f, 1.00f, 1.24f, 14, 18, 15, 2)
         };
 
         /// <summary>Earth carries three canon bosses (bible): extras spawn alongside the guardian.</summary>

@@ -37,6 +37,13 @@ namespace LestingCraft.World
             return x + SizeX * (z + SizeZ * y);
         }
 
+        /// <summary>
+        /// Raw storage in <see cref="IndexOf"/> order. Read-only by contract: bulk consumers
+        /// (skylight registration, meshing passes) use it to skip 65 536 bounds-checked calls
+        /// per chunk. Mutate only through <see cref="SetBlock"/>.
+        /// </summary>
+        public ushort[] RawBlocks { get { return _blocks; } }
+
         public ushort GetBlock(int x, int y, int z)
         {
             EnsureInBounds(x, y, z);

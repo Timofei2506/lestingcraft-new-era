@@ -47,7 +47,7 @@ namespace LestingCraft.Tests
    Assert.AreEqual(3,layers.Count);Assert.AreEqual(1,TerrainGenerator.Version);Assert.AreEqual(13,BlockRegistry.OreId);
   }
   [Test] public void EveryPlaceableBlockHasANonMagentaBreakTintAndExplicitMaterial()
-  {for(ushort id=1;id<=18;id++){Assert.AreNotEqual(new Color32(255,0,255,255),ChunkMesher.Palette(id),"Block "+id);for(int face=0;face<6;face++)Assert.That(SurfaceLayers.ForCellFace(id,face,0,30,0,1),Is.InRange(0,25));}}
+  {for(ushort id=1;id<=18;id++){Assert.AreNotEqual(new Color32(255,0,255,255),ChunkMesher.Palette(id),"Block "+id);for(int face=0;face<6;face++)Assert.That(SurfaceLayers.ForCellFace(id,face,0,30,0,1),Is.InRange(0,25));}for(ushort id=115;id<=133;id++){if(!ExpandedContent.Has(id))continue;Assert.AreNotEqual(new Color32(255,0,255,255),ChunkMesher.Palette(id),"Frontier block "+id);for(int face=0;face<6;face++)Assert.That(SurfaceLayers.ForCellFace(id,face,0,30,0,1),Is.InRange(0,LestingCraft.Presentation.SurfaceLayers.Names.Length-1));}}
   [Test] public void CrystalDoesNotRenderOrCollideAsAnOpaqueCube()
   {var chunk=new ChunkData();chunk.SetBlock(1,3,1,11);var data=ChunkMesher.Build(chunk,0,0,(x,y,z)=>0);Assert.AreEqual(0,data.OpaqueTriangles.Count);Assert.AreEqual(0,data.ColliderTriangles.Count);Assert.IsFalse(BlockRegistry.Occludes(11));Assert.IsTrue(BlockRegistry.IsSolid(11));}
   [Test] public void CrystalBatchesUseTheSharedAuthoredSurfaceForRenderingAndCollision()

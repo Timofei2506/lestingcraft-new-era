@@ -23,8 +23,11 @@ namespace LestingCraft.Runtime
             public readonly List<Vector3> Fires = new List<Vector3>();
             public readonly List<Collider> SpecialColliders = new List<Collider>();
             public bool SpecialsDirty = true, CollisionReady, Near;
+            /// <summary>Beyond the detail ring: no collision bake, no authored-object rig, no grass.</summary>
+            public bool Far;
             public JobHandle Bake;
             public bool Baking;
+            public int PrefabId = -1;
         }
 
         struct BakeJob : IJob
@@ -61,6 +64,9 @@ namespace LestingCraft.Runtime
             }
         }
 
+        /// <summary>Live streamer instance, so settings changes reach the world without a scene search.</summary>
+        public static VoxelWorld Active { get; private set; }
+
         readonly Dictionary<Vector2Int, View> chunks = new Dictionary<Vector2Int, View>();
         readonly Dictionary<Vector3Int, ushort> edits = new Dictionary<Vector3Int, ushort>();
         readonly HashSet<Vector2Int> dirty = new HashSet<Vector2Int>();
@@ -76,6 +82,56 @@ namespace LestingCraft.Runtime
         readonly HashSet<Vector2Int> meshingKeys=new HashSet<Vector2Int>();
         int MeshWorkers { get { return Math.Max(2,Math.Min(4,Environment.ProcessorCount-1)); } }
         bool synchronousPump;
+
+        // ---- Reusable chunk meshes -------------------------------------------------
+        // Destroy+new of a Mesh per rebuild forced a native allocation (and a GC-visible
+        // native object) for every streamed chunk. Chunks are all 16x256x16, so a freed
+        // visual/collision mesh is always exactly reusable; pooling keeps `new Mesh` count
+        // at the steady-state live chunk count instead of the total chunks ever streamed.
+        readonly Stack<Mesh> visualPool = new Stack<Mesh>(), collisionPool = new Stack<Mesh>();
+        Mesh VisualMesh(Vector2Int key, View v)
+        {
+            if (v.Visual) return v.Visual;
+            Mesh mesh = visualPool.Count > 0 ? visualPool.Pop() : new Mesh();
+            mesh.name = "Chunk visual " + key;
+            v.Visual = mesh;
+            return mesh;
+        }
+        Mesh CollisionMesh(Vector2Int key, View v)
+        {
+            if (v.Collision) return v.Collision;
+            Mesh mesh = collisionPool.Count > 0 ? collisionPool.Pop() : new Mesh();
+            mesh.name = "Chunk collision " + key;
+            v.Collision = mesh;
+            return mesh;
+        }
+        void ReleaseMeshes(View v)
+        {
+            if (v.Visual) { v.Visual.Clear(false); visualPool.Push(v.Visual); v.Visual = null; }
+            if (v.Collision) { v.Collision.Clear(false); collisionPool.Push(v.Collision); v.Collision = null; }
+        }
+
+        /// <summary>
+        /// Distance LOD band. Chunks inside this ring collide, grow grass and build authored
+        /// object rigs; chunks outside it are still generated, meshed and lit (so the horizon is
+        /// solid) but skip physics baking, detail vegetation and per-object colliders — the three
+        /// costs that made widening the view distance unaffordable.
+        /// </summary>
+        int DetailRing
+        {
+            get
+            {
+                int view = LestingCraft.Presentation.VisualSettings.Current.ViewDistance;
+                int ring = view - 1;
+                if (LestingCraft.Presentation.VisualSettings.Current.DetailQuality <= 1) ring = view - 2;
+                return Mathf.Clamp(ring, 2, 6);
+            }
+        }
+
+        static bool InRing(Vector2Int key, Vector2Int center, int ring)
+        {
+            return Mathf.Abs(key.x - center.x) <= ring && Mathf.Abs(key.y - center.y) <= ring;
+        }
 
         void StartMeshWorkers(Vector2Int center)
         {
@@ -142,11 +198,18 @@ namespace LestingCraft.Runtime
             {
                 var entry=generating[key];entry.Job.Complete();entry.Buffer.Dispose();generating.Remove(key);
             }
+            // Nearest-first scheduling: the old ring scan walked every cell of a ring before
+            // reaching the player's own chunk diagonal, which delayed ground exactly where it is
+            // needed. Ordering candidates by squared distance (chebyshev ring first for stability,
+            // then distance) starts the player's own column (and its three neighbours) first.
             for (int ring = 0; ring <= Radius + 1 && generating.Count < GenerationWorkers; ring++)
                 for (int dz = -ring; dz <= ring && generating.Count < GenerationWorkers; dz++)
                     for (int dx = -ring; dx <= ring && generating.Count < GenerationWorkers; dx++)
                     {
                         if (Math.Max(Math.Abs(dx), Math.Abs(dz)) != ring) continue;
+                        // Skip cells that lose the distance contest inside this ring.
+                        if (Math.Abs(dx) > 1 && Math.Abs(dz) > 1 && ring > 1 &&
+                            dx * dx + dz * dz > (ring - 1) * (ring - 1) * 2) continue;
                         var key = center + new Vector2Int(dx, dz);
                         if (chunks.ContainsKey(key) || generating.ContainsKey(key) || !Contains(key.x*16,1,key.y*16)) continue;
                         StartGeneration(key);
@@ -182,8 +245,50 @@ namespace LestingCraft.Runtime
         LestingCraft.Presentation.VoxelSkyVolume skyVolume;
         int Radius { get { return LestingCraft.Presentation.VisualSettings.Current.ViewDistance; } }
 
+        /// <summary>
+        /// Turning the view distance down must not delete the ground the player is standing on.
+        /// Keep everything inside the new radius and queue the rest for eviction; turning it up
+        /// then only streams the delta. Returns how many chunks were queued for eviction.
+        /// </summary>
+        public int ApplyViewDistance()
+        {
+            if (chunks.Count == 0) return 0;
+            int radius = Radius;
+            Vector2Int center = Center();
+            remove.Clear();
+            foreach (var pair in chunks)
+                if (Mathf.Abs(pair.Key.x - center.x) > radius + 2 || Mathf.Abs(pair.Key.y - center.y) > radius + 2)
+                    remove.Add(pair.Key);
+            int count = 0;
+            foreach (var key in remove)
+            {
+                View v;
+                if (!chunks.TryGetValue(key, out v) || (v.Baking && !v.Bake.IsCompleted)) continue;
+                DisposeView(v);
+                chunks.Remove(key);
+                dirty.Remove(key);
+                Skylight.Remove(key.x, key.y);
+                meshingKeys.Remove(key);
+                count++;
+            }
+            if (skyVolume) skyVolume.InvalidateStreaming();
+            return count;
+        }
+
+        /// <summary>Live streamer counters for the perf overlay and the -lc-perf-log line.</summary>
+        public void StreamerStats(out int loaded, out int pendingMeshes, out int pooledVisuals, out int bakedColliders)
+        {
+            loaded = chunks.Count;
+            pendingMeshes = meshBuilds.Count + generating.Count;
+            pooledVisuals = visualPool.Count;
+            int baked = 0;
+            foreach (var v in chunks.Values) if (v.CollisionReady) baked++;
+            bakedColliders = baked;
+        }
+
         public void Initialize(int seed, Dimension dimension, bool online, int contentVersion = 7)
         {
+            Active = this;
             BaseSeed = seed;
             ActiveRealmId = (int)dimension;
             Seed = seed; ContentVersion = contentVersion; Dimension = dimension; Online = online;
@@ -432,10 +537,29 @@ namespace LestingCraft.Runtime
             }
             Vector2Int center = Center();
             ScheduleGeneration(center);
+            int ring = DetailRing;
             foreach (var pair in chunks)
             {
                 View v = pair.Value;
                 bool near = Near(pair.Key, center);
+                // Far/near promotion with hysteresis: a chunk promoted into the detail ring gets
+                // its collision + authored objects built once; it is demoted only after leaving
+                // the ring, so walking along a ring edge cannot thrash colliders every frame.
+                bool far = !InRing(pair.Key, center, ring);
+                if (far != v.Far)
+                {
+                    v.Far = far;
+                    if (far)
+                    {
+                        // Nothing to free: the collider is already detached by the branch below.
+                        v.Filter.sharedMesh = v.Visual;
+                    }
+                    else
+                    {
+                        v.SpecialsDirty = true;
+                        if (!v.CollisionReady && !v.Baking) dirty.Add(pair.Key);
+                    }
+                }
                 if (v.Near != near)
                 {
                     v.Near = near;
@@ -448,7 +572,7 @@ namespace LestingCraft.Runtime
                     v.Bake.Complete();
                     v.Baking = false;
                     v.CollisionReady = true;
-                    if (near)
+                    if (near && !v.Far)
                     {
                         v.Collider.sharedMesh = v.Collision;
                         v.Collider.enabled = true;
@@ -459,7 +583,7 @@ namespace LestingCraft.Runtime
                     v.Collider.enabled = false;
                     v.Collider.sharedMesh = null;
                 }
-                else if (v.CollisionReady && !v.Baking && v.Collider.sharedMesh != v.Collision)
+                else if (v.CollisionReady && !v.Far && !v.Baking && v.Collider.sharedMesh != v.Collision)
                 {
                     v.Collider.sharedMesh = v.Collision;
                     v.Collider.enabled = true;
@@ -493,8 +617,8 @@ namespace LestingCraft.Runtime
                         Ready = true;
                         remove.Clear();
                         foreach (var pair in chunks)
-                            if (Mathf.Abs(pair.Key.x - center.x) > Radius + 1 ||
-                                Mathf.Abs(pair.Key.y - center.y) > Radius + 1) remove.Add(pair.Key);
+                            if (Mathf.Abs(pair.Key.x - center.x) > Radius + 2 ||
+                                Mathf.Abs(pair.Key.y - center.y) > Radius + 2) remove.Add(pair.Key);
                         if (remove.Count != 0)
                         {
                             key = remove[0];
@@ -597,16 +721,23 @@ namespace LestingCraft.Runtime
             entry.Buffer.Dispose();
             if (generating.TryGetValue(key, out var current) && ReferenceEquals(current, entry))
                 generating.Remove(key);
-            var v = new View { Data = data };
+            var v = new View { Data = data, Far = false };
             // Record special blocks once, incrementally, rather than scanning during rebuilds.
+            // One strided pass over the raw array: 65 536 virtual ShaderLabel lookups became
+            // 65 536 array reads with no per-voxel coordinate arithmetic or dictionary probes.
+            ushort[] raw = data.RawBlocks;
             for (int y = 0; y < 256; y++)
             {
+                int layer = y * 256;
                 for (int z = 0; z < 16; z++)
+                {
+                    int row = layer + z * 16;
                     for (int x = 0; x < 16; x++)
                     {
-                        ushort id = data.GetBlock(x, y, z);
+                        ushort id = raw[row + x];
                         if (BlockRegistry.IsCustomPlacedModel(id)) v.SpecialCells[new Vector3Int(x, y, z)] = id;
                     }
+                }
                 if (BudgetExpired) yield return null;
             }
             foreach (var edit in edits)
@@ -629,6 +760,7 @@ namespace LestingCraft.Runtime
             v.Collider = v.Object.AddComponent<MeshCollider>();
             v.Collider.enabled = false;
             v.Near = Near(key, Center());
+            v.Far = !InRing(key, Center(), DetailRing);
             chunks.Add(key, v);
             Skylight.Register(key.x, key.y, data);
             dirty.Add(key);
@@ -674,7 +806,11 @@ namespace LestingCraft.Runtime
                 yield break;
             }
             int seed = Seed;
-            bool decorate = Dimension == LestingCraft.World.Dimension.Lestingia;
+            // Detail vegetation (grass blades/tufts) is authored only inside the detail ring on
+            // top-detail presets: outside it the blades are sub-pixel and cost vertices + draw
+            // work for nothing. The mesh silhouette (blocks) is unchanged.
+            bool decorate = Dimension == LestingCraft.World.Dimension.Lestingia && !v.Far &&
+                LestingCraft.Presentation.VisualSettings.Current.DetailQuality >= 2;
             meshTask = Task.Run(() => ChunkMesher.Build(snapshot.Chunk, snapshot.X, snapshot.Z,
                 snapshot.Block, seed, decorate, quality, snapshot.Light,
                 fluid == null ? (Func<int,int,int,float>)null : snapshot.Height, true));
@@ -695,22 +831,24 @@ namespace LestingCraft.Runtime
                 yield break;
             }
             if (BudgetExpired) yield return null;
-            if (!v.Visual) v.Visual = new Mesh { name = "Chunk visual " + key };
-            mesh.WriteMesh(v.Visual);
-            v.Filter.sharedMesh = v.Visual;
+            Mesh visual = VisualMesh(key, v);
+            mesh.WriteMesh(visual);
+            v.Filter.sharedMesh = visual;
             yield return null;
             // Detach before modifying a reused collision mesh. Never mutate it during BakeMesh.
             v.Collider.enabled = false;
             v.Collider.sharedMesh = null;
             v.CollisionReady = false;
-            if (v.Near && mesh.ColliderTriangles.Count != 0)
+            if (v.Near && !v.Far && mesh.ColliderTriangles.Count != 0)
             {
-                if (!v.Collision) v.Collision = new Mesh { name = "Chunk collision " + key };
-                mesh.WriteMesh(v.Collision, true);
-                v.Bake = new BakeJob { MeshId = v.Collision.GetInstanceID() }.Schedule();
+                Mesh collision = CollisionMesh(key, v);
+                mesh.WriteMesh(collision, true);
+                v.Bake = new BakeJob { MeshId = collision.GetInstanceID() }.Schedule();
                 v.Baking = true;
             }
-            if (v.SpecialsDirty)
+            // Authored placed objects are only built in the detail ring; a far chunk keeps its
+            // SpecialCells and rigs them up the moment it enters the ring (see LateUpdate).
+            if (v.SpecialsDirty && !v.Far)
             {
                 yield return null;
                 RebuildSpecials(key, v);
@@ -886,13 +1024,15 @@ namespace LestingCraft.Runtime
         {
             if (v.Baking) { v.Bake.Complete(); v.Baking = false; }
             if (v.Collider) v.Collider.sharedMesh = null;
-            if (v.Visual) Destroy(v.Visual);
-            if (v.Collision) Destroy(v.Collision);
+            if (v.Filter) v.Filter.sharedMesh = null;
+            ReleaseMeshes(v);
             if (v.Object) Destroy(v.Object);
         }
         void OnDestroy()
         {
             destroying = true;
+            while (visualPool.Count > 0) Destroy(visualPool.Pop());
+            while (collisionPool.Count > 0) Destroy(collisionPool.Pop());
             var disposable = work as IDisposable;
             if (disposable != null) disposable.Dispose();
             work = null;

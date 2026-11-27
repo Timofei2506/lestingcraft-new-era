@@ -181,6 +181,9 @@ namespace LestingCraft.Runtime
 
         public static float GravityForDimension(Dimension dim)
         {
+            // 2.0: gravity is authored once in PlanetCatalog; this method stays for callers.
+            return LestingCraft.World.PlanetCatalog.Gravity(dim);
+#pragma warning disable 0162
             switch (dim)
             {
                 case Dimension.Moon: return 0.22f;
@@ -201,6 +204,7 @@ namespace LestingCraft.Runtime
                 case Dimension.Paradise: return 0.78f;
                 default: return 1.0f;
             }
+#pragma warning restore 0162
         }
 
         public static SpaceFlightVisuals Ensure(Transform parent)

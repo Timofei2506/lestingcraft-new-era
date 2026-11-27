@@ -1,7 +1,7 @@
 # LestingCraft: New Era
 
 **First-Person Open-World Voxel Survival & Space Exploration Sandbox on Unity 6 (URP)**  
-*Воксельная песочница нового поколения: от каменного топора и живых поселений Лестингии — до собственного космодрома, 3D-кабины шаттла, 26 воксельных боссов и полётов к 16 мирам Солнечной системы в одиночку или в кооперативе до 8 игроков.*
+*Воксельная песочница нового поколения: от каменного топора и живых поселений Лестингии — до собственного космодрома, 3D-кабины шаттла, 24 воксельных боссов и полётов к 24 мирам: Солнечная система плюс шесть измерений Фронтира 2.0 — в одиночку или в кооперативе до 8 игроков.*
 
 <p align="center">
   <img src="https://github.com/Timofei2506/lestingcraft-new-era/releases/download/v0.7.1/gameplay.gif" alt="LestingCraft: New Era — Unity 6 URP Gameplay" width="800">
@@ -22,11 +22,38 @@
 
 ### Key Playable Pillars in Build `v0.7.1`
 - **Greedy-Meshed Streaming Voxel Worlds**: Multi-biome terrain generation (forests, cherry groves, dunes, caves, villages, keeps), authored multi-storey architecture with verified capsule-clear topology, and local + server delta persistence.
-- **Deep Survival, Crafting & Power Grids**: 156 3D voxel items/blocks, 2×2 inventory & 3×3 workbench crafting with searchable recipe book, smelting, body-part health, hunger, thirst, stamina, thermal insulation, off-world O₂ suit life support, electrical generation/storage (`kW` / `kWh`), rocket fuel synthesis, and radiation dosimetry in the Cherenkov anomaly zone.
-- **Living Ecosystem & 26 Boss Encounters**: 34 wildlife & mutated species with custom PBR fur/plumage/chitin array coats, village settler professions & trading, and 26 multi-part voxel boss sculpts across planetary and expedition arenas.
-- **Walkable Cosmodrome, 3D Shuttle Flight Deck & 16 Worlds**: Deploy a full launch pad complex with elevator tower, board a walkable shuttle interior with interactive 3D flight controls & live telemetry, dock with orbital stations featuring zero-gravity (`0g`) EVA and astronaut trading, and travel across 16 Solar System destinations (Moon, Mars, Venus, Mercury, Saturn, Titan, etc.).
-- **Unity 6 URP Visual Stack**: Custom procedural volumetric sky & silver-lined cloud shaders, refractive crystal glass, array-backed PBR surface materials, SSAO, ACES tonemapping, and 5 quality presets (`Mobile` to `Cinematic`).
+- **Deep Survival, Crafting & Power Grids**: 171 3D voxel items/blocks, 2×2 inventory & 3×3 workbench crafting with searchable recipe book, smelting, body-part health, hunger, thirst, stamina, thermal insulation, off-world O₂ suit life support, electrical generation/storage (`kW` / `kWh`), rocket fuel synthesis, and radiation dosimetry in the Cherenkov anomaly zone.
+- **Living Ecosystem & 24 Boss Encounters**: 48 wildlife & mutated species with custom PBR fur/plumage/chitin array coats, village settler professions & trading, and 26 multi-part voxel boss sculpts across planetary and expedition arenas.
+- **Walkable Cosmodrome, 3D Shuttle Flight Deck & 24 Realms**: Deploy a full launch pad complex with elevator tower, board a walkable shuttle interior with interactive 3D flight controls & live telemetry, dock with orbital stations featuring zero-gravity (`0g`) EVA and astronaut trading, and travel across **24 realms** — the Solar System ladder plus the six Deep Frontier worlds of 2.0 (Crystalia, Emberfall, Aquaria, Stormreach, Verdant, Nihility), each with its own terrain sampler, gravity, atmosphere, boss, fauna and PBR palette.
+- **Unity 6 URP Visual Stack**: Custom procedural volumetric sky & silver-lined cloud shaders, refractive crystal glass, array-backed PBR surface materials, SSAO, ACES tonemapping, and **7 quality presets** (`Mobile` → `Balanced` → `High` → `Ultra` → `Cinematic` → `Frontier` → `Extreme`) driving a per-preset view-distance and detail-LOD band, chunk-mesh pooling and nearest-first streaming.
 - **One-Click Co-op & Cloud Services**: Host any world directly from the pause menu (`Esc → Create Server`) over HTTPS (`443`) with server-authoritative block deltas; optional email-free account system (`Supabase`) with recovery codes, 200 achievements, `@nickname` friends list, and escrow skin marketplace.
+
+---
+
+## Фронтир 2.0 — шесть новых измерений (RU)
+
+Апдейт 2.0 добавляет шесть полноценных измерений (id `18..23`), каждое со своим сэмплером
+рельефа, гравитацией, атмосферой, набором поверхности, фауной, боссом и стеком PBR-материалов.
+Старые `0..17` не перенумерованы — сейвы, протокол и авторские постройки совместимы.
+
+| id | Измерение | Гравитация | Что внутри |
+|---|---|---|---|
+| 18 | **Кристалия** | 0.28 g | призматические шпили, жеодовые впадины, полярный лёд, парящие осколки; Страж — Призматический Суверен |
+| 19 | **Пепельный Водопад** | 0.64 g | небесные базальтовые острова над морем пепла, магмовые берега; Страж — Пепельный Титан |
+| 20 | **Аквария** | 0.88 g | архипелаги, соборы ламинарии, приливные руины, коралловые отмели; Страж — Бездонная Пасть |
+| 21 | **Грозовой Предел** | 0.74 g | плато, решётчатые колонны, грозовое стекло и штормовая сталь; Страж — Громовой Архистратиг |
+| 22 | **Вердант** | 0.96 g | мицелиевые леса, гигантские шляпки, споровые болота; Страж — Мицелиевая Королева |
+| 23 | **Нихилиум** | 0.10 g | перевёрнутые фрагменты, стеклянные уступы, осколки пустоты; Страж — Пожиратель Ничто |
+
+- **Переход:** `/frontier 18..23` в творческом режиме (или ритуал измерения). Возврат — арка
+  возврата в каждом секторе 192×192, площадка прибытия у спавна или команда `/overworld`.
+- **Гарантии маршрута:** площадка прибытия выравнивается по самой низкой точке рельефа, арка
+  всегда с проёмом (столбы и перекладина прорезают любой рельеф), так что игрок не может
+  застрять в скале или оказаться замурованным.
+- **Новые материалы:** 12 наборов PBR (`prism-crystal`, `aurora-ice`, `soot-dune`,
+  `ember-magma-shore`, `kelp-weave`, `reef-shelf`, `tidal-ruin`, `charge-glass`, `storm-iron`,
+  `mycelium-cap`, `spore-loam`, `void-shard`) — генерируются `Tools/build_frontier_materials.py`.
+- **Блоки:** id `115..133` (в свободной полосе каталога, не пересекаются с id предметов/брони).
 
 ---
 
@@ -45,7 +72,7 @@
 
 - **Мир и архитектура:** процедурные биомы Лестингии, пещеры, рудные жилы, деревни поселенцев, двухэтажные крепости, аномальное измерение Черенковского затона и планеты Солнечной системы; оптимизированный greedy-мешинг чанков и небесное освещение (`VoxelSkylight`).
 - **Выживание, ремёсла и инженерия:** сетки крафта 2×2 и 3×3, интерактивная книга рецептов, плавильная печь, износ и утепление экипировки, температура тела, жажда, кислород скафандра, промышленная энергосеть и цепочка синтеза ракетного топлива.
-- **Фауна и боссы:** 34 вида наземных, пернатых и аномальных существ с индивидуальными PBR-текстурами, мирные жители с профессиями и торговлей, а также **26 воксельных боссов** с расчётом затенения граней (AO) и эмиссией.
+- **Фауна и боссы:** 48 видов наземных, пернатых и аномальных существ с индивидуальными PBR-текстурами, мирные жители с профессиями и торговлей, а также **24 воксельных босса** (включая шесть новых Стражей Фронтира) с расчётом затенения граней (AO) и эмиссией.
 - **Космонавтика:** полноразмерный стартовый комплекс с подъёмным лифтом, многоуровневый интерьер шаттла, интерактивная 3D-приборная панель с живым навигатором, орбитальные станции с режимом невесомости (`0g`) и посадка на 16 небесных тел.
 - **Графика и интерфейс (Unity 6 URP):** атмосферное небо с объёмными облаками, преломляющее стекло, PBR-массивы поверхностей, нативный масштабируемый интерфейс uGUI (`Unbounded` + `Manrope`), сюжетный бортовой журнал (3 главы) и 5 пресетов графики.
 - **Кооператив и экосистема:** совместная игра до 8 человек с созданием сервера из меню паузы и приглашением в один клик, адресная книга серверов, система из 200 достижений, друзья по `@нику` и торговая площадка косметики с эскроу.

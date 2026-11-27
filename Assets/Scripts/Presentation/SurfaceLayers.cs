@@ -2,7 +2,9 @@ namespace LestingCraft.Presentation
 {
     public static class SurfaceLayers
     {
-        public static readonly string[] Names={"stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava","bedrock","basalt","crystal","aether","ore","snow","planks","workbench-top","workbench-side","furnace-side","furnace-front","furnace-top","campfire-side","campfire-top","ore-copper","ore-coal","ore-gold","ore-silver","ore-tin","ore-quartz","ore-sulfur","granite","limestone","slate","marble","obsidian","gravel","clay","mud","mossy-stone","cobblestone","stone-bricks","cracked-bricks","clay-bricks","polished-stone","sandstone","coal-block","copper-block","polished-granite","polished-marble","wildlife-fur","metal-ingot","deer-fur","hare-fur","boar-bristles","animal-underfur","animal-keratin","diamond-ore","diamond-facets","leather","raw-meat","cooked-meat","cat-fur","wolf-fur","bear-fur","fox-fur","bison-fur","goat-fur","lynx-fur","beaver-fur","frog-skin","eagle-feathers","owl-feathers","penguin-plumage","camel-coat","scorpion-chitin","turtle-shell","moose-fur","capybara-fur","voidray-skin","terracotta-shingles","cherry-blossom","glow-shroom","red-mesa","glacial-ice","magma-basalt","titanium-hull","andromeda-crystal","uranium-ore","uranium-block","copper-cable","battery-bank","generator-casing","nuclear-reactor","cherenkov-crystal","reinforced-concrete","hazard-steel","lead-shield","steel-rail","powered-rail","c4-explosive","thermonuke-666","ash-hound-hide","cherenkov-leech-skin","rad-scorpion-carapace","mutant-boar-hide","slag-carapace","fallout-crow-plumage","gamma-ray-membrane","bone-stalker-hide","vitrified-golem-crust","wraith-shroud","backrooms-wallpaper","backrooms-carpet"};
+        public static readonly string[] Names={"stone","dirt","grass","grass-side","bark","wood-end","leaves","sand","water","lava","bedrock","basalt","crystal","aether","ore","snow","planks","workbench-top","workbench-side","furnace-side","furnace-front","furnace-top","campfire-side","campfire-top","ore-copper","ore-coal","ore-gold","ore-silver","ore-tin","ore-quartz","ore-sulfur","granite","limestone","slate","marble","obsidian","gravel","clay","mud","mossy-stone","cobblestone","stone-bricks","cracked-bricks","clay-bricks","polished-stone","sandstone","coal-block","copper-block","polished-granite","polished-marble","wildlife-fur","metal-ingot","deer-fur","hare-fur","boar-bristles","animal-underfur","animal-keratin","diamond-ore","diamond-facets","leather","raw-meat","cooked-meat","cat-fur","wolf-fur","bear-fur","fox-fur","bison-fur","goat-fur","lynx-fur","beaver-fur","frog-skin","eagle-feathers","owl-feathers","penguin-plumage","camel-coat","scorpion-chitin","turtle-shell","moose-fur","capybara-fur","voidray-skin","terracotta-shingles","cherry-blossom","glow-shroom","red-mesa","glacial-ice","magma-basalt","titanium-hull","andromeda-crystal","uranium-ore","uranium-block","copper-cable","battery-bank","generator-casing","nuclear-reactor","cherenkov-crystal","reinforced-concrete","hazard-steel","lead-shield","steel-rail","powered-rail","c4-explosive","thermonuke-666","ash-hound-hide","cherenkov-leech-skin","rad-scorpion-carapace","mutant-boar-hide","slag-carapace","fallout-crow-plumage","gamma-ray-membrane","bone-stalker-hide","vitrified-golem-crust","wraith-shroud","backrooms-wallpaper","backrooms-carpet",
+            "prism-crystal","aurora-ice","soot-dune","ember-magma-shore","kelp-weave","reef-shelf","tidal-ruin",
+            "charge-glass","storm-iron","mycelium-cap","spore-loam","void-shard"};
 
         public static int ForFace(ushort block, int face)
         {
@@ -27,9 +29,21 @@ namespace LestingCraft.Presentation
                 case 17: return face == 2 || face == 3 ? 21 : face == 5 ? 20 : 19;
                 case 18: return 16;
                 case 65: return face == 2 ? 81 : face == 3 ? 1 : 3;
+                case 115: return 114;  // prism crystal (Crystalia crust)
+                case 116: return 115;  // aurora ice
+                case 117: return 116;  // soot dune
+                case 118: return 117;  // ember magma shore
+                case 119: return 118;  // kelp weave
+                case 124: return 119;  // reef shelf
+                case 125: return 120;  // tidal ruin masonry
+                case 126: return 121;  // charge glass
+                case 127: return 122;  // storm iron
+                case 128: return 123;  // mycelium cap
+                case 129: return 124;  // spore loam
+                case 133: return 125;  // void shard
                 default:
-                    return LestingCraft.Gameplay.ExpandedContent.Has(block)
-                        ? LestingCraft.Gameplay.ExpandedContent.Blocks[block - 19].Layer : 0;
+                    var eb = LestingCraft.Gameplay.ExpandedContent.Lookup(block);
+                    return eb.Id != 0 ? eb.Layer : 0;
             }
         }
 
@@ -62,7 +76,7 @@ namespace LestingCraft.Presentation
             };
             return id < names.Length ? names[id] :
                 LestingCraft.Gameplay.ExpandedContent.Has(id)
-                    ? LestingCraft.Gameplay.ExpandedContent.Blocks[id - 19].Name : "Неизвестный блок";
+                    ? LestingCraft.Gameplay.ExpandedContent.Lookup(id).Name : "Неизвестный блок";
         }
 
         public static string Icon(ushort id) { return id == 15 ? "Item15" : Names[ForFace(id, 2)]; }

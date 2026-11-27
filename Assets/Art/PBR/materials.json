@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 14,
   "resolution": 512,
   "normalEncoding": "RGB linear tangent-space",
   "maskEncoding": "R metallic, G AO, B estimated height, A smoothness",
@@ -118,7 +118,19 @@
     "vitrified-golem-crust",
     "wraith-shroud",
     "backrooms-wallpaper",
-    "backrooms-carpet"
+    "backrooms-carpet",
+    "prism-crystal",
+    "aurora-ice",
+    "soot-dune",
+    "ember-magma-shore",
+    "kelp-weave",
+    "reef-shelf",
+    "tidal-ruin",
+    "charge-glass",
+    "storm-iron",
+    "mycelium-cap",
+    "spore-loam",
+    "void-shard"
   ],
   "stationSource": "Original procedural joinery/masonry + derived PBR estimates",
   "refinement": "AI stone/meadow/bark albedos; derived estimated PBR; exact periodic boundaries",
@@ -334,5 +346,24 @@
     "resolution": 512,
     "maps": "AI-derived albedo; normal/metallic/AO/height/smoothness estimated from luminance, not scans",
     "notes": "water normals come from the photographic ripple master; crystal feeds both Glass and CrystalGlass shaders"
+  },
+  "iteration14": {
+    "derivatives": [
+      "prism-crystal",
+      "aurora-ice",
+      "soot-dune",
+      "ember-magma-shore",
+      "kelp-weave",
+      "reef-shelf",
+      "tidal-ruin",
+      "charge-glass",
+      "storm-iron",
+      "mycelium-cap",
+      "spore-loam",
+      "void-shard"
+    ],
+    "resolution": 512,
+    "maps": "analytic albedo (integer-frequency sines + periodic value noise), estimated normal / AO / metallic / smoothness from the height field; not scans, no displacement",
+    "albedo": "JPEG q95 4:4:4, seam-corrected before encoding"
   }
 }

@@ -32,7 +32,7 @@ Shader "LestingCraft/Grass"
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
             #include "../Shaders/VoxelLighting.hlsl"
-            float _LCAmbientOcclusionProbe;
+            float _LCAmbientOcclusionProbe, _LCDetailFadeStart, _LCDetailFadeEnd;
             TEXTURE2D_ARRAY(_AlbedoArray); SAMPLER(sampler_AlbedoArray);
             struct V
             {
@@ -66,6 +66,12 @@ Shader "LestingCraft/Grass"
                 lighting.shadowMask=1;
                 lighting.vertexLighting=VertexLighting(i.ws,normal);
                 lighting.normalizedScreenSpaceUV=GetNormalizedScreenSpaceUV(i.p);
+                // Distance LOD fade: blades shrink into the ground past the preset's detail band
+                // instead of popping out when the detail ring ends (2.0 quality policy).
+                float detailFade=saturate((_LCDetailFadeEnd-distance(_WorldSpaceCameraPos,i.ws))/max(1.0,_LCDetailFadeEnd-_LCDetailFadeStart));
+                // Shrink, don't blink: the blade loses its top as it recedes, so the ground keeps
+                // a short stubble instead of the whole tuft vanishing in one frame.
+                clip(detailFade*.85+.15-i.uv.y);
                 half3 albedo=SAMPLE_TEXTURE2D_ARRAY(_AlbedoArray,sampler_AlbedoArray,i.uv*float2(.35,.6),2).rgb;
                 half root=smoothstep(0,.65,i.uv.y);
                 half petal=saturate((1.0-i.color.a)*1.34);

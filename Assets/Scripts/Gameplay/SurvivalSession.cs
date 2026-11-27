@@ -59,12 +59,10 @@ namespace LestingCraft.Gameplay
 
         public static bool RequiresSpaceSuit(Dimension dim)
         {
-            return dim!=Dimension.Lestingia&&
-                   dim!=Dimension.Backrooms&&
-                   dim!=Dimension.Inferno&&
-                   dim!=Dimension.Paradise&&
-                   dim!=Dimension.Somnia&&
-                   dim!=Dimension.Dream;
+            // 2.0: derived from the authored pressure/temperature catalog, so a new realm
+            // declares its own life support requirement once (PlanetCatalog) and nothing here changes.
+            var p=LestingCraft.World.PlanetCatalog.Get(dim);
+            return !(LestingCraft.World.DimensionRealm.HasBreathableAir(dim) && p.PressureAtm>=.6f && p.MeanCelsius>-60f && p.MeanCelsius<70f);
         }
 
         public bool HasFullSpaceSuit()

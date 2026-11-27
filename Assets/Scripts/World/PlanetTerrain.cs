@@ -20,7 +20,15 @@ namespace LestingCraft.World
         Radia = 14,
         Backrooms = 15,
         Inferno = 16,
-        Paradise = 17
+        Paradise = 17,
+
+        // ---- Deep Frontier (2.0) ----
+        Crystalia = 18,
+        Emberfall = 19,
+        Aquaria = 20,
+        Stormreach = 21,
+        Verdant = 22,
+        Nihility = 23
     }
 
     public enum PlanetSurface : byte
@@ -37,7 +45,15 @@ namespace LestingCraft.World
         DreamPaleFloor, DreamMonolithPillar, DreamLampPost,
         RadiaBasinFloor, RadiaCherenkovStrip, RadiaDamWall, RadiaSlagBank,
         InfernoCrimson, InfernoBasalt, InfernoSoulAsh, InfernoMagma,
-        ParadiseGarden, ParadiseMarble, ParadiseCrystal, ParadiseCloud
+        ParadiseGarden, ParadiseMarble, ParadiseCrystal, ParadiseCloud,
+
+        // Deep Frontier surfaces
+        CrystalSpire, CrystalGeode, CrystalFrostField, CrystalAuroraIce,
+        EmberSootDune, EmberBasaltShelf, EmberAshIsland, EmberMagmaShore,
+        AquaReefShelf, AquaKelpCathedral, AquaTidalRuin, AquaAbyssTrench,
+        StormLatticePlateau, StormChargeScar, StormCumulusShelf, StormAnvilPeak,
+        VerdantMyceliumLoam, VerdantCapCanopy, VerdantSporeMarsh, VerdantRootVault,
+        VoidGlassScarp, VoidInvertedFragment, VoidNullBasin, VoidShardForest
     }
 
     public struct PlanetColumn
@@ -118,6 +134,15 @@ namespace LestingCraft.World
                     return Math.Abs(proj - 0.5f) < 0.14f ? (ushort)78 : (ushort)82;
             }
             return 0;
+        }
+
+        /// <summary>
+        /// Gate pads flatten the ground so the structure always stands on a level dais:
+        /// the footprint sits at the lowest height in the pad, the rim rises one step.
+        /// </summary>
+        static int PlanHeight(FrontierBlocks.GatePad g, int natural)
+        {
+            return g.Rim ? g.Base + 1 : g.Base;
         }
 
         public static PlanetColumn Column(int x, int z, int seed, PlanetBody body)
@@ -320,6 +345,54 @@ namespace LestingCraft.World
                               parBiome == 1 ? PlanetSurface.ParadiseMarble :
                               parBiome == 2 ? PlanetSurface.ParadiseCrystal : PlanetSurface.ParadiseCloud;
                     break;
+                case PlanetBody.Crystalia:
+                    {
+                        var c = CrystaliaTerrain.Column(x, z, seed);
+                        var g = FrontierBlocks.GatePlan(Dimension.Crystalia, x, z, seed);
+                        if (g.Plan) { h = PlanHeight(g, c.Height); surface = c.Surface; break; }
+                        h = c.Height; surface = c.Surface;
+                        break;
+                    }
+                case PlanetBody.Emberfall:
+                    {
+                        var c = EmberfallTerrain.Column(x, z, seed);
+                        var g = FrontierBlocks.GatePlan(Dimension.Emberfall, x, z, seed);
+                        h = g.Plan ? PlanHeight(g, c.Height) : c.Height;
+                        surface = c.Surface;
+                        break;
+                    }
+                case PlanetBody.Aquaria:
+                    {
+                        var c = AquariaTerrain.Column(x, z, seed);
+                        var g = FrontierBlocks.GatePlan(Dimension.Aquaria, x, z, seed);
+                        h = g.Plan ? PlanHeight(g, c.Height) : c.Height;
+                        surface = c.Surface;
+                        break;
+                    }
+                case PlanetBody.Stormreach:
+                    {
+                        var c = StormreachTerrain.Column(x, z, seed);
+                        var g = FrontierBlocks.GatePlan(Dimension.Stormreach, x, z, seed);
+                        h = g.Plan ? PlanHeight(g, c.Height) : c.Height;
+                        surface = c.Surface;
+                        break;
+                    }
+                case PlanetBody.Verdant:
+                    {
+                        var c = VerdantTerrain.Column(x, z, seed);
+                        var g = FrontierBlocks.GatePlan(Dimension.Verdant, x, z, seed);
+                        h = g.Plan ? PlanHeight(g, c.Height) : c.Height;
+                        surface = c.Surface;
+                        break;
+                    }
+                case PlanetBody.Nihility:
+                    {
+                        var c = NihilityTerrain.Column(x, z, seed);
+                        var g = FrontierBlocks.GatePlan(Dimension.Nihility, x, z, seed);
+                        h = g.Plan ? PlanHeight(g, c.Height) : c.Height;
+                        surface = c.Surface;
+                        break;
+                    }
                 default:
                     h = 45 + (broad - .5f) * 18;
                     surface = PlanetSurface.Regolith;
@@ -725,10 +798,33 @@ namespace LestingCraft.World
             return false;
         }
 
+        /// <summary>
+        /// Stamps the realm return gate over the sampled terrain: pillars and lintel are solid,
+        /// the throat is forced to air so the gate is always walkable no matter what the
+        /// sampler put there (spire, kelp cathedral, ice shelf…).
+        /// </summary>
+        static ushort FrontierGate(PlanetBody body, int y, PlanetColumn column, int seed, int x, int z, ushort sampled)
+        {
+            var realm = (Dimension)(int)body;
+            bool carved;
+            ushort gate = FrontierBlocks.GateBlock(realm, y, column, seed, x, z, out carved);
+            if (gate != 0) return gate;
+            return carved ? (ushort)0 : sampled;
+        }
+
         public static ushort Block(int x, int y, int z, int seed, PlanetColumn column, PlanetBody body)
         {
             if (y < 0 || y >= 256) return 0;
             if (y == 0) return 9;
+            // Deep Frontier samplers answer first: they own everything above their own column
+            // height (crystal spires, sky islands, inverted fragments), which the generic
+            // "air above the column" shortcut further down would otherwise flatten.
+            if (body == PlanetBody.Crystalia) return FrontierGate(body, y, column, seed, x, z, FrontierBlocks.Crystalia(y, column, seed, x, z));
+            if (body == PlanetBody.Emberfall) return FrontierGate(body, y, column, seed, x, z, FrontierBlocks.Emberfall(y, column, seed, x, z));
+            if (body == PlanetBody.Aquaria) return FrontierGate(body, y, column, seed, x, z, FrontierBlocks.Aquaria(y, column, seed, x, z));
+            if (body == PlanetBody.Stormreach) return FrontierGate(body, y, column, seed, x, z, FrontierBlocks.Stormreach(y, column, seed, x, z));
+            if (body == PlanetBody.Verdant) return FrontierGate(body, y, column, seed, x, z, FrontierBlocks.Verdant(y, column, seed, x, z));
+            if (body == PlanetBody.Nihility) return FrontierGate(body, y, column, seed, x, z, FrontierBlocks.Nihility(y, column, seed, x, z));
             if (body == PlanetBody.Backrooms) return BackroomsTerrain.Block(x, y, z, seed, column.Height);
             if (body == PlanetBody.Inferno) return InfernoTerrain.Block(x, y, z, seed, column.Height);
             if (body == PlanetBody.Paradise) return ParadiseTerrain.Block(x, y, z, seed, column.Height);
@@ -765,6 +861,16 @@ namespace LestingCraft.World
                 return 27;
             }
 
+            // Frontier samplers own their own above-surface scenery (spires, sky islands,
+            // inverted fragments), so they must be asked before the flat "air above the
+            // column" shortcut.
+            if (body == PlanetBody.Crystalia) return FrontierBlocks.Crystalia(y, column, seed, x, z);
+            if (body == PlanetBody.Emberfall) return FrontierBlocks.Emberfall(y, column, seed, x, z);
+            if (body == PlanetBody.Aquaria) return FrontierBlocks.Aquaria(y, column, seed, x, z);
+            if (body == PlanetBody.Stormreach) return FrontierBlocks.Stormreach(y, column, seed, x, z);
+            if (body == PlanetBody.Verdant) return FrontierBlocks.Verdant(y, column, seed, x, z);
+            if (body == PlanetBody.Nihility) return FrontierBlocks.Nihility(y, column, seed, x, z);
+
             if (y > column.Height) return 0;
 
             if (body == PlanetBody.Dream)
@@ -775,6 +881,7 @@ namespace LestingCraft.World
                     return y == column.Height ? (ushort)56 : y <= 44 ? (ushort)69 : (ushort)4;
                 return y == column.Height ? (ushort)69 : (ushort)68;
             }
+
 
             if (y < column.Height - 5) return body == PlanetBody.Venus ? (ushort)10 : (ushort)1;
             if (y < column.Height - 2) return body == PlanetBody.Mars ? (ushort)43 : body == PlanetBody.Venus ? (ushort)10 : (ushort)1;

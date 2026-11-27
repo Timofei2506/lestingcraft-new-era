@@ -174,6 +174,19 @@ namespace LestingCraft.World
                 case 16: return new Color32(176,120,64,255);
                 case 17: return new Color32(128,132,140,255);
                 case 18: return new Color32(192,142,82,255);
+                // ---- Deep Frontier surfaces (fallback vertex tint; the PBR layer drives the look) ----
+                case 115: return new Color32(122,196,246,255); // prism crystal
+                case 116: return new Color32(120,206,238,255); // aurora ice
+                case 117: return new Color32(84,74,70,255);     // soot dune
+                case 118: return new Color32(214,92,48,255);    // ember magma shore
+                case 119: return new Color32(92,206,120,255);   // kelp weave
+                case 124: return new Color32(164,228,222,255);  // reef shelf
+                case 125: return new Color32(206,214,196,255);  // tidal ruin masonry
+                case 126: return new Color32(150,204,242,255);  // charge glass
+                case 127: return new Color32(140,152,172,255);  // storm iron
+                case 128: return new Color32(214,118,132,255);  // mycelium cap
+                case 129: return new Color32(124,150,84,255);   // spore loam
+                case 133: return new Color32(126,104,214,255);  // void shard
                 default: return new Color32(255,0,255,255);
             }
         }

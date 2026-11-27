@@ -14,6 +14,10 @@ namespace LestingCraft.Presentation
 
         public static float CloudCoverageForRealm(Dimension realm, float baseClouds)
         {
+            // 2.0: the authored catalog owns the base coverage for every body, so a new realm
+            // never needs a second switch here. Weather still modulates it below.
+            if (LestingCraft.World.DimensionRealm.IsDeepFrontier(realm))
+                return Mathf.Clamp01(Mathf.Lerp(LestingCraft.World.PlanetCatalog.Get(realm).Clouds, 1f, baseClouds * .35f));
             switch (realm)
             {
                 case Dimension.Moon:
@@ -58,6 +62,16 @@ namespace LestingCraft.Presentation
                     return 0f;
                 case Dimension.Titan:
                     return 0.45f; // Slow cryogenic methane drizzle/flakes
+                case Dimension.Crystalia:
+                case Dimension.Nihility:
+                case Dimension.Stormreach:
+                    return 0f; // Vacuum frost / void / the storm is lightning, not rain
+                case Dimension.Aquaria:
+                    return 1.35f; // Warm monsoonal downpours over the archipelago
+                case Dimension.Verdant:
+                    return 0.85f; // Heavy spore-laden drizzle
+                case Dimension.Emberfall:
+                    return 0.35f; // Soot falls instead of water
                 default:
                     return 1f;
             }
@@ -65,6 +79,8 @@ namespace LestingCraft.Presentation
 
         public static float FogDensityMultiplierForRealm(Dimension realm)
         {
+            if (LestingCraft.World.DimensionRealm.IsDeepFrontier(realm))
+                return LestingCraft.World.PlanetCatalog.Get(realm).FogScale;
             switch (realm)
             {
                 case Dimension.Moon:
@@ -306,6 +322,88 @@ namespace LestingCraft.Presentation
                 AmbientGround = new Color(.32f, .10f, .04f);
                 ShallowWater = new Color(.95f, .36f, .06f);
                 DeepWater = new Color(.55f, .12f, .02f);
+            }
+            // ---------------- Deep Frontier (2.0) palettes ----------------
+            else if (realm == Dimension.Crystalia)
+            {
+                // Airless prismic moon: black zenith, ionised aurora band, ice-blue albedo bounce.
+                float auroraBand = Mathf.Clamp01(1f - Mathf.Abs(elevation - .38f) * 2.6f) * (1f - Daylight * .35f) + .22f;
+                Zenith = Color.Lerp(new Color(.004f, .002f, .014f), new Color(.012f, .016f, .048f), Daylight);
+                Horizon = Color.Lerp(new Color(.010f, .020f, .056f), new Color(.30f, .78f, .86f), auroraBand * .70f);
+                Horizon += new Color(.22f, .06f, .42f) * auroraBand * .32f;
+                SunColor = MoonIsPrimary ? new Color(.34f, .44f, .92f) : new Color(.94f, .97f, 1f);
+                DirectIntensity = MoonIsPrimary ? .05f : 1.32f * daylightBeam;
+                AmbientSky = Color.Lerp(new Color(.010f, .014f, .034f), new Color(.16f, .30f, .42f), Daylight);
+                AmbientEquator = Color.Lerp(new Color(.014f, .010f, .038f), new Color(.42f, .30f, .62f), Daylight);
+                AmbientGround = new Color(.030f, .034f, .052f);
+                ShallowWater = new Color(.30f, .86f, .92f);
+            }
+            else if (realm == Dimension.Emberfall)
+            {
+                // Ash world: rust-brown overhead haze, soot sky, ember underglow from the sea below.
+                Zenith = Color.Lerp(new Color(.030f, .014f, .010f), new Color(.155f, .062f, .042f), Daylight);
+                Horizon = Color.Lerp(new Color(.060f, .024f, .014f), new Color(.58f, .26f, .11f), Daylight);
+                Horizon += new Color(.30f, .10f, .02f) * (1f - Daylight) * .55f;
+                SunColor = MoonIsPrimary ? new Color(.38f, .22f, .18f) : new Color(1f, .72f, .44f);
+                DirectIntensity = MoonIsPrimary ? .05f : .86f * daylightBeam;
+                AmbientSky = Color.Lerp(new Color(.034f, .016f, .012f), new Color(.30f, .15f, .09f), Daylight);
+                AmbientEquator = Color.Lerp(new Color(.040f, .016f, .010f), new Color(.42f, .19f, .08f), Daylight);
+                AmbientGround = new Color(.22f, .075f, .030f); // magma sea bounce
+                ShallowWater = new Color(.86f, .30f, .06f);
+                DeepWater = new Color(.40f, .09f, .02f);
+            }
+            else if (realm == Dimension.Aquaria)
+            {
+                // Ocean world: saturated turquoise zenith, high humidity, brilliant horizon glare.
+                Zenith = Color.Lerp(new Color(.004f, .026f, .050f), new Color(.055f, .46f, .74f), Daylight);
+                Horizon = Color.Lerp(new Color(.020f, .060f, .086f), new Color(.62f, .95f, .92f), Daylight);
+                Horizon = Color.Lerp(Horizon, new Color(1f, .88f, .62f), golden * .52f);
+                SunColor = MoonIsPrimary ? new Color(.52f, .70f, .92f) : Color.Lerp(new Color(1f, .97f, .88f), warm, golden * .74f);
+                DirectIntensity = MoonIsPrimary ? .12f : Mathf.Lerp(.12f, 2.15f, daylightBeam);
+                AmbientSky = Color.Lerp(new Color(.020f, .050f, .070f), new Color(.42f, .74f, .82f), Daylight);
+                AmbientEquator = Color.Lerp(new Color(.014f, .038f, .046f), new Color(.30f, .66f, .64f), Daylight);
+                AmbientGround = Color.Lerp(new Color(.010f, .026f, .034f), new Color(.12f, .36f, .38f), Daylight);
+                ShallowWater = new Color(.22f, .86f, .86f);
+                DeepWater = new Color(.02f, .34f, .58f);
+            }
+            else if (realm == Dimension.Stormreach)
+            {
+                // Permanent thunderhead: slate-teal mass, lightning-flash white horizon, dark ground bounce.
+                Zenith = Color.Lerp(new Color(.020f, .026f, .034f), new Color(.105f, .145f, .185f), Daylight);
+                Horizon = Color.Lerp(new Color(.040f, .050f, .062f), new Color(.38f, .44f, .50f), Daylight);
+                Horizon = Color.Lerp(Horizon, new Color(.86f, .90f, 1.0f), Mathf.Clamp01(1f - elevation * 3f) * .28f);
+                SunColor = MoonIsPrimary ? new Color(.42f, .52f, .70f) : new Color(.86f, .92f, 1.0f);
+                DirectIntensity = MoonIsPrimary ? .04f : .58f * daylightBeam;
+                AmbientSky = Color.Lerp(new Color(.028f, .036f, .046f), new Color(.20f, .25f, .30f), Daylight);
+                AmbientEquator = Color.Lerp(new Color(.024f, .030f, .040f), new Color(.24f, .28f, .33f), Daylight);
+                AmbientGround = new Color(.030f, .036f, .044f);
+                ShallowWater = new Color(.34f, .50f, .62f);
+            }
+            else if (realm == Dimension.Verdant)
+            {
+                // Fungal super-Earth: emerald-teal light filtered through billions of caps & spores.
+                Zenith = Color.Lerp(new Color(.006f, .030f, .026f), new Color(.10f, .44f, .36f), Daylight);
+                Horizon = Color.Lerp(new Color(.024f, .062f, .048f), new Color(.56f, .88f, .58f), Daylight);
+                Horizon += new Color(.30f, .55f, .18f) * .18f;
+                SunColor = MoonIsPrimary ? new Color(.30f, .70f, .58f) : new Color(.94f, 1.0f, .78f);
+                DirectIntensity = MoonIsPrimary ? .14f : 1.62f * daylightBeam;
+                AmbientSky = Color.Lerp(new Color(.024f, .062f, .052f), new Color(.26f, .58f, .44f), Daylight);
+                AmbientEquator = Color.Lerp(new Color(.020f, .048f, .036f), new Color(.36f, .62f, .34f), Daylight);
+                AmbientGround = new Color(.055f, .075f, .040f);
+                ShallowWater = new Color(.28f, .74f, .52f);
+                DeepWater = new Color(.04f, .30f, .26f);
+            }
+            else if (realm == Dimension.Nihility)
+            {
+                // Broken reality: absolute black sky, violet shard glints, no bounce to speak of.
+                Zenith = new Color(.001f, .001f, .004f);
+                Horizon = Color.Lerp(new Color(.006f, .004f, .014f), new Color(.16f, .08f, .30f), Mathf.Clamp01(1f - Mathf.Abs(elevation) * 1.8f) * .62f);
+                SunColor = MoonIsPrimary ? new Color(.40f, .30f, .74f) : new Color(.88f, .86f, 1.0f);
+                DirectIntensity = MoonIsPrimary ? .02f : .92f * daylightBeam;
+                AmbientSky = Color.Lerp(new Color(.006f, .006f, .014f), new Color(.05f, .035f, .10f), Daylight);
+                AmbientEquator = Color.Lerp(new Color(.010f, .006f, .020f), new Color(.10f, .05f, .16f), Daylight);
+                AmbientGround = new Color(.008f, .006f, .014f);
+                ShallowWater = new Color(.30f, .18f, .52f);
             }
             else if (realm == Dimension.Paradise)
             {

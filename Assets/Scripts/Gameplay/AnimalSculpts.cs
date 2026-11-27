@@ -24,7 +24,9 @@ namespace LestingCraft.Gameplay
             "fallout-crow-plumage","gamma-ray-membrane","bone-stalker-hide","vitrified-golem-crust","wraith-shroud",
             "wolf-fur","scorpion-chitin","turtle-shell","voidray-skin",
             "ash-hound-hide","slag-carapace","slag-carapace","rad-scorpion-carapace",
-            "owl-feathers","deer-fur","owl-feathers","eagle-feathers"
+            "owl-feathers","deer-fur","owl-feathers","eagle-feathers",
+            // Deep Frontier 42..47
+            "andromeda-crystal","diamond-facets","slag-carapace","metal-ingot","glow-shroom","backrooms-wallpaper"
         };
 
         public static readonly string[] SpeciesNames =
@@ -37,7 +39,9 @@ namespace LestingCraft.Gameplay
             "Пепельный ворон","Гамма-скат","Костяной ловчий","Тринититовый голем","Фантом Спирали",
             "Ледяной волк","Стеклянный паук","Грибной жук","Небесный кит",
             "Адская гончая","Лавовый страйдер","Пепельный бес","Адский скорпион",
-            "Небесный лебедь","Златорогий олень Эдема","Крылатый пегас","Жар-птица Эдема"
+            "Небесный лебедь","Златорогий олень Эдема","Крылатый пегас","Жар-птица Эдема",
+            // Deep Frontier 42..47
+            "Призматическая рысь","Геодовый левиафан","Пепельный огонёк","Грозовой ящер","Споровый олень","Пустотный призрак"
         };
 
         public static readonly Color[] CoatTints =
@@ -55,7 +59,9 @@ namespace LestingCraft.Gameplay
             new Color(.24f, .20f, .34f), new Color(.78f, .86f, .95f), new Color(.66f, .80f, .88f),
             new Color(.48f, .34f, .22f), new Color(.38f, .48f, .62f),
             new Color(.32f, .12f, .09f), new Color(.48f, .16f, .08f), new Color(.28f, .14f, .12f), new Color(.42f, .12f, .08f),
-            new Color(.96f, .97f, .99f), new Color(.94f, .88f, .74f), new Color(.97f, .96f, .92f), new Color(.98f, .68f, .18f)
+            new Color(.96f, .97f, .99f), new Color(.94f, .88f, .74f), new Color(.97f, .96f, .92f), new Color(.98f, .68f, .18f),
+            new Color(.62f, .84f, .98f), new Color(.46f, .72f, .82f), new Color(.92f, .46f, .16f),
+            new Color(.38f, .46f, .62f), new Color(.72f, .86f, .58f), new Color(.34f, .26f, .52f)
         };
 
         static float UnitFor(int kind)
@@ -66,6 +72,7 @@ namespace LestingCraft.Gameplay
                 case 15: case 16: case 18: case 21: case 25: case 31: case 32: case 36: case 38: case 41:
                     return .038f;
                 case 4: case 6: case 14: case 17: case 27: case 28: case 29: case 33: case 35: case 40:
+                case 43: case 45: case 46: case 47:
                     return .064f;
                 default:
                     return .048f;
@@ -83,7 +90,8 @@ namespace LestingCraft.Gameplay
             0.66f, 1.95f, 1.38f, 1.44f, 1.28f,
             1.16f, 1.75f, 1.22f, 2.45f,
             1.18f, 1.48f, 0.92f, 1.42f,
-            0.96f, 1.18f, 1.36f, 1.04f
+            0.96f, 1.18f, 1.36f, 1.04f,
+            0.86f, 2.35f, 0.72f, 1.55f, 1.26f, 2.10f
         };
 
         static SculptData ScaleSculpt(SculptData d, float scale)
@@ -122,7 +130,8 @@ namespace LestingCraft.Gameplay
             Color c = CoatTints[kind];
             // Strictly zero emission on all natural terrestrial/avian wildlife so vertex alpha stays 0.
             // Only cosmic rays/whales (19, 33), Radia mutants (20..29), Inferno beasts (34..37), and Paradise phoenix/pegasus accents (40..41) carry emissive accents.
-            bool emissiveAllowed = (kind >= 20 && kind <= 29) || kind == 19 || kind == 33 || (kind >= 34 && kind <= 37) || kind == 40 || kind == 41;
+            bool emissiveAllowed = (kind >= 20 && kind <= 29) || kind == 19 || kind == 33 || (kind >= 34 && kind <= 37) || kind == 40 || kind == 41 ||
+                (kind >= 42 && kind <= 47);
 
             Color under = kind == 5 ? new Color(.95f, .93f, .89f) :
                           kind == 13 ? new Color(.95f, .96f, .98f) :
@@ -264,6 +273,12 @@ namespace LestingCraft.Gameplay
                 case 39: BuildEdenStag(s); break;
                 case 40: BuildSunlitPegasus(s); break;
                 case 41: BuildPhoenixDove(s); break;
+                case 42: BuildPrismLynx(s); break;
+                case 43: BuildGeodeLeviathan(s); break;
+                case 44: BuildEmberWisp(s); break;
+                case 45: BuildStormRaptor(s); break;
+                case 46: BuildSporeStag(s); break;
+                case 47: BuildVoidWraith(s); break;
             }
         }
 
@@ -1502,6 +1517,215 @@ namespace LestingCraft.Gameplay
             for (int k = -1; k <= 1; k++)
                 s.Path(new[] { 0f, .54f, -.22f, k * .08f, .58f, -.54f, k * .14f, .66f, -.86f },
                     new[] { .040f, .032f, .022f }, k == 0 ? GLOW : HORN);
+        }
+
+        // ------------------------------------------------------------------
+        // Deep Frontier fauna (42..47). Same Sculptor vocabulary as 0..41:
+        // part names must stay in the vocabulary AnimalVisual animates
+        // ("body","head","leg0..N","tail","wingL"/"wingR").
+        // ------------------------------------------------------------------
+
+        /// <summary>42 — Prism Lynx: a crystalline stealth predator of Crystalia's geode basins.</summary>
+        static void BuildPrismLynx(Sculptor s)
+        {
+            s.Part("body", 0, .58f, 0);
+            s.Ellipsoid(0, .58f, 0, .26f, .24f, .46f, FUR);
+            s.Ellipsoid(0, .50f, .02f, .18f, .14f, .34f, UNDER);
+            s.Ellipsoid(.12f, .66f, -.08f, .10f, .10f, .10f, HORN); // shoulder facet
+            s.Ellipsoid(-.12f, .66f, -.08f, .10f, .10f, .10f, HORN);
+
+            s.Part("head", 0, .70f, .42f);
+            s.Ellipsoid(0, .72f, .46f, .19f, .17f, .18f, FUR);
+            s.Ellipsoid(0, .66f, .58f, .10f, .08f, .10f, UNDER);
+            s.Ellipsoid(0, .74f, .58f, .125f, .115f, .12f, HORN); // faceted brow
+            Eyes(s, .76f, .56f, .085f, .034f, true);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Ellipsoid(side * .13f, .86f, .40f, .07f, .11f, .05f, HORN); // crystal ear tufts
+                s.Tube(side * .13f, .92f, .40f, side * .17f, 1.06f, .36f, .030f, .010f, GLOW);
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                float lx = (i % 2 == 0 ? -.16f : .16f), lz = (i < 2 ? .28f : -.28f);
+                s.Part("leg" + i, lx, .40f, lz);
+                s.Tube(lx, .40f, lz, lx * 1.12f, .18f, lz * 1.08f, .072f, .052f, FUR);
+                s.Ellipsoid(lx * 1.12f, .10f, lz * 1.08f, .065f, .048f, .075f, HOOF);
+            }
+
+            s.Part("tail", 0, .58f, -.44f);
+            s.Path(new[] { 0f, .58f, -.44f, 0f, .70f, -.72f, 0f, .58f, -.98f },
+                new[] { .060f, .045f, .030f }, FUR);
+            s.Ellipsoid(0f, .58f, -1.0f, .06f, .06f, .06f, GLOW);
+        }
+
+        /// <summary>43 — Geode Leviathan: a slow armoured grazer that swims the reefs of Aquaria.</summary>
+        static void BuildGeodeLeviathan(Sculptor s)
+        {
+            s.Part("body", 0, .60f, 0);
+            s.Ellipsoid(0, .62f, 0, .46f, .40f, 1.05f, FUR);
+            s.Ellipsoid(0, .52f, -.10f, .38f, .22f, .92f, UNDER);
+            for (int i = 0; i < 5; i++)
+                s.Ellipsoid(0, .86f - i * .05f, .50f - i * .34f, .16f - i * .018f, .13f, .18f, HORN); // dorsal geodes
+
+            s.Part("head", 0, .66f, 1.02f);
+            s.Ellipsoid(0, .64f, 1.10f, .32f, .28f, .34f, FUR);
+            s.Ellipsoid(0, .58f, 1.34f, .20f, .14f, .18f, UNDER);
+            Eyes(s, .70f, 1.30f, .20f, .055f, true);
+            for (int side = -1; side <= 1; side += 2)
+                s.Tube(side * .26f, .78f, 1.02f, side * .44f, 1.02f, .86f, .045f, .020f, GLOW); // sensory whips
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wingL" : "wingR", side * .42f, .56f, .10f);
+                s.Path(new[] { side * .42f, .56f, .10f, side * .92f, .40f, -.12f, side * .80f, .22f, -.46f },
+                    new[] { .10f, .070f, .035f }, HORN);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -.20f : .20f);
+                s.Part("leg" + i, lx, .40f, .55f);
+                s.Tube(lx, .40f, .55f, lx, .10f, .62f, .052f, .032f, HORN);
+            }
+
+            s.Part("tail", 0, .60f, -1.02f);
+            s.Path(new[] { 0f, .60f, -1.02f, 0f, .54f, -1.42f, 0f, .40f, -1.72f },
+                new[] { .13f, .085f, .040f }, FUR);
+        }
+
+        /// <summary>44 — Ember Wisp: a drifting spark-creature above Emberfall's soot sea.</summary>
+        static void BuildEmberWisp(Sculptor s)
+        {
+            s.Part("body", 0, .70f, 0);
+            s.Ellipsoid(0, .70f, 0, .18f, .20f, .18f, GLOW);
+            s.Ellipsoid(0, .70f, 0, .11f, .13f, .11f, HORN);
+            s.Ellipsoid(0, .64f, 0, .26f, .09f, .26f, FUR);
+
+            s.Part("head", 0, .86f, 0);
+            s.Ellipsoid(0, .90f, .02f, .10f, .10f, .10f, FUR);
+            Eyes(s, .92f, .10f, .055f, .026f, true);
+            for (int k = -1; k <= 1; k++)
+                s.Tube(k * .05f, .98f, 0, k * .08f, 1.16f, -.04f, .026f, .008f, GLOW);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wingL" : "wingR", side * .14f, .74f, 0);
+                s.Path(new[] { side * .14f, .74f, 0f, side * .48f, .90f, -.06f, side * .72f, .66f, -.14f },
+                    new[] { .055f, .035f, .012f }, GLOW);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -.06f : .06f);
+                s.Part("leg" + i, lx, .58f, .02f);
+                s.Tube(lx, .58f, .02f, lx * 1.4f, .34f, .06f, .020f, .010f, HORN);
+            }
+
+            s.Part("tail", 0, .58f, -.16f);
+            s.Path(new[] { 0f, .58f, -.16f, 0f, .50f, -.48f, 0f, .62f, -.78f },
+                new[] { .045f, .030f, .010f }, GLOW);
+        }
+
+        /// <summary>45 — Storm Raptor: a charge-fed predator that rides Stormreach's anvil peaks.</summary>
+        static void BuildStormRaptor(Sculptor s)
+        {
+            s.Part("body", 0, .88f, 0);
+            s.Ellipsoid(0, .88f, -.02f, .28f, .32f, .66f, FUR);
+            s.Ellipsoid(0, .80f, .10f, .21f, .20f, .48f, UNDER);
+
+            s.Part("head", 0, 1.22f, .70f);
+            s.Ellipsoid(0, 1.24f, .76f, .20f, .19f, .26f, FUR);
+            s.Tube(0, 1.20f, .96f, 0, 1.14f, 1.26f, .085f, .030f, HORN); // hooked beak
+            Eyes(s, 1.28f, .92f, .13f, .040f, true);
+            for (int k = -1; k <= 1; k += 2)
+                s.Tube(k * .10f, 1.40f, .70f, k * .16f, 1.62f, .50f, .030f, .010f, GLOW); // charge crest
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wingL" : "wingR", side * .26f, .96f, .04f);
+                s.Path(new[] { side * .26f, .96f, .04f, side * .86f, 1.14f, -.06f, side * 1.34f, 1.02f, -.24f },
+                    new[] { .085f, .060f, .030f }, FUR);
+                for (int f = 0; f < 3; f++)
+                    s.Tube(side * .72f, 1.10f - f * .04f, -.08f,
+                        side * (1.10f + f * .06f), .92f - f * .10f, -.44f - f * .06f, .030f, .008f, GLOW);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -.11f : .11f);
+                s.Part("leg" + i, lx, .56f, .04f);
+                s.Tube(lx, .56f, .04f, lx * 1.3f, .06f, .10f, .048f, .028f, HORN);
+            }
+
+            s.Part("tail", 0, .86f, -.66f);
+            s.Path(new[] { 0f, .86f, -.66f, 0f, .80f, -1.12f, 0f, .92f, -1.56f },
+                new[] { .075f, .050f, .018f }, FUR);
+        }
+
+        /// <summary>46 — Spore Stag: the great pollinator of Verdant's cap canopies.</summary>
+        static void BuildSporeStag(Sculptor s)
+        {
+            s.Part("body", 0, .96f, 0);
+            s.Ellipsoid(0, .96f, .06f, .27f, .30f, .42f, FUR);
+            s.Ellipsoid(0, .88f, .04f, .20f, .16f, .34f, UNDER);
+            s.Tube(0, 1.08f, .34f, 0, 1.44f, .50f, .13f, .105f, FUR);
+
+            s.Part("head", 0, 1.46f, .54f);
+            s.Ellipsoid(0, 1.50f, .58f, .15f, .15f, .20f, FUR);
+            s.Tube(0, 1.46f, .70f, 0, 1.42f, .92f, .085f, .055f, UNDER);
+            Eyes(s, 1.54f, .72f, .095f, .030f);
+            // Antler caps: mushroom caps instead of horns.
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Tube(side * .09f, 1.62f, .52f, side * .24f, 1.92f, .44f, .030f, .022f, HORN);
+                s.Ellipsoid(side * .26f, 1.98f, .42f, .13f, .07f, .13f, GLOW);
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                float lx = (i % 2 == 0 ? -.17f : .17f), lz = (i < 2 ? .30f : -.30f);
+                s.Part("leg" + i, lx, .62f, lz);
+                s.Tube(lx, .62f, lz, lx * 1.1f, .10f, lz * 1.05f, .055f, .040f, FUR);
+                s.Ellipsoid(lx * 1.1f, .06f, lz * 1.05f, .050f, .035f, .055f, HOOF);
+            }
+
+            s.Part("tail", 0, .92f, -.36f);
+            s.Ellipsoid(0, .92f, -.42f, .075f, .10f, .075f, GLOW); // spore puff
+        }
+
+        /// <summary>47 — Void Wraith: a levitating shard-construct of Nihility.</summary>
+        static void BuildVoidWraith(Sculptor s)
+        {
+            s.Part("body", 0, 1.10f, 0);
+            s.Ellipsoid(0, 1.10f, 0, .22f, .46f, .22f, FUR);
+            s.Ellipsoid(0, .92f, 0, .16f, .26f, .16f, DARK);
+
+            s.Part("head", 0, 1.62f, 0);
+            s.Ellipsoid(0, 1.66f, 0, .17f, .20f, .17f, DARK);
+            Eyes(s, 1.70f, .12f, .075f, .032f, true);
+            s.Ring(0, 1.90f, 0, .34f, .022f, GLOW); // broken halo
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wingL" : "wingR", side * .20f, 1.24f, -.04f);
+                s.Path(new[] { side * .20f, 1.24f, -.04f, side * .62f, 1.52f, -.20f, side * .94f, 1.10f, -.44f },
+                    new[] { .070f, .045f, .014f }, FUR);
+                for (int k = 0; k < 3; k++)
+                    s.Ellipsoid(side * (.34f + k * .18f), 1.44f - k * .16f, -.16f - k * .10f,
+                        .055f, .055f, .055f, GLOW); // orbiting shard motes
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -.10f : .10f);
+                s.Part("leg" + i, lx, .70f, 0);
+                s.Tube(lx, .70f, 0, lx * 1.2f, .34f, .02f, .035f, .012f, GLOW);
+            }
+
+            s.Part("tail", 0, 1.06f, -.20f);
+            s.Path(new[] { 0f, 1.06f, -.20f, 0f, .78f, -.52f, 0f, .54f, -.70f },
+                new[] { .070f, .045f, .010f }, FUR);
         }
     }
 }

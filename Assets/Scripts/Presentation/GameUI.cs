@@ -648,7 +648,7 @@ namespace LestingCraft.Presentation
             Label(content.transform,"Единая шкала качества: от мобильного до кино. Пресеты не понижаются автоматически по FPS; дальность и масштаб можно настроить вручную.",66,247,1400,42,19,Muted);
             var settings=VisualSettings.Current;
             Box(content.transform,64,323,713,402,Panel);Box(content.transform,800,323,736,402,Panel);
-            Slider("Дальность мира",64+28,354,655,settings.ViewDistance,2,VisualSettings.IsMobile?4:5,true,v=>{settings.ViewDistance=Mathf.RoundToInt(v);settings.Save();},v=>(int)v+" чанка/сторону");
+            Slider("Дальность мира",64+28,354,655,settings.ViewDistance,VisualQualityPolicy.MinViewDistance,VisualQualityPolicy.MaxViewDistance(VisualSettings.IsMobile),true,v=>{settings.ViewDistance=Mathf.RoundToInt(v);settings.Save();},v=>(int)v+" чанка/сторону");
             Slider("Масштаб рендера",92,469,655,settings.RenderScale,VisualSettings.IsMobile?.65f:.85f,VisualSettings.IsMobile?1f:1.5f,false,v=>{settings.RenderScale=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
             Button("Тени: "+settings.ShadowResolution.ToString(),92,589,309,58,()=>{settings.ShadowResolution=VisualSettings.IsMobile?(settings.ShadowResolution==512?1024:settings.ShadowResolution==1024?2048:512):(settings.ShadowResolution==1024?2048:settings.ShadowResolution==2048?4096:1024);settings.Save();ShowSettings(settingsBack);});
             Button("Постэффекты: "+(settings.PostEffects?"вкл.":"выкл."),419,589,328,58,()=>{settings.PostEffects=!settings.PostEffects;settings.Save();ShowSettings(settingsBack);});
@@ -660,15 +660,19 @@ namespace LestingCraft.Presentation
             Slider("Атмосфера",1182,522,326,settings.AmbientVolume,0f,1f,false,v=>{settings.AmbientVolume=v;settings.Save();},v=>Mathf.RoundToInt(v*100)+"%");
             Label(content.transform,"WASD — движение   SPACE — прыжок   C / CTRL — красться (защита от края)\nЛКМ — ломать/атака   ПКМ — поставить   1–9 — слоты   E — инвентарь",828,622,680,92,16,White);
             Button("←  Готово",64,798,210,54,()=>{settings.Save();if(settingsBack==Page.Pause)ShowPause();else ShowHome();},true);
-            int[] presets={VisualQualityPolicy.Mobile,VisualQualityPolicy.Balanced,VisualQualityPolicy.High,VisualQualityPolicy.Ultra,VisualQualityPolicy.Cinematic};
+            // 2.0 ladder: seven tiers (Mobile … Extrême). Mobile is capped at Ultra; the two
+            // new desktop tiers exist because the streamer's LOD band now makes radius 6 affordable.
+            var presets=VisualQualityPolicy.Ladder;
+            float spacing=Mathf.Min(196f,1400f/Math.Max(1,presets.Length));
+            float startX=Mathf.Max(64f,700f-(presets.Length-1)*spacing*.5f);
             for(int i=0;i<presets.Length;i++)
             {
                 int preset=presets[i];bool allowed=!VisualSettings.IsMobile||preset<=VisualQualityPolicy.Ultra;
-                var presetButton=Button(VisualQualityPolicy.DisplayName(preset)+(settings.Preset==preset?" ✓":""),296+i*230,798,220,54,()=>{settings.ApplyPreset(preset);ShowSettings(settingsBack);},settings.Preset==preset);
+                var presetButton=Button(VisualQualityPolicy.DisplayName(preset)+(settings.Preset==preset?" ✓":""),startX+i*spacing,798,spacing-14,54,()=>{settings.ApplyPreset(preset);ShowSettings(settingsBack);},settings.Preset==preset);
                 presetButton.interactable=allowed;presetButton.name="Settings.Preset."+preset;
-                var presetText=presetButton.GetComponentInChildren<Text>();if(presetText)presetText.fontSize=16;
+                var presetText=presetButton.GetComponentInChildren<Text>();if(presetText)presetText.fontSize=spacing<150?13:16;
             }
-            Label(content.transform,"URP · без аппаратной трассировки лучей. Кино-пресет доступен на ПК.",810,730,726,50,15,Muted,false,TextAnchor.MiddleRight);
+            Label(content.transform,"URP · без аппаратной трассировки лучей. «Фронтир» и «Экстрим» — ПК-пресеты с увеличенной дальностью мира.",810,730,726,50,15,Muted,false,TextAnchor.MiddleRight);
         }
         void Slider(string title,float x,float y,float w,float value,float min,float max,bool integer,Action<float> changed,Func<float,string> format)
         {

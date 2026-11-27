@@ -12,7 +12,7 @@ namespace LestingCraft.Tests
             var old=new SessionSave { contentVersion=9,seed=2506 };
             var copy=JsonUtility.FromJson<SessionSave>(JsonUtility.ToJson(old));
             Assert.AreEqual(9,copy.contentVersion);
-            Assert.AreEqual(11,new SessionSave().contentVersion);
+            Assert.AreEqual(12,new SessionSave().contentVersion);
             Assert.AreEqual(14,GameRules.Version,"Do not claim the unfinished network migration via a version-only bump");
         }
         [Test] public void VersionAwareChunkJobMatchesPointSamplerAcrossNewArchitectureColumns()

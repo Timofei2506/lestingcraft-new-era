@@ -81,7 +81,8 @@ namespace LestingCraft.Gameplay
             0, 0, 8, 6, 12, 0, 10, 0, 7, 0, 0, 0, 0, 0, 0, 9, 0, 11, 0, 0,
             11, 9, 14, 15, 12, 10, 13, 16, 19, 17,
             15, 7, 0, 0,
-            14, 11, 12, 15, 0, 0, 0, 0
+            14, 11, 12, 15, 0, 0, 0, 0,
+            13, 21, 9, 16, 8, 22
         };
         static readonly float[] Heights =
         {
@@ -156,10 +157,13 @@ namespace LestingCraft.Gameplay
             new[] { 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 }
         };
 
-        public static bool IsFlyer(int s) { return s == 11 || s == 12 || s == 19 || s == 25 || s == 26 || s == 33 || s == 36 || s == 38 || s == 40 || s == 41; }
+        public static bool IsFlyer(int s) { return s == 11 || s == 12 || s == 19 || s == 25 || s == 26 || s == 33 || s == 36 || s == 38 || s == 40 || s == 41 || s == 44 || s == 47; }
         public static bool IsRadiaMutant(int s) { return (s >= 20 && s < 30) || (s >= 34 && s <= 37); }
         public static bool IsInfernoBeast(int s) { return s >= 34 && s <= 37; }
         public static bool IsParadiseCreature(int s) { return s >= 38 && s <= 41; }
+        /// <summary>Deep Frontier fauna (Crystalia, Emberfall, Aquaria, Stormreach, Verdant, Nihility).</summary>
+        public static bool IsFrontierCreature(int s) { return s >= 42 && s <= 47; }
+        public static bool IsAquatic(int s) { return s == 43; }
         public static bool IsAggressive(int s) { return s >= 0 && s < AttackDamage.Length && AttackDamage[s] > 0; }
 
         public WildlifeSimulation(int seed, WildlifeSave saved = null, int contentVersion = 2)
@@ -191,7 +195,11 @@ namespace LestingCraft.Gameplay
             }
         }
 
-        bool ValidSpecies(int s) { return s >= 0 && s < (contentVersion >= 9 ? SpeciesCount : contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3); }
+        bool ValidSpecies(int s)
+        {
+            int limit = contentVersion >= 12 ? SpeciesCount : contentVersion >= 9 ? 42 : contentVersion >= 8 ? 20 : contentVersion >= 7 ? 12 : 3;
+            return s >= 0 && s < limit;
+        }
         static bool Finite(float v) { return !float.IsNaN(v) && !float.IsInfinity(v) && Math.Abs(v) < 32000; }
         static int Index(int s) { return s >= 0 && s < SpeciesCount ? s : 2; }
         static float ClampFlight(float h) { return Finite(h) && h >= 2.8f && h <= 8.5f ? h : 4.5f; }
@@ -221,6 +229,18 @@ namespace LestingCraft.Gameplay
         static readonly int[] CryoWorldSpecies = { 30, 31, 13, 12, 19 };
         static readonly int[] VolcanicWorldSpecies = { 35, 36, 37 };
 
+        // Deep Frontier habitats (13..18). Species 42..47 are exclusive to these realms.
+        // 42:PrismLynx 43:GeodeLeviathan 44:EmberWisp 45:StormRaptor 46:SporeStag 47:VoidWraith
+        static readonly int[][] FrontierSpecies =
+        {
+            new[] { 42, 42, 31, 30, 19 },           // 13 Crystalia
+            new[] { 35, 36, 34, 44, 44, 25 },       // 14 Emberfall
+            new[] { 43, 43, 16, 18, 19, 21 },       // 15 Aquaria
+            new[] { 45, 45, 26, 11, 27 },           // 16 Stormreach
+            new[] { 46, 46, 32, 10, 31, 2 },        // 17 Verdant
+            new[] { 47, 47, 29, 28, 19 }            // 18 Nihility
+        };
+
         public static int Habitat(int surface, int x, int z, int seed)
         {
             if (surface == -16) return 7;  // Dimension.Inferno sentinel
@@ -229,6 +249,12 @@ namespace LestingCraft.Gameplay
             if (surface == -18) return 10; // Lush exoplanets (Kepler452b, Trappist1e, AndromedaPrime)
             if (surface == -19) return 11; // Cryo moons & ice worlds (Titan, Oberon, Triton, ProximaB)
             if (surface == -20) return 12; // Volcanic worlds (JupiterIo, Venus)
+            if (surface == -21) return 13; // Crystalia — prismic crystal fields
+            if (surface == -22) return 14; // Emberfall — soot shelves & magma shore
+            if (surface == -23) return 15; // Aquaria — reefs, kelp cathedrals, abyss
+            if (surface == -24) return 16; // Stormreach — lattice plateaus & charge scars
+            if (surface == -25) return 17; // Verdant — mycelium loam & cap canopies
+            if (surface == -26) return 18; // Nihility — glass scarps & inverted fragments
             if (surface == 78 || surface == 79 || surface == 80 || surface == 82 || surface == 88 || surface == 89) return 6;
             if (surface == 33 || surface == 34 || surface == 7 || surface == 61) return 4;
             if (surface == 6 || surface == 43 || surface == 62) return 3;
@@ -251,6 +277,8 @@ namespace LestingCraft.Gameplay
                 return CryoWorldSpecies[(int)((hash >> 16) % (uint)CryoWorldSpecies.Length)];
             if (habitat == 12 && contentVersion >= 11)
                 return VolcanicWorldSpecies[(int)((hash >> 16) % (uint)VolcanicWorldSpecies.Length)];
+            if (habitat >= 13 && habitat <= 18 && contentVersion >= 12)
+                return FrontierSpecies[habitat - 13][(int)((hash >> 16) % (uint)FrontierSpecies[habitat - 13].Length)];
             if (habitat == 6 && contentVersion >= 9)
                 return 20 + (int)((hash >> 16) % 10u);
             int[][] table = contentVersion >= 9 ? HabitatSpeciesV9

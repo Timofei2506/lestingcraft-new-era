@@ -79,7 +79,11 @@ namespace LestingCraft.Presentation
         {
             Preset = VisualQualityPolicy.ClampPreset(preset, IsMobile);
             var profile = Profile;
-            ViewDistance = IsMobile ? 2 : Preset >= VisualQualityPolicy.Ultra ? 4 : 3;
+            // 2.0: each preset owns a sensible radius; the streamer keeps its ring so raising
+            // the setting only streams the delta and lowering it never deletes the ground
+            // under the player (see VoxelWorld.ApplyViewDistance).
+            ViewDistance = IsMobile ? 2 : Preset >= VisualQualityPolicy.Frontier ? 6 :
+                Preset >= VisualQualityPolicy.Ultra ? 5 : Preset >= VisualQualityPolicy.High ? 4 : 3;
             RenderScale = 1;
             ShadowResolution = profile.ShadowResolution;
             PostEffects = true;
@@ -110,6 +114,12 @@ namespace LestingCraft.Presentation
             Shader.SetGlobalFloat("_LCUltra", profile.UltraEffects ? 1 : 0);
             Shader.SetGlobalFloat("_LCVolumetricSteps", FogSteps);
             Shader.SetGlobalFloat("_LCCloudSteps", CloudSteps);
+            // Detail/LOD band handed to the streamer and to the grass shader.
+            Shader.SetGlobalFloat("_LCDetailRing", profile.DetailRing);
+            Shader.SetGlobalFloat("_LCDetailFadeStart", profile.DetailFadeStart);
+            Shader.SetGlobalFloat("_LCDetailFadeEnd", profile.DetailFadeEnd);
+            Shader.SetGlobalFloat("_LCPresetIndex", Preset);
+            if (LestingCraft.Runtime.VoxelWorld.Active) LestingCraft.Runtime.VoxelWorld.Active.ApplyViewDistance();
             if (Camera.main)
             {
                 Camera.main.fieldOfView = FieldOfView;
@@ -219,6 +229,8 @@ namespace LestingCraft.Presentation
         public void Ultra() { ApplyPreset(VisualQualityPolicy.Ultra); }
         public void HighDefault() { ApplyPreset(VisualQualityPolicy.High); }
         public void Cinematic() { ApplyPreset(VisualQualityPolicy.Cinematic); }
+        public void Frontier() { ApplyPreset(VisualQualityPolicy.Frontier); }
+        public void Extreme() { ApplyPreset(VisualQualityPolicy.Extreme); }
     }
 
     public sealed class AtmosphereLifetime : MonoBehaviour

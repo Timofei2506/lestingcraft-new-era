@@ -5,7 +5,7 @@ namespace LestingCraft.Gameplay
  {public readonly int Id,Layer;public readonly string Name,Surface;public readonly float Hardness;public readonly bool Pick;public ExpandedBlock(int id,string name,string surface,float hardness,bool pick,int layer){Id=id;Name=name;Surface=surface;Hardness=hardness;Pick=pick;Layer=layer;}}
  public static class ExpandedContent
  {
-  public const int MaxBlock=97,Version=4;
+  public const int MaxBlock=133,Version=5;
   public static readonly ExpandedBlock[] Blocks={
    new ExpandedBlock(19,"Угольная руда","ore-coal",2.5f,true,25),
    new ExpandedBlock(20,"Железная руда","ore",3.0f,true,14),
@@ -85,10 +85,29 @@ namespace LestingCraft.Gameplay
    new ExpandedBlock(94,"Солнечный одуванчик","leaves",0.15f,false,6),
    new ExpandedBlock(95,"Алый мак","red-mesa",0.15f,false,83),
    new ExpandedBlock(96,"Небесный василёк","crystal",0.15f,false,12),
-   new ExpandedBlock(97,"Лавандовый цветок","cherry-blossom",0.15f,false,81)
-  };
-  public static bool Has(int id)=>id>=19&&id<=MaxBlock;
-  public static bool NeedsPick(int id)=>id==1||id>=10&&id<=13||id==17||Has(id)&&Blocks[id-19].Pick;
+   new ExpandedBlock(97,"Лавандовый цветок","cherry-blossom",0.15f,false,81),
+   new ExpandedBlock(115,"Призматический кристалл","prism-crystal",3.4f,true,114),
+   new ExpandedBlock(116,"Полярный лёд Авроры","aurora-ice",1.4f,true,115),
+   new ExpandedBlock(117,"Пепельная дюна","soot-dune",0.6f,false,116),
+   new ExpandedBlock(118,"Магмовый берег","ember-magma-shore",2.9f,true,117),
+   new ExpandedBlock(119,"Живая ламинария","kelp-weave",0.5f,false,118),
+   new ExpandedBlock(124,"Коралловая отмель","reef-shelf",1.8f,true,119),
+   new ExpandedBlock(125,"Кладка приливных руин","tidal-ruin",2.6f,true,120),
+   new ExpandedBlock(126,"Грозовое стекло","charge-glass",2.2f,true,121),
+   new ExpandedBlock(127,"Штормовая сталь","storm-iron",4.6f,true,122),
+   new ExpandedBlock(128,"Шляпка мицелия","mycelium-cap",0.7f,false,123),
+   new ExpandedBlock(129,"Споровая почва","spore-loam",0.5f,false,124),
+   new ExpandedBlock(133,"Осколок пустоты","void-shard",5.2f,true,125)  };
+  // Block ids are sparse above 97 (115..133 is the Deep Frontier band), so lookups go
+  // through a table built once instead of assuming id-19 indexes the array.
+  static readonly bool[] Known=BuildKnown();
+  static bool[] BuildKnown(){var t=new bool[MaxBlock+1];for(int i=0;i<Blocks.Length;i++)t[Blocks[i].Id]=true;return t;}
+  static readonly ExpandedBlock[] ById=BuildIndex();
+  static ExpandedBlock[] BuildIndex(){var t=new ExpandedBlock[MaxBlock+1];for(int i=0;i<Blocks.Length;i++)t[Blocks[i].Id]=Blocks[i];return t;}
+  public static bool Has(int id)=>id>=1&&id<=MaxBlock&&Known[id];
+  /// <summary>Sparse lookup; Id==0 means &quot;not an expanded block&quot;.</summary>
+  public static ExpandedBlock Lookup(int id)=>id>=0&&id<=MaxBlock?ById[id]:default(ExpandedBlock);
+  public static bool NeedsPick(int id)=>id==1||id>=10&&id<=13||id==17||Has(id)&&ById[id].Pick;
   public static int Smelt(int id)=>id==70?190:id>=20&&id<=26?140+id-20:id==6?44:id==33?39:id==135?138:0;
  }
 }

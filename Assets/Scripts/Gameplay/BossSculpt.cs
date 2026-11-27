@@ -347,6 +347,12 @@ namespace LestingCraft.Gameplay
                 case Dimension.Backrooms: return BlackBacteria(seed);
                 case Dimension.Inferno: return InfernalArchfiend(seed);
                 case Dimension.Paradise: return SeraphOfEden(seed);
+                case Dimension.Crystalia: return PrismSovereign(seed);
+                case Dimension.Emberfall: return CinderTitan(seed);
+                case Dimension.Aquaria: return AbyssalMaw(seed);
+                case Dimension.Stormreach: return ThunderArchon(seed);
+                case Dimension.Verdant: return MyceliumQueen(seed);
+                case Dimension.Nihility: return NullDevourer(seed);
                 default: return Warden(seed, false);
             }
         }
@@ -1609,6 +1615,330 @@ namespace LestingCraft.Gameplay
             s.Box(.18f, .67f, .08f, .08f, .025f, .08f, dark);
 
             return s.Finish("Memorial Grave");
+        }
+
+        // ------------------------------------------------------------------
+        // Deep Frontier guardians (18..23). Each keeps the articulated
+        // vocabulary the boss rig animates and a distinct silhouette.
+        // ------------------------------------------------------------------
+
+        static SculptData PrismSovereign(int seed)
+        {
+            var s = new Sculptor(.12f, seed);
+            int crystal = s.Pal("prism plate", "andromeda-crystal", .62f, .86f, .98f, .35f);
+            int facet = s.Pal("cut facet", "diamond-facets", .82f, .94f, 1.00f, .8f);
+            int frost = s.Pal("frost core", "glacial-ice", .74f, .88f, .98f, 0);
+            int heart = s.Pal("geode heart", "cherenkov-crystal", .48f, 1.00f, .96f, 2.9f);
+            int dark = s.Pal("deep facet", "obsidian", .10f, .12f, .20f, 0);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "leg_l" : "leg_r", side * .54f, 1.70f, 0);
+                s.Path(new[] { side * .54f, 1.70f, .04f, side * .66f, .92f, -.14f, side * .58f, .18f, .08f },
+                    new[] { .28f, .20f, .14f }, crystal);
+                s.Box(side * .58f, .02f, .02f, .34f, .10f, .40f, dark);
+            }
+
+            s.Part("body", 0, 2.45f, 0);
+            s.Ellipsoid(0, 2.45f, 0, .74f, .96f, .54f, crystal);
+            s.Ellipsoid(0, 2.60f, .30f, .30f, .44f, .26f, heart);
+            for (int r = 0; r < 3; r++)
+                s.Ring(0, 2.10f + r * .40f, .10f, .62f - r * .06f, .060f, facet);
+            // Orbit of floating cut shards
+            for (int k = 0; k < 8; k++)
+            {
+                float a = k / 8f * 6.2831853f;
+                float x = (float)Math.Cos(a) * 1.45f, z = (float)Math.Sin(a) * 1.45f;
+                s.Part("shard_" + k, x, 2.70f + (k % 3) * .22f, z);
+                s.Ellipsoid(x, 2.72f + (k % 3) * .22f, z, .13f, .26f, .13f, k % 2 == 0 ? facet : heart);
+            }
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.00f, 3.05f, .06f);
+                s.Ellipsoid(side * 1.04f, 3.14f, .06f, .30f, .28f, .28f, facet);
+                s.Path(new[] { side * 1.00f, 2.98f, .08f, side * 1.34f, 2.20f, .28f, side * 1.22f, 1.44f, .54f },
+                    new[] { .22f, .18f, .16f }, crystal);
+            }
+
+            s.Part("head", 0, 3.58f, .12f);
+            s.Ellipsoid(0, 3.86f, .18f, .40f, .46f, .40f, crystal);
+            s.Ellipsoid(0, 3.94f, .52f, .13f, .10f, .08f, heart);
+            s.Ellipsoid(-.14f, 3.92f, .44f, .07f, .06f, .05f, heart);
+            s.Ellipsoid(.14f, 3.92f, .44f, .07f, .06f, .05f, heart);
+            for (int k = 0; k < 7; k++)
+            {
+                float a = -1.1f + k * .366f;
+                float x = (float)Math.Sin(a) * .62f;
+                s.Tube(x * .6f, 4.22f, .12f, x, 4.92f + (k % 2) * .26f, .02f, .070f, .018f, k % 2 == 0 ? facet : frost);
+            }
+
+            s.Light(0, 3.0f, .6f, .62f, .96f, 1.0f, 15f, 3.0f);
+            return s.Finish("Prism Sovereign");
+        }
+
+        static SculptData CinderTitan(int seed)
+        {
+            var s = new Sculptor(.125f, seed);
+            int soot = s.Pal("soot plate", "slate", .22f, .19f, .19f, 0);
+            int basalt = s.Pal("basalt hide", "basalt", .30f, .24f, .23f, 0);
+            int rust = s.Pal("rusted rib", "ore", .62f, .34f, .20f, 0);
+            int ember = s.Pal("ember fissure", "magma-basalt", .98f, .50f, .16f, 1.7f);
+            int heart = s.Pal("cinder heart", "lava", 1.00f, .70f, .20f, 3.0f);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "leg_l" : "leg_r", side * .70f, 1.95f, 0);
+                s.Path(new[] { side * .70f, 1.95f, .06f, side * .82f, 1.05f, -.18f, side * .74f, .22f, .12f },
+                    new[] { .36f, .28f, .23f }, basalt);
+                s.Box(side * .54f, .02f, -.04f, .92f, .24f, .46f, soot);
+            }
+
+            s.Part("body", 0, 2.72f, 0);
+            s.Ellipsoid(0, 2.74f, 0, .98f, 1.10f, .70f, soot);
+            s.Ellipsoid(0, 2.62f, .50f, .42f, .52f, .22f, heart);
+            for (int r = 0; r < 5; r++)
+                s.Tube(-.86f, 2.10f + r * .32f, .30f, .86f, 2.18f + r * .30f, .34f, .055f, .045f, rust);
+            for (int k = 0; k < 6; k++)
+                s.Tube(0, 1.90f + k * .34f, -.58f, 0, 2.10f + k * .36f, -1.02f, .11f, .04f, ember);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.28f, 3.30f, .08f);
+                s.Ellipsoid(side * 1.32f, 3.44f, .06f, .42f, .38f, .40f, basalt);
+                s.Path(new[] { side * 1.26f, 3.22f, .10f, side * 1.62f, 2.30f, .34f, side * 1.50f, 1.36f, .74f },
+                    new[] { .32f, .26f, .28f }, soot);
+                s.Ellipsoid(side * 1.50f, 1.28f, .78f, .32f, .30f, .34f, ember);
+            }
+
+            s.Part("head", 0, 4.05f, .20f);
+            s.Ellipsoid(0, 4.34f, .26f, .48f, .46f, .50f, soot);
+            s.Ellipsoid(0, 4.16f, .60f, .30f, .22f, .24f, basalt);
+            s.Ellipsoid(-.16f, 4.40f, .66f, .09f, .08f, .07f, heart);
+            s.Ellipsoid(.16f, 4.40f, .66f, .09f, .08f, .07f, heart);
+            for (int side = -1; side <= 1; side += 2)
+                s.Path(new[] { side * .30f, 4.62f, .18f, side * .84f, 5.14f, -.16f, side * .58f, 5.62f, .26f },
+                    new[] { .16f, .10f, .04f }, ember);
+
+            s.Part("tail", 0, 1.86f, -.56f);
+            s.Path(new[] { 0f, 1.86f, -.56f, 0f, 1.20f, -1.30f, 0f, .66f, -2.00f }, new[] { .24f, .15f, .07f }, soot);
+
+            s.Light(0, 3.0f, .8f, 1.0f, .46f, .14f, 17f, 3.5f);
+            return s.Finish("Cinder Titan");
+        }
+
+        static SculptData AbyssalMaw(int seed)
+        {
+            var s = new Sculptor(.13f, seed);
+            int shell = s.Pal("reef shell", "marble", .44f, .62f, .60f, 0);
+            int kelp = s.Pal("kelp weave", "glow-shroom", .26f, .62f, .38f, .5f);
+            int scale = s.Pal("abyss scale", "slate", .18f, .30f, .34f, 0);
+            int pearl = s.Pal("pearl eye", "cherenkov-crystal", .66f, 1.00f, .94f, 2.4f);
+            int brine = s.Pal("brine gut", "crystal", .30f, .78f, .90f, .8f);
+
+            s.Part("body", 0, 2.20f, 0);
+            s.Ellipsoid(0, 2.20f, 0, 1.05f, .95f, 1.55f, scale);
+            s.Ellipsoid(0, 2.10f, .20f, .78f, .62f, 1.30f, shell);
+            for (int k = 0; k < 6; k++)
+                s.Ellipsoid(0, 2.95f - k * .10f, .95f - k * .42f, .20f - k * .02f, .14f, .24f, kelp);
+
+            // Rib arches: the silhouette reads as a ribcage cathedral.
+            for (int r = 0; r < 5; r++)
+                s.Tube(-.92f, 2.05f + r * .20f, .30f - r * .34f, .92f, 2.05f + r * .20f, .30f - r * .34f,
+                    .060f, .060f, shell);
+
+            s.Part("head", 0, 2.40f, 1.50f);
+            s.Ellipsoid(0, 2.36f, 1.66f, .52f, .44f, .56f, scale);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Ellipsoid(side * .26f, 2.52f, 1.92f, .13f, .12f, .10f, pearl);
+                s.Path(new[] { side * .40f, 2.20f, 1.60f, side * .86f, 2.02f, 1.92f, side * 1.06f, 1.76f, 1.62f },
+                    new[] { .10f, .07f, .04f }, kelp);
+            }
+            // Maw with brine teeth
+            for (int k = -3; k <= 3; k++)
+                s.Tube(k * .14f, 2.14f, 1.94f, k * .14f, 1.96f, 2.16f, .045f, .012f, brine);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "fin_l" : "fin_r", side * .96f, 2.30f, .10f);
+                s.Path(new[] { side * .96f, 2.30f, .10f, side * 1.86f, 2.62f, -.14f, side * 2.60f, 2.10f, -.46f },
+                    new[] { .18f, .13f, .07f }, kelp);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -.42f : .42f);
+                s.Part("leg" + i, lx, 1.40f, .60f);
+                s.Tube(lx, 1.40f, .60f, lx * 1.2f, .24f, .76f, .10f, .05f, shell);
+            }
+
+            s.Part("tail", 0, 2.10f, -1.50f);
+            s.Path(new[] { 0f, 2.10f, -1.50f, 0f, 1.70f, -2.30f, 0f, 2.20f, -3.00f },
+                new[] { .32f, .22f, .10f }, scale);
+            s.Ellipsoid(0, 2.24f, -3.10f, .34f, .08f, .34f, kelp);
+
+            s.Light(0, 2.4f, 1.4f, .40f, .90f, .96f, 16f, 3.0f);
+            return s.Finish("Abyssal Maw");
+        }
+
+        static SculptData ThunderArchon(int seed)
+        {
+            var s = new Sculptor(.115f, seed);
+            int iron = s.Pal("storm iron", "titanium-hull", .42f, .48f, .56f, 0);
+            int glassy = s.Pal("vitrified scar", "crystal", .60f, .76f, .92f, .4f);
+            int cloud = s.Pal("cumulus mantle", "polished-marble", .72f, .78f, .86f, 0);
+            int bolt = s.Pal("arc bolt", "cherenkov-crystal", .72f, .88f, 1.00f, 3.0f);
+            int dark = s.Pal("anvil shadow", "basalt", .22f, .26f, .32f, 0);
+
+            s.Part("body", 0, 2.80f, 0);
+            s.Ellipsoid(0, 2.80f, 0, .70f, 1.02f, .58f, cloud);
+            s.Ellipsoid(0, 2.86f, .18f, .34f, .48f, .28f, bolt);
+            for (int r = 0; r < 3; r++)
+                s.Ring(0, 2.30f + r * .42f, 0, .78f - r * .05f, .055f, iron);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.00f, 3.30f, .04f);
+                s.Ellipsoid(side * 1.04f, 3.40f, .04f, .30f, .28f, .28f, iron);
+                s.Path(new[] { side * 1.00f, 3.22f, .06f, side * 1.36f, 2.44f, .30f, side * 1.20f, 1.62f, .58f },
+                    new[] { .21f, .17f, .15f }, cloud);
+                s.Ellipsoid(side * 1.20f, 1.54f, .62f, .26f, .24f, .28f, glassy);
+                for (int a = 0; a < 3; a++)
+                    s.Tube(side * (1.06f + a * .10f), 1.30f, .70f, side * (1.06f + a * .12f), .96f, 1.02f, .045f, .012f, bolt);
+            }
+
+            s.Part("head", 0, 3.92f, .12f);
+            s.Ellipsoid(0, 4.18f, .18f, .42f, .44f, .42f, cloud);
+            s.Ellipsoid(0, 4.10f, .54f, .26f, .20f, .20f, iron);
+            s.Ellipsoid(-.13f, 4.24f, .48f, .075f, .065f, .055f, bolt);
+            s.Ellipsoid(.13f, 4.24f, .48f, .075f, .065f, .055f, bolt);
+            // Crown of arc columns
+            for (int k = 0; k < 6; k++)
+            {
+                float a = k / 6f * 6.2831853f;
+                float x = (float)Math.Cos(a) * .52f, z = (float)Math.Sin(a) * .52f;
+                s.Tube(x, 4.44f, .18f + z * .5f, x * 1.25f, 5.16f, .18f + z * .7f, .055f, .014f, bolt);
+            }
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wing_l" : "wing_r", side * .74f, 3.60f, -.34f);
+                s.Path(new[] { side * .74f, 3.60f, -.34f, side * 1.86f, 4.44f, -.66f, side * 2.62f, 3.62f, -.94f },
+                    new[] { .15f, .11f, .07f }, dark);
+                for (int f = 0; f < 3; f++)
+                    s.Tube(side * (1.42f + f * .40f), 4.16f - f * .20f, -.62f,
+                        side * (1.58f + f * .44f), 2.60f - f * .16f, -.80f, .090f, .030f, f == 1 ? bolt : iron);
+            }
+
+            s.Light(0, 3.4f, .9f, .70f, .86f, 1.0f, 18f, 3.4f);
+            return s.Finish("Thunder Archon");
+        }
+
+        static SculptData MyceliumQueen(int seed)
+        {
+            var s = new Sculptor(.12f, seed);
+            int cap = s.Pal("cap velvet", "glow-shroom", .70f, .34f, .40f, .35f);
+            int stalk = s.Pal("stalk fibre", "polished-marble", .84f, .80f, .70f, 0);
+            int loam = s.Pal("loam mantle", "mossy-stone", .32f, .44f, .24f, 0);
+            int spore = s.Pal("spore glow", "cherenkov-crystal", .80f, 1.00f, .70f, 2.5f);
+            int gill = s.Pal("gill underside", "clay-bricks", .56f, .46f, .34f, 0);
+
+            s.Part("body", 0, 2.60f, 0);
+            s.Ellipsoid(0, 2.60f, 0, .62f, .96f, .52f, stalk);
+            s.Ellipsoid(0, 2.50f, .16f, .30f, .40f, .22f, spore);
+            for (int r = 0; r < 4; r++)
+                s.Ellipsoid(0, 1.90f + r * .34f, -.46f + r * .06f, .34f - r * .03f, .10f, .10f, gill);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * .86f, 3.06f, .04f);
+                s.Ellipsoid(side * .92f, 3.16f, .04f, .28f, .26f, .26f, loam);
+                s.Path(new[] { side * .86f, 2.96f, .06f, side * 1.24f, 2.20f, .30f, side * 1.10f, 1.42f, .56f },
+                    new[] { .20f, .16f, .14f }, stalk);
+            }
+
+            s.Part("head", 0, 3.62f, .10f);
+            s.Ellipsoid(0, 3.86f, .14f, .36f, .40f, .34f, stalk);
+            s.Ellipsoid(0, 3.90f, .42f, .10f, .09f, .07f, spore);
+            s.Ellipsoid(-.13f, 3.90f, .38f, .065f, .055f, .05f, spore);
+            s.Ellipsoid(.13f, 3.90f, .38f, .065f, .055f, .05f, spore);
+            // Great cap crown with gills underneath
+            s.Part("crown", 0, 4.30f, 0);
+            s.Ellipsoid(0, 4.56f, 0, 1.46f, .46f, 1.46f, cap);
+            s.Ellipsoid(0, 4.34f, 0, 1.30f, .16f, 1.30f, gill);
+            for (int k = 0; k < 10; k++)
+            {
+                float a = k / 10f * 6.2831853f;
+                float x = (float)Math.Cos(a) * 1.02f, z = (float)Math.Sin(a) * 1.02f;
+                s.Ellipsoid(x, 4.70f, z, .09f, .09f, .09f, spore);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                float lx = (i == 0 ? -.24f : .24f);
+                s.Part("leg" + i, lx, 1.70f, 0);
+                s.Tube(lx, 1.70f, 0, lx * 1.3f, .20f, .10f, .10f, .07f, loam);
+            }
+
+            s.Part("tail", 0, 1.90f, -.50f);
+            s.Path(new[] { 0f, 1.90f, -.50f, 0f, 1.10f, -1.10f, 0f, .74f, -1.64f },
+                new[] { .16f, .10f, .05f }, loam);
+
+            s.Light(0, 3.4f, .6f, .74f, 1.0f, .62f, 16f, 3.0f);
+            return s.Finish("Mycelium Queen");
+        }
+
+        static SculptData NullDevourer(int seed)
+        {
+            var s = new Sculptor(.125f, seed);
+            int shard = s.Pal("void shard", "obsidian", .10f, .08f, .16f, 0);
+            int glass = s.Pal("glass scarp", "crystal", .34f, .26f, .54f, .5f);
+            int pale = s.Pal("pale fracture", "polished-marble", .58f, .56f, .62f, 0);
+            int null_ = s.Pal("null core", "cherenkov-crystal", .62f, .36f, 1.00f, 3.0f);
+            int dust = s.Pal("reality dust", "trinitite", .28f, .18f, .30f, .3f);
+
+            // No legs: a floating caster held together by a null core.
+            s.Part("body", 0, 2.70f, 0);
+            s.Ellipsoid(0, 2.70f, 0, .82f, 1.02f, .74f, shard);
+            s.Ellipsoid(0, 2.66f, .10f, .34f, .40f, .30f, null_);
+            // Pale fracture plates hold the shell together where reality tore.
+            for (int k = 0; k < 4; k++)
+                s.Ellipsoid(-.50f + k * .34f, 3.10f - (k % 2) * .18f, -.48f, .16f, .11f, .30f, pale);
+            for (int k = 0; k < 12; k++)
+            {
+                float a = k / 12f * 6.2831853f;
+                float r = 1.10f + (k % 3) * .22f;
+                float x = (float)Math.Cos(a) * r, z = (float)Math.Sin(a) * r;
+                s.Part("shard_" + k, x, 2.40f + (k % 4) * .30f, z);
+                s.Ellipsoid(x, 2.44f + (k % 4) * .30f, z, .11f, .30f, .09f, k % 2 == 0 ? glass : dust);
+            }
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "arm_l" : "arm_r", side * 1.06f, 3.00f, .06f);
+                s.Tube(side * .86f, 3.10f, .06f, side * 1.74f, 2.30f, .30f, .16f, .05f, shard);
+                s.Tube(side * 1.74f, 2.30f, .30f, side * 2.16f, 1.62f, .54f, .09f, .02f, glass);
+            }
+
+            s.Part("head", 0, 3.76f, .10f);
+            s.Ellipsoid(0, 4.02f, .14f, .38f, .44f, .36f, shard);
+            s.Ellipsoid(0, 4.02f, .48f, .13f, .11f, .08f, null_);
+            s.Ellipsoid(-.14f, 4.06f, .40f, .07f, .07f, .05f, null_);
+            s.Ellipsoid(.14f, 4.06f, .40f, .07f, .07f, .05f, null_);
+            s.Ring(0, 4.46f, .02f, .62f, .03f, null_);
+            s.RingVertical(0, 4.06f, .02f, .78f, .025f, glass);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                s.Part(side < 0 ? "wing_l" : "wing_r", side * .70f, 3.40f, -.36f);
+                s.Path(new[] { side * .70f, 3.40f, -.36f, side * 1.60f, 4.10f, -.70f, side * 2.30f, 3.30f, -1.00f },
+                    new[] { .13f, .09f, .04f }, shard);
+                s.Ellipsoid(side * 1.90f, 3.76f, -.84f, .09f, .09f, .09f, null_);
+            }
+
+            s.Light(0, 2.9f, .6f, .56f, .34f, 1.0f, 15f, 3.2f);
+            return s.Finish("Null Devourer");
         }
     }
 }

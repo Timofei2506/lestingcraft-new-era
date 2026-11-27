@@ -17,9 +17,9 @@ const start = (r, p, t = 500) => r.handle(p, JSON.stringify({type: 'lobby_start'
 const position = (r, p, x, y, z, t) =>
     r.handle(p, JSON.stringify({type: 'position', x, y, z, yaw: 0, equipment: Array(8).fill(0)}), t, () => {});
 
-test('rules 15 ships content 10 and keeps rules 14 rooms playable', () => {
-    assert.equal(RULES_VERSION, 15);
-    assert.equal(CONTENT_VERSION, 10);
+test('rules 16 ships content 12 and keeps rules 14 rooms playable', () => {
+    assert.equal(RULES_VERSION, 16);
+    assert.equal(CONTENT_VERSION, 12);
     assert.equal(contentVersionFor(15), 10);
     assert.equal(contentVersionFor(14), 9);
 
@@ -45,6 +45,9 @@ test('rules 14 rooms keep the mode their creator chose', () => {
     const v10 = createConfig({version: 1, rulesVersion: 15, mode: 1, dimension: 0, seed: 12, ownerKey: 'a'.repeat(32)});
     assert.equal(v10.mode, 1);
     assert.equal(v10.contentVersion, 10);
+    const v12 = createConfig({version: 1, rulesVersion: 16, mode: 1, dimension: 0, seed: 12, ownerKey: 'a'.repeat(32)});
+    assert.equal(v12.mode, 1);
+    assert.equal(v12.contentVersion, 12);
 });
 
 test('content 9 rooms still generate exactly the old world', () => {

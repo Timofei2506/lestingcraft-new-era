@@ -18,11 +18,15 @@ namespace LestingCraft.Runtime
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap(){if(!FindAnyObjectByType<PrototypeGame>())new GameObject("LestingCraft").AddComponent<PrototypeGame>();}
-        readonly string[] dimensions={
+        // Realm display names, indexed by Dimension. Kept in one place so the 2.0 realms
+        // cannot drift out of the menu, the waypoint list or the HUD.
+        static readonly string[] dimensions={
             "Лестингия","Луна","Марс","Венера","Меркурий",
             "Европа","Титан","Плутон","Проксима b","TRAPPIST-1e","Кеплер-452b","Андромеда Прайм","Сомния","Измерение «Сон»","Черенковский Затон",
-            "Закулисье","Ад · Преисподняя"
+            "Закулисье","Ад · Преисподняя","Рай · Небесный Эдем",
+            "Кристалия","Пепельный Водопад","Аквария","Грозовой Предел","Вердант","Нихилиум"
         };
+        static string RealmName(int realm){return realm>=0&&realm<dimensions.Length?dimensions[realm]:"Неизвестный мир";}
         readonly Dictionary<string,GameObject> avatars=new Dictionary<string,GameObject>();
         readonly Dictionary<string,Vector3> targets=new Dictionary<string,Vector3>();
         string endpoint="",code="",playerName="Player",seedText="2506",status="",selfId="",lastError="";
@@ -249,12 +253,20 @@ namespace LestingCraft.Runtime
             else if(result.Action=="inferno"){CloseChat();EnterInfernoDimension();return;}
             else if(result.Action=="paradise"){CloseChat();EnterParadiseDimension();return;}
             else if(result.Action=="backrooms"){CloseChat();EnterBackroomsSequence();return;}
+            else if(!string.IsNullOrEmpty(result.Action)&&result.Action.StartsWith("frontier:",StringComparison.Ordinal))
+            {
+                CloseChat();
+                if(int.TryParse(result.Action.Substring("frontier:".Length),out int frontierId))
+                    EnterDeepFrontier((Dimension)frontierId);
+                return;
+            }
             else if(result.Action=="overworld")
             {
                 CloseChat();
                 if(world.Dimension==Dimension.Inferno)ExitInfernoDimension();
                 else if(world.Dimension==Dimension.Paradise)ExitParadiseDimension();
                 else if(world.Dimension==Dimension.Backrooms)ExitBackroomsSequence();
+                else if(IsFrontierRealm(world.Dimension))ExitDeepFrontier();
                 return;
             }
             else if(!string.IsNullOrEmpty(result.Action)&&result.Action.StartsWith("tp:",StringComparison.Ordinal))
@@ -1743,6 +1755,111 @@ namespace LestingCraft.Runtime
             Session.Notice="✦ Вы прошли сквозь обугленную арку и вернулись из Преисподней в солнечный мир!";
         }
 
+        // ------------------------------------------------------------------
+        // Deep Frontier (2.0): one generic realm transition for the six new
+        // worlds. Adding a realm is now a data row (PlanetCatalog) plus a
+        // title — no new per-world copy of the transition code.
+        // ------------------------------------------------------------------
+        Dimension frontierReturnDim = Dimension.Lestingia;
+        Vector3 frontierReturnPos;
+
+        public static bool IsFrontierRealm(Dimension d)
+        {
+            return d == Dimension.Crystalia || d == Dimension.Emberfall || d == Dimension.Aquaria ||
+                   d == Dimension.Stormreach || d == Dimension.Verdant || d == Dimension.Nihility;
+        }
+
+        public static string FrontierTitle(Dimension d)
+        {
+            switch (d)
+            {
+                case Dimension.Crystalia: return "🔷 КРИСТАЛИЯ · ПРИЗМАТИЧЕСКАЯ ЛУНА";
+                case Dimension.Emberfall: return "🌋 ПЕПЕЛЬНЫЙ ВОДОПАД · НЕБЕСНЫЕ ШЛАКОВЫЕ ОСТРОВА";
+                case Dimension.Aquaria: return "🌊 АКВАРИЯ · АРХИПЕЛАГ ПРИЛИВНЫХ РУИН";
+                case Dimension.Stormreach: return "⚡ ГРОЗОВОЙ ПРЕДЕЛ · РЕШЁТКА НАД БУРЕЙ";
+                case Dimension.Verdant: return "🍄 ВЕРДАНТ · МИЦЕЛИЕВЫЕ ЛЕСА";
+                default: return "🌑 НИХИЛИУМ · РАЗОРВАННАЯ РЕАЛЬНОСТЬ";
+            }
+        }
+
+        public static string FrontierRitual(Dimension d)
+        {
+            switch (d)
+            {
+                case Dimension.Crystalia: return "Поставьте 4 призматических кристалла ромбом вокруг алмазного блока и ударьте по нему киркой.";
+                case Dimension.Emberfall: return "Подожгите 3 блока магмового базальта, стоящие треугольником, и встаньте в центр.";
+                case Dimension.Aquaria: return "Выкопайте бассейн 3×3, наполните водой, киньте жемчуг (алмаз) и нырните.";
+                case Dimension.Stormreach: return "Поднимитесь на высоту выше 90 блоков во время грозы — молния откроет портал.";
+                case Dimension.Verdant: return "Расставьте 4 светящихся гриба кольцом и бросьте в центр спор.";
+                default: return "Разбейте 3 стеклянных блока в пустоте на высоте выше 60 блоков.";
+            }
+        }
+
+        public bool EnterDeepFrontier(Dimension target)
+        {
+            if (!IsFrontierRealm(target) || !world || !player || !Session || online) return false;
+            if (world.Dimension == target) return false;
+            if (ChatOpen) CloseChat();
+            if (InventoryOpen) { paused = false; ui.ShowHUD(); }
+            Session.ResetMining();
+            Session.Data.blocks = world.ExportAllMergedEdits(Session.Data.blocks);
+            frontierReturnDim = world.Dimension == Dimension.Inferno || world.Dimension == Dimension.Paradise ||
+                world.Dimension == Dimension.Backrooms ? Dimension.Lestingia : world.Dimension;
+            frontierReturnPos = player.transform.position + player.transform.forward * -2.2f;
+            infernoPortalCooldownUntil = Time.unscaledTime + 4.0f;
+
+            ClearActiveRealmMobs();
+            if (launchVisual) { Destroy(launchVisual.gameObject); launchVisual = null; }
+
+            // The catalog owns spawn height bounds and sea level for every body.
+            var parameters = LestingCraft.World.PlanetCatalog.Get(target);
+            world.SwitchPlanet(target, Session.Data.blocks);
+            dimension = (int)target;
+            Session.Data.activeDimension = (int)target;
+            // Spawn on the arrival dais, which is levelled and lit, rather than at a guessed height.
+            LestingCraft.World.FrontierBlocks.ArrivalPad(target, world.Seed, out int padX, out int padZ);
+            int spawnY = TerrainGenerator.Height(padX, padZ, world.Seed, target) + 2;
+            spawnY = LestingCraft.World.PlanetSpawn.SpawnY(target, spawnY);
+            player.TeleportTo(new Vector3(padX + 0.5f, spawnY + 1.6f, padZ + 2.5f), false);
+            player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            spaceVisuals = SpaceFlightVisuals.Ensure(null);
+            var cam = Camera.main;
+            if (cam) WorldAtmosphere.Configure(cam, (int)target, Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(target, player, cam);
+            SpawnBossIfApplicable(target);
+            SetCursor(true);
+            RealmFeaturesAndMarket.SetOrUpdateWaypoint(world.Seed, "Точка возврата", new Vector3(0, spawnY, -8), target, "portal");
+            Session.Checkpoint();
+            Session.Notice = FrontierTitle(target) + " · Гравитация " + parameters.Gravity.ToString("0.00") +
+                "g · " + LestingCraft.World.DimensionRealm.NameRu(target) + " открыт! Возврат — /overworld или через портал.";
+            return true;
+        }
+
+        public void ExitDeepFrontier()
+        {
+            if (!world || !player || !Session || online || !IsFrontierRealm(world.Dimension)) return;
+            Dimension back = frontierReturnDim;
+            if (!LestingCraft.World.DimensionRealm.IsValid(back)) back = Dimension.Lestingia;
+            Session.Data.blocks = world.ExportAllMergedEdits(Session.Data.blocks);
+            ClearActiveRealmMobs();
+            if (launchVisual) { Destroy(launchVisual.gameObject); launchVisual = null; }
+            world.SwitchPlanet(back, Session.Data.blocks);
+            dimension = (int)back;
+            Session.Data.activeDimension = (int)back;
+            if (!launchVisual && sharedLaunchSite.HasValue && back != Dimension.Radia &&
+                back != Dimension.Backrooms && back != Dimension.Paradise && back != Dimension.Inferno)
+                launchVisual = LaunchSiteVisual.Create(world.transform, sharedLaunchSite.Value, world.Seed, back);
+            player.TeleportTo(frontierReturnPos + Vector3.up * .2f, false);
+            spaceVisuals = SpaceFlightVisuals.Ensure(null);
+            var cam = Camera.main;
+            if (cam) WorldAtmosphere.Configure(cam, (int)back, Session.Data.clock);
+            spaceVisuals.ApplyPlanetAtmosphereAndGravity(back, player, cam);
+            SpawnBossIfApplicable(back);
+            SetCursor(true);
+            Session.Checkpoint();
+            Session.Notice = "Возвращение в «" + LestingCraft.World.DimensionRealm.NameRu(back) + "».";
+        }
+
         public void EnterParadiseDimension()
         {
             if(!world||!player||!Session||online||world.Dimension==Dimension.Paradise)return;
@@ -1923,6 +2040,15 @@ namespace LestingCraft.Runtime
                     EnterInfernoDimension();
                 else if(portalRituals.IsPlayerInsideActivatedParadiseWell(p))
                     EnterParadiseDimension();
+            }
+            else if(IsFrontierRealm(world.Dimension))
+            {
+                // Frontier realms reuse the classic "walk into the arch" rule: the throat of the
+                // sector gate (or the arrival dais you land on) sends you back where you came from.
+                int gx=Mathf.FloorToInt(p.x),gz=Mathf.FloorToInt(p.z);
+                int gateY=TerrainGenerator.Height(gx,gz,world.Seed,world.Dimension);
+                if(Mathf.Abs(by-gateY)<=6&&LestingCraft.World.FrontierBlocks.IsReturnGate(world.Dimension,gx,gz,world.Seed))
+                    ExitDeepFrontier();
             }
         }
 
@@ -2185,7 +2311,7 @@ namespace LestingCraft.Runtime
             else {world.Edit(cell.x,cell.y,cell.z,block);if(Session)Session.ConfirmEdit(cell);}
             RealmFeaturesAndMarket.AddContractProgress(block==0?"deep_miner":"master_builder",1);
         }
-        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=11,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
+        void StartWorld(int seed,int realm,bool multiplayer,PlayerSave savedPlayer=null,double clock=420,int contentVersion=12,StoryState story=null,long serverNow=0,NetLaunchSite approvedSite=null,Vector3? cockpitRestore=null)
         {
             MenuPanoramaScene.Teardown();
             if(multiplayer)IsSurfacePreview=false;
@@ -2287,7 +2413,7 @@ namespace LestingCraft.Runtime
                     }
                     if(packet.version!=TerrainGenerator.Version){Fail("Несовместимая версия генератора");Destroy(client.gameObject);busy=false;return;}
                     if(!GameRules.AcceptsRoom(packet.rulesVersion,packet.serverRulesVersion)){Fail("Несовместимые правила комнаты. Обновите сервер; для нового содержимого нужна новая комната");Destroy(client.gameObject);return;}
-                    if(packet.contentVersion>11||packet.contentVersion<0||packet.rulesVersion>=14&&(packet.contentVersion<9||packet.contentVersion>11)||packet.rulesVersion==13&&packet.contentVersion!=8||(packet.rulesVersion>=10&&packet.rulesVersion<=12&&packet.contentVersion!=7)||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
+                    if(packet.contentVersion>12||packet.contentVersion<0||packet.rulesVersion>=16&&packet.contentVersion!=12||packet.rulesVersion==15&&packet.contentVersion!=10||packet.rulesVersion>=14&&(packet.contentVersion<9||packet.contentVersion>12)||packet.rulesVersion==13&&packet.contentVersion!=8||(packet.rulesVersion>=10&&packet.rulesVersion<=12&&packet.contentVersion!=7)||packet.rulesVersion==9&&packet.contentVersion!=6||packet.rulesVersion==8&&packet.contentVersion!=5||packet.rulesVersion==7&&packet.contentVersion!=4||packet.rulesVersion==6&&packet.contentVersion!=3||packet.rulesVersion==5&&packet.contentVersion!=2){Fail("Несовместимая версия содержимого мира");Destroy(client.gameObject);return;}
                     selectedMode=packet.mode;selfId=packet.id;IsHost=packet.host;pendingWelcome=packet;
                     if(packet.lobby&&!packet.started){online=true;busy=false;InLobby=true;ui.ShowLobby();break;}BeginNetworkWorld(packet);break;
                 case "lobby":ApplyLobby(packet);break;

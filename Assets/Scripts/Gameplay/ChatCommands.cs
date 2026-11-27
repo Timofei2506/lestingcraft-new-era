@@ -21,7 +21,7 @@ namespace LestingCraft.Gameplay
    var p=(text??"").Trim().Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries);if(p.Length==0)return new CommandResult("Введите /help");
    switch(p[0].ToLowerInvariant())
    {
-    case "/help":return new CommandResult("/help /gamemode [0|1|2|3|creative|survival] /fly /seed /where /players /sethome /home /wp [имя] /lan /market /hell /paradise /backrooms /overworld /clear /save · creative: /give ID [1..64], /time day|night, /tp X Y Z");
+    case "/help":return new CommandResult("/help /gamemode [0|1|2|3|creative|survival] /fly /seed /where /players /sethome /home /wp [имя] /lan /market /hell /paradise /backrooms /frontier [18..23] /overworld /clear /save · creative: /give ID [1..64], /time day|night, /tp X Y Z");
     case "/gamemode":
     case "/gm":
      if(!offline)return new CommandResult("/gamemode доступна только в локальном мире или для хоста LAN");
@@ -57,6 +57,11 @@ namespace LestingCraft.Gameplay
     case "/backrooms":
      return offline&&creative?new CommandResult("Провал сквозь реальность в «Закулисье» (Backrooms)…","backrooms")
       :new CommandResult("В Закулисье можно провалиться во сне или при полном истощении");
+    case "/frontier":
+    case "/deep":
+     if(p.Length==2&&int.TryParse(p[1],out int frontierId)&&(offline||creative))
+      return new CommandResult("Переход в мир «"+LestingCraft.World.DimensionRealm.NameRu((LestingCraft.World.Dimension)frontierId)+"»…","frontier:"+frontierId);
+     return new CommandResult("Фронтир 2.0: /frontier 18..23 — 18 Кристалия · 19 Пепельный Водопад · 20 Аквария · 21 Грозовой Предел · 22 Вердант · 23 Нихилиум");
     case "/overworld":
     case "/earth":
      return offline&&creative?new CommandResult("Возвращение в Лестингию…","overworld")

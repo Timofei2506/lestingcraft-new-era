@@ -12,7 +12,7 @@ import {preflight} from './shuttle-preflight.js';
 import {WorldBosses,BOSS_KINDS} from './world-boss.js';
 
 export const VERSION = 1;
-export const RULES_VERSION = 15;
+export const RULES_VERSION = 16;
 
 // Day/night drives nocturnal spawns and boss behaviour. One cycle is 20 minutes:
 // 13 minutes of day, dusk, then 7 minutes of night. Deterministic per room.
@@ -27,7 +27,7 @@ export function dayNight(now = Date.now(), startedAt = now) {
 // Content generations are derived from the rules generation in exactly one place:
 // a live room, a rehydrated room and /health must never disagree about it.
 export function contentVersionFor(rulesVersion) {
-  return rulesVersion>=15?10:rulesVersion>=14?9:rulesVersion>=13?8:rulesVersion>=10?7:rulesVersion>=9?6:rulesVersion>=8?5:rulesVersion>=7?4:rulesVersion>=6?3:rulesVersion===5?2:1;
+  return rulesVersion>=16?12:rulesVersion>=15?10:rulesVersion>=14?9:rulesVersion>=13?8:rulesVersion>=10?7:rulesVersion>=9?6:rulesVersion>=8?5:rulesVersion>=7?4:rulesVersion>=6?3:rulesVersion===5?2:1;
 }
 export const CONTENT_VERSION = contentVersionFor(RULES_VERSION);
 export const MAX_MESSAGE = 16384;
@@ -42,15 +42,18 @@ const finite = v => typeof v === 'number' && Number.isFinite(v);
 const flightBodiesLegacy = Object.freeze(['earth','moon','mars','venus','mercury']);
 const flightBodiesV8 = Object.freeze(['earth','moon','mars','venus','mercury','europa','titan','pluto','proxima_b','trappist_1e','kepler_452b','andromeda_prime','somnia']);
 const flightBodiesV9 = Object.freeze(['earth','moon','mars','venus','mercury','europa','titan','pluto','proxima_b','trappist_1e','kepler_452b','andromeda_prime','somnia','dream','radia']);
-const allowedFlightBodies = contentVersion => contentVersion >= 9 ? flightBodiesV9 : contentVersion >= 8 ? flightBodiesV8 : flightBodiesLegacy;
+// Content 12 / rules 16: the six Deep Frontier realms become legal destinations.
+const DEEP_FRONTIER = Object.freeze(['crystalia','emberfall','aquaria','stormreach','verdant','nihility']);
+const flightBodiesV12 = Object.freeze([...flightBodiesV9,...DEEP_FRONTIER]);
+const allowedFlightBodies = contentVersion => contentVersion >= 12 ? flightBodiesV12 : contentVersion >= 9 ? flightBodiesV9 : contentVersion >= 8 ? flightBodiesV8 : flightBodiesLegacy;
 
 export function createConfig(value) {
   if (!value || value.version !== VERSION || !integer(value.seed) || value.seed < -2147483648 || value.seed > 2147483647 || !integer(value.dimension) || value.dimension < 0 || value.dimension > 4)
     throw new Error('Expected version=1, signed 32-bit seed, dimension=0..4');
-  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,11,12,13,14,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
+  if(value.rulesVersion!==undefined&&![2,3,4,5,6,7,8,9,10,11,12,13,14,15,RULES_VERSION].includes(value.rulesVersion))throw new Error('Unsupported game rules');
   if([2,3,4,5,6,7,8,9,10,11,12,13,14,RULES_VERSION].includes(value.rulesVersion)&&(!integer(value.mode)||value.mode<0||value.mode>3||value.dimension!==0))throw new Error('Choose mode 0..3; new campaigns must start in Lestingia');
   if(value.rulesVersion>=7&&!validCode(value.ownerKey))throw Error('Creator identity required');
-  return {launchSite:value.rulesVersion>=11?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=11?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:contentVersionFor(value.rulesVersion),version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,11,12,13,14,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
+  return {launchSite:value.rulesVersion>=11?launchSite(value.seed):undefined,launchLift:value.rulesVersion>=11?emptyLift():undefined,padVisited:[],shuttleSeats:[null,null],launchHatch:false, lobby:value.rulesVersion>=7,started:value.rulesVersion<7,ownerKey:value.rulesVersion>=7?value.ownerKey:undefined,story:value.rulesVersion>=8&&value.mode!==2||value.rulesVersion>=7&&value.mode===3?initialStory():null,contentVersion:contentVersionFor(value.rulesVersion),version: VERSION, rulesVersion:value.rulesVersion||1, mode:[2,3,4,5,6,7,8,9,10,11,12,13,14,15,RULES_VERSION].includes(value.rulesVersion)?value.mode:2,seed:value.seed,dimension:value.dimension,rev:0,maxPlayers:MAX_PLAYERS,startedAt:Date.now(),runEnded:false,campaign:{chapter:0,unlockedMask:1,milestones:0,runEnded:false} };
 }
 const safeMission=(m,now)=>{const v=missionView(m,now);return {active:true,from:v.from,to:v.to,seconds:v.seconds,phase:v.phase,elapsed:v.elapsed,position:v.position,autopilot:v.autopilot,landingBurn:v.landingBurn,crewCount:v.crew.length,ignitionAt:m.ignitionAt};};
 export function newPeer(id, name,playerKey=null) {return {id,playerKey,name:safeName(name),inDream:false,lastState:0,lastForcedSave:0,x:0,y:90,z:0,yaw:0,positioned:false,windowStart:0,count:0,lastPosition:0,lastEdit:0,lastChat:-10000};}
@@ -480,7 +483,7 @@ export class RoomState {
     if(p.type==='edit') {
       if(this.config.story&&protectedSite(p.x,p.z))throw Error('This story landmark is protected');
       if(this.config.runEnded)throw new Error('Hardcore run has ended');
-      const edit=validateEdit(p,peer,this.edits,now,this.config.contentVersion>=10?97:this.config.contentVersion>=9?89:this.config.contentVersion>=8?69:this.config.contentVersion>=7?53:this.config.contentVersion>=5?48:this.config.contentVersion>=2?46:18,this.config.contentVersion>=4?384:64),record={x:edit.x,y:edit.y,z:edit.z,block:edit.block,rev:this.config.rev+1};
+      const edit=validateEdit(p,peer,this.edits,now,this.config.contentVersion>=12?133:this.config.contentVersion>=10?97:this.config.contentVersion>=9?89:this.config.contentVersion>=8?69:this.config.contentVersion>=7?53:this.config.contentVersion>=5?48:this.config.contentVersion>=2?46:18,this.config.contentVersion>=4?384:64),record={x:edit.x,y:edit.y,z:edit.z,block:edit.block,rev:this.config.rev+1};
       // Persistence succeeds before acknowledgement/broadcast and memory mutation.
       let candidate=null,next={...this.config,rev:record.rev};if(this.config.contentVersion>=6){candidate=new Living(this.config.seed,this.living.save(),this.edits,this.config.contentVersion);candidate.queue=this.living.queue.map(p=>({...p}));candidate.queued=new Set(this.living.queued);candidate.last=this.living.last;candidate.flow=this.living.flow;candidate.fluidPass=this.living.fluidPass;const before=this.living.block(edit.x,edit.y,edit.z);candidate.edited(edit);if(edit.block===0&&before>0&&before!==7&&before!==8&&this.config.mode!==2&&!candidate.drop(toolDrop(before),1,0,edit.x+.5,edit.y+.5,edit.z+.5))throw Error('Dropped item limit');next.living=candidate.save();}persistEdit(record,next);this.config=next;if(candidate){this.living=candidate;this.fauna.dynamicCells=candidate.cells;}this.config.rev=record.rev;this.edits.set(edit.key,record);peer.lastEdit=now;
       return {type:'edit',...record,id:peer.id,living:candidate?candidate.save():undefined};
@@ -523,7 +526,7 @@ export function validatePlayerSave(save,expanded=true,chapter=false,expedition=f
   const equipment=extras(inv.equipment,8);validateEquipmentIds(equipment.map(s=>s.count?s.item:0));
   const slots=inv.slots.map(cleanStack),grid=extras(inv.grid,9),cursor=cleanStack(inv.cursor||empty());
   const raw=inv.furnace||{},furnace={input:cleanStack(raw.input||empty()),fuel:cleanStack(raw.fuel||empty()),output:cleanStack(raw.output||empty())};
-  for(const [key,min,max] of [['burn',0,40],['progress',0,8],['recipe',0,147],['x',chapter?-384:-64,chapter?383:63],['y',0,255],['z',chapter?-384:-64,chapter?383:63],['realm',0,17]]){
+  for(const [key,min,max] of [['burn',0,40],['progress',0,8],['recipe',0,147],['x',chapter?-384:-64,chapter?383:63],['y',0,255],['z',chapter?-384:-64,chapter?383:63],['realm',0,23]]){
     const value=raw[key]===undefined?0:raw[key];if(!finite(value)||value<min||value>max||(!['burn','progress'].includes(key)&&!integer(value)))throw new Error('Invalid furnace '+key);furnace[key]=value;
   }
   let grave=[],graveExtras=[];
