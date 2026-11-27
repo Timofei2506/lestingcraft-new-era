@@ -164,6 +164,9 @@ public static class PresentationAssets
         }
         ParticleMaterial("Precipitation", false);
         ParticleMaterial("Fire", true);
+        // Ground-level ambient motes (GroundMotes in DynamicWeather): additive, since the motes
+        // are light (embers, spores, glow dust) rather than soot.
+        ParticleMaterial("Motes", true);
         EnsureSmokeMaterial();
         var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(Folder + "/HighDefinition.asset");
         if (!pipeline)

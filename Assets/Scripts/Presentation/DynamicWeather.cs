@@ -10,7 +10,8 @@ namespace LestingCraft.Presentation
     public sealed class DynamicWeather : MonoBehaviour
     {
         public SurvivalSession Session;
-        Camera cameraView;Material fog;GameObject fogPlane;ParticleSystem rain,snow;float timer;Light sunlight;Material sky;
+        Camera cameraView;Material fog;GameObject fogPlane;ParticleSystem rain,snow,motes;float timer;Light sunlight;Material sky;
+        MoteKind lastMoteKind=MoteKind.None;
         float clouds,precipitation,wind,wetness,snowAmount,submerged;
         int lastSkyMode=-1;float lastSkyStrength=-1f;
         readonly float[] lastGlow=new float[8];
@@ -26,6 +27,7 @@ namespace LestingCraft.Presentation
             fogPlane.transform.SetParent(view.transform,false);fogPlane.transform.localPosition=Vector3.forward;
             var renderer=fogPlane.GetComponent<MeshRenderer>();renderer.sharedMaterial=fog;renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;
             rain=Precipitation("Rain",false);snow=Precipitation("Snow",true);
+            motes=GroundMotes();
         }
         ParticleSystem Precipitation(string name,bool isSnow)
         {
@@ -41,6 +43,67 @@ namespace LestingCraft.Presentation
             renderer.renderMode=isSnow?ParticleSystemRenderMode.Billboard:ParticleSystemRenderMode.Stretch;renderer.lengthScale=isSnow?1:1.2f;renderer.velocityScale=isSnow?0:.012f;renderer.cameraVelocityScale=0;renderer.shadowCastingMode=ShadowCastingMode.Off;
             ps.Play();return ps;
         }
+
+        /// <summary>
+        /// Feed the mote system from the table each frame: density, drift, colour and size all
+        /// react to weather, wind and the realm's own surface glow. Kind changes (a realm switch)
+        /// rebuild the cheap per-kind properties once instead of every frame.
+        /// </summary>
+        void UpdateMotes(float glow)
+        {
+            if(!motes)return;
+            bool inSpace=Session!=null&&Session.World!=null&&
+                (Session.World.Dimension==Dimension.Moon||Session.World.Dimension==Dimension.Mercury||Session.World.Dimension==Dimension.Pluto);
+            var p=MoteField.Resolve(Session!=null&&Session.World?Session.World.Dimension:Dimension.Lestingia,
+                precipitation,wind,glow,Session!=null&&Session.Sheltered);
+            if(inSpace||submerged>.5f)p=MoteField.NoneProfile;
+            var main=motes.main;
+            if(p.Kind!=lastMoteKind)
+            {
+                lastMoteKind=p.Kind;
+                main.startSize=new ParticleSystem.MinMaxCurve(p.SizeMin,p.SizeMax);
+                main.maxParticles=Mathf.Max(8,MoteField.MaxParticles(p));
+                var rd=motes.GetComponent<ParticleSystemRenderer>();
+                var want=Resources.Load<Material>("Generated/Motes");
+                if(want)rd.sharedMaterial=want;
+                main.startColor=new Color(p.R,p.G,p.B,p.Alpha);
+                var v0=motes.velocityOverLifetime;v0.x=p.Lateral;v0.y=p.Vertical;v0.z=0f;
+                var s0=motes.shape;s0.scale=new Vector3(p.Box,p.Box*.75f,p.Box);
+            }
+            var emission=motes.emission;
+            emission.rateOverTime=p.Active?p.Rate:0f;
+            if(p.Active)
+            {
+                main.startColor=new Color(p.R,p.G,p.B,p.Alpha);
+                var v=motes.velocityOverLifetime;
+                float wx=Mathf.Sin((float)(Session!=null?Session.Data.clock/90f:0f)+(Session!=null?Session.Data.seed%1000:0))*wind;
+                v.x=p.Lateral+wx*1.2f;v.y=p.Vertical;v.z=wx*.4f;
+            }
+        }
+
+        /// <summary>
+        /// Ground-level ambient motes: what drifts in front of the camera when nothing is falling
+        /// from the sky (pollen, embers, spores, void dust). Look and density come from the
+        /// engine-free MoteField table, so realms differ without touching this code.
+        /// </summary>
+        ParticleSystem GroundMotes()
+        {
+            var obj=new GameObject("Ground motes");obj.transform.SetParent(transform,false);
+            var ps=obj.AddComponent<ParticleSystem>();ps.Stop();
+            var main=ps.main;main.loop=true;main.simulationSpace=ParticleSystemSimulationSpace.World;
+            main.startSpeed=0;main.startLifetime=6f;main.prewarm=true;main.maxParticles=400;
+            main.startRotation=new ParticleSystem.MinMaxCurve(0);
+            var shape=ps.shape;shape.shapeType=ParticleSystemShapeType.Box;shape.scale=new Vector3(16,12,16);
+            var emission=ps.emission;emission.rateOverTime=0;
+            var velocity=ps.velocityOverLifetime;velocity.enabled=true;velocity.space=ParticleSystemSimulationSpace.World;
+            var noise=ps.noise;noise.enabled=true;noise.strength=.32f;noise.frequency=.24f;noise.scrollSpeed=.12f;
+            var renderer=ps.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial=Resources.Load<Material>("Generated/Motes");
+            renderer.renderMode=ParticleSystemRenderMode.Billboard;
+            renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;
+            ps.Play();return ps;
+        }
+
         void LateUpdate()
         {
             if(!Session||!cameraView||!sunlight||!sky)return;
@@ -91,6 +154,8 @@ namespace LestingCraft.Presentation
                 Shader.SetGlobalFloat(SurfaceGlows.GlobalName(kind),value);
                 lastGlow[(int)kind]=value;
             }
+
+            UpdateMotes(glowProfile.StrengthAt(light.Daylight));
             fog.SetFloat("_Density",AtmosphereProfile.Density(effPrecip,submerged)*AtmosphereLighting.FogDensityMultiplierForRealm(Session.World.Dimension));
             fog.SetFloat("_Steps",VisualSettings.Current.FogSteps);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);

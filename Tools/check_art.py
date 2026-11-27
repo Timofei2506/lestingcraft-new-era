@@ -105,3 +105,29 @@ assert 'amb_wind' not in _re.sub(r'clips\["amb_wind"\]', '', audio.split('public
 assert 'RealmSoundscape.StrikeBegins(' in audio, 'storm thunder must be edge-triggered from the sky strike window'
 assert 'RealmSoundscape.Space' in audio, 'orbit/EVA must swap to the space mix'
 print('PASS realm soundscape:', len(loops), 'loops +', len(details), 'details synthesized, driver table-driven')
+
+
+# ---------------------------------------------------------------------------
+# Ground-level motes: the ambient particle layer is driven by the engine-free MoteField table.
+# A realm whose profile is inert but still referenced by the driver, or a mote material the driver
+# loads but the build never generates, would ship as invisible or as a magenta particle system.
+# ---------------------------------------------------------------------------
+motes = (root / 'Assets/Scripts/Presentation/MoteField.cs').read_text()
+weather = (root / 'Assets/Scripts/Presentation/DynamicWeather.cs').read_text()
+assert 'public enum MoteKind' in motes, 'MoteField must expose the mote vocabulary'
+assert 'MoteField.Resolve(' in weather, 'DynamicWeather must drive motes from MoteField.Resolve'
+assert 'MoteField.NoneProfile' in weather, 'vacuum/sealed must use the explicit inert profile'
+assert 'MoteField.MaxParticles(' in weather, 'the particle budget must come from the table'
+# Every MoteKind the table can return needs a distinct look, so no two kinds share a colour.
+kinds = _re.findall(r'^\s{8}([A-Z][A-Za-z]+) = (\d+),', motes, _re.M)
+assert len(kinds) >= 10, f'expected the full mote vocabulary, found {len(kinds)}'
+assert len(set(k for k, _ in kinds)) == len(kinds), 'duplicate mote kind names'
+# The driver loads a generated material; the build must create it or Unity logs a null.
+assert 'Generated/Motes' in weather, 'motes must load the generated Motes material'
+build = (root / 'Assets/Editor/PresentationAssets.cs').read_text()
+assert 'ParticleMaterial("Motes", true)' in build, 'PresentationAssets must generate the Motes material'
+assert 'ParticleMaterial("Precipitation", false)' in build and 'ParticleMaterial("Fire", true)' in build, 'existing particle materials must stay generated'
+# Frontier realms must not fall through to the default pollen look.
+for realm in ('Crystalia', 'Emberfall', 'Aquaria', 'Stormreach', 'Verdant', 'Nihility'):
+    assert f'case Dimension.{realm}:' in motes.split('MoteProfile For(Dimension realm)')[1], f'MoteField needs an explicit row for {realm}'
+print('PASS ground motes:', len(kinds), 'kinds, table-driven driver, generated material')
