@@ -175,3 +175,25 @@ assert len(styles) >= 6, f'expected the full precipitation vocabulary, found {le
 for realm in ('Emberfall', 'Verdant', 'Aquaria', 'Titan', 'Mars'):
     assert f'case Dimension.{realm}:' in precip, f'PrecipitationLooks needs an explicit row for {realm}'
 print('PASS precipitation looks:', len(styles), 'styles, driver takes look + visibility from the table')
+
+
+# ---------------------------------------------------------------------------
+# Boss voices: the frontier guardians must not all grunt with the generic mob chord, and the
+# synth clips the engine-free table names must actually exist in GameAudio.
+# ---------------------------------------------------------------------------
+voices = (root / 'Assets/Scripts/Presentation/BossVoice.cs').read_text()
+assert 'public static class BossVoices' in voices, 'BossVoices table missing'
+voice_keys = _re.findall(r'"(boss_[a-z]+_[a-z]+)"', voices)
+assert len(set(voice_keys)) == 12, f'expected 12 frontier boss clips, found {len(set(voice_keys))}'
+for key in sorted(set(voice_keys)):
+    assert f'clips["{key}"]' in audio, f'GameAudio must synthesize boss clip "{key}"'
+assert 'GameAudio.PlayBossHit(' in (root / 'Assets/Scripts/Runtime/PrototypeGame.cs').read_text(), \
+    'world-boss damage must route through PlayBossHit so a realm voice is used'
+assert 'BossVoices.For(' in audio, 'PlayBossHit must read the table'
+# A hit and a death clip must never be the same file: a death that sounds like a hit reads as a miss.
+pairs = _re.findall(r'new BossVoice\("(boss_hit_[a-z]+)", "(boss_death_[a-z]+)"', voices)
+assert len(pairs) == 6, f'expected six frontier voice pairs, found {len(pairs)}'
+for hit, death in pairs:
+    assert hit != death, 'hit and death must differ'
+    assert hit.split('_')[2] == death.split('_')[2], f'{hit}/{death} must belong to the same realm voice'
+print('PASS boss voices:', len(pairs), 'frontier guardian voices, 12 synth clips, routed from gameplay')

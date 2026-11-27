@@ -1082,7 +1082,7 @@ namespace LestingCraft.Runtime
             int activeItem=Session.Inventory.Active.count>0?Session.Inventory.Active.item:0;
             int weaponDmg=Weapons.Has(activeItem)?Weapons.Get(activeItem).Damage:(Items.IsPick(activeItem)?9:12);
             if(!activePlanetBoss.TryHitBoss(aimRay,maxRange,weaponDmg,out bool killedNow,out var drops))return false;
-            GameAudio.PlayMobHit(killedNow);
+            GameAudio.PlayBossHit(world?world.Dimension:Dimension.Lestingia,killedNow);
             CombatFeedbackOverlay.NotifyHit(activePlanetBoss.transform.position+Vector3.up*2f,weaponDmg,killedNow,
                 activePlanetBoss.BossName,killedNow?0:activePlanetBoss.Health,activePlanetBoss.MaxHealth,true);
             if(killedNow)

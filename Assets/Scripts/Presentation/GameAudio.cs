@@ -154,6 +154,20 @@ namespace LestingCraft.Presentation
             clips["amb_paradise"]= SynthSeamlessLoop("amb_paradise", 4.0f, 0.07f, 0.10f, 0f);
             clips["amb_hum"]     = SynthSeamlessLoop("amb_hum", 4.0f, 0.02f, 0.04f, 120f);
 
+            // Guardian voices for the six Deep Frontier bosses (BossVoices table).
+            clips["boss_hit_crystal"]   = SynthMetallicTap(0.22f, 1480f, 2210f);
+            clips["boss_death_crystal"] = SynthChime(0.85f, 1480f, 990f);
+            clips["boss_hit_cinder"]    = SynthImpact(0.30f, 74f, 1.0f);
+            clips["boss_death_cinder"]  = SynthBreak(0.75f, 58f, 0.75f, 0.9f);
+            clips["boss_hit_abyss"]     = SynthSplashSlap();
+            clips["boss_death_abyss"]   = SynthSplash(0.9f, 96f, 1.0f);
+            clips["boss_hit_thunder"]   = SynthThunderCrack();
+            clips["boss_death_thunder"] = SynthThunder();
+            clips["boss_hit_mycelium"]  = SynthSquish();
+            clips["boss_death_mycelium"]= SynthSquishLong();
+            clips["boss_hit_void"]      = SynthVoidPulse();
+            clips["boss_death_void"]    = SynthVoidCollapse();
+
             clips["ice_tick"]    = SynthIceTick();
             clips["ember_pop"]   = SynthEmberPop();
             clips["wave_crash"]  = SynthWaveCrash();
@@ -432,6 +446,92 @@ namespace LestingCraft.Presentation
             return MakeClip(name, outBuf);
         }
 
+        /// <summary>Abyss guardian hit: wet, heavy slap with a low body.</summary>
+        AudioClip SynthSplashSlap()
+        {
+            int n = Mathf.RoundToInt(0.32f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                lp += 0.22f * (NextRand() - lp);
+                float body = Mathf.Sin(t * (86f + 60f * Mathf.Exp(-t * 26f)) * 6.2831853f) * Mathf.Exp(-t * 14f);
+                buf[i] = body * 0.55f + lp * Mathf.Exp(-t * 9f) * 0.75f;
+            }
+            return MakeClip("boss_abyss_hit", buf);
+        }
+
+        /// <summary>Storm archon hit: a short, sharp thunder crack.</summary>
+        AudioClip SynthThunderCrack()
+        {
+            int n = Mathf.RoundToInt(0.42f * SampleRate);
+            var buf = new float[n];
+            float hp = 0f, lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                lp += 0.32f * (NextRand() - lp);
+                hp += 0.06f * (lp - hp);
+                float crack = (lp - hp) * Mathf.Exp(-t * 18f) * 1.4f;
+                float tail = Mathf.Sin(t * 63f * 6.2831853f) * Mathf.Exp(-t * 5f) * 0.22f;
+                buf[i] = crack + tail;
+            }
+            return MakeClip("boss_thunder_hit", buf);
+        }
+
+        /// <summary>Fungal guardian hit: a wet, fibrous squelch.</summary>
+        AudioClip SynthSquish()
+        {
+            int n = Mathf.RoundToInt(0.30f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 0.30f;
+                lp += (0.05f + 0.20f * u) * (NextRand() - lp);
+                float body = Mathf.Sin(t * (210f - 90f * u) * 6.2831853f) * Mathf.Exp(-t * 16f);
+                buf[i] = lp * Mathf.Exp(-t * 11f) * 0.60f + body * 0.30f;
+            }
+            return MakeClip("boss_mycelium_hit", buf);
+        }
+
+        /// <summary>Fungal guardian death: a long, collapsing squelch.</summary>
+        AudioClip SynthSquishLong()
+        {
+            int n = Mathf.RoundToInt(0.95f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 0.95f;
+                lp += (0.03f + 0.16f * u) * (NextRand() - lp);
+                float body = Mathf.Sin(t * (150f - 110f * u) * 6.2831853f) * (1f - u);
+                buf[i] = (lp * 0.75f + body * 0.35f) * Mathf.Exp(-t * 2.2f);
+            }
+            return MakeClip("boss_mycelium_death", buf);
+        }
+
+        /// <summary>Void guardian death: everything detunes, then stops.</summary>
+        AudioClip SynthVoidCollapse()
+        {
+            int n = Mathf.RoundToInt(1.6f * SampleRate);
+            var buf = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 1.6f;
+                // Pitch slides down and the interval stretches, so the collapse sounds unbounded.
+                float f1 = 90f * (1f - u * .55f);
+                float f2 = f1 * (1.5f + u * 1.1f);
+                float env = Mathf.Exp(-t * 1.1f) * (1f - u * .35f);
+                buf[i] = (Mathf.Sin(t * f1 * 6.2831853f) + Mathf.Sin(t * f2 * 6.2831853f) * .6f) * env * .34f;
+            }
+            return MakeClip("boss_void_death", buf);
+        }
+
         /// <summary>Airless crystal realm: no air noise at all, just a thin high shimmer.</summary>
         AudioClip SynthCrystalAir()
         {
@@ -665,6 +765,18 @@ namespace LestingCraft.Presentation
         }
 
         public static void PlaySwing()        { if (Instance) Instance.PlaySfx("swing", .48f, .92f, 1.08f); }
+        /// <summary>
+        /// Guardian feedback: frontier worlds use their own voice and pitch from BossVoices, the
+        /// 1.x guardians keep the shipped impact/kill chord.
+        /// </summary>
+        public static void PlayBossHit(Dimension realm, bool killed)
+        {
+            if (!Instance) return;
+            var voice = BossVoices.For(realm);
+            Instance.PlaySfx(killed ? voice.Death : voice.Hit, killed ? .86f * voice.Gain : .74f * voice.Gain,
+                voice.Pitch * .97f, voice.Pitch * 1.03f);
+        }
+
         public static void PlayMobHit(bool killed)
         {
             if (!Instance) return;
