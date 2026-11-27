@@ -46,6 +46,7 @@ Shader "LestingCraft/VoxelPBR"
             TEXTURE2D_ARRAY(_NormalArray); SAMPLER(sampler_NormalArray);
             TEXTURE2D_ARRAY(_MaskArray); SAMPLER(sampler_MaskArray);
             float _LCAmbientOcclusionProbe, _GlobalWetness, _GlobalSnow, _LCParallaxSteps, _LCUltra;
+            float _LCGlowMycelium, _LCGlowKelp, _LCGlowPrism, _LCGlowAurora, _LCGlowVoid, _LCGlowCharge, _LCGlowMagma;
             float _EnvironmentWaterReflection;
             struct Attributes
             {
@@ -92,6 +93,14 @@ Shader "LestingCraft/VoxelPBR"
                 bool foliage=leaf||abs(i.uv.z-81)<.25;
                 bool lava=abs(i.uv.z-9)<.25;
                 bool cherenkov=abs(i.uv.z-94)<.25;
+                // ---- Deep Frontier living surfaces (layers 114..125, see SurfaceGlow.cs) ----
+                bool mycelium=abs(i.uv.z-123)<.25;   // glowing fungal cap flesh
+                bool kelpGlow=abs(i.uv.z-118)<.25;   // bioluminescent kelp weave
+                bool prismGlow=abs(i.uv.z-114)<.25;  // faceted prism crystal
+                bool auroraGlow=abs(i.uv.z-115)<.25; // aurora ice
+                bool voidGlow=abs(i.uv.z-125)<.25;   // void shard
+                bool chargeGlow=abs(i.uv.z-121)<.25; // storm-charged glass
+                bool magmaGlow=abs(i.uv.z-117)<.25;  // ember magma shore
                 float fade=(1-smoothstep(8,24,cameraDistance))*smoothstep(.10,.35,abs(viewTS.z));
                 float2 surfaceUV=i.uv.xy;
                 float reliefShadow=1;
@@ -224,6 +233,51 @@ Shader "LestingCraft/VoxelPBR"
                     surface.albedo*=lerp(1,.45,heat);
                 }
                 if(abs(i.uv.z-12)<.25)surface.emission+=albedo.rgb*.16;
+                // Living frontier surfaces. Every value comes from _LCGlowX globals published by
+                // SurfaceGlow from an engine-free table, so a new block only needs one row there.
+                // Each uses its own cheap pattern: caps pulse, kelp drifts, crystal facets
+                // catch light in bands, ice holds a slow aurora shimmer, void shards leak
+                // seams, charged glass flickers and the magma shore breathes.
+                if(_LCGlowMycelium>.001&&mycelium)
+                {
+                    float pulse=.72+.28*sin(_EnvironmentTime*.55+i.positionWS.x*.21+i.positionWS.z*.17);
+                    half rim=pow(saturate(1.0-mask.a),1.9);           // dark flesh glows, waxy tops stay lit
+                    surface.emission+=albedo.rgb*half3(.86,1.0,.62)*pulse*rim*_LCGlowMycelium;
+                }
+                if(_LCGlowKelp>.001&&kelpGlow)
+                {
+                    float drift=.65+.35*sin(_EnvironmentTime*.80+i.positionWS.y*.9+i.positionWS.x*.24);
+                    surface.emission+=half3(.22,1.0,.68)*albedo.rgb*drift*_LCGlowKelp*.85;
+                }
+                if(_LCGlowPrism>.001&&prismGlow)
+                {
+                    // Facet bands: the normal curvature of each cell edge glints as it turns.
+                    float bands=pow(saturate(sin(_EnvironmentTime*.35+(i.positionWS.x+i.positionWS.z)*.55)*.5+.5),3.0);
+                    surface.emission+=half3(.45,.82,1.0)*bands*_LCGlowPrism*.55;
+                }
+                if(_LCGlowAurora>.001&&auroraGlow)
+                {
+                    float shimmer=.55+.45*sin(_EnvironmentTime*.22+(i.positionWS.x-i.positionWS.z)*.13);
+                    surface.emission+=half3(.30,.72,1.0)*shimmer*_LCGlowAurora*.42;
+                }
+                if(_LCGlowVoid>.001&&voidGlow)
+                {
+                    half seam=pow(saturate(1.0-mask.a),2.6);
+                    float flicker=.6+.4*sin(_EnvironmentTime*.9+i.positionWS.y*1.7);
+                    surface.emission+=half3(.62,.34,1.0)*seam*flicker*_LCGlowVoid*1.1;
+                }
+                if(_LCGlowCharge>.001&&chargeGlow)
+                {
+                    float crack=pow(saturate(1.0-mask.a),2.2);
+                    float arc=step(.86,frac(sin(dot(floor(i.positionWS*2.0),_WorldSpaceCameraPos.xz*.7)+_EnvironmentTime*.6)*43758.5453));
+                    surface.emission+=half3(.55,.85,1.0)*crack*(.25+arc*.9)*_LCGlowCharge;
+                }
+                if(_LCGlowMagma>.001&&magmaGlow)
+                {
+                    float breathe=.68+.32*sin(_EnvironmentTime*.45+i.positionWS.x*.42+i.positionWS.z*.37);
+                    half vein=saturate((albedo.r-max(albedo.g,albedo.b)*1.05)*3.2);
+                    surface.emission+=lerp(half3(1,.36,.08),half3(1,.66,.20),vein)*vein*breathe*_LCGlowMagma*2.2;
+                }
                 if(snow>.01&&microFade>.01)
                 {
                     float grain=LC_Hash(floor(i.positionWS*85));

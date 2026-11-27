@@ -35,8 +35,7 @@ namespace LestingCraft.Presentation
         readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>();
         float lastMineTickAt;
         float lastUiHoverAt;
-        float natureEventTimer = 3.5f;
-        float geigerTimer = 0.4f;
+        float detailTimer = 0.4f;
         uint rngState = 0x9E3779B9u;
 
         public static GameAudio Ensure(Transform parent = null)
@@ -164,6 +163,25 @@ namespace LestingCraft.Presentation
             clips["amb_rain"]  = SynthSeamlessLoop("amb_rain", 3.5f, 0.28f, 0.55f, 0f);
             clips["amb_radia"] = SynthSeamlessLoop("amb_radia", 4.0f, 0.04f, 0.09f, 58f);
             clips["amb_space"] = SynthSeamlessLoop("amb_space", 4.0f, 0.03f, 0.07f, 82f);
+
+            // Deep Frontier ambience (2.0): one pair of layers per world so the six new
+            // dimensions stop borrowing the overworld wind. Every key here must also appear in
+            // RealmSoundscape.LoopKeys / DetailKeys - check_realm_soundscape_core enforces it.
+            clips["amb_crystal"] = SynthCrystalAir();
+            clips["amb_ash"]     = SynthSeamlessLoop("amb_ash", 4.5f, 0.10f, 0.30f, 41f);
+            clips["amb_ocean"]   = SynthOceanSurf();
+            clips["amb_storm"]   = SynthSeamlessLoop("amb_storm", 5.0f, 0.16f, 0.34f, 34f);
+            clips["amb_fungal"]  = SynthSeamlessLoop("amb_fungal", 5.0f, 0.05f, 0.12f, 63f);
+            clips["amb_void"]    = SynthVoidDrone();
+            clips["amb_paradise"]= SynthSeamlessLoop("amb_paradise", 4.0f, 0.07f, 0.10f, 0f);
+            clips["amb_hum"]     = SynthSeamlessLoop("amb_hum", 4.0f, 0.02f, 0.04f, 120f);
+
+            clips["ice_tick"]    = SynthIceTick();
+            clips["ember_pop"]   = SynthEmberPop();
+            clips["wave_crash"]  = SynthWaveCrash();
+            clips["thunder"]     = SynthThunder();
+            clips["spore_tick"]  = SynthSporeTick();
+            clips["void_pulse"]  = SynthVoidPulse();
         }
 
         public AudioClip GetClip(string key)
@@ -436,6 +454,169 @@ namespace LestingCraft.Presentation
             return MakeClip(name, outBuf);
         }
 
+        /// <summary>Airless crystal realm: no air noise at all, just a thin high shimmer.</summary>
+        AudioClip SynthCrystalAir()
+        {
+            int n = Mathf.RoundToInt(4.0f * SampleRate);
+            var buf = new float[n];
+            // 3 cycles/second => whole number of cycles per loop, so no seam click.
+            float f1 = 3f / 4.0f, f2 = 7f / 4.0f, f3 = 11f / 4.0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float a = Mathf.Sin(t * f1 * 6.2831853f);
+                float b = Mathf.Sin(t * f2 * 6.2831853f) * 0.5f;
+                float c = Mathf.Sin(t * f3 * 6.2831853f) * 0.28f;
+                // Slow beating between the partials reads as "resonating ice", not a tone.
+                buf[i] = (a * 0.10f + b * 0.07f + c * 0.05f) * (0.75f + 0.25f * Mathf.Sin(t * 0.5f * 6.2831853f));
+            }
+            return MakeClip("crystal_air", buf);
+        }
+
+        /// <summary>Aquaria: broad surf wash with a slower swell underneath, both loop-exact.</summary>
+        AudioClip SynthOceanSurf()
+        {
+            int n = Mathf.RoundToInt(5.0f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f, hp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                lp += 0.30f * (NextRand() - lp);
+                hp += 0.010f * (lp - hp);
+                // Two whole-number swell cycles across the loop keep the wash seamless.
+                float swell = 0.55f + 0.45f * Mathf.Sin(t / 5f * 2f * 6.2831853f);
+                float wash = (lp - hp) * swell * 0.42f;
+                float body = Mathf.Sin(t / 5f * 1f * 6.2831853f) * 0.05f;
+                buf[i] = wash + body;
+            }
+            return MakeClip("ocean_surf", buf);
+        }
+
+        /// <summary>Nihility: sub-bass drone plus an inverted, slowly detuning shimmer.</summary>
+        AudioClip SynthVoidDrone()
+        {
+            int n = Mathf.RoundToInt(6.0f * SampleRate);
+            var buf = new float[n];
+            float f1 = 2f / 6.0f, f2 = 5f / 6.0f, f3 = 9f / 6.0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float sub = Mathf.Sin(t * f1 * 6.2831853f) * 0.16f;                       // 33 Hz
+                float mid = Mathf.Sin(t * (f2 * 12f) * 6.2831853f) * 0.06f;               // hollow fifth
+                float hiss = Mathf.Sin(t * (f2 * 96f) * 6.2831853f) * 0.02f;              // thin edge
+                buf[i] = sub + mid + hiss + Mathf.Sin(t * f3 * 6.2831853f) * 0.03f;
+            }
+            return MakeClip("void_drone", buf);
+        }
+
+        /// <summary>Crystalia detail: a single glacial crack.</summary>
+        AudioClip SynthIceTick()
+        {
+            int n = Mathf.RoundToInt(0.26f * SampleRate);
+            var buf = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float ping = Mathf.Sin(t * (2400f - 900f * t / 0.26f) * 6.2831853f) * Mathf.Exp(-t * 26f);
+                float crack = NextRand() * Mathf.Exp(-t * 90f) * 0.5f;
+                buf[i] = ping * 0.20f + crack * 0.16f;
+            }
+            return MakeClip("ice_tick", buf);
+        }
+
+        /// <summary>Emberfall detail: a popping cinder, low and dry.</summary>
+        AudioClip SynthEmberPop()
+        {
+            int n = Mathf.RoundToInt(0.20f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                lp += 0.18f * (NextRand() - lp);
+                float thump = Mathf.Sin(t * (150f + 240f * Mathf.Exp(-t * 40f)) * 6.2831853f) * Mathf.Exp(-t * 34f);
+                buf[i] = thump * 0.26f + lp * Mathf.Exp(-t * 55f) * 0.22f;
+            }
+            return MakeClip("ember_pop", buf);
+        }
+
+        /// <summary>Aquaria detail: a wave breaking over reef shelf.</summary>
+        AudioClip SynthWaveCrash()
+        {
+            int n = Mathf.RoundToInt(1.1f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f, hp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 1.1f;
+                lp += 0.34f * (NextRand() - lp);
+                hp += 0.02f * (lp - hp);
+                float env = Mathf.Sin(Mathf.Clamp01(u) * Mathf.PI);
+                buf[i] = (lp - hp) * env * env * 0.55f;
+            }
+            return MakeClip("wave_crash", buf);
+        }
+
+        /// <summary>Stormreach detail: thunder that rolls after the visible strike.</summary>
+        AudioClip SynthThunder()
+        {
+            float sec = 2.6f;
+            int n = Mathf.RoundToInt(sec * SampleRate);
+            var buf = new float[n];
+            float lp = 0f, rumble = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                // Attack crack, then a long decaying roll with two late secondary rumbles.
+                float crack = NextRand() * Mathf.Exp(-t * 34f) * 0.55f;
+                lp += 0.05f * (NextRand() - lp);
+                rumble += 0.020f * (lp - rumble);
+                float roll = Mathf.Exp(-t * 1.25f);
+                float swell = roll * (0.65f + 0.35f * Mathf.Sin(t * 2.1f * 6.2831853f));
+                float sub = Mathf.Sin(t * (52f - 14f * Mathf.Clamp01(t / sec)) * 6.2831853f) * roll * 0.30f;
+                buf[i] = crack + rumble * 9f * swell * 0.55f + sub;
+            }
+            return MakeClip("thunder", buf);
+        }
+
+        /// <summary>Verdant detail: a wet spore sac releasing.</summary>
+        AudioClip SynthSporeTick()
+        {
+            int n = Mathf.RoundToInt(0.34f * SampleRate);
+            var buf = new float[n];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 0.34f;
+                lp += 0.09f * (NextRand() - lp);
+                float puff = Mathf.Sin(Mathf.Clamp01(u) * Mathf.PI) * (1f - u * 0.5f);
+                float wet = Mathf.Sin(t * (320f - 160f * u) * 6.2831853f) * Mathf.Exp(-t * 22f);
+                buf[i] = lp * puff * 0.48f + wet * 0.14f;
+            }
+            return MakeClip("spore_tick", buf);
+        }
+
+        /// <summary>Nihility detail: a distant pulse of raw emptiness, slightly wrong pitch.</summary>
+        AudioClip SynthVoidPulse()
+        {
+            int n = Mathf.RoundToInt(1.4f * SampleRate);
+            var buf = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SampleRate;
+                float u = t / 1.4f;
+                float env = Mathf.Sin(Mathf.Clamp01(u) * Mathf.PI);
+                // Deliberately non-integer ratio: the two partials beat against each other.
+                float a = Mathf.Sin(t * 44f * 6.2831853f);
+                float b = Mathf.Sin(t * 66.7f * 6.2831853f) * 0.6f;
+                buf[i] = (a + b) * env * 0.22f;
+            }
+            return MakeClip("void_pulse", buf);
+        }
+
         void PlaySfx(string key, float volume = 1f, float pitchMin = .93f, float pitchMax = 1.07f)
         {
             float gain = SfxGain * volume;
@@ -549,52 +730,69 @@ namespace LestingCraft.Presentation
 
             Dimension dim = world.Dimension;
             bool inSpace = game.DockedAtOrbitalStation || game.InMoonFlight || (game.SpaceHelm != null && game.SpaceHelm.Active);
-            bool inRadia = dim == Dimension.Radia;
-            bool raining = !inSpace && !inRadia && dim == Dimension.Lestingia && session.Data != null &&
+            bool raining = !inSpace && dim == Dimension.Lestingia && session.Data != null &&
                            WeatherSample.At(session.Data.seed, (int)dim, session.Data.clock).Precipitation > 0.15f;
 
-            string targetLoop = inSpace ? "amb_space" : inRadia ? "amb_radia" : "amb_wind";
-            var wantClip = GetClip(targetLoop);
+            // Ambience is table-driven: RealmSoundscape owns which layers a world uses and how
+            // loud they sit, this method only crossfades towards that mix.
+            var mix = inSpace ? RealmSoundscape.Space : RealmSoundscape.For(dim);
+            var wantClip = GetClip(mix.Primary);
             if (ambientPrimary.clip != wantClip)
             {
                 ambientPrimary.clip = wantClip;
                 if (wantClip) ambientPrimary.Play();
             }
-            float shelterScale = game.Session.Sheltered ? 0.45f : 1f;
-            ambientPrimary.volume = Mathf.MoveTowards(ambientPrimary.volume, masterAmb * 0.42f * shelterScale, Time.deltaTime * 0.8f);
+            float shelterScale = session.Sheltered ? 0.45f : 1f;
+            ambientPrimary.volume = Mathf.MoveTowards(ambientPrimary.volume,
+                masterAmb * mix.PrimaryVolume * shelterScale, Time.deltaTime * 0.8f);
 
-            var rainClip = GetClip("amb_rain");
-            if (raining)
+            // Rain overlays the overworld mix (and any world whose weather is wet) instead of
+            // replacing the realm layer, so a downpour in Lestingia still sits over the wind.
+            string secondaryKey = raining && !mix.HasSecondary ? "amb_rain" : (mix.HasSecondary ? mix.Secondary : null);
+            float secondaryVolume = raining && !mix.HasSecondary ? 0.48f : mix.SecondaryVolume;
+            var secondaryClip = string.IsNullOrEmpty(secondaryKey) ? null : GetClip(secondaryKey);
+            if (secondaryClip != null)
             {
-                if (ambientSecondary.clip != rainClip) { ambientSecondary.clip = rainClip; ambientSecondary.Play(); }
-                ambientSecondary.volume = Mathf.MoveTowards(ambientSecondary.volume, masterAmb * 0.48f * shelterScale, Time.deltaTime * 0.7f);
+                if (ambientSecondary.clip != secondaryClip) { ambientSecondary.clip = secondaryClip; ambientSecondary.Play(); }
+                ambientSecondary.volume = Mathf.MoveTowards(ambientSecondary.volume,
+                    masterAmb * secondaryVolume * shelterScale, Time.deltaTime * 0.7f);
             }
             else
             {
                 ambientSecondary.volume = Mathf.MoveTowards(ambientSecondary.volume, 0f, Time.deltaTime * 0.9f);
             }
 
-            // Procedural intermittent nature / radiation details
-            if (inRadia)
+            // Realm detail one-shots. Stormreach does not use a timer at all: its thunder is
+            // edge-triggered from the same clock+seed the sky shader uses for the flash, so the
+            // clap lands with the visible bolt (plus a short travel lag) and ahead of the flash
+            // only when the player switches realms mid-storm.
+            if (mix.HasDetail)
             {
-                geigerTimer -= Time.deltaTime;
-                if (geigerTimer <= 0f)
+                if (mix.DetailFollowsLightning)
                 {
-                    geigerTimer = 0.8f + ((NextRand() + 1f) * 1.4f);
-                    PlaySfx("radia_geiger", 0.28f * AmbientGain, .92f, 1.12f);
+                    if (session.Data != null && RealmSoundscape.StrikeBegins(session.Data.clock - RealmSoundscape.ThunderLag, dim))
+                        PlaySfx(mix.Detail, 0.55f * AmbientGain * shelterScale, .92f, 1.04f);
+                }
+                else
+                {
+                    detailTimer -= Time.deltaTime;
+                    if (detailTimer <= 0f)
+                    {
+                        // +/-35% jitter keeps the cadence from sounding like a metronome.
+                        detailTimer = mix.DetailPeriod * (0.65f + (NextRand() + 1f) * 0.35f);
+                        string key = mix.Detail;
+                        if (key == "nature_bird" && dim == Dimension.Lestingia && session.Data != null)
+                        {
+                            // Overworld nature swaps voice by time of day instead of a second key.
+                            double dayFrac = ((session.Data.clock % 1440.0) + 1440.0) % 1440.0;
+                            bool isNight = dayFrac < 330.0 || dayFrac > 1170.0;
+                            key = isNight ? "nature_cricket" : "nature_bird";
+                        }
+                        PlaySfx(key, (dim == Dimension.Radia ? 0.28f : 0.34f) * AmbientGain * shelterScale, .90f, 1.14f);
+                    }
                 }
             }
-            else if (!inSpace && dim == Dimension.Lestingia && !raining)
-            {
-                natureEventTimer -= Time.deltaTime;
-                if (natureEventTimer <= 0f)
-                {
-                    natureEventTimer = 5.5f + (NextRand() + 1f) * 4.5f;
-                    double dayFrac = ((game.Session.Data.clock % 1440.0) + 1440.0) % 1440.0;
-                    bool isNight = dayFrac < 330.0 || dayFrac > 1170.0;
-                    PlaySfx(isNight ? "nature_cricket" : "nature_bird", 0.34f * AmbientGain * shelterScale, .90f, 1.14f);
-                }
-            }
+            if (!mix.HasDetail) detailTimer = 0f;
         }
 
         void OnDestroy()

@@ -47,3 +47,61 @@ assert 'float _LCStormFlash' in shader and '_LCStormFlash' in (root / 'Assets/Sc
 assert 'SkyEffects.Resolve(' in weather, 'DynamicWeather must resolve the per-realm sky profile'
 assert 'SkyEffect.SeaHaze' in sky and sky.count('case Dimension.') >= 8, f'sky table must cover the realm ladder (has {sky.count("case Dimension.")} realm rows)'
 print('PASS sky effects:', len(modes), 'shader modes,', clamp_hi, 'clamp, table + driver in sync')
+
+
+# ---------------------------------------------------------------------------
+# Living-surface glow: every SurfaceGlow global the C# table publishes must be declared by
+# VoxelPBR.shader and actually used there. A typo here is invisible at runtime (the shader just
+# reads 0), so it is asserted instead.
+# ---------------------------------------------------------------------------
+voxel = (root / 'Assets/Resources/VoxelPBR.shader').read_text()
+glow = (root / 'Assets/Scripts/Presentation/SurfaceGlow.cs').read_text()
+glow_names = sorted(set(__import__('re').findall(r'"_LCGlow([A-Za-z]+)"', glow)))
+assert glow_names, 'SurfaceGlow must publish _LCGlow globals'
+for name in glow_names:
+    token = '_LCGlow' + name
+    assert token in voxel, f'VoxelPBR.shader must declare {token}'
+    assert voxel.count(token) >= 2, f'VoxelPBR.shader must actually use {token}, not just declare it'
+    # The driver publishes through SurfaceGlows.GlobalName, so check the driver really uses that helper.
+    assert 'SurfaceGlows.GlobalName(' in (root / 'Assets/Scripts/Presentation/DynamicWeather.cs').read_text(), 'DynamicWeather must publish glow globals through SurfaceGlows.GlobalName'
+# Every frontier surface layer must be reachable by a glow branch.
+surfaces = (root / 'Assets/Scripts/Presentation/SurfaceLayers.cs').read_text()
+for layer in (114, 115, 117, 118, 121, 123, 125):
+    assert f'i.uv.z-{layer}' in voxel, f'missing glow branch for frontier layer {layer}'
+print('PASS surface glow:', len(glow_names), 'globals declared, used and published')
+
+
+# ---------------------------------------------------------------------------
+# Realm soundscape: the engine-free RealmSoundscape table is the only thing that decides which
+# ambience a world gets, so the procedural synth code in GameAudio must actually contain a clip
+# for every key the table can ask for. A missing key would silently mean "silence in that realm",
+# which is exactly the class of bug the six frontier worlds were shipped with.
+# ---------------------------------------------------------------------------
+import re as _re
+audio = (root / 'Assets/Scripts/Presentation/GameAudio.cs').read_text()
+scape = (root / 'Assets/Scripts/Presentation/RealmSoundscape.cs').read_text()
+loop_keys = _re.search(r'LoopKeys\s*=\s*\{(.*?)\};', scape, _re.S).group(1)
+detail_keys = _re.search(r'DetailKeys\s*=\s*\{(.*?)\};', scape, _re.S).group(1)
+loops = _re.findall(r'"([a-z_]+)"', loop_keys)
+details = _re.findall(r'"([a-z_]+)"', detail_keys)
+assert len(loops) >= 12, f'expected the full loop bank, found {len(loops)}'
+assert len(details) >= 8, f'expected the full detail bank, found {len(details)}'
+for key in loops + details:
+    assert f'clips["{key}"]' in audio, f'GameAudio must synthesize clip "{key}" for RealmSoundscape'
+# Every amb_* loop must be built from a seamless synth, never a one-shot helper, or it clicks
+# every time the loop wraps.
+for key in loops:
+    line = [l for l in audio.splitlines() if f'clips["{key}"]' in l]
+    assert line, f'missing clip line for {key}'
+    builder = line[0].split('=', 1)[1]
+    assert ('SynthSeamlessLoop(' in builder or builder.strip().startswith('Synth')), f'{key} must use a synth builder'
+    if 'SynthSeamlessLoop(' not in builder:
+        fn = builder.strip().split('(')[0]
+        assert f'AudioClip {fn}(' in audio, f'{key} builder {fn} must exist'
+# The ambience driver must be table-driven: no hard-coded realm triple any more.
+assert 'RealmSoundscape.For(dim)' in audio, 'TickSoundscape must read its mix from RealmSoundscape'
+assert 'amb_wind' not in _re.sub(r'clips\["amb_wind"\]', '', audio.split('public void TickSoundscape')[1]), \
+    'TickSoundscape must not hard-code the overworld wind loop'
+assert 'RealmSoundscape.StrikeBegins(' in audio, 'storm thunder must be edge-triggered from the sky strike window'
+assert 'RealmSoundscape.Space' in audio, 'orbit/EVA must swap to the space mix'
+print('PASS realm soundscape:', len(loops), 'loops +', len(details), 'details synthesized, driver table-driven')

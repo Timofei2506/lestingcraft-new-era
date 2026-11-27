@@ -13,6 +13,7 @@ namespace LestingCraft.Presentation
         Camera cameraView;Material fog;GameObject fogPlane;ParticleSystem rain,snow;float timer;Light sunlight;Material sky;
         float clouds,precipitation,wind,wetness,snowAmount,submerged;
         int lastSkyMode=-1;float lastSkyStrength=-1f;
+        readonly float[] lastGlow=new float[8];
         readonly Dictionary<Vector3,GameObject> fires=new Dictionary<Vector3,GameObject>();
         public WeatherSample Sample {get;private set;}
         public void Initialize(SurvivalSession session,Camera view)
@@ -79,6 +80,17 @@ namespace LestingCraft.Presentation
                 Shader.SetGlobalVector("_LCSkyParams",new Vector4(skyTime+skySeed,1f,0f,skySeed));
                 lastSkyMode=skyMode;lastSkyStrength=skyStrength;
             }
+            // Living-surface glow: one float per surface for the current realm, resolved from the
+            // engine-free SurfaceGlows table. Surfaces the realm does not use are pushed to 0 so a
+            // realm switch can never leave a previous world's glow switched on.
+            var glowProfile=SurfaceGlows.ForRealm(Session.World.Dimension,light.Daylight);
+            foreach(var kind in SurfaceGlows.All)
+            {
+                float value=kind==glowProfile.Kind?glowProfile.StrengthAt(light.Daylight):0f;
+                if(Mathf.Abs(value-lastGlow[(int)kind])<.004f)continue;
+                Shader.SetGlobalFloat(SurfaceGlows.GlobalName(kind),value);
+                lastGlow[(int)kind]=value;
+            }
             fog.SetFloat("_Density",AtmosphereProfile.Density(effPrecip,submerged)*AtmosphereLighting.FogDensityMultiplierForRealm(Session.World.Dimension));
             fog.SetFloat("_Steps",VisualSettings.Current.FogSteps);
             fog.SetColor("_FogTint",Color.Lerp(light.Horizon,light.DeepWater*2,submerged));fog.SetFloat("_Submerged",submerged);
@@ -111,6 +123,7 @@ namespace LestingCraft.Presentation
         {
             Shader.SetGlobalFloat("_GlobalWetness",0);Shader.SetGlobalFloat("_GlobalSnow",0);Shader.SetGlobalFloat("_GlobalWindStrength",0);Shader.SetGlobalFloat("_LCWaterRain",0);
             Shader.SetGlobalFloat("_LCSkyEffect",0);Shader.SetGlobalFloat("_LCSkyStrength",0);
+            foreach(var kind in SurfaceGlows.All){Shader.SetGlobalFloat(SurfaceGlows.GlobalName(kind),0f);lastGlow[(int)kind]=0f;}
             if(fogPlane)Destroy(fogPlane);if(fog)Destroy(fog);
         }
     }
