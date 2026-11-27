@@ -154,3 +154,24 @@ shader_sky = (root / 'Assets/Resources/AtmosphericSky.shader').read_text()
 for token in ('sin(_LCSkyParams.x * 1.35 + _LCSkyParams.w)', '14.0'):
     assert token in shader_sky, f'sky strike window changed ({token}) - update RealmSoundscape.StrikeAt to match'
 print('PASS storm gleam: water reacts to the shared strike window, thunder and flash stay in sync')
+
+
+# ---------------------------------------------------------------------------
+# Precipitation looks: WeatherSample only knows rain/snow/storm, so without this table Emberfall's
+# soot fell as bright blue water streaks. The driver must take tint, size, length, speed and the
+# on/off decision from the engine-free table.
+# ---------------------------------------------------------------------------
+precip = (root / 'Assets/Scripts/Presentation/PrecipitationLook.cs').read_text()
+assert 'public enum PrecipitationStyle' in precip, 'PrecipitationLook must expose the style vocabulary'
+for token in ('PrecipitationLooks.Resolve(', 'PrecipitationLooks.Visible('):
+    assert token in weather, f'DynamicWeather must use {token}'
+assert 'look.R' in weather and 'look.Length' in weather and 'look.Fall' in weather, \
+    'tint, streak length and fall speed must all come from the look table'
+assert 'shows?Mathf.Max(0f,effPrecip-effSnow)*1400:0f' in weather, \
+    'precipitation emission must be gated by PrecipitationLooks.Visible'
+assert 'RealmSoundscape.WeatherReaches(' in precip, 'the visibility rule must share the weather-reaches predicate'
+styles = _re.findall(r'^\s{8}([A-Z][A-Za-z]+) = (\d+),', precip, _re.M)
+assert len(styles) >= 6, f'expected the full precipitation vocabulary, found {len(styles)}'
+for realm in ('Emberfall', 'Verdant', 'Aquaria', 'Titan', 'Mars'):
+    assert f'case Dimension.{realm}:' in precip, f'PrecipitationLooks needs an explicit row for {realm}'
+print('PASS precipitation looks:', len(styles), 'styles, driver takes look + visibility from the table')

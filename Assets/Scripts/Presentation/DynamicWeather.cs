@@ -11,7 +11,7 @@ namespace LestingCraft.Presentation
     {
         public SurvivalSession Session;
         Camera cameraView;Material fog;GameObject fogPlane;ParticleSystem rain,snow,motes;float timer;Light sunlight;Material sky;
-        MoteKind lastMoteKind=MoteKind.None;
+        MoteKind lastMoteKind=MoteKind.None;PrecipitationStyle lastPrecipStyle=(PrecipitationStyle)(-1);
         float clouds,precipitation,wind,wetness,snowAmount,submerged;
         int lastSkyMode=-1;float lastSkyStrength=-1f;float lastStormStrike=-1f;
         readonly float[] lastGlow=new float[8];
@@ -126,8 +126,27 @@ namespace LestingCraft.Presentation
             Shader.SetGlobalFloat("_LCWaterRain",Mathf.Max(0f,effPrecip-effSnow)*(Session.Sheltered?0f:1f));
             rain.transform.position=snow.transform.position=cameraView.transform.position+Vector3.up*15;
             float outside=Session.Sheltered||inWater?0:1;
-            var re=rain.emission;re.rateOverTime=outside*Mathf.Max(0f,effPrecip-effSnow)*1400;
-            var se=snow.emission;se.rateOverTime=outside*effSnow*80;
+            // Falling stuff looks like the realm, not like the overworld: soot tumbles over
+            // Emberfall, monsoons streak over Aquaria, spores drift over Verdant, and vacuum or
+            // sealed realms emit nothing at all (PrecipitationLook is engine-free and tested).
+            bool snowing=effSnow>effPrecip*.5f;
+            var look=PrecipitationLooks.Resolve(Session.World.Dimension,snowing);
+            bool shows=PrecipitationLooks.Visible(Session.World.Dimension,Mathf.Max(effPrecip,effSnow));
+            if(shows&&look.Style!=lastPrecipStyle)
+            {
+                lastPrecipStyle=look.Style;
+                var rm=rain.main;rm.startColor=new Color(look.R,look.G,look.B,look.Alpha);
+                rm.startSize=new ParticleSystem.MinMaxCurve(.010f*look.Size,.019f*look.Size);
+                var rr=rain.GetComponent<ParticleSystemRenderer>();rr.lengthScale=1.2f*look.Length;
+                var sm=snow.main;sm.startColor=new Color(look.R*.85f+.15f,look.G*.85f+.15f,look.B*.85f+.15f,look.Alpha+.15f);
+                sm.startSize=new ParticleSystem.MinMaxCurve(.045f*look.Size,.085f*look.Size);
+            }
+            var rainVelocity=rain.velocityOverLifetime;
+            rainVelocity.y=-26f*look.Fall;
+            var snowVelocity=snow.velocityOverLifetime;
+            snowVelocity.y=-1.7f*look.Fall;
+            var re=rain.emission;re.rateOverTime=outside*(shows?Mathf.Max(0f,effPrecip-effSnow)*1400:0f);
+            var se=snow.emission;se.rateOverTime=outside*(shows?effSnow*80:0f);
             float realmClouds=AtmosphereLighting.CloudCoverageForRealm(Session.World.Dimension,clouds);
             var light=AtmosphereLighting.At(Session.Data.clock,Session.World.Dimension,clouds,precipitation);light.Apply(sunlight,Session.Data.clock);
             sky.SetVector("_CloudOffset",CloudField.Offset(Session.Data.clock,Session.Data.seed,wind));sky.SetFloat("_CloudCoverage",realmClouds);sky.SetFloat("_CloudSteps",VisualSettings.Current.CloudSteps);
